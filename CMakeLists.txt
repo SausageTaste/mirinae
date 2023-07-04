@@ -10,16 +10,27 @@ FetchContent_Declare(
     GIT_TAG        3.3.8
 )
 
-FetchContent_MakeAvailable(dal_glfw)
+FetchContent_Declare(
+    dal_spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog
+    GIT_TAG        v1.11.0
+)
+
+FetchContent_MakeAvailable(
+    dal_glfw
+    dal_spdlog
+)
 
 
 add_library(mirinae
-    ./src/engine.cpp
+    ./src/glad/gl.c
+    ./src/mirinae/engine.cpp
 )
 target_include_directories(mirinae PUBLIC ./include)
 target_compile_features(mirinae PRIVATE cxx_std_17)
 target_link_libraries(mirinae
     PRIVATE
+        spdlog
         glfw
 )
 
