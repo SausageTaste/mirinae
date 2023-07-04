@@ -2,10 +2,10 @@
 
 
 int main() {
-    mirinae::Engine engine;
+    auto engine = mirinae::create_engine();
 
-    while (engine.is_ongoing())
-        engine.do_frame();
+    while (engine->is_ongoing())
+        engine->do_frame();
 
     return 0;
 }

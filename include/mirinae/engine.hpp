@@ -1,15 +1,19 @@
 #pragma once
 
+#include <memory>
+
 
 namespace mirinae {
 
-    class Engine {
+    class IEngine {
 
     public:
-        Engine();
-        void do_frame();
-        bool is_ongoing();
+        virtual void do_frame() = 0;
+        virtual bool is_ongoing() = 0;
 
     };
+
+
+    std::unique_ptr<IEngine> create_engine();
 
 }
