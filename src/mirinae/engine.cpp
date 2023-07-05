@@ -65,6 +65,7 @@ namespace {
                 "}\0";
             mirinae::ShaderUnit vertex_shader{mirinae::ShaderUnit::Type::vertex, vertex_src};
             mirinae::ShaderUnit fragment_shader{mirinae::ShaderUnit::Type::fragment, fragment_src};
+            this->program.init(vertex_shader, fragment_shader);
         }
 
         ~EngineGlfw() {
@@ -85,6 +86,8 @@ namespace {
             glClearColor(std::sin(sec * 0.3f), std::sin(sec * 1.7f), std::sin(sec * 3.4f), 1);
             glClear(GL_COLOR_BUFFER_BIT);
 
+            this->program.use();
+
             glfwSwapBuffers(this->window);
             glfwPollEvents();
         }
@@ -97,6 +100,7 @@ namespace {
         GLFWwindow* window = nullptr;
         std::chrono::steady_clock::time_point created_time;
         mirinae::BufferObject vbo;
+        mirinae::ShaderProgram program;
 
     };
 

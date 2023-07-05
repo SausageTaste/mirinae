@@ -8,10 +8,10 @@
 
 namespace mirinae {
 
-    void log_gl_error() {
+    void log_gl_error(const char* label = "") {
         const auto err = glGetError();
         if (GL_NO_ERROR != err) {
-            spdlog::warn("OpenGL error: {}", err);
+            spdlog::warn("OpenGL error: 0x{:x} ({})", err, label);
         }
     }
 
@@ -88,6 +88,8 @@ namespace mirinae {
             return this->is_success();
         }
 
+        GLuint get_handle() const { return this->handle; }
+
     private:
         bool is_success() const {
             if (0 == this->handle)
@@ -108,6 +110,62 @@ namespace mirinae {
                     spdlog::error("Unknown ShaderUnit::Type value: {}", static_cast<int>(type));
                     throw std::runtime_error{""};
             }
+        }
+
+        GLuint handle = 0;
+
+    };
+
+
+    class ShaderProgram {
+
+    public:
+        ~ShaderProgram() {
+            this->destroy();
+        }
+
+        void init(const ShaderUnit& vertex, const ShaderUnit& fragment) {
+            this->handle = glCreateProgram();
+            glAttachShader(this->handle, vertex.get_handle());
+            glAttachShader(this->handle, fragment.get_handle());
+            glLinkProgram(this->handle);
+
+            log_gl_error("Shader program linking");
+
+            if (!this->is_success()) {
+                char msg[512];
+                glGetProgramInfoLog(this->handle, 512, NULL, msg);
+                spdlog::error("Shader linking failed...\n{}", msg);
+            }
+        }
+
+        void destroy() {
+            if (0 != this->handle) {
+                glDeleteProgram(this->handle);
+                this->handle = 0;
+            }
+        }
+
+        bool is_ready() const {
+            if (0 == this->handle)
+                return false;
+
+            return true;
+        }
+
+        void use() {
+            if (this->is_ready())
+                glUseProgram(this->handle);
+        }
+
+    private:
+        bool is_success() const {
+            if (0 == this->handle)
+                return false;
+
+            int success;
+            glGetProgramiv(this->handle, GL_LINK_STATUS, &success);
+            return 0 != success;
         }
 
         GLuint handle = 0;
