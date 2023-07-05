@@ -50,6 +50,7 @@ namespace {
                 0.0f,  0.5f, 0.0f
             };
             vbo.init(vertices, sizeof(vertices));
+            vao.init(vbo);
 
             const char* vertex_src = "#version 450 core\n"
                 "layout (location = 0) in vec3 aPos;\n"
@@ -87,6 +88,9 @@ namespace {
             glClear(GL_COLOR_BUFFER_BIT);
 
             this->program.use();
+            this->vao.use();
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            mirinae::log_gl_error("do_frame");
 
             glfwSwapBuffers(this->window);
             glfwPollEvents();
@@ -100,6 +104,7 @@ namespace {
         GLFWwindow* window = nullptr;
         std::chrono::steady_clock::time_point created_time;
         mirinae::BufferObject vbo;
+        mirinae::VertexArrayObject vao;
         mirinae::ShaderProgram program;
 
     };
