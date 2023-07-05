@@ -8,6 +8,9 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
+#include "mirinae/render/glprimitive.hpp"
+
+
 namespace {
 
     class GlfwRaii {
@@ -40,6 +43,28 @@ namespace {
             if (0 == version)
                 throw std::runtime_error{ "Failed to initialize GLAD" };
             spdlog::info("OpenGL version: {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+
+            float vertices[] = {
+                -0.5f, -0.5f, 0.0f,
+                0.5f, -0.5f, 0.0f,
+                0.0f,  0.5f, 0.0f
+            };
+            vbo.init(vertices, sizeof(vertices));
+
+            const char* vertex_src = "#version 450 core\n"
+                "layout (location = 0) in vec3 aPos;\n"
+                "void main()\n"
+                "{\n"
+                "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+                "}\0";
+            const char* fragment_src = "#version 450 core\n"
+                "out vec4 FragColor;\n"
+                "void main()\n"
+                "{\n"
+                "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+                "}\0";
+            mirinae::ShaderUnit vertex_shader{mirinae::ShaderUnit::Type::vertex, vertex_src};
+            mirinae::ShaderUnit fragment_shader{mirinae::ShaderUnit::Type::fragment, fragment_src};
         }
 
         ~EngineGlfw() {
@@ -71,6 +96,7 @@ namespace {
     private:
         GLFWwindow* window = nullptr;
         std::chrono::steady_clock::time_point created_time;
+        mirinae::BufferObject vbo;
 
     };
 
