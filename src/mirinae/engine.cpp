@@ -30,20 +30,63 @@ namespace {
     } g_glfw_raii;
 
 
-    class EngineGlfw : public mirinae::IEngine {
+    void window_size_callback(GLFWwindow* window, int width, int height) {
+        auto ptr = glfwGetWindowUserPointer(window);
+        if (nullptr == ptr)
+            return;
+
+        auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
+        engine->on_window_resize(width, height);
+    }
+
+
+    class GlfwWindow {
 
     public:
-        EngineGlfw()
-            : created_time(std::chrono::steady_clock::now())
-        {
+        GlfwWindow(void* userdata) {
             this->window = glfwCreateWindow(640, 480, "My Title", nullptr, nullptr);
             glfwMakeContextCurrent(this->window);
+            glfwSetFramebufferSizeCallback(this->window, ::window_size_callback);
+            glfwSetWindowUserPointer(this->window, userdata);
 
             int version = gladLoadGL(glfwGetProcAddress);
             if (0 == version)
                 throw std::runtime_error{ "Failed to initialize GLAD" };
             spdlog::info("OpenGL version: {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+        }
 
+        ~GlfwWindow() {
+            this->destroy();
+        }
+
+        void destroy() {
+            if (nullptr != this->window) {
+                glfwDestroyWindow(this->window);
+                this->window = nullptr;
+            }
+        }
+
+        void swap_buffer() {
+            glfwSwapBuffers(this->window);
+        }
+
+        bool is_ongoing() const {
+            return !glfwWindowShouldClose(this->window);
+        }
+
+    private:
+        GLFWwindow* window = nullptr;
+
+    };
+
+
+    class EngineGlfw : public mirinae::IEngine {
+
+    public:
+        EngineGlfw()
+            : window(this)
+            , created_time(std::chrono::steady_clock::now())
+        {
             float vertices[] = {
                 -0.5f, -0.5f, 0.0f,
                 0.5f, -0.5f, 0.0f,
@@ -69,17 +112,6 @@ namespace {
             this->program.init(vertex_shader, fragment_shader);
         }
 
-        ~EngineGlfw() {
-            this->destroy();
-        }
-
-        void destroy() {
-            if (nullptr != this->window) {
-                glfwDestroyWindow(this->window);
-                this->window = nullptr;
-            }
-        }
-
         void do_frame() override {
             const auto dur = std::chrono::steady_clock::now() - this->created_time;
             const auto sec = static_cast<float>(dur.count()) / 1000000000.f;
@@ -92,16 +124,20 @@ namespace {
             glDrawArrays(GL_TRIANGLES, 0, 3);
             mirinae::log_gl_error("do_frame");
 
-            glfwSwapBuffers(this->window);
+            this->window.swap_buffer();
             glfwPollEvents();
         }
 
         bool is_ongoing() override {
-            return !glfwWindowShouldClose(this->window);
+            return this->window.is_ongoing();
+        }
+
+        void on_window_resize(unsigned width, unsigned height) override {
+            glViewport(0, 0, width, height);
         }
 
     private:
-        GLFWwindow* window = nullptr;
+        GlfwWindow window;
         std::chrono::steady_clock::time_point created_time;
         mirinae::BufferObject vbo;
         mirinae::VertexArrayObject vao;
