@@ -41,6 +41,42 @@ namespace mirinae {
             return this->handle != 0;
         }
 
+        GLuint get_handle() const { return this->handle; }
+
+    private:
+        GLuint handle = 0;
+
+    };
+
+
+    class VertexArrayObject {
+
+    public:
+        ~VertexArrayObject() {
+            this->destroy();
+        }
+
+        void init(BufferObject& vbo) {
+            glGenVertexArrays(1, &this->handle);
+            glBindVertexArray(this->handle);
+
+            glBindBuffer(GL_ARRAY_BUFFER, vbo.get_handle());
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+        }
+
+        void destroy() {
+            if (0 != this->handle) {
+                glDeleteVertexArrays(1, &this->handle);
+                this->handle = 0;
+            }
+        }
+
+        void use() {
+            glBindVertexArray(this->handle);
+        }
+
     private:
         GLuint handle = 0;
 
