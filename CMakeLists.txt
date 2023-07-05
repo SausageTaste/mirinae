@@ -16,9 +16,16 @@ FetchContent_Declare(
     GIT_TAG        v1.11.0
 )
 
+FetchContent_Declare(
+    fetch_daltools
+    GIT_REPOSITORY https://github.com/SausageTaste/DalbaragiTools
+    GIT_TAG        main
+)
+
 FetchContent_MakeAvailable(
     dal_glfw
     dal_spdlog
+    fetch_daltools
 )
 
 
@@ -32,6 +39,7 @@ target_link_libraries(mirinae
     PRIVATE
         spdlog
         glfw
+        dalbaragi::daltools
 )
 
 

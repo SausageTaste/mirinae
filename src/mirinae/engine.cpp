@@ -8,6 +8,8 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
+#include <daltools/util.h>
+
 #include "mirinae/render/glprimitive.hpp"
 
 
@@ -85,7 +87,6 @@ namespace {
     public:
         EngineGlfw()
             : window(this)
-            , created_time(std::chrono::steady_clock::now())
         {
             float vertices[] = {
                 -0.5f, -0.5f, 0.0f,
@@ -113,9 +114,7 @@ namespace {
         }
 
         void do_frame() override {
-            const auto dur = std::chrono::steady_clock::now() - this->created_time;
-            const auto sec = static_cast<float>(dur.count()) / 1000000000.f;
-
+            const auto sec = dal::get_cur_sec();
             glClearColor(std::sin(sec * 0.3f), std::sin(sec * 1.7f), std::sin(sec * 3.4f), 1);
             glClear(GL_COLOR_BUFFER_BIT);
 
@@ -138,7 +137,6 @@ namespace {
 
     private:
         GlfwWindow window;
-        std::chrono::steady_clock::time_point created_time;
         mirinae::BufferObject vbo;
         mirinae::VertexArrayObject vao;
         mirinae::ShaderProgram program;
