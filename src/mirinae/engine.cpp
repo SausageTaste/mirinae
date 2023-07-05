@@ -64,8 +64,8 @@ namespace {
                 "{\n"
                 "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
                 "}\0";
-            mirinae::ShaderUnit vertex_shader{mirinae::ShaderUnit::Type::vertex, vertex_src};
-            mirinae::ShaderUnit fragment_shader{mirinae::ShaderUnit::Type::fragment, fragment_src};
+            mirinae::ShaderUnit vertex_shader{ mirinae::ShaderUnit::Type::vertex, vertex_src };
+            mirinae::ShaderUnit fragment_shader{ mirinae::ShaderUnit::Type::fragment, fragment_src };
             this->program.init(vertex_shader, fragment_shader);
         }
 
