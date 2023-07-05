@@ -10,6 +10,7 @@ namespace mirinae {
     public:
         virtual void do_frame() = 0;
         virtual bool is_ongoing() = 0;
+        virtual void on_window_resize(unsigned width, unsigned height) = 0;
 
     };
 
