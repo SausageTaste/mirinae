@@ -144,7 +144,7 @@ namespace mirinae {
                     return GL_FRAGMENT_SHADER;
                 default:
                     spdlog::error("Unknown ShaderUnit::Type value: {}", static_cast<int>(type));
-                    throw std::runtime_error{""};
+                    throw std::runtime_error{ "" };
             }
         }
 
