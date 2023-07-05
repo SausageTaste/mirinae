@@ -32,23 +32,13 @@ namespace {
     } g_glfw_raii;
 
 
-    void window_size_callback(GLFWwindow* window, int width, int height) {
-        auto ptr = glfwGetWindowUserPointer(window);
-        if (nullptr == ptr)
-            return;
-
-        auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
-        engine->on_window_resize(width, height);
-    }
-
-
     class GlfwWindow {
 
     public:
         GlfwWindow(void* userdata) {
             this->window = glfwCreateWindow(640, 480, "My Title", nullptr, nullptr);
             glfwMakeContextCurrent(this->window);
-            glfwSetFramebufferSizeCallback(this->window, ::window_size_callback);
+            glfwSetFramebufferSizeCallback(this->window, GlfwWindow::window_size_callback);
             glfwSetWindowUserPointer(this->window, userdata);
 
             int version = gladLoadGL(glfwGetProcAddress);
@@ -58,10 +48,6 @@ namespace {
         }
 
         ~GlfwWindow() {
-            this->destroy();
-        }
-
-        void destroy() {
             if (nullptr != this->window) {
                 glfwDestroyWindow(this->window);
                 this->window = nullptr;
@@ -77,6 +63,15 @@ namespace {
         }
 
     private:
+        static void window_size_callback(GLFWwindow* window, int width, int height) {
+            auto ptr = glfwGetWindowUserPointer(window);
+            if (nullptr == ptr)
+                return;
+
+            auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
+            engine->on_window_resize(width, height);
+        }
+
         GLFWwindow* window = nullptr;
 
     };
