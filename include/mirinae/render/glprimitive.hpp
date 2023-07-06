@@ -194,6 +194,12 @@ namespace mirinae {
                 glUseProgram(this->handle);
         }
 
+        GLint get_uniform_loc(const char* name) {
+            if (!this->is_ready())
+                return -1;
+            return glGetUniformLocation(this->handle, name);
+        }
+
     private:
         bool is_success() const {
             if (0 == this->handle)
