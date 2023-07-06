@@ -130,6 +130,12 @@ namespace {
 
             this->camera.pos.z = 5;
 
+            {
+                int width, height, nrChannels;
+                const auto data = stbi_load((*res_dir_path / "texture/missing_texture.png").u8string().c_str(), &width, &height, &nrChannels, 0);
+                this->texture.init(width, height, data);
+            }
+
             this->on_window_resize(640, 480);
         }
 
@@ -174,6 +180,7 @@ namespace {
         mirinae::BufferObject vbo;
         mirinae::VertexArrayObject vao;
         mirinae::ShaderProgram program;
+        mirinae::Texture texture;
         glm::mat4 proj_mat;
         QuatCamera camera;
 

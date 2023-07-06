@@ -22,10 +22,19 @@ FetchContent_Declare(
     GIT_TAG        main
 )
 
+FetchContent_Declare(
+    fetch_stb
+    GIT_REPOSITORY    https://github.com/nothings/stb
+    GIT_TAG           master
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND     ""
+)
+
 FetchContent_MakeAvailable(
     dal_glfw
     dal_spdlog
     fetch_daltools
+    fetch_stb
 )
 
 
@@ -33,7 +42,7 @@ add_library(mirinae
     ./src/glad/gl.c
     ./src/mirinae/engine.cpp
 )
-target_include_directories(mirinae PUBLIC ./include)
+target_include_directories(mirinae PUBLIC ./include ${fetch_stb_SOURCE_DIR})
 target_compile_features(mirinae PRIVATE cxx_std_17)
 target_link_libraries(mirinae
     PRIVATE

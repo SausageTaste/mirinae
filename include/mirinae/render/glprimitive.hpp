@@ -214,4 +214,42 @@ namespace mirinae {
 
     };
 
+
+    class Texture {
+
+    public:
+        ~Texture() {
+            this->destroy();
+        }
+
+        void init(GLsizei width, GLsizei height, const void* pixels) {
+            glGenTextures(1, &this->handle);
+            glBindTexture(GL_TEXTURE_2D, this->handle);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+            glGenerateMipmap(GL_TEXTURE_2D);
+            log_gl_error("Texture::init");
+        }
+
+        void destroy() {
+            if (0 != this->handle) {
+                glDeleteTextures(1, &this->handle);
+                this->handle = 0;
+            }
+        }
+
+        bool is_ready() const {
+            return 0 != this->handle;
+        }
+
+    private:
+        GLuint handle = 0;
+
+    };
+
 }
