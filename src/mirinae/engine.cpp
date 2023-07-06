@@ -11,6 +11,7 @@
 #include <daltools/util.h>
 
 #include "mirinae/render/glprimitive.hpp"
+#include "mirinae/util/filesys.hpp"
 
 
 namespace {
@@ -91,20 +92,11 @@ namespace {
             vbo.init(vertices, sizeof(vertices));
             vao.init(vbo);
 
-            const char* vertex_src = "#version 450 core\n"
-                "layout (location = 0) in vec3 aPos;\n"
-                "void main()\n"
-                "{\n"
-                "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-                "}\0";
-            const char* fragment_src = "#version 450 core\n"
-                "out vec4 FragColor;\n"
-                "void main()\n"
-                "{\n"
-                "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-                "}\0";
-            mirinae::ShaderUnit vertex_shader{ mirinae::ShaderUnit::Type::vertex, vertex_src };
-            mirinae::ShaderUnit fragment_shader{ mirinae::ShaderUnit::Type::fragment, fragment_src };
+            const auto res_dir_path = mirinae::find_resources_folder();
+            const auto vertex_src = mirinae::read_file<std::string>((*res_dir_path / "shader/tutorial.vert").u8string().c_str());
+            const auto fragment_src = mirinae::read_file<std::string>((*res_dir_path / "shader/tutorial.frag").u8string().c_str());
+            mirinae::ShaderUnit vertex_shader{ mirinae::ShaderUnit::Type::vertex, vertex_src->c_str() };
+            mirinae::ShaderUnit fragment_shader{ mirinae::ShaderUnit::Type::fragment, fragment_src->c_str() };
             this->program.init(vertex_shader, fragment_shader);
         }
 
