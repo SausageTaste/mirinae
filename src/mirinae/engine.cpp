@@ -218,7 +218,7 @@ namespace {
             mirinae::ShaderUnit fragment_shader{ mirinae::ShaderUnit::Type::fragment, fragment_src->c_str() };
             this->program.init(vertex_shader, fragment_shader);
 
-            this->camera.pos.y = 1;
+            this->camera.pos.y = 3;
 
             {
                 int width, height, nrChannels;
@@ -243,8 +243,54 @@ namespace {
                     0, 1, 3, // first triangle
                     1, 2, 3  // second triangle
                 };
+                //this->mesh.init(vertices, indices);
+            }
+
+            {
+                int width, height, nrChannels;
+                const auto data = stbi_load((*res_dir_path / "texture/iceland_heightmap.png").u8string().c_str(), &width, &height, &nrChannels, 0);
+
+                std::vector<mirinae::VertexStatic> vertices;
+                for (size_t i = 0; i < height; i++)
+                {
+                    for (size_t j = 0; j < width; j++)
+                    {
+                        // retrieve texel for (i,j) tex coord
+                        const auto texel = data + (j + width * i) * nrChannels;
+                        // raw height at coordinate
+                        unsigned char y = texel[0];
+
+                        // vertex
+                        auto& v = vertices.emplace_back();
+                        v.pos().x = -height / 2.0 + i;
+                        v.pos().y = double(y) * 64.0 / 255.0;
+                        v.pos().z = -width / 2.0 + j;
+                        v.pos() *= 0.05;
+
+                        v.normal().x = y / 255.0;
+
+                        v.uv().x = double(j) / width * 100.0;
+                        v.uv().y = double(i) / height * 100.0;
+                    }
+                }
+
+                std::vector<unsigned int> indices;
+                for (size_t y = 0; y < height - 1; y++) {
+                    for (size_t x = 0; x < width - 1; x++) {
+                        indices.push_back(y * width + x);
+                        indices.push_back((y + 1) * width + x);
+                        indices.push_back((y + 1) * width + x + 1);
+
+                        indices.push_back(y * width + x);
+                        indices.push_back((y + 1) * width + x + 1);
+                        indices.push_back(y * width + x + 1);
+                    }
+                }
+
                 this->mesh.init(vertices, indices);
             }
+
+            glEnable(GL_DEPTH_TEST);
 
             this->on_window_resize(640, 480);
         }
@@ -263,12 +309,14 @@ namespace {
                 move_direc.x -= 1;
             if (key_anal[mirinae::key::KeyCode::d].pressed)
                 move_direc.x += 1;
-            this->camera.move_along_view_direc(move_direc * static_cast<float>(delta_time));
+
+            const float move_speed = delta_time * (key_anal[mirinae::key::KeyCode::lshfit].pressed ? 10 : 1);
+            this->camera.move_along_view_direc(move_direc * move_speed);
 
             if (key_anal[mirinae::key::KeyCode::space].pressed)
-                this->camera.pos.y += delta_time;
+                this->camera.pos.y += move_speed;
             if (key_anal[mirinae::key::KeyCode::lctrl].pressed)
-                this->camera.pos.y -= delta_time;
+                this->camera.pos.y -= move_speed;
 
             if (key_anal[mirinae::key::KeyCode::left].pressed)
                 this->camera.rotate_view_left(delta_time);
@@ -289,7 +337,7 @@ namespace {
             // Render
 
             glClearColor(0, 0, 0, 1);
-            glClear(GL_COLOR_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             this->program.use();
 
@@ -313,7 +361,7 @@ namespace {
 
         void on_window_resize(unsigned width, unsigned height) override {
             glViewport(0, 0, width, height);
-            this->proj_mat = glm::perspective<float>(90, static_cast<double>(width) / static_cast<double>(height), 0.1, 100);
+            this->proj_mat = glm::perspective<float>(90, static_cast<double>(width) / static_cast<double>(height), 0.1, 1000);
             spdlog::info("Window resize: {}x{}", width, height);
         }
 

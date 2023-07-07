@@ -10,6 +10,8 @@ namespace mirinae {
 	class VertexStatic {
 
 	public:
+		VertexStatic() = default;
+
 		VertexStatic(float x_pos, float y_pos, float z_pos, float x_normal, float y_normal, float z_normal, float x_uv, float y_uv) {
 			this->pos() = glm::vec3{ x_pos, y_pos, z_pos };
 			this->normal() = glm::vec3{ x_normal, y_normal, z_normal };
