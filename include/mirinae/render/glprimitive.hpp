@@ -253,7 +253,8 @@ namespace mirinae {
             return 0 != this->handle;
         }
 
-        void use() {
+        void use(unsigned unit_number) {
+            glActiveTexture(GL_TEXTURE0 + unit_number);
             glBindTexture(GL_TEXTURE_2D, this->handle);
         }
 

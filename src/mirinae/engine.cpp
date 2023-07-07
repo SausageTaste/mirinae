@@ -125,7 +125,13 @@ namespace {
             {
                 int width, height, nrChannels;
                 const auto data = stbi_load((*res_dir_path / "texture/missing_texture.png").u8string().c_str(), &width, &height, &nrChannels, 0);
-                this->texture.init(width, height, data);
+                this->texture_error.init(width, height, data);
+            }
+
+            {
+                int width, height, nrChannels;
+                const auto data = stbi_load((*res_dir_path / "texture/grass1.tga").u8string().c_str(), &width, &height, &nrChannels, 0);
+                this->texture_grass.init(width, height, data);
             }
 
             {
@@ -161,8 +167,11 @@ namespace {
 
             const auto mat = this->proj_mat * this->camera.make_view_mat();
             glUniformMatrix4fv(this->program.get_uniform_loc("u_proj_mat"), 1, GL_FALSE, glm::value_ptr(mat));
+            glUniform1i(this->program.get_uniform_loc("texture1"), 0);
+            glUniform1i(this->program.get_uniform_loc("texture2"), 1);
 
-            this->texture.use();
+            this->texture_error.use(0);
+            this->texture_grass.use(1);
             this->mesh.draw();
             mirinae::log_gl_error("do_frame");
 
@@ -185,7 +194,8 @@ namespace {
         dal::Timer timer;
         mirinae::MeshStatic mesh;
         mirinae::ShaderProgram program;
-        mirinae::Texture texture;
+        mirinae::Texture texture_error;
+        mirinae::Texture texture_grass;
         glm::mat4 proj_mat;
         QuatCamera camera;
 
