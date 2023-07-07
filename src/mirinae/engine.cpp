@@ -113,14 +113,6 @@ namespace {
         EngineGlfw()
             : window(this)
         {
-            float vertices[] = {
-                -1, -0.5 * std::sqrt(3.0), 0,
-                 1, -0.5 * std::sqrt(3.0), 0,
-                 0,  0.5 * std::sqrt(3.0), 0
-            };
-            vbo.init(vertices, sizeof(vertices));
-            vao.init(vbo);
-
             const auto res_dir_path = mirinae::find_resources_folder();
             const auto vertex_src = mirinae::read_file<std::string>((*res_dir_path / "shader/tutorial.vert").u8string().c_str());
             const auto fragment_src = mirinae::read_file<std::string>((*res_dir_path / "shader/tutorial.frag").u8string().c_str());
@@ -128,12 +120,26 @@ namespace {
             mirinae::ShaderUnit fragment_shader{ mirinae::ShaderUnit::Type::fragment, fragment_src->c_str() };
             this->program.init(vertex_shader, fragment_shader);
 
-            this->camera.pos.z = 5;
+            this->camera.pos.z = 2;
 
             {
                 int width, height, nrChannels;
                 const auto data = stbi_load((*res_dir_path / "texture/missing_texture.png").u8string().c_str(), &width, &height, &nrChannels, 0);
                 this->texture.init(width, height, data);
+            }
+
+            {
+                std::vector<mirinae::VertexStatic> vertices{
+                    mirinae::VertexStatic{ 0.5,  0.5, 0,  1, 0, 0,   1, 1}, // top right
+                    mirinae::VertexStatic{ 0.5, -0.5, 0,  0, 1, 0,   1, 0}, // bottom right
+                    mirinae::VertexStatic{-0.5, -0.5, 0,  0, 0, 1,   0, 0}, // bottom left
+                    mirinae::VertexStatic{-0.5,  0.5, 0,  1, 1, 0,   0, 1}  // top left 
+                };
+                std::vector<unsigned int> indices{
+                    0, 1, 3, // first triangle
+                    1, 2, 3  // second triangle
+                };
+                this->mesh.init(vertices, indices);
             }
 
             this->on_window_resize(640, 480);
@@ -148,7 +154,7 @@ namespace {
             // Render
 
             const auto sec = dal::get_cur_sec();
-            glClearColor(std::sin(sec * 0.3), std::sin(sec * 1.7), std::sin(sec * 3.4), 1);
+            glClearColor(0, 0, 0, 1);
             glClear(GL_COLOR_BUFFER_BIT);
 
             this->program.use();
@@ -156,8 +162,8 @@ namespace {
             const auto mat = this->proj_mat * this->camera.make_view_mat();
             glUniformMatrix4fv(this->program.get_uniform_loc("u_proj_mat"), 1, GL_FALSE, glm::value_ptr(mat));
 
-            this->vao.use();
-            glDrawArrays(GL_TRIANGLES, 0, 3);
+            this->texture.use();
+            this->mesh.draw();
             mirinae::log_gl_error("do_frame");
 
             this->window.swap_buffer();
@@ -177,8 +183,7 @@ namespace {
     private:
         GlfwWindow window;
         dal::Timer timer;
-        mirinae::BufferObject vbo;
-        mirinae::VertexArrayObject vao;
+        mirinae::MeshStatic mesh;
         mirinae::ShaderProgram program;
         mirinae::Texture texture;
         glm::mat4 proj_mat;
