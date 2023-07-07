@@ -163,10 +163,34 @@ namespace {
             this->quat = this->rotate_quat(this->quat, angle, axis);
         }
 
-        glm::mat4 make_view_mat() const {
+        glm::vec3 make_view_direc() const {
             const auto r = glm::toMat4(this->quat);
+            const auto v = r * glm::vec4{ 0, 0, -1, 0 };
+            return glm::normalize(glm::vec3{ v });
+        }
+
+        glm::mat4 make_view_mat() const {
+            const auto r = glm::inverse(glm::toMat4(this->quat));
             const auto t = glm::translate(r, -this->pos);
             return t;
+        }
+
+        void move_along_view_direc(const glm::vec3& v) {
+            const auto new_vec = glm::toMat4(this->quat) * glm::vec4{ v, 0 };
+            this->pos += glm::vec3{ new_vec };
+        }
+
+        void rotate_view_up(float radians) {
+            const auto right = glm::toMat4(this->quat) * glm::vec4{ 1, 0, 0, 0 };
+            this->rotate(radians, glm::vec3(right));
+        }
+
+        void rotate_view_left(float radians) {
+            this->rotate(radians, glm::vec3{ 0, 1, 0 });
+        }
+
+        void rotate_tilt(float radians) {
+            this->rotate(radians, this->make_view_direc());
         }
 
         glm::vec3 pos{};
@@ -194,7 +218,7 @@ namespace {
             mirinae::ShaderUnit fragment_shader{ mirinae::ShaderUnit::Type::fragment, fragment_src->c_str() };
             this->program.init(vertex_shader, fragment_shader);
 
-            this->camera.pos.z = 2;
+            this->camera.pos.y = 1;
 
             {
                 int width, height, nrChannels;
@@ -210,10 +234,10 @@ namespace {
 
             {
                 std::vector<mirinae::VertexStatic> vertices{
-                    mirinae::VertexStatic{ 0.5,  0.5, 0,  1, 0, 0,   1, 1}, // top right
-                    mirinae::VertexStatic{ 0.5, -0.5, 0,  0, 1, 0,   1, 0}, // bottom right
-                    mirinae::VertexStatic{-0.5, -0.5, 0,  0, 0, 1,   0, 0}, // bottom left
-                    mirinae::VertexStatic{-0.5,  0.5, 0,  1, 1, 0,   0, 1}  // top left 
+                    mirinae::VertexStatic{ 5, 0,  5,  1, 0, 0,   1, 1}, // top right
+                    mirinae::VertexStatic{ 5, 0, -5,  0, 1, 0,   1, 0}, // bottom right
+                    mirinae::VertexStatic{-5, 0, -5,  0, 0, 1,   0, 0}, // bottom left
+                    mirinae::VertexStatic{-5, 0,  5,  1, 1, 0,   0, 1}  // top left 
                 };
                 std::vector<unsigned int> indices{
                     0, 1, 3, // first triangle
@@ -230,18 +254,35 @@ namespace {
 
             // User control
 
-            if (key_anal[mirinae::key::KeyCode::w].pressed) {
-                this->camera.pos.z -= delta_time;
-            }
-            if (key_anal[mirinae::key::KeyCode::s].pressed) {
-                this->camera.pos.z += delta_time;
-            }
-            if (key_anal[mirinae::key::KeyCode::a].pressed) {
-                this->camera.pos.x -= delta_time;
-            }
-            if (key_anal[mirinae::key::KeyCode::d].pressed) {
-                this->camera.pos.x += delta_time;
-            }
+            glm::vec3 move_direc{};
+            if (key_anal[mirinae::key::KeyCode::w].pressed)
+                move_direc.z -= 1;
+            if (key_anal[mirinae::key::KeyCode::s].pressed)
+                move_direc.z += 1;
+            if (key_anal[mirinae::key::KeyCode::a].pressed)
+                move_direc.x -= 1;
+            if (key_anal[mirinae::key::KeyCode::d].pressed)
+                move_direc.x += 1;
+            this->camera.move_along_view_direc(move_direc * static_cast<float>(delta_time));
+
+            if (key_anal[mirinae::key::KeyCode::space].pressed)
+                this->camera.pos.y += delta_time;
+            if (key_anal[mirinae::key::KeyCode::lctrl].pressed)
+                this->camera.pos.y -= delta_time;
+
+            if (key_anal[mirinae::key::KeyCode::left].pressed)
+                this->camera.rotate_view_left(delta_time);
+            if (key_anal[mirinae::key::KeyCode::right].pressed)
+                this->camera.rotate_view_left(-delta_time);
+            if (key_anal[mirinae::key::KeyCode::up].pressed)
+                this->camera.rotate_view_up(delta_time);
+            if (key_anal[mirinae::key::KeyCode::down].pressed)
+                this->camera.rotate_view_up(-delta_time);
+            if (key_anal[mirinae::key::KeyCode::q].pressed)
+                this->camera.rotate_tilt(-delta_time);
+            if (key_anal[mirinae::key::KeyCode::e].pressed)
+                this->camera.rotate_tilt(delta_time);
+
 
             // Update scene
 
