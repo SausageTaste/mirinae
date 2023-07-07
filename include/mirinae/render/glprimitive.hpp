@@ -1,9 +1,12 @@
 #pragma once
 
 #include <stdexcept>
+#include <vector>
 
 #include <spdlog/spdlog.h>
 #include <glad/gl.h>
+
+#include "mirinae/render/meshdata.hpp"
 
 
 namespace mirinae {
@@ -16,69 +19,72 @@ namespace mirinae {
     }
 
 
-    class BufferObject {
+    class MeshStatic {
 
     public:
-        ~BufferObject() {
+        ~MeshStatic() {
             this->destroy();
         }
 
-        void init(const void* data, size_t size) {
-            glGenBuffers(1, &this->handle);
-            glBindBuffer(GL_ARRAY_BUFFER, this->handle);
-            glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
-            log_gl_error();
+        void init(std::vector<VertexStatic>& vertices, std::vector<unsigned int> indices) {
+            glGenVertexArrays(1, &this->vao);
+            glGenBuffers(1, &this->vbo);
+            glGenBuffers(1, &this->ebo);
+
+            glBindVertexArray(this->vao);
+
+            glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
+            glBufferData(GL_ARRAY_BUFFER, VertexStatic::data_size() * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+            // Pos attribute
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VertexStatic::data_size(), (void*)0);
+            glEnableVertexAttribArray(0);
+            // Normal attribute
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, VertexStatic::data_size(), (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1);
+            // UV attribute
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VertexStatic::data_size(), (void*)(6 * sizeof(float)));
+            glEnableVertexAttribArray(2);
+
+            this->draw_count = indices.size();
         }
 
         void destroy() {
-            if (0 != this->handle) {
-                glDeleteBuffers(1, &this->handle);
-                this->handle = 0;
+            if (0 != this->vao) {
+                glDeleteVertexArrays(1, &this->vao);
+                this->vao = 0;
+            }
+            if (0 != this->vbo) {
+                glDeleteVertexArrays(1, &this->vbo);
+                this->vbo = 0;
+            }
+            if (0 != this->ebo) {
+                glDeleteVertexArrays(1, &this->ebo);
+                this->ebo = 0;
             }
         }
 
         bool is_ready() const {
-            return this->handle != 0;
+            if (0 == vao)
+                return false;
+            if (0 == vbo)
+                return false;
+            if (0 == ebo)
+                return false;
+            return true;
         }
 
-        GLuint get_handle() const { return this->handle; }
-
-    private:
-        GLuint handle = 0;
-
-    };
-
-
-    class VertexArrayObject {
-
-    public:
-        ~VertexArrayObject() {
-            this->destroy();
-        }
-
-        void init(BufferObject& vbo) {
-            glGenVertexArrays(1, &this->handle);
-            glBindVertexArray(this->handle);
-
-            glBindBuffer(GL_ARRAY_BUFFER, vbo.get_handle());
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(0);
-        }
-
-        void destroy() {
-            if (0 != this->handle) {
-                glDeleteVertexArrays(1, &this->handle);
-                this->handle = 0;
-            }
-        }
-
-        void use() {
-            glBindVertexArray(this->handle);
+        void draw() {
+            glBindVertexArray(this->vao);
+            glDrawElements(GL_TRIANGLES, this->draw_count, GL_UNSIGNED_INT, 0);
         }
 
     private:
-        GLuint handle = 0;
+        GLuint vbo = 0, vao = 0, ebo = 0;
+        unsigned int draw_count = 0;
 
     };
 
@@ -245,6 +251,10 @@ namespace mirinae {
 
         bool is_ready() const {
             return 0 != this->handle;
+        }
+
+        void use() {
+            glBindTexture(GL_TEXTURE_2D, this->handle);
         }
 
     private:
