@@ -212,8 +212,8 @@ namespace {
             : window(this)
         {
             const auto res_dir_path = mirinae::find_resources_folder();
-            const auto vertex_src = mirinae::read_file<std::string>((*res_dir_path / "shader/tutorial.vert").u8string().c_str());
-            const auto fragment_src = mirinae::read_file<std::string>((*res_dir_path / "shader/tutorial.frag").u8string().c_str());
+            const auto vertex_src = mirinae::load_file<std::string>((*res_dir_path / "shader/tutorial.vert").u8string().c_str());
+            const auto fragment_src = mirinae::load_file<std::string>((*res_dir_path / "shader/tutorial.frag").u8string().c_str());
             mirinae::ShaderUnit vertex_shader{ mirinae::ShaderUnit::Type::vertex, vertex_src->c_str() };
             mirinae::ShaderUnit fragment_shader{ mirinae::ShaderUnit::Type::fragment, fragment_src->c_str() };
             this->program.init(vertex_shader, fragment_shader);
@@ -221,15 +221,23 @@ namespace {
             this->camera.pos.y = 3;
 
             {
-                int width, height, nrChannels;
-                const auto data = stbi_load((*res_dir_path / "texture/missing_texture.png").u8string().c_str(), &width, &height, &nrChannels, 0);
-                this->texture_error.init(width, height, data);
+                auto path = *res_dir_path / "texture/missing_texture.png";
+                auto image = mirinae::load_image(path.u8string().c_str());
+                if (!image.is_ready()) {
+                    spdlog::error("Failed to load image: {}", path.u8string());
+                    throw std::runtime_error{""};
+                }
+                this->texture_error.init(image.width(), image.height(), image.data());
             }
 
             {
-                int width, height, nrChannels;
-                const auto data = stbi_load((*res_dir_path / "texture/grass1.tga").u8string().c_str(), &width, &height, &nrChannels, 0);
-                this->texture_grass.init(width, height, data);
+                const auto path = *res_dir_path / "texture/grass1.tga";
+                auto image = mirinae::load_image(path.u8string().c_str());
+                if (!image.is_ready()) {
+                    spdlog::error("Failed to load image: {}", path.u8string());
+                    throw std::runtime_error{""};
+                }
+                this->texture_grass.init(image.width(), image.height(), image.data());
             }
 
             {
@@ -247,36 +255,41 @@ namespace {
             }
 
             {
-                int width, height, nrChannels;
-                const auto data = stbi_load((*res_dir_path / "texture/iceland_heightmap.png").u8string().c_str(), &width, &height, &nrChannels, 0);
+                const auto path = *res_dir_path / "texture" / "iceland_heightmap.png";
+                auto image = mirinae::load_image(path.u8string().c_str());
+                if (!image.is_ready()) {
+                    spdlog::error("Failed to load image: {}", path.u8string());
+                    throw std::runtime_error{""};
+                }
+
+                const float width = image.width();
+                const float height = image.height();
 
                 std::vector<mirinae::VertexStatic> vertices;
-                for (size_t i = 0; i < height; i++)
-                {
-                    for (size_t j = 0; j < width; j++)
-                    {
-                        // retrieve texel for (i,j) tex coord
-                        const auto texel = data + (j + width * i) * nrChannels;
-                        // raw height at coordinate
+                for (size_t i = 0; i < image.height(); i++) {
+                    for (size_t j = 0; j < image.width(); j++) {
+                        const auto texel = image.get_texel_at(j, i);
                         unsigned char y = texel[0];
 
                         // vertex
+                        const glm::vec3 pos{
+                            -double(height) / 2.f + i,
+                            double(y) * 64.f / 255.f,
+                            -double(width) / 2.f + j
+                        };
+
                         auto& v = vertices.emplace_back();
-                        v.pos().x = -height / 2.0 + i;
-                        v.pos().y = double(y) * 64.0 / 255.0;
-                        v.pos().z = -width / 2.0 + j;
-                        v.pos() *= 0.05;
-
-                        v.normal().x = y / 255.0;
-
-                        v.uv().x = double(j) / width * 100.0;
-                        v.uv().y = double(i) / height * 100.0;
+                        v.pos() = pos * 0.05f;
+                        v.normal().x = y / 255.f;
+                        v.uv().x = double(j) / width * 100.f;
+                        v.uv().y = double(i) / height * 100.f;
+                        continue;
                     }
                 }
 
                 std::vector<unsigned int> indices;
-                for (size_t y = 0; y < height - 1; y++) {
-                    for (size_t x = 0; x < width - 1; x++) {
+                for (size_t y = 0; y < image.height() - 1; y++) {
+                    for (size_t x = 0; x < image.width() - 1; x++) {
                         indices.push_back(y * width + x);
                         indices.push_back((y + 1) * width + x);
                         indices.push_back((y + 1) * width + x + 1);
