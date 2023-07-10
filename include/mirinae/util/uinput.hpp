@@ -43,6 +43,9 @@ namespace mirinae::key {
     public:
         void notify(const Event& e) {
             const auto index = this->convert_key_to_index(e.key);
+            if (index >= this->states.size())
+                return;
+
             this->states[index].timepoint = e.timepoint;
             this->states[index].pressed = (e.action_type == ActionType::down);
         }
