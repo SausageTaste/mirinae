@@ -10,5 +10,7 @@ uniform sampler2D texture2;
 
 
 void main() {
-    FragColor = mix(vec4(0), texture(texture2, v_uv), v_normal.x);
+    float light = dot(v_normal, normalize(vec3(2, 5, 1)));
+    vec3 color = texture(texture2, v_uv).xyz * light;
+    FragColor = vec4(color, 1);
 }

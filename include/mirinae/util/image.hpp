@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include <glm/glm.hpp>
+
 
 namespace mirinae {
 
@@ -48,7 +50,9 @@ namespace mirinae {
             return channels_;
         }
 
-        const uint8_t* get_texel_at(unsigned x, unsigned y) const {
+        const uint8_t* get_texel_at_clamp(int x, int y) const {
+            x = glm::clamp<int>(x, 0, width_ - 1);
+            y = glm::clamp<int>(y, 0, height_ - 1);
             const auto index = (x + width_ * y) * channels_;
             return data_.data() + index;
         }

@@ -262,13 +262,13 @@ namespace {
                     throw std::runtime_error{""};
                 }
 
-                const float width = image.width();
-                const float height = image.height();
+                const auto width = static_cast<float>(image.width());
+                const auto height = static_cast<float>(image.height());
 
                 std::vector<mirinae::VertexStatic> vertices;
                 for (size_t i = 0; i < image.height(); i++) {
                     for (size_t j = 0; j < image.width(); j++) {
-                        const auto texel = image.get_texel_at(j, i);
+                        const auto texel = image.get_texel_at_clamp(j, i);
                         unsigned char y = texel[0];
 
                         // vertex
@@ -280,9 +280,19 @@ namespace {
 
                         auto& v = vertices.emplace_back();
                         v.pos() = pos * 0.05f;
-                        v.normal().x = y / 255.f;
                         v.uv().x = double(j) / width * 100.f;
                         v.uv().y = double(i) / height * 100.f;
+
+                        const auto hl = image.get_texel_at_clamp(j - 1, i)[0] / 255.f;
+                        const auto hr = image.get_texel_at_clamp(j + 1, i)[0] / 255.f;
+                        const auto hd = image.get_texel_at_clamp(j, i - 1)[0] / 255.f;
+                        const auto hu = image.get_texel_at_clamp(j, i + 1)[0] / 255.f;
+
+                        v.normal().x = hl - hr;
+                        v.normal().y = hd - hu;
+                        v.normal().z = 2 * 0.05f;;
+                        v.normal() = glm::normalize(v.normal());
+
                         continue;
                     }
                 }
@@ -291,12 +301,12 @@ namespace {
                 for (size_t y = 0; y < image.height() - 1; y++) {
                     for (size_t x = 0; x < image.width() - 1; x++) {
                         indices.push_back(y * width + x);
-                        indices.push_back((y + 1) * width + x);
                         indices.push_back((y + 1) * width + x + 1);
+                        indices.push_back((y + 1) * width + x);
 
                         indices.push_back(y * width + x);
-                        indices.push_back((y + 1) * width + x + 1);
                         indices.push_back(y * width + x + 1);
+                        indices.push_back((y + 1) * width + x + 1);
                     }
                 }
 
@@ -304,6 +314,8 @@ namespace {
             }
 
             glEnable(GL_DEPTH_TEST);
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
 
             this->on_window_resize(640, 480);
         }
