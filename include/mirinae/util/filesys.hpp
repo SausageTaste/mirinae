@@ -7,6 +7,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include "mirinae/util/image.hpp"
+
 
 namespace mirinae {
 
@@ -28,7 +30,7 @@ namespace mirinae {
 
 
     template <typename T>
-    std::optional<T> read_file(const char* const path) {
+    std::optional<T> load_file(const char* const path) {
         using namespace std::string_literals;
 
         std::ifstream file{ path, std::ios::ate | std::ios::binary | std::ios::in };
@@ -45,6 +47,15 @@ namespace mirinae {
         file.close();
 
         return buffer;
+    }
+
+    Image2D load_image(const char* const path) {
+        Image2D image;
+        int width, height, channels;
+        const auto data = stbi_load(path, &width, &height, &channels, 0);
+        image.init(data, width, height, channels, 1);
+        stbi_image_free(data);
+        return image;
     }
 
 }
