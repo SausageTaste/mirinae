@@ -94,6 +94,8 @@ namespace mirinae {
     public:
         enum class Type {
             vertex,
+            tessell_ctrl,
+            tessell_eval,
             fragment,
         };
 
@@ -146,6 +148,10 @@ namespace mirinae {
             switch (type) {
                 case Type::vertex:
                     return GL_VERTEX_SHADER;
+                case Type::tessell_ctrl:
+                    return GL_TESS_CONTROL_SHADER;
+                case Type::tessell_eval:
+                    return GL_TESS_EVALUATION_SHADER;
                 case Type::fragment:
                     return GL_FRAGMENT_SHADER;
                 default:
@@ -170,6 +176,23 @@ namespace mirinae {
             this->handle = glCreateProgram();
             glAttachShader(this->handle, vertex.get_handle());
             glAttachShader(this->handle, fragment.get_handle());
+            glLinkProgram(this->handle);
+
+            log_gl_error("Shader program linking");
+
+            if (!this->is_success()) {
+                char msg[512];
+                glGetProgramInfoLog(this->handle, 512, NULL, msg);
+                spdlog::error("Shader linking failed...\n{}", msg);
+            }
+        }
+
+        void init(const ShaderUnit& s0, const ShaderUnit& s1, const ShaderUnit& s2, const ShaderUnit& s3) {
+            this->handle = glCreateProgram();
+            glAttachShader(this->handle, s0.get_handle());
+            glAttachShader(this->handle, s1.get_handle());
+            glAttachShader(this->handle, s2.get_handle());
+            glAttachShader(this->handle, s3.get_handle());
             glLinkProgram(this->handle);
 
             log_gl_error("Shader program linking");
@@ -228,7 +251,7 @@ namespace mirinae {
             this->destroy();
         }
 
-        void init(GLsizei width, GLsizei height, const void* pixels) {
+        void init(GLsizei width, GLsizei height, unsigned channels, const void* pixels) {
             glGenTextures(1, &this->handle);
             glBindTexture(GL_TEXTURE_2D, this->handle);
 
@@ -237,7 +260,8 @@ namespace mirinae {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+            const auto format = this->determine_channel_format(channels);
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
             glGenerateMipmap(GL_TEXTURE_2D);
             log_gl_error("Texture::init");
         }
@@ -259,6 +283,22 @@ namespace mirinae {
         }
 
     private:
+        GLenum determine_channel_format(unsigned channels) {
+            switch (channels) {
+                case 1:
+                    return GL_R8;
+                case 2:
+                    return GL_RG;
+                case 3:
+                    return GL_RGB;
+                case 4:
+                    return GL_RGBA;
+                default:
+                    spdlog::error("Channel count '{}' is not supported", channels);
+                    return GL_INVALID_ENUM;
+            }
+        }
+
         GLuint handle = 0;
 
     };

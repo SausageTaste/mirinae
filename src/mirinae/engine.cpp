@@ -220,6 +220,7 @@ namespace {
 
             this->camera.pos.y = 3;
 
+            // Missing texture
             {
                 auto path = *res_dir_path / "texture/missing_texture.png";
                 auto image = mirinae::load_image(path.u8string().c_str());
@@ -227,9 +228,10 @@ namespace {
                     spdlog::error("Failed to load image: {}", path.u8string());
                     throw std::runtime_error{""};
                 }
-                this->texture_error.init(image.width(), image.height(), image.data());
+                this->texture_error.init(image.width(), image.height(), image.channels(), image.data());
             }
 
+            // Grass texture
             {
                 const auto path = *res_dir_path / "texture/grass1.tga";
                 auto image = mirinae::load_image(path.u8string().c_str());
@@ -237,9 +239,10 @@ namespace {
                     spdlog::error("Failed to load image: {}", path.u8string());
                     throw std::runtime_error{""};
                 }
-                this->texture_grass.init(image.width(), image.height(), image.data());
+                this->texture_grass.init(image.width(), image.height(), image.channels(), image.data());
             }
 
+            // Simple quad mesh
             {
                 std::vector<mirinae::VertexStatic> vertices{
                     mirinae::VertexStatic{ 5,  5, 0,  1, 0, 0,  1, 1}, // top right
@@ -248,12 +251,13 @@ namespace {
                     mirinae::VertexStatic{-5,  5, 0,  1, 0, 0,  0, 1}  // top left
                 };
                 std::vector<unsigned int> indices{
-                    0, 1, 3, // first triangle
-                    1, 2, 3  // second triangle
+                    0, 3, 1, // first triangle
+                    1, 3, 2  // second triangle
                 };
                 this->mesh0.init(vertices, indices);
             }
 
+            // Terrain mesh
             {
                 const auto path = *res_dir_path / "texture" / "iceland_heightmap.png";
                 auto image = mirinae::load_image(path.u8string().c_str());
@@ -313,9 +317,92 @@ namespace {
                 this->mesh1.init(vertices, indices);
             }
 
+            glPatchParameteri(GL_PATCH_VERTICES, 4);
+
+            // Tessellation mesh
+            {
+                const auto path = *res_dir_path / "texture" / "iceland_heightmap.png";
+                auto image = mirinae::load_image(path.u8string().c_str());
+                if (!image.is_ready()) {
+                    spdlog::error("Failed to load image: {}", path.u8string());
+                    throw std::runtime_error{""};
+                }
+
+                texture_height.init(image.width(), image.height(), image.channels(), image.data());
+
+                const auto width = static_cast<float>(image.width());
+                const auto height = static_cast<float>(image.height());
+
+                std::vector<mirinae::VertexStatic> vertices;
+                for (unsigned i = 0; i <= rez; ++i) {
+                    for (unsigned j = 0; j <= rez; ++j) {
+                        auto v = &vertices.emplace_back();
+                        v->pos().x = (-width/2.0f + width*i/(float)rez);
+                        v->pos().y = (0.0f);
+                        v->pos().z = (-height/2.0f + height*j/(float)rez);
+                        v->uv().x = (i / (float)rez);
+                        v->uv().y = (j / (float)rez);
+
+                        v = &vertices.emplace_back();
+                        v->pos().x = (-width/2.0f + width*(i+1)/(float)rez); // v.x
+                        v->pos().y = (0.0f); // v.y
+                        v->pos().z = (-height/2.0f + height*j/(float)rez); // v.z
+                        v->uv().x = ((i+1) / (float)rez); // u
+                        v->uv().y = (j / (float)rez); // v
+
+                        v = &vertices.emplace_back();
+                        v->pos().x = (-width/2.0f + width*i/(float)rez); // v.x
+                        v->pos().y = (0.0f); // v.y
+                        v->pos().z = (-height/2.0f + height*(j+1)/(float)rez); // v.z
+                        v->uv().x = (i / (float)rez); // u
+                        v->uv().y = ((j+1) / (float)rez); // v
+
+                        v = &vertices.emplace_back();
+                        v->pos().x = (-width/2.0f + width*(i+1)/(float)rez); // v.x
+                        v->pos().y = (0.0f); // v.y
+                        v->pos().z = (-height/2.0f + height*(j+1)/(float)rez); // v.z
+                        v->uv().x = ((i+1) / (float)rez); // u
+                        v->uv().y = ((j+1) / (float)rez); // v
+                    }
+                }
+
+                glGenVertexArrays(1, &terrainVAO);
+                glBindVertexArray(terrainVAO);
+
+                glGenBuffers(1, &terrainVBO);
+                glBindBuffer(GL_ARRAY_BUFFER, terrainVBO);
+                glBufferData(GL_ARRAY_BUFFER, mirinae::VertexStatic::data_size() * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+
+                // Pos attribute
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, mirinae::VertexStatic::data_size(), (void*)0);
+                glEnableVertexAttribArray(0);
+                // Normal attribute
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, mirinae::VertexStatic::data_size(), (void*)(3 * sizeof(float)));
+                glEnableVertexAttribArray(1);
+                // UV attribute
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, mirinae::VertexStatic::data_size(), (void*)(6 * sizeof(float)));
+                glEnableVertexAttribArray(2);
+
+                glPatchParameteri(GL_PATCH_VERTICES, NUM_PATCH_PTS);
+            }
+
+            {
+                const auto vertex_src = mirinae::load_file<std::string>((*res_dir_path / "shader/tessell.vert").u8string().c_str());
+                const auto tess_ctrl = mirinae::load_file<std::string>((*res_dir_path / "shader/tessell.tesc").u8string().c_str());
+                const auto tess_eval = mirinae::load_file<std::string>((*res_dir_path / "shader/tessell.tese").u8string().c_str());
+                const auto fragment_src = mirinae::load_file<std::string>((*res_dir_path / "shader/tessell.frag").u8string().c_str());
+
+                mirinae::ShaderUnit vertex_shader{ mirinae::ShaderUnit::Type::vertex, vertex_src->c_str() };
+                mirinae::ShaderUnit tess_ctrl_shader{ mirinae::ShaderUnit::Type::tessell_ctrl, tess_ctrl->c_str() };
+                mirinae::ShaderUnit tess_eval_shader{ mirinae::ShaderUnit::Type::tessell_eval, tess_eval->c_str() };
+                mirinae::ShaderUnit fragment_shader{ mirinae::ShaderUnit::Type::fragment, fragment_src->c_str() };
+                this->program_tess.init(vertex_shader, tess_ctrl_shader, tess_eval_shader, fragment_shader);
+            }
+
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_CULL_FACE);
             glCullFace(GL_BACK);
+            glFrontFace(GL_CW);
 
             this->on_window_resize(640, 480);
         }
@@ -363,18 +450,29 @@ namespace {
             glClearColor(0, 0, 0, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            this->program.use();
-
+            const glm::mat4 identity_mat{1};
+            const auto view_mat = this->camera.make_view_mat();
             const auto mat = this->proj_mat * this->camera.make_view_mat();
+
+            this->program.use();
             glUniformMatrix4fv(this->program.get_uniform_loc("u_proj_mat"), 1, GL_FALSE, glm::value_ptr(mat));
             glUniform1i(this->program.get_uniform_loc("texture1"), 0);
             glUniform1i(this->program.get_uniform_loc("texture2"), 1);
-
             this->texture_error.use(0);
             this->texture_grass.use(1);
             this->mesh0.draw();
-            this->mesh1.draw();
-            mirinae::log_gl_error("do_frame");
+            //this->mesh1.draw();
+            mirinae::log_gl_error("do_frame, mesh");
+
+            this->program_tess.use();
+            glUniform1i(this->program_tess.get_uniform_loc("heightMap"), 0);
+            this->texture_height.use(0);
+            glUniformMatrix4fv(this->program_tess.get_uniform_loc("model"), 1, GL_FALSE, glm::value_ptr(identity_mat));
+            glUniformMatrix4fv(this->program_tess.get_uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view_mat));
+            glUniformMatrix4fv(this->program_tess.get_uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(this->proj_mat));
+            glBindVertexArray(terrainVAO);
+            glDrawArrays(GL_PATCHES, 0, NUM_PATCH_PTS*rez*rez);
+            mirinae::log_gl_error("do_frame, compute");
 
             this->window.swap_buffer();
             glfwPollEvents();
@@ -395,16 +493,23 @@ namespace {
         }
 
     private:
+        const unsigned int NUM_PATCH_PTS = 4;
+        const unsigned rez = 20;
+
         GlfwWindow window;
         dal::Timer timer;
         mirinae::key::EventAnalyzer key_anal;
         mirinae::MeshStatic mesh0;
         mirinae::MeshStatic mesh1;
+        mirinae::MeshStatic mesh2;
         mirinae::ShaderProgram program;
+        mirinae::ShaderProgram program_tess;
         mirinae::Texture texture_error;
         mirinae::Texture texture_grass;
+        mirinae::Texture texture_height;
         glm::mat4 proj_mat;
         QuatCamera camera;
+        unsigned terrainVAO, terrainVBO;
 
     };
 
