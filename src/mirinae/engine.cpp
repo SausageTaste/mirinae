@@ -234,16 +234,16 @@ namespace {
 
             {
                 std::vector<mirinae::VertexStatic> vertices{
-                    mirinae::VertexStatic{ 5, 0,  5,  1, 0, 0,   1, 1}, // top right
-                    mirinae::VertexStatic{ 5, 0, -5,  0, 1, 0,   1, 0}, // bottom right
-                    mirinae::VertexStatic{-5, 0, -5,  0, 0, 1,   0, 0}, // bottom left
-                    mirinae::VertexStatic{-5, 0,  5,  1, 1, 0,   0, 1}  // top left 
+                    mirinae::VertexStatic{ 5,  5, 0,  1, 0, 0,  1, 1}, // top right
+                    mirinae::VertexStatic{ 5, -5, 0,  1, 0, 0,  1, 0}, // bottom right
+                    mirinae::VertexStatic{-5, -5, 0,  1, 0, 1,  0, 0}, // bottom left
+                    mirinae::VertexStatic{-5,  5, 0,  1, 0, 0,  0, 1}  // top left
                 };
                 std::vector<unsigned int> indices{
                     0, 1, 3, // first triangle
                     1, 2, 3  // second triangle
                 };
-                //this->mesh.init(vertices, indices);
+                this->mesh0.init(vertices, indices);
             }
 
             {
@@ -287,7 +287,7 @@ namespace {
                     }
                 }
 
-                this->mesh.init(vertices, indices);
+                this->mesh1.init(vertices, indices);
             }
 
             glEnable(GL_DEPTH_TEST);
@@ -331,7 +331,6 @@ namespace {
             if (key_anal[mirinae::key::KeyCode::e].pressed)
                 this->camera.rotate_tilt(delta_time);
 
-
             // Update scene
 
             // Render
@@ -348,7 +347,8 @@ namespace {
 
             this->texture_error.use(0);
             this->texture_grass.use(1);
-            this->mesh.draw();
+            this->mesh0.draw();
+            this->mesh1.draw();
             mirinae::log_gl_error("do_frame");
 
             this->window.swap_buffer();
@@ -373,7 +373,8 @@ namespace {
         GlfwWindow window;
         dal::Timer timer;
         mirinae::key::EventAnalyzer key_anal;
-        mirinae::MeshStatic mesh;
+        mirinae::MeshStatic mesh0;
+        mirinae::MeshStatic mesh1;
         mirinae::ShaderProgram program;
         mirinae::Texture texture_error;
         mirinae::Texture texture_grass;
