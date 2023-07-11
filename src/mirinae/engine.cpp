@@ -465,11 +465,11 @@ namespace {
             mirinae::log_gl_error("do_frame, mesh");
 
             this->program_tess.use();
-            glUniform1i(this->program_tess.get_uniform_loc("heightMap"), 0);
+            glUniform1i(this->program_tess.get_uniform_loc("u_height_map"), 0);
             this->texture_height.use(0);
-            glUniformMatrix4fv(this->program_tess.get_uniform_loc("model"), 1, GL_FALSE, glm::value_ptr(identity_mat));
-            glUniformMatrix4fv(this->program_tess.get_uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view_mat));
-            glUniformMatrix4fv(this->program_tess.get_uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(this->proj_mat));
+            glUniformMatrix4fv(this->program_tess.get_uniform_loc("u_model_mat"), 1, GL_FALSE, glm::value_ptr(identity_mat));
+            glUniformMatrix4fv(this->program_tess.get_uniform_loc("u_view_mat"), 1, GL_FALSE, glm::value_ptr(view_mat));
+            glUniformMatrix4fv(this->program_tess.get_uniform_loc("u_proj_mat"), 1, GL_FALSE, glm::value_ptr(this->proj_mat));
             glBindVertexArray(terrainVAO);
             glDrawArrays(GL_PATCHES, 0, NUM_PATCH_PTS*rez*rez);
             mirinae::log_gl_error("do_frame, compute");
