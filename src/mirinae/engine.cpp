@@ -351,17 +351,17 @@ namespace {
                         v->uv().y = (j / (float)rez); // v
 
                         v = &vertices.emplace_back();
-                        v->pos().x = (-width/2.0f + width*i/(float)rez); // v.x
-                        v->pos().y = (0.0f); // v.y
-                        v->pos().z = (-height/2.0f + height*(j+1)/(float)rez); // v.z
-                        v->uv().x = (i / (float)rez); // u
-                        v->uv().y = ((j+1) / (float)rez); // v
-
-                        v = &vertices.emplace_back();
                         v->pos().x = (-width/2.0f + width*(i+1)/(float)rez); // v.x
                         v->pos().y = (0.0f); // v.y
                         v->pos().z = (-height/2.0f + height*(j+1)/(float)rez); // v.z
                         v->uv().x = ((i+1) / (float)rez); // u
+                        v->uv().y = ((j+1) / (float)rez); // v
+
+                        v = &vertices.emplace_back();
+                        v->pos().x = (-width/2.0f + width*i/(float)rez); // v.x
+                        v->pos().y = (0.0f); // v.y
+                        v->pos().z = (-height/2.0f + height*(j+1)/(float)rez); // v.z
+                        v->uv().x = (i / (float)rez); // u
                         v->uv().y = ((j+1) / (float)rez); // v
                     }
                 }
@@ -403,6 +403,7 @@ namespace {
             glEnable(GL_CULL_FACE);
             glCullFace(GL_BACK);
             glFrontFace(GL_CW);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
             this->on_window_resize(640, 480);
         }
