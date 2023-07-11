@@ -2,20 +2,17 @@
 
 layout (quads, fractional_odd_spacing, ccw) in;
 
-// received from Tessellation Control Shader - all texture coordinates for the patch vertices
 in vec2 tc_uv[];
 
-// send to Fragment Shader for coloring
-out float Height;
+out float te_height;
 
-uniform sampler2D heightMap;  // the texture corresponding to our height map
-uniform mat4 model;           // the model matrix
-uniform mat4 view;            // the view matrix
-uniform mat4 projection;      // the projection matrix
+uniform sampler2D u_height_map;
+uniform mat4 u_model_mat;
+uniform mat4 u_view_mat;
+uniform mat4 u_proj_mat;
 
 
-void main()
-{
+void main() {
     // get patch coordinate
     float u = gl_TessCoord.x;
     float v = gl_TessCoord.y;
@@ -30,10 +27,10 @@ void main()
     // bilinearly interpolate texture coordinate across patch
     vec2 t0 = (t01 - t00) * u + t00;
     vec2 t1 = (t11 - t10) * u + t10;
-    vec2 texCoord = (t1 - t0) * v + t0;
+    vec2 tex_coord = (t1 - t0) * v + t0;
 
     // lookup texel at patch coordinate for height and scale + shift as desired
-    Height = texture(heightMap, texCoord).y * 64.0 - 16.0;
+    te_height = texture(u_height_map, tex_coord).y * 64.0 - 16.0;
 
     // ----------------------------------------------------------------------
     // retrieve control point position coordinates
@@ -43,9 +40,9 @@ void main()
     vec4 p11 = gl_in[3].gl_Position;
 
     // compute patch surface normal
-    vec4 uVec = p01 - p00;
-    vec4 vVec = p10 - p00;
-    vec4 normal = normalize( vec4(cross(vVec.xyz, uVec.xyz), 0) );
+    vec4 u_vec = p01 - p00;
+    vec4 v_vec = p10 - p00;
+    vec4 normal = normalize( vec4(cross(v_vec.xyz, u_vec.xyz), 0) );
 
     // bilinearly interpolate position coordinate across patch
     vec4 p0 = (p01 - p00) * u + p00;
@@ -53,9 +50,9 @@ void main()
     vec4 p = (p1 - p0) * v + p0;
 
     // displace point along normal
-    p += normal * Height;
+    p += normal * te_height;
 
     // ----------------------------------------------------------------------
     // output patch point position in clip space
-    gl_Position = projection * view * model * p;
+    gl_Position = u_proj_mat * u_view_mat * u_model_mat * p;
 }
