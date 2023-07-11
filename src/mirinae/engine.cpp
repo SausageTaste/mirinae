@@ -403,7 +403,7 @@ namespace {
             glEnable(GL_CULL_FACE);
             glCullFace(GL_BACK);
             glFrontFace(GL_CW);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
             this->on_window_resize(640, 480);
         }
@@ -463,7 +463,6 @@ namespace {
             this->texture_grass.use(1);
             this->mesh0.draw();
             //this->mesh1.draw();
-            mirinae::log_gl_error("do_frame, mesh");
 
             this->program_tess.use();
             glUniform1i(this->program_tess.get_uniform_loc("u_height_map"), 0);
@@ -471,9 +470,9 @@ namespace {
             glUniformMatrix4fv(this->program_tess.get_uniform_loc("u_model_mat"), 1, GL_FALSE, glm::value_ptr(identity_mat));
             glUniformMatrix4fv(this->program_tess.get_uniform_loc("u_view_mat"), 1, GL_FALSE, glm::value_ptr(view_mat));
             glUniformMatrix4fv(this->program_tess.get_uniform_loc("u_proj_mat"), 1, GL_FALSE, glm::value_ptr(this->proj_mat));
+            glUniform1f(this->program_tess.get_uniform_loc("u_cur_sec"), dal::get_cur_sec());
             glBindVertexArray(terrainVAO);
             glDrawArrays(GL_PATCHES, 0, NUM_PATCH_PTS*rez*rez);
-            mirinae::log_gl_error("do_frame, compute");
 
             this->window.swap_buffer();
             glfwPollEvents();
@@ -495,7 +494,7 @@ namespace {
 
     private:
         const unsigned int NUM_PATCH_PTS = 4;
-        const unsigned rez = 20;
+        const unsigned rez = 64;
 
         GlfwWindow window;
         dal::Timer timer;
