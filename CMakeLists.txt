@@ -9,6 +9,10 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/glfw/glfw
     GIT_TAG        3.3.8
 )
+option(GLFW_BUILD_DOCS off)
+option(GLFW_BUILD_EXAMPLES off)
+option(GLFW_BUILD_TESTS off)
+option(GLFW_USE_HYBRID_HPG on)
 
 FetchContent_Declare(
     dal_spdlog
@@ -37,6 +41,8 @@ FetchContent_MakeAvailable(
     fetch_stb
 )
 
+find_package(Vulkan REQUIRED)
+
 
 add_library(mirinae
     ./src/glad/gl.c
@@ -46,10 +52,12 @@ target_include_directories(mirinae PUBLIC ./include ${fetch_stb_SOURCE_DIR})
 target_compile_features(mirinae PUBLIC cxx_std_17)
 target_link_libraries(mirinae
     PRIVATE
+        Vulkan::Vulkan
         spdlog
         glfw
         dalbaragi::daltools
 )
+target_compile_definitions(mirinae PRIVATE VK_USE_PLATFORM_WIN32_KHR)
 
 
 add_executable(mirinapp
