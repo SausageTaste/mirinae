@@ -45,7 +45,6 @@ find_package(Vulkan REQUIRED)
 
 
 add_library(mirinae
-    ./src/glad/gl.c
     ./src/mirinae/engine.cpp
 )
 target_include_directories(mirinae PUBLIC ./include ${fetch_stb_SOURCE_DIR})
