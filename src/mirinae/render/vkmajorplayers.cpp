@@ -12,11 +12,6 @@
 
 namespace {
 
-    const std::vector<std::string> VALIDATION_LAYERS{
-        "VK_LAYER_KHRONOS_validation",
-    };
-
-
     spdlog::level::level_enum convert_enum(VkDebugUtilsMessageSeverityFlagBitsEXT severity) {
         switch (severity) {
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
@@ -98,9 +93,76 @@ namespace {
         return layers;
     }
 
-    bool is_validation_layer_available() {
+}
+
+
+
+// InstanceFactory
+namespace mirinae {
+
+    InstanceFactory::InstanceFactory() {
+        {
+            app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            app_info.pApplicationName = "mirinapp";
+            app_info.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
+            app_info.pEngineName = mirinae::ENGINE_NAME;
+            app_info.engineVersion = VK_MAKE_VERSION(mirinae::ENGINE_VERSION_MAJOR, mirinae::ENGINE_VERSION_MINOR, mirinae::ENGINE_VERSION_PATCH);
+            app_info.apiVersion = VK_API_VERSION_1_0;
+        }
+
+        {
+            create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            create_info.enabledLayerCount = 0;
+        }
+    }
+
+    VkInstance InstanceFactory::create() {
+        create_info.pApplicationInfo = &app_info;
+
+        std::vector<const char*> ext_name_ptrs;
+        for (auto& x : ext_layers_.extensions_)
+            ext_name_ptrs.push_back(x.c_str());
+        create_info.enabledExtensionCount = ext_name_ptrs.size();
+        create_info.ppEnabledExtensionNames = ext_name_ptrs.data();
+
+        std::vector<const char*> layer_name_ptrs;
+        for (auto& x : ext_layers_.layers_)
+            layer_name_ptrs.push_back(x.c_str());
+        create_info.enabledLayerCount = layer_name_ptrs.size();
+        create_info.ppEnabledLayerNames = layer_name_ptrs.data();
+
+        if (validation_layer_enabled_) {
+            ::populate_create_info(debug_create_info);
+            create_info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debug_create_info;
+        }
+        else
+            create_info.pNext = nullptr;
+
+        VkInstance instance;
+        if (VK_SUCCESS != vkCreateInstance(&create_info, nullptr, &instance))
+            throw std::runtime_error("failed to create instance!");
+
+        return instance;
+    }
+
+    void InstanceFactory::enable_validation_layer() {
+        validation_layer_enabled_ = true;
+    }
+
+}
+
+
+// VulkanExtensionsLayers
+namespace mirinae {
+
+    void VulkanExtensionsLayers::add_validation() {
+        extensions_.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        layers_.push_back("VK_LAYER_KHRONOS_validation");
+    }
+
+    bool VulkanExtensionsLayers::are_layers_available() const {
         const auto available_layers = ::get_vk_layers();
-        for (auto& layer_name : VALIDATION_LAYERS) {
+        for (auto& layer_name : layers_) {
             bool layer_found = false;
             for (auto& layer_properties : available_layers) {
                 if (layer_name == layer_properties.layerName) {
@@ -114,91 +176,6 @@ namespace {
         }
         return true;
     }
-
-}
-
-
-
-// InstanceFactory
-namespace {
-
-    class InstanceFactory {
-
-    public:
-        InstanceFactory() {
-            {
-                app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-                app_info.pApplicationName = "mirinapp";
-                app_info.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
-                app_info.pEngineName = mirinae::ENGINE_NAME;
-                app_info.engineVersion = VK_MAKE_VERSION(mirinae::ENGINE_VERSION_MAJOR, mirinae::ENGINE_VERSION_MINOR, mirinae::ENGINE_VERSION_PATCH);
-                app_info.apiVersion = VK_API_VERSION_1_0;
-            }
-
-            {
-                create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-                create_info.enabledLayerCount = 0;
-            }
-
-            {
-                uint32_t glfwExtensionCount = 0;
-                const char** glfwExtensions;
-                glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-                extension_requests_.insert(extension_requests_.end(), glfwExtensions, glfwExtensions + glfwExtensionCount);
-            }
-        }
-
-        VkInstance create() {
-            create_info.pApplicationInfo = &app_info;
-
-            std::vector<const char*> ext_name_ptrs;
-            for (auto& x : extension_requests_)
-                ext_name_ptrs.push_back(x.c_str());
-            create_info.enabledExtensionCount = ext_name_ptrs.size();
-            create_info.ppEnabledExtensionNames = ext_name_ptrs.data();
-
-            std::vector<const char*> layer_name_ptrs;
-            for (auto& x : layer_requests_)
-                layer_name_ptrs.push_back(x.c_str());
-            create_info.enabledLayerCount = layer_name_ptrs.size();
-            create_info.ppEnabledLayerNames = layer_name_ptrs.data();
-
-            if (validation_layer_enabled_) {
-                populate_create_info(debug_create_info);
-                create_info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debug_create_info;
-            }
-            else
-                create_info.pNext = nullptr;
-
-            VkInstance instance;
-            if (VK_SUCCESS != vkCreateInstance(&create_info, nullptr, &instance))
-                throw std::runtime_error("failed to create instance!");
-
-            return instance;
-        }
-
-        bool enable_validation_layer() {
-            if (!::is_validation_layer_available()) {
-                spdlog::error("Validation layers not available");
-                return false;
-            }
-
-            layer_requests_.insert(layer_requests_.end(), VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end());
-            extension_requests_.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-            validation_layer_enabled_ = true;
-            return true;
-        }
-
-    private:
-        VkApplicationInfo app_info{};
-        VkInstanceCreateInfo create_info{};
-        VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
-
-        std::vector<std::string> extension_requests_;
-        std::vector<std::string> layer_requests_;
-        bool validation_layer_enabled_ = false;
-
-    };
 
 }
 
@@ -360,15 +337,10 @@ namespace mirinae {
 // VulkanInstance
 namespace mirinae {
 
-    VulkanInstance::VulkanInstance() {
-        ::InstanceFactory factory;
-        factory.enable_validation_layer();
+    void VulkanInstance::init(InstanceFactory& factory) {
+        this->destroy();
         instance_ = factory.create();
         debug_messenger_ = ::create_debug_msger(instance_);
-    }
-
-    VulkanInstance::~VulkanInstance() {
-        this->destroy();
     }
 
     void VulkanInstance::destroy() {
@@ -380,7 +352,6 @@ namespace mirinae {
             ::destroy_debug_msger(instance_, debug_messenger_, nullptr);
             debug_messenger_ = nullptr;
         }
-
     }
 
     VkPhysicalDevice VulkanInstance::select_phys_device(const VkSurfaceKHR surface) {

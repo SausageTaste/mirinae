@@ -9,6 +9,14 @@
 
 namespace {
 
+    auto get_glfw_extensions() {
+        uint32_t glfwExtensionCount = 0;
+        const char** glfwExtensions;
+        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        return std::vector<std::string>{ glfwExtensions, glfwExtensions + glfwExtensionCount };
+    }
+
+
     class GlfwRaii {
 
     public:
@@ -153,6 +161,15 @@ namespace {
         EngineGlfw()
             : window_(this)
         {
+            mirinae::InstanceFactory instance_factory;
+            instance_factory.enable_validation_layer();
+            instance_factory.ext_layers_.add_validation();
+            {
+                const auto glfwExtensions = ::get_glfw_extensions();
+                instance_factory.ext_layers_.extensions_.insert(instance_factory.ext_layers_.extensions_.end(), glfwExtensions.begin(), glfwExtensions.end());
+            }
+
+            instance_.init(instance_factory);
             surface_ = window_.create_surface(instance_);
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
             spdlog::info("Physical device selected: {}", phys_device_.name());
