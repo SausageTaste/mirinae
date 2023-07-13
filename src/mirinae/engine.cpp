@@ -14,6 +14,7 @@ namespace {
     public:
         GlfwRaii() {
             glfwInit();
+            spdlog::set_level(spdlog::level::level_enum::trace);
         }
 
         ~GlfwRaii() {
