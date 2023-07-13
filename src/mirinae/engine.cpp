@@ -143,9 +143,7 @@ namespace {
         EngineGlfw()
             : window_(this)
         {
-            for (auto& ex : mirinae::InstanceFactory::get_extensions()) {
-                spdlog::info("Extension: {}", ex.extensionName);
-            }
+
         }
 
         void do_frame() override {
