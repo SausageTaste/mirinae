@@ -51,6 +51,15 @@ namespace {
             return !glfwWindowShouldClose(this->window);
         }
 
+        VkSurfaceKHR create_surface(const mirinae::VulkanInstance& instance) {
+            VkSurfaceKHR surface = nullptr;
+            if (VK_SUCCESS != glfwCreateWindowSurface(instance.get(), window, nullptr, &surface)) {
+                spdlog::error("Failed to create window surface");
+                return nullptr;
+            }
+            return surface;
+        }
+
     private:
         static void callback_fbuf_size(GLFWwindow* window, int width, int height) {
             auto ptr = glfwGetWindowUserPointer(window);
@@ -144,13 +153,16 @@ namespace {
         EngineGlfw()
             : window_(this)
         {
-            phys_device_ = instance_.select_phys_device();
+            surface_ = window_.create_surface(instance_);
+            phys_device_.set(instance_.select_phys_device(surface_), surface_);
             spdlog::info("Physical device selected: {}", phys_device_.name());
             logi_device_.init(phys_device_);
+
             return;
         }
 
         ~EngineGlfw() {
+            vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
             logi_device_.destroy();
         }
 
@@ -176,6 +188,7 @@ namespace {
         mirinae::VulkanInstance instance_;
         mirinae::PhysDevice phys_device_;
         mirinae::LogiDevice logi_device_;
+        VkSurfaceKHR surface_ = nullptr;
 
     };
 

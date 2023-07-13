@@ -1,5 +1,6 @@
 #include "mirinae/render/vkmajorplayers.hpp"
 
+#include <set>
 #include <sstream>
 
 #define GLFW_INCLUDE_VULKAN
@@ -223,16 +224,7 @@ namespace {
 // PhysDevice
 namespace mirinae {
 
-    PhysDevice::PhysDevice(VkPhysicalDevice handle) {
-        this->set(handle);
-    }
-
-    PhysDevice& PhysDevice::operator=(VkPhysicalDevice handle) {
-        this->set(handle);
-        return *this;
-    }
-
-    void PhysDevice::set(VkPhysicalDevice handle) {
+    void PhysDevice::set(VkPhysicalDevice handle, const VkSurfaceKHR surface) {
         if (nullptr == handle) {
             spdlog::error("PhysDevice::set has recieved a nullptr");
             this->clear();
@@ -247,6 +239,11 @@ namespace mirinae {
         for (int i = 0; i < queue_family.size(); ++i) {
             if (queue_family[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
                 graphics_family_index_ = i;
+
+            VkBool32 present_support = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(handle_, i, surface, &present_support);
+            if (present_support)
+                present_family_index_ = i;
         }
     }
 
@@ -255,6 +252,7 @@ namespace mirinae {
         properties_ = {};
         features_ = {};
         graphics_family_index_ = std::nullopt;
+        present_family_index_ = std::nullopt;
     }
 
     std::string PhysDevice::make_report_str() const {
@@ -301,6 +299,10 @@ namespace mirinae {
         return graphics_family_index_;
     }
 
+    std::optional<uint32_t> PhysDevice::present_family_index() const {
+        return present_family_index_;
+    }
+
     bool PhysDevice::is_descrete_gpu() const {
         return this->properties_.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     }
@@ -312,26 +314,35 @@ namespace mirinae {
 namespace mirinae {
 
     void LogiDevice::init(const PhysDevice& phys_device) {
-        VkDeviceQueueCreateInfo queueCreateInfo{};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = phys_device.graphics_family_index().value();
-        queueCreateInfo.queueCount = 1;
+        std::set<uint32_t> unique_queue_families{ 
+            phys_device.graphics_family_index().value(), 
+            phys_device.present_family_index().value(),
+        };
+
         float queue_priority = 1;
-        queueCreateInfo.pQueuePriorities = &queue_priority;
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+        for (auto queue_fam : unique_queue_families) {
+            auto& queueCreateInfo = queueCreateInfos.emplace_back();
+            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo.queueFamilyIndex = queue_fam;
+            queueCreateInfo.queueCount = 1;
+            queueCreateInfo.pQueuePriorities = &queue_priority;
+        }
 
         VkPhysicalDeviceFeatures deviceFeatures{};
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos = &queueCreateInfo;
-        createInfo.queueCreateInfoCount = 1;
+        createInfo.pQueueCreateInfos = queueCreateInfos.data();
+        createInfo.queueCreateInfoCount = queueCreateInfos.size();
         createInfo.pEnabledFeatures = &deviceFeatures;
 
         if (vkCreateDevice(phys_device.get(), &createInfo, nullptr, &device_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create logical device!");
         }
 
-        vkGetDeviceQueue(device_, queueCreateInfo.queueFamilyIndex, 0, &graphics_queue_);
+        vkGetDeviceQueue(device_, phys_device.graphics_family_index().value(), 0, &graphics_queue_);
+        vkGetDeviceQueue(device_, phys_device.present_family_index().value(), 0, &present_queue_);
     }
 
     void LogiDevice::destroy() {
@@ -372,7 +383,7 @@ namespace mirinae {
 
     }
 
-    VkPhysicalDevice VulkanInstance::select_phys_device() {
+    VkPhysicalDevice VulkanInstance::select_phys_device(const VkSurfaceKHR surface) {
         uint32_t count = 0;
         vkEnumeratePhysicalDevices(instance_, &count, nullptr);
         if (0 == count) {
@@ -385,7 +396,8 @@ namespace mirinae {
 
         VkPhysicalDevice output = nullptr;
         for (auto handle : devices) {
-            PhysDevice phys_device{ handle };
+            PhysDevice phys_device;
+            phys_device.set(handle, surface);
 
             if (!phys_device.is_descrete_gpu())
                 continue;
