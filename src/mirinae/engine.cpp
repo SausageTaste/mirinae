@@ -144,7 +144,8 @@ namespace {
         EngineGlfw()
             : window_(this)
         {
-
+            phys_device_ = instance_.select_phys_device();
+            spdlog::info("Physical device selected: {}", phys_device_.name());
         }
 
         void do_frame() override {
@@ -167,6 +168,7 @@ namespace {
     private:
         GlfwWindow window_;
         mirinae::VulkanInstance instance_;
+        mirinae::PhysDevice phys_device_;
 
     };
 
