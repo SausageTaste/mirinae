@@ -146,6 +146,12 @@ namespace {
         {
             phys_device_ = instance_.select_phys_device();
             spdlog::info("Physical device selected: {}", phys_device_.name());
+            logi_device_.init(phys_device_);
+            return;
+        }
+
+        ~EngineGlfw() {
+            logi_device_.destroy();
         }
 
         void do_frame() override {
@@ -169,6 +175,7 @@ namespace {
         GlfwWindow window_;
         mirinae::VulkanInstance instance_;
         mirinae::PhysDevice phys_device_;
+        mirinae::LogiDevice logi_device_;
 
     };
 
