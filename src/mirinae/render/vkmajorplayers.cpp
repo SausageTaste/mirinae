@@ -202,21 +202,59 @@ namespace {
 }
 
 
+// PhysDevice auxiliaries
+namespace {
+
+    auto get_queue_family_props(VkPhysicalDevice phys_device) {
+        std::vector<VkQueueFamilyProperties> output;
+        uint32_t count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(phys_device, &count, nullptr);
+        if (0 == count)
+            return output;
+
+        output.resize(count);
+        vkGetPhysicalDeviceQueueFamilyProperties(phys_device, &count, output.data());
+        return output;
+    }
+
+}
+
+
 // PhysDevice
 namespace mirinae {
 
-    PhysDevice::PhysDevice(VkPhysicalDevice handle)
-        : handle_(handle)
-    {
-        vkGetPhysicalDeviceProperties(handle_, &properties_);
-        vkGetPhysicalDeviceFeatures(handle_, &features_);
+    PhysDevice::PhysDevice(VkPhysicalDevice handle) {
+        this->set(handle);
     }
 
     PhysDevice& PhysDevice::operator=(VkPhysicalDevice handle) {
+        this->set(handle);
+        return *this;
+    }
+
+    void PhysDevice::set(VkPhysicalDevice handle) {
+        if (nullptr == handle) {
+            spdlog::error("PhysDevice::set has recieved a nullptr");
+            this->clear();
+            return;
+        }
+
         handle_ = handle;
         vkGetPhysicalDeviceProperties(handle_, &properties_);
         vkGetPhysicalDeviceFeatures(handle_, &features_);
-        return *this;
+
+        const auto queue_family = ::get_queue_family_props(handle_);
+        for (int i = 0; i < queue_family.size(); ++i) {
+            if (queue_family[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                graphics_family_index_ = i;
+        }
+    }
+
+    void PhysDevice::clear() {
+        handle_ = nullptr;
+        properties_ = {};
+        features_ = {};
+        graphics_family_index_ = std::nullopt;
     }
 
     std::string PhysDevice::make_report_str() const {
@@ -257,6 +295,10 @@ namespace mirinae {
 
     const char* PhysDevice::name() const {
         return properties_.deviceName;
+    }
+
+    std::optional<uint32_t> PhysDevice::graphics_family_index() const {
+        return graphics_family_index_;
     }
 
     bool PhysDevice::is_descrete_gpu() const {
@@ -306,8 +348,13 @@ namespace mirinae {
         VkPhysicalDevice output = nullptr;
         for (auto handle : devices) {
             PhysDevice phys_device{ handle };
-            if (phys_device.is_descrete_gpu())
-                output = handle;
+
+            if (!phys_device.is_descrete_gpu())
+                continue;
+            if (!phys_device.graphics_family_index().has_value())
+                continue;
+
+            output = handle;
         }
 
         return output;

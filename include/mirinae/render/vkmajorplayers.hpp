@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <optional>
 
 #include <vulkan/vulkan.h>
 
@@ -15,14 +16,19 @@ namespace mirinae {
         PhysDevice(VkPhysicalDevice handle);
         PhysDevice& operator=(VkPhysicalDevice handle);
 
+        void set(VkPhysicalDevice handle);
+        void clear();
+
         std::string make_report_str() const;
         const char* name() const;
+        std::optional<uint32_t> graphics_family_index() const;
         bool is_descrete_gpu() const;
 
     private:
         VkPhysicalDevice handle_ = nullptr;
         VkPhysicalDeviceProperties properties_{};
         VkPhysicalDeviceFeatures features_{};
+        std::optional<uint32_t> graphics_family_index_;
 
     };
 
