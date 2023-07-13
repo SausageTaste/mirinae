@@ -9,6 +9,39 @@
 
 namespace mirinae {
 
+    class VulkanExtensionsLayers {
+
+    public:
+        void add_validation();
+
+        bool are_layers_available() const;
+
+        std::vector<std::string> extensions_;
+        std::vector<std::string> layers_;
+
+    };
+
+
+    class InstanceFactory {
+
+    public:
+        InstanceFactory();
+
+        VkInstance create();
+
+        void enable_validation_layer();
+
+        VulkanExtensionsLayers ext_layers_;
+
+    private:
+        VkApplicationInfo app_info{};
+        VkInstanceCreateInfo create_info{};
+        VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
+        bool validation_layer_enabled_ = false;
+
+    };
+
+
     class PhysDevice {
 
     public:
@@ -53,9 +86,11 @@ namespace mirinae {
     class VulkanInstance {
 
     public:
-        VulkanInstance();
-        ~VulkanInstance();
+        ~VulkanInstance() {
+            this->destroy();
+        }
 
+        void init(InstanceFactory& factory);
         void destroy();
 
         VkInstance get() const { return instance_; }
