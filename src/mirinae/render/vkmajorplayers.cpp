@@ -308,6 +308,44 @@ namespace mirinae {
 }
 
 
+// LogiDevice
+namespace mirinae {
+
+    void LogiDevice::init(const PhysDevice& phys_device) {
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = phys_device.graphics_family_index().value();
+        queueCreateInfo.queueCount = 1;
+        float queue_priority = 1;
+        queueCreateInfo.pQueuePriorities = &queue_priority;
+
+        VkPhysicalDeviceFeatures deviceFeatures{};
+
+        VkDeviceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pQueueCreateInfos = &queueCreateInfo;
+        createInfo.queueCreateInfoCount = 1;
+        createInfo.pEnabledFeatures = &deviceFeatures;
+
+        if (vkCreateDevice(phys_device.get(), &createInfo, nullptr, &device_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create logical device!");
+        }
+
+        vkGetDeviceQueue(device_, queueCreateInfo.queueFamilyIndex, 0, &graphics_queue_);
+    }
+
+    void LogiDevice::destroy() {
+        if (nullptr != device_) {
+            vkDestroyDevice(device_, nullptr);
+            device_ = nullptr;
+        }
+
+        graphics_queue_ = nullptr;
+    }
+
+}
+
+
 // VulkanInstance
 namespace mirinae {
 

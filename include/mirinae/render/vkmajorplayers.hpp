@@ -18,6 +18,7 @@ namespace mirinae {
 
         void set(VkPhysicalDevice handle);
         void clear();
+        VkPhysicalDevice get() const { return handle_; }
 
         std::string make_report_str() const;
         const char* name() const;
@@ -29,6 +30,23 @@ namespace mirinae {
         VkPhysicalDeviceProperties properties_{};
         VkPhysicalDeviceFeatures features_{};
         std::optional<uint32_t> graphics_family_index_;
+
+    };
+
+
+    class LogiDevice {
+
+    public:
+        ~LogiDevice() {
+            this->destroy();
+        }
+
+        void init(const PhysDevice& phys_device);
+        void destroy();
+
+    private:
+        VkDevice device_ = nullptr;
+        VkQueue graphics_queue_ = nullptr;
 
     };
 
