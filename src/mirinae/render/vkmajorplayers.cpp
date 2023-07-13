@@ -1,5 +1,7 @@
 #include "mirinae/render/vkmajorplayers.hpp"
 
+#include <sstream>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
@@ -200,6 +202,70 @@ namespace {
 }
 
 
+// PhysDevice
+namespace mirinae {
+
+    PhysDevice::PhysDevice(VkPhysicalDevice handle)
+        : handle_(handle)
+    {
+        vkGetPhysicalDeviceProperties(handle_, &properties_);
+        vkGetPhysicalDeviceFeatures(handle_, &features_);
+    }
+
+    PhysDevice& PhysDevice::operator=(VkPhysicalDevice handle) {
+        handle_ = handle;
+        vkGetPhysicalDeviceProperties(handle_, &properties_);
+        vkGetPhysicalDeviceFeatures(handle_, &features_);
+        return *this;
+    }
+
+    std::string PhysDevice::make_report_str() const {
+        std::stringstream ss;
+
+        ss << "==================================\n";
+        ss << properties_.deviceName << '\n';
+        ss << "----------------------------------\n";
+
+        ss << "Device type                ";
+        switch (properties_.deviceType) {
+            case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                ss << "Integrated\n";
+                break;
+            case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                ss << "Descrete\n";
+                break;
+            case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+                ss << "Virtual\n";
+                break;
+            case VK_PHYSICAL_DEVICE_TYPE_CPU:
+                ss << "CPU\n";
+                break;
+            default:
+                ss << "Unknown\n";
+                break;
+        }
+
+        ss << "Max image 2D dimension     " << properties_.limits.maxImageDimension2D << '\n';
+        ss << "    push constant          " << properties_.limits.maxPushConstantsSize << '\n';
+        ss << "    memory alloc count     " << properties_.limits.maxMemoryAllocationCount << '\n';
+        ss << "    sampler alloc count    " << properties_.limits.maxSamplerAllocationCount << '\n';
+        ss << "    bound descriptor sets  " << properties_.limits.maxBoundDescriptorSets << '\n';
+
+        ss << "==================================\n";
+        return ss.str();
+    }
+
+    const char* PhysDevice::name() const {
+        return properties_.deviceName;
+    }
+
+    bool PhysDevice::is_descrete_gpu() const {
+        return this->properties_.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    }
+
+}
+
+
 // VulkanInstance
 namespace mirinae {
 
@@ -224,6 +290,27 @@ namespace mirinae {
             debug_messenger_ = nullptr;
         }
 
+    }
+
+    VkPhysicalDevice VulkanInstance::select_phys_device() {
+        uint32_t count = 0;
+        vkEnumeratePhysicalDevices(instance_, &count, nullptr);
+        if (0 == count) {
+            spdlog::error("There is no GPU with Vulkan support");
+            return nullptr;
+        }
+
+        std::vector<VkPhysicalDevice> devices(count);
+        vkEnumeratePhysicalDevices(instance_, &count, devices.data());
+
+        VkPhysicalDevice output = nullptr;
+        for (auto handle : devices) {
+            PhysDevice phys_device{ handle };
+            if (phys_device.is_descrete_gpu())
+                output = handle;
+        }
+
+        return output;
     }
 
 }
