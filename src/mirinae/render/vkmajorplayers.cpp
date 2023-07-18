@@ -93,6 +93,13 @@ namespace {
         return layers;
     }
 
+    std::vector<const char*> make_char_vec(const std::vector<std::string>& strings) {
+        std::vector<const char*> output;
+        for (auto& x : strings)
+            output.push_back(x.c_str());
+        return output;
+    }
+
 }
 
 
@@ -119,15 +126,11 @@ namespace mirinae {
     VkInstance InstanceFactory::create() {
         create_info.pApplicationInfo = &app_info;
 
-        std::vector<const char*> ext_name_ptrs;
-        for (auto& x : ext_layers_.extensions_)
-            ext_name_ptrs.push_back(x.c_str());
+        const auto ext_name_ptrs = ::make_char_vec(ext_layers_.extensions_);
         create_info.enabledExtensionCount = ext_name_ptrs.size();
         create_info.ppEnabledExtensionNames = ext_name_ptrs.data();
 
-        std::vector<const char*> layer_name_ptrs;
-        for (auto& x : ext_layers_.layers_)
-            layer_name_ptrs.push_back(x.c_str());
+        const auto layer_name_ptrs = ::make_char_vec(ext_layers_.layers_);
         create_info.enabledLayerCount = layer_name_ptrs.size();
         create_info.ppEnabledLayerNames = layer_name_ptrs.data();
 
@@ -284,13 +287,42 @@ namespace mirinae {
         return this->properties_.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     }
 
+    std::vector<VkExtensionProperties> PhysDevice::get_extensions() const {
+        std::vector<VkExtensionProperties> output;
+
+        uint32_t count;
+        vkEnumerateDeviceExtensionProperties(handle_, nullptr, &count, nullptr);
+        if (0 == count)
+            return output;
+
+        output.resize(count);
+        vkEnumerateDeviceExtensionProperties(handle_, nullptr, &count, output.data());
+        return output;
+    }
+
+    size_t PhysDevice::count_unsupported_extensions(const std::vector<std::string>& extensions) const {
+        const auto available_extensions = this->get_extensions();
+        std::set<std::string> required_extensions(extensions.begin(), extensions.end());
+
+        for (const auto& extension : available_extensions) {
+            auto found = required_extensions.find(extension.extensionName);
+            if (found != required_extensions.end())
+                required_extensions.erase(found);
+        }
+
+        for (auto& ext_name : required_extensions)
+            spdlog::warn("Required extension not available in physical device: {}", ext_name);
+
+        return required_extensions.size();
+    }
+
 }
 
 
 // LogiDevice
 namespace mirinae {
 
-    void LogiDevice::init(const PhysDevice& phys_device) {
+    void LogiDevice::init(const PhysDevice& phys_device, const std::vector<std::string>& extensions) {
         std::set<uint32_t> unique_queue_families{ 
             phys_device.graphics_family_index().value(), 
             phys_device.present_family_index().value(),
@@ -307,11 +339,14 @@ namespace mirinae {
         }
 
         VkPhysicalDeviceFeatures deviceFeatures{};
+        const auto char_extension = ::make_char_vec(extensions);
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.queueCreateInfoCount = queueCreateInfos.size();
+        createInfo.ppEnabledExtensionNames = char_extension.data();
+        createInfo.enabledExtensionCount = char_extension.size();
         createInfo.pEnabledFeatures = &deviceFeatures;
 
         if (vkCreateDevice(phys_device.get(), &createInfo, nullptr, &device_) != VK_SUCCESS) {

@@ -55,6 +55,9 @@ namespace mirinae {
         std::optional<uint32_t> present_family_index() const;
         bool is_descrete_gpu() const;
 
+        std::vector<VkExtensionProperties> get_extensions() const;
+        size_t count_unsupported_extensions(const std::vector<std::string>& extensions) const;
+
     private:
         VkPhysicalDevice handle_ = nullptr;
         VkPhysicalDeviceProperties properties_{};
@@ -72,7 +75,7 @@ namespace mirinae {
             this->destroy();
         }
 
-        void init(const PhysDevice& phys_device);
+        void init(const PhysDevice& phys_device, const std::vector<std::string>& extensions);
         void destroy();
 
     private:
