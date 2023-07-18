@@ -183,6 +183,38 @@ namespace mirinae {
 }
 
 
+// SwapChainSupportDetails
+namespace mirinae {
+
+    void SwapChainSupportDetails::init(VkSurfaceKHR surface, VkPhysicalDevice phys_device) {
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phys_device, surface, &capabilities_);
+
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(phys_device, surface, &formatCount, nullptr);
+        if (formatCount != 0) {
+            formats_.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(phys_device, surface, &formatCount, formats_.data());
+        }
+
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(phys_device, surface, &presentModeCount, nullptr);
+        if (presentModeCount != 0) {
+            present_modes_.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(phys_device, surface, &presentModeCount, present_modes_.data());
+        }
+    }
+
+    bool SwapChainSupportDetails::is_complete() const {
+        if (formats_.empty())
+            return false;
+        if (present_modes_.empty())
+            return false;
+        return true;
+    }
+
+}
+
+
 // PhysDevice auxiliaries
 namespace {
 

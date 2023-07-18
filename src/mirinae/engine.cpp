@@ -180,6 +180,12 @@ namespace {
                 throw std::runtime_error{ "Some extensions are not supported" };
             logi_device_.init(phys_device_, device_extensions);
 
+            mirinae::SwapChainSupportDetails swapchain_details;
+            swapchain_details.init(surface_, phys_device_.get());
+            if (!swapchain_details.is_complete()) {
+                throw std::runtime_error{ "The swapchain is not complete" };
+            }
+
             return;
         }
 
