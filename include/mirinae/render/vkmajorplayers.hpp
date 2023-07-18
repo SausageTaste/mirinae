@@ -42,6 +42,20 @@ namespace mirinae {
     };
 
 
+    class SwapChainSupportDetails {
+
+    public:
+        void init(VkSurfaceKHR surface, VkPhysicalDevice phys_device);
+
+        bool is_complete() const;
+
+        VkSurfaceCapabilitiesKHR capabilities_;
+        std::vector<VkSurfaceFormatKHR> formats_;
+        std::vector<VkPresentModeKHR> present_modes_;
+
+    };
+
+
     class PhysDevice {
 
     public:
