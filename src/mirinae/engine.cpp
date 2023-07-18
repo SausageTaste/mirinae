@@ -173,7 +173,12 @@ namespace {
             surface_ = window_.create_surface(instance_);
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
             spdlog::info("Physical device selected: {}", phys_device_.name());
-            logi_device_.init(phys_device_);
+
+            std::vector<std::string> device_extensions;
+            device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+            if (phys_device_.count_unsupported_extensions(device_extensions))
+                throw std::runtime_error{ "Some extensions are not supported" };
+            logi_device_.init(phys_device_, device_extensions);
 
             return;
         }
