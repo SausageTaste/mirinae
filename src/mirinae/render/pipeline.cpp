@@ -97,21 +97,21 @@ namespace {
 
 namespace mirinae {
 
-    Pipeline create_unorthodox_pipeline(const VkExtent2D& swapchain_extent, VkDevice logi_device) {
+    Pipeline create_unorthodox_pipeline(const VkExtent2D& swapchain_extent, RenderPass& renderpass, LogiDevice& logi_device) {
         const auto root_dir = find_resources_folder();
-        ::ShaderModule vert_shader{ *root_dir / "shaders" / "unorthodox_vert.spv", logi_device };
-        ::ShaderModule frag_shader{ *root_dir / "shaders" / "unorthodox_frag.spv", logi_device };
+        ::ShaderModule vert_shader{ *root_dir / "shaders" / "unorthodox_vert.spv", logi_device.get() };
+        ::ShaderModule frag_shader{ *root_dir / "shaders" / "unorthodox_frag.spv", logi_device.get() };
 
-        std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+        std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
         {
-            auto& shader_info = shader_stages.emplace_back();
+            auto& shader_info = shaderStages.emplace_back();
             shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
             shader_info.module = vert_shader.get();
             shader_info.pName = "main";
         }
         {
-            auto& shader_info = shader_stages.emplace_back();
+            auto& shader_info = shaderStages.emplace_back();
             shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
             shader_info.module = frag_shader.get();
@@ -214,30 +214,37 @@ namespace mirinae {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(logi_device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(logi_device.get(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create pipeline layout!");
         }
 
-        vert_shader.destroy(logi_device);
-        frag_shader.destroy(logi_device);
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = shaderStages.size();;
+        pipelineInfo.pStages = shaderStages.data();
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = nullptr;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
+        pipelineInfo.layout = pipelineLayout;
+        pipelineInfo.renderPass = renderpass.get();
+        pipelineInfo.subpass = 0;
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; 
+        pipelineInfo.basePipelineIndex = -1; 
 
-        return Pipeline{ pipelineLayout };
-    }
-
-}
-
-
-namespace mirinae {
-
-    Pipeline::Pipeline(VkPipelineLayout layout) {
-        layout_ = layout;
-    }
-
-    void Pipeline::destroy(VkDevice logi_device) {
-        if (nullptr != layout_) {
-            vkDestroyPipelineLayout(logi_device, layout_, nullptr);
-            layout_ = nullptr;
+        VkPipeline graphicsPipeline;
+        if (vkCreateGraphicsPipelines(logi_device.get(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create graphics pipeline!");
         }
+
+        vert_shader.destroy(logi_device.get());
+        frag_shader.destroy(logi_device.get());
+
+        return Pipeline{ graphicsPipeline, pipelineLayout };
     }
 
 }

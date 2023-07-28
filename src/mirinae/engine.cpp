@@ -199,13 +199,15 @@ namespace {
             const auto [fbuf_width, fbuf_height] = window_.get_fbuf_size();
             swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
 
-            pipeline_layout_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), logi_device_.get());
             renderpass_.init(swapchain_.format(), logi_device_);
+            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, logi_device_);
 
             return;
         }
 
         ~EngineGlfw() {
+            pipeline_.destroy(logi_device_);
+            renderpass_.destroy(logi_device_);
             swapchain_.destroy(logi_device_);
             vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
             logi_device_.destroy();
@@ -234,7 +236,7 @@ namespace {
         mirinae::PhysDevice phys_device_;
         mirinae::LogiDevice logi_device_;
         mirinae::Swapchain swapchain_;
-        mirinae::Pipeline pipeline_layout_;
+        mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;
         VkSurfaceKHR surface_ = nullptr;
 
