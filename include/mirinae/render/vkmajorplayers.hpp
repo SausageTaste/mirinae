@@ -119,6 +119,9 @@ namespace mirinae {
         VkFormat format() const { return format_; }
         const VkExtent2D& extent() const { return extent_; }
 
+        VkImageView view_at(size_t index) { return views_.at(index); }
+        size_t views_count() const { return views_.size(); }
+
     private:
         VkSwapchainKHR swapchain_ = nullptr;
         std::vector<VkImage> images_;
@@ -177,6 +180,18 @@ namespace mirinae {
     private:
         VkPipeline pipeline_ = nullptr;
         VkPipelineLayout layout_ = nullptr;
+
+    };
+
+
+    class Framebuffer {
+
+    public:
+        void init(const VkExtent2D& swapchain_extent, VkImageView view, RenderPass& renderpass, LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+    private:
+        VkFramebuffer handle_ = nullptr;
 
     };
 

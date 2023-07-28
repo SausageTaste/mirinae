@@ -202,6 +202,11 @@ namespace {
             renderpass_.init(swapchain_.format(), logi_device_);
             pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, logi_device_);
 
+            swapchain_fbufs_.resize(swapchain_.views_count());
+            for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
+                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), renderpass_, logi_device_);
+            }
+
             return;
         }
 
@@ -233,12 +238,13 @@ namespace {
     private:
         GlfwWindow window_;
         mirinae::VulkanInstance instance_;
+        VkSurfaceKHR surface_ = nullptr;
         mirinae::PhysDevice phys_device_;
         mirinae::LogiDevice logi_device_;
         mirinae::Swapchain swapchain_;
         mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;
-        VkSurfaceKHR surface_ = nullptr;
+        std::vector<mirinae::Framebuffer> swapchain_fbufs_;
 
     };
 
