@@ -642,6 +642,7 @@ namespace mirinae {
 }
 
 
+// Pipeline
 namespace mirinae {
 
     Pipeline::Pipeline(VkPipeline pipeline, VkPipelineLayout layout) {
@@ -658,6 +659,38 @@ namespace mirinae {
         if (nullptr != layout_) {
             vkDestroyPipelineLayout(logi_device.get(), layout_, nullptr);
             layout_ = nullptr;
+        }
+    }
+
+}
+
+
+// Framebuffer
+namespace mirinae {
+
+    void Framebuffer::init(const VkExtent2D& swapchain_extent, VkImageView view, RenderPass& renderpass, LogiDevice& logi_device) {
+        VkImageView attachments[] = {
+            view
+        };
+
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = renderpass.get();
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = attachments;
+        framebufferInfo.width = swapchain_extent.width;
+        framebufferInfo.height = swapchain_extent.height;
+        framebufferInfo.layers = 1;
+
+        if (vkCreateFramebuffer(logi_device.get(), &framebufferInfo, nullptr, &handle_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create framebuffer!");
+        }
+    }
+
+    void Framebuffer::destroy(LogiDevice& logi_device) {
+        if (nullptr != handle_) {
+            vkDestroyFramebuffer(logi_device.get(), handle_, nullptr);
+            handle_ = nullptr;
         }
     }
 
