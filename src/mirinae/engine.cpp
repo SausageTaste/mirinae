@@ -68,6 +68,15 @@ namespace {
             return surface;
         }
 
+        std::pair<int, int> get_fbuf_size() const {
+            std::pair<int, int> output{ 0, 0 };
+            if (nullptr == this->window)
+                return output;
+
+            glfwGetFramebufferSize(window, &output.first, &output.second);
+            return output;
+        }
+
     private:
         static void callback_fbuf_size(GLFWwindow* window, int width, int height) {
             auto ptr = glfwGetWindowUserPointer(window);
@@ -186,10 +195,14 @@ namespace {
                 throw std::runtime_error{ "The swapchain is not complete" };
             }
 
+            const auto [fbuf_width, fbuf_height] = window_.get_fbuf_size();
+            swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
+
             return;
         }
 
         ~EngineGlfw() {
+            swapchain_.destroy(logi_device_);
             vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
             logi_device_.destroy();
         }
@@ -216,6 +229,7 @@ namespace {
         mirinae::VulkanInstance instance_;
         mirinae::PhysDevice phys_device_;
         mirinae::LogiDevice logi_device_;
+        mirinae::Swapchain swapchain_;
         VkSurfaceKHR surface_ = nullptr;
 
     };
