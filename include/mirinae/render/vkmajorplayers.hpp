@@ -119,6 +119,7 @@ namespace mirinae {
     private:
         VkSwapchainKHR swapchain_ = nullptr;
         std::vector<VkImage> images_;
+        std::vector<VkImageView> views_;
         VkFormat format_;
         VkExtent2D extent_;
 
