@@ -116,6 +116,8 @@ namespace mirinae {
         void init(uint32_t fbuf_width, uint32_t fbuf_height, VkSurfaceKHR surface, PhysDevice& phys_device, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
+        const VkExtent2D& extent() const { return extent_; }
+
     private:
         VkSwapchainKHR swapchain_ = nullptr;
         std::vector<VkImage> images_;
