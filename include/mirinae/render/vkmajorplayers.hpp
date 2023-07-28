@@ -48,7 +48,13 @@ namespace mirinae {
         void init(VkSurfaceKHR surface, VkPhysicalDevice phys_device);
 
         bool is_complete() const;
+        VkSurfaceFormatKHR choose_format() const;
+        VkPresentModeKHR choose_present_mode() const;
+        VkExtent2D choose_extent(uint32_t fbuf_width, uint32_t fbuf_height) const;
+        uint32_t choose_image_count() const;
+        auto get_transform() const { return capabilities_.currentTransform; }
 
+    private:
         VkSurfaceCapabilitiesKHR capabilities_;
         std::vector<VkSurfaceFormatKHR> formats_;
         std::vector<VkPresentModeKHR> present_modes_;
@@ -61,7 +67,7 @@ namespace mirinae {
     public:
         void set(VkPhysicalDevice handle, const VkSurfaceKHR surface);
         void clear();
-        VkPhysicalDevice get() const { return handle_; }
+        VkPhysicalDevice get() { return handle_; }
 
         std::string make_report_str() const;
         const char* name() const;
@@ -89,13 +95,32 @@ namespace mirinae {
             this->destroy();
         }
 
-        void init(const PhysDevice& phys_device, const std::vector<std::string>& extensions);
+        void init(PhysDevice& phys_device, const std::vector<std::string>& extensions);
         void destroy();
+
+        VkDevice get() {
+            return device_;
+        }
 
     private:
         VkDevice device_ = nullptr;
         VkQueue graphics_queue_ = nullptr;
         VkQueue present_queue_ = nullptr;
+
+    };
+
+
+    class Swapchain {
+
+    public:
+        void init(uint32_t fbuf_width, uint32_t fbuf_height, VkSurfaceKHR surface, PhysDevice& phys_device, LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+    private:
+        VkSwapchainKHR swapchain_ = nullptr;
+        std::vector<VkImage> images_;
+        VkFormat format_;
+        VkExtent2D extent_;
 
     };
 

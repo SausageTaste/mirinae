@@ -1,5 +1,7 @@
 #include "mirinae/render/vkmajorplayers.hpp"
 
+#include <array>
+#include <algorithm>
 #include <set>
 #include <sstream>
 
@@ -212,6 +214,46 @@ namespace mirinae {
         return true;
     }
 
+    VkSurfaceFormatKHR SwapChainSupportDetails::choose_format() const {
+        for (const auto& available_format : formats_) {
+            if (available_format.format == VK_FORMAT_B8G8R8A8_SRGB && available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return available_format;
+            }
+        }
+        return formats_[0];
+    }
+
+    VkPresentModeKHR SwapChainSupportDetails::choose_present_mode() const {
+        for (const auto& availablePresentMode : present_modes_) {
+            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                return availablePresentMode;
+            }
+        }
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    VkExtent2D SwapChainSupportDetails::choose_extent(uint32_t fbuf_width, uint32_t fbuf_height) const {
+        if (capabilities_.currentExtent.width != (std::numeric_limits<uint32_t>::max)()) {
+            return capabilities_.currentExtent;
+        }
+        else {
+            VkExtent2D actualExtent{ fbuf_width, fbuf_height };
+
+            actualExtent.width = std::clamp(actualExtent.width, capabilities_.minImageExtent.width, capabilities_.maxImageExtent.width);
+            actualExtent.height = std::clamp(actualExtent.height, capabilities_.minImageExtent.height, capabilities_.maxImageExtent.height);
+
+            return actualExtent;
+        }
+    }
+
+    uint32_t SwapChainSupportDetails::choose_image_count() const {
+        auto image_count = capabilities_.minImageCount + 1;
+        if (capabilities_.maxImageCount > 0 && image_count > capabilities_.maxImageCount) {
+            image_count = capabilities_.maxImageCount;
+        }
+        return image_count;
+    }
+
 }
 
 
@@ -354,7 +396,7 @@ namespace mirinae {
 // LogiDevice
 namespace mirinae {
 
-    void LogiDevice::init(const PhysDevice& phys_device, const std::vector<std::string>& extensions) {
+    void LogiDevice::init(PhysDevice& phys_device, const std::vector<std::string>& extensions) {
         std::set<uint32_t> unique_queue_families{ 
             phys_device.graphics_family_index().value(), 
             phys_device.present_family_index().value(),
@@ -396,6 +438,81 @@ namespace mirinae {
         }
 
         graphics_queue_ = nullptr;
+    }
+
+}
+
+
+// Swapchain
+namespace mirinae {
+
+    void Swapchain::init(uint32_t fbuf_width, uint32_t fbuf_height, VkSurfaceKHR surface, PhysDevice& phys_device, LogiDevice& logi_device) {
+        mirinae::SwapChainSupportDetails swapchain_details;
+        swapchain_details.init(surface, phys_device.get());
+        if (!swapchain_details.is_complete()) {
+            throw std::runtime_error{ "The swapchain is not complete" };
+        }
+
+        std::array<uint32_t, 2> queue_family_indices{ *phys_device.graphics_family_index(), *phys_device.present_family_index() };
+        VkSwapchainCreateInfoKHR swapchain_create_info{};
+
+        // Fill in swapchain create info
+        {
+            swapchain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            swapchain_create_info.surface = surface;
+            swapchain_create_info.minImageCount = swapchain_details.choose_image_count();
+            swapchain_create_info.imageFormat = swapchain_details.choose_format().format;
+            swapchain_create_info.imageColorSpace = swapchain_details.choose_format().colorSpace;
+            swapchain_create_info.imageExtent = swapchain_details.choose_extent(fbuf_width, fbuf_height);
+            swapchain_create_info.imageArrayLayers = 1;
+            swapchain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            swapchain_create_info.preTransform = swapchain_details.get_transform();
+            swapchain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            swapchain_create_info.presentMode = swapchain_details.choose_present_mode();
+            swapchain_create_info.clipped = VK_TRUE;
+            swapchain_create_info.oldSwapchain = VK_NULL_HANDLE;
+
+            if (queue_family_indices[0] != queue_family_indices[1]) {
+                swapchain_create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+                swapchain_create_info.queueFamilyIndexCount = queue_family_indices.size();
+                swapchain_create_info.pQueueFamilyIndices = queue_family_indices.data();
+            }
+            else {
+                swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                swapchain_create_info.queueFamilyIndexCount = 0; // Optional
+                swapchain_create_info.pQueueFamilyIndices = nullptr; // Optional
+            }
+        }
+
+        if (VK_SUCCESS != vkCreateSwapchainKHR(logi_device.get(), &swapchain_create_info, nullptr, &swapchain_)) {
+            throw std::runtime_error("failed to create swap chain!");
+        }
+
+        // Store some data
+        {
+            format_ = swapchain_create_info.imageFormat;
+            extent_ = swapchain_create_info.imageExtent;
+
+            uint32_t image_count = swapchain_details.choose_image_count();
+            vkGetSwapchainImagesKHR(logi_device.get(), swapchain_, &image_count, nullptr);
+            images_.resize(image_count);
+            vkGetSwapchainImagesKHR(logi_device.get(), swapchain_, &image_count, images_.data());
+        }
+
+        spdlog::info(
+            "Swapchain created: format={}, extent=({}, {}), present_mode={}, image_count={}",
+            static_cast<int>(format_),
+            extent_.width, extent_.height,
+            static_cast<int>(swapchain_create_info.presentMode),
+            images_.size()
+        );
+    }
+
+    void Swapchain::destroy(LogiDevice& logi_device) {
+        if (nullptr != swapchain_) {
+            vkDestroySwapchainKHR(logi_device.get(), swapchain_, nullptr);
+            swapchain_ = nullptr;
+        }
     }
 
 }
