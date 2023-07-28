@@ -110,6 +110,37 @@ namespace mirinae {
     };
 
 
+    class Semaphore {
+
+    public:
+        void init(LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+        VkSemaphore get() { return handle_; }
+
+    private:
+        VkSemaphore handle_ = nullptr;
+
+    };
+
+
+    class Fence {
+
+    public:
+        void init(LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+        VkFence get() { return handle_; }
+
+        void wait(LogiDevice& logi_device);
+        void reset(LogiDevice& logi_device);
+
+    private:
+        VkFence handle_ = nullptr;
+
+    };
+
+
     class Swapchain {
 
     public:

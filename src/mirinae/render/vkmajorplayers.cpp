@@ -443,6 +443,64 @@ namespace mirinae {
 }
 
 
+// Semaphore
+namespace mirinae {
+
+    void Semaphore::init(LogiDevice& logi_device) {
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        if (vkCreateSemaphore(logi_device.get(), &semaphoreInfo, nullptr, &handle_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create semaphores!");
+        }
+    }
+
+    void Semaphore::destroy(LogiDevice& logi_device) {
+        if (nullptr != handle_) {
+            vkDestroySemaphore(logi_device.get(), handle_, nullptr);
+            handle_ = nullptr;
+        }
+    }
+
+}
+
+
+// Fence
+namespace mirinae {
+
+    void Fence::init(LogiDevice& logi_device) {
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+        if (vkCreateFence(logi_device.get(), &fenceInfo, nullptr, &handle_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create semaphores!");
+        }
+    }
+
+    void Fence::destroy(LogiDevice& logi_device) {
+        if (nullptr != handle_) {
+            vkDestroyFence(logi_device.get(), handle_, nullptr);
+            handle_ = nullptr;
+        }
+    }
+
+    void Fence::wait(LogiDevice& logi_device) {
+        if (nullptr != handle_)
+            vkWaitForFences(logi_device.get(), 1, &handle_, VK_TRUE, UINT64_MAX);
+        else
+            spdlog::warn("Tried to wait on a fence that is not created");
+    }
+
+    void Fence::reset(LogiDevice& logi_device) {
+        if (nullptr != handle_)
+            vkResetFences(logi_device.get(), 1, &handle_);
+        else
+            spdlog::warn("Tried to reset a fence that is not created");
+    }
+
+}
+
+
 // Swapchain
 namespace mirinae {
 
