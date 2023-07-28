@@ -695,3 +695,42 @@ namespace mirinae {
     }
 
 }
+
+
+// CommandPool
+namespace mirinae {
+
+    void CommandPool::init(uint32_t graphics_queue, LogiDevice& logi_device) {
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        poolInfo.queueFamilyIndex = graphics_queue;
+
+        if (vkCreateCommandPool(logi_device.get(), &poolInfo, nullptr, &handle_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create command pool!");
+        }
+    }
+
+    void CommandPool::destroy(LogiDevice& logi_device) {
+        if (nullptr != handle_) {
+            vkDestroyCommandPool(logi_device.get(), handle_, nullptr);
+            handle_ = nullptr;
+        }
+    }
+
+    VkCommandBuffer CommandPool::alloc(LogiDevice& logi_device) {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = handle_;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        if (vkAllocateCommandBuffers(logi_device.get(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate command buffers!");
+        }
+
+        return commandBuffer;
+    }
+
+}
