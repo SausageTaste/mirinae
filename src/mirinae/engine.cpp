@@ -4,6 +4,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <mirinae/render/pipeline.hpp>
 #include <mirinae/render/vkmajorplayers.hpp>
 
 
@@ -197,6 +198,8 @@ namespace {
 
             const auto [fbuf_width, fbuf_height] = window_.get_fbuf_size();
             swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
+
+            mirinae::create_unorthodox_pipeline(logi_device_.get());
 
             return;
         }
