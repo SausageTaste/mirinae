@@ -116,6 +116,7 @@ namespace mirinae {
         void init(uint32_t fbuf_width, uint32_t fbuf_height, VkSurfaceKHR surface, PhysDevice& phys_device, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
+        VkFormat format() const { return format_; }
         const VkExtent2D& extent() const { return extent_; }
 
     private:
@@ -145,6 +146,18 @@ namespace mirinae {
     private:
         VkInstance instance_ = nullptr;
         VkDebugUtilsMessengerEXT debug_messenger_ = nullptr;
+
+    };
+
+
+    class RenderPass {
+
+    public:
+        void init(VkFormat swapchain_format, LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+    private:
+        VkRenderPass handle_ = nullptr;
 
     };
 

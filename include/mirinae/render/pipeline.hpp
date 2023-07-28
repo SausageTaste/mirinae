@@ -8,12 +8,15 @@ namespace mirinae {
     class Pipeline {
 
     public:
+        Pipeline() = default;
         Pipeline(VkPipelineLayout layout);
 
         void destroy(VkDevice logi_device);
 
+        VkPipelineLayout layout() { return layout_; }
+
     private:
-        VkPipelineLayout layout_;
+        VkPipelineLayout layout_ = nullptr;
 
     };
 
