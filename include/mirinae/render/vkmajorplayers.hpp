@@ -156,8 +156,27 @@ namespace mirinae {
         void init(VkFormat swapchain_format, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
+        VkRenderPass get() { return handle_; }
+
     private:
         VkRenderPass handle_ = nullptr;
+
+    };
+
+
+    class Pipeline {
+
+    public:
+        Pipeline() = default;
+        Pipeline(VkPipeline pipeline, VkPipelineLayout layout);
+
+        void destroy(LogiDevice& logi_device);
+
+        VkPipelineLayout layout() { return layout_; }
+
+    private:
+        VkPipeline pipeline_ = nullptr;
+        VkPipelineLayout layout_ = nullptr;
 
     };
 

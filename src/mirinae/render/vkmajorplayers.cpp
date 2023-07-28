@@ -640,3 +640,25 @@ namespace mirinae {
     }
 
 }
+
+
+namespace mirinae {
+
+    Pipeline::Pipeline(VkPipeline pipeline, VkPipelineLayout layout) {
+        pipeline_ = pipeline;
+        layout_ = layout;
+    }
+
+    void Pipeline::destroy(LogiDevice& logi_device) {
+        if (nullptr != pipeline_) {
+            vkDestroyPipeline(logi_device.get(), pipeline_, nullptr);
+            pipeline_ = nullptr;
+        }
+
+        if (nullptr != layout_) {
+            vkDestroyPipelineLayout(logi_device.get(), layout_, nullptr);
+            layout_ = nullptr;
+        }
+    }
+
+}
