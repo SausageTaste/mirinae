@@ -175,6 +175,7 @@ namespace mirinae {
 
         void destroy(LogiDevice& logi_device);
 
+        VkPipeline pipeline() { return pipeline_; }
         VkPipelineLayout layout() { return layout_; }
 
     private:
@@ -190,8 +191,24 @@ namespace mirinae {
         void init(const VkExtent2D& swapchain_extent, VkImageView view, RenderPass& renderpass, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
+        VkFramebuffer get() { return handle_; }
+
     private:
         VkFramebuffer handle_ = nullptr;
+
+    };
+
+
+    class CommandPool {
+
+    public:
+        void init(uint32_t graphics_queue, LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+        VkCommandBuffer alloc(LogiDevice& logi_device);
+
+    private:
+        VkCommandPool handle_ = nullptr;
 
     };
 

@@ -207,6 +207,56 @@ namespace {
                 swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), renderpass_, logi_device_);
             }
 
+            cmd_pool_.init(phys_device_.graphics_family_index().value(), logi_device_);
+            cmd_buf_ = cmd_pool_.alloc(logi_device_);
+
+            {
+                VkCommandBufferBeginInfo beginInfo{};
+                beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                beginInfo.flags = 0;
+                beginInfo.pInheritanceInfo = nullptr;
+
+                if (vkBeginCommandBuffer(cmd_buf_, &beginInfo) != VK_SUCCESS) {
+                    throw std::runtime_error("failed to begin recording command buffer!");
+                }
+
+                VkClearValue clearColor = { {{0, 0, 0, 1}} };
+
+                VkRenderPassBeginInfo renderPassInfo{};
+                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderPassInfo.renderPass = renderpass_.get();
+                renderPassInfo.framebuffer = swapchain_fbufs_[0].get();
+                renderPassInfo.renderArea.offset = { 0, 0 };
+                renderPassInfo.renderArea.extent = swapchain_.extent();
+                renderPassInfo.clearValueCount = 1;
+                renderPassInfo.pClearValues = &clearColor;
+
+                vkCmdBeginRenderPass(cmd_buf_, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+                vkCmdBindPipeline(cmd_buf_, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.pipeline());
+
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = static_cast<float>(swapchain_.extent().width);
+                viewport.height = static_cast<float>(swapchain_.extent().height);
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(cmd_buf_, 0, 1, &viewport);
+
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = swapchain_.extent();
+                vkCmdSetScissor(cmd_buf_, 0, 1, &scissor);
+
+                vkCmdDraw(cmd_buf_, 3, 1, 0, 0);
+                vkCmdEndRenderPass(cmd_buf_);
+
+                if (vkEndCommandBuffer(cmd_buf_) != VK_SUCCESS) {
+                    throw std::runtime_error("failed to record command buffer!");
+                }
+            }
+
             return;
         }
 
@@ -245,6 +295,8 @@ namespace {
         mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
+        mirinae::CommandPool cmd_pool_;
+        VkCommandBuffer cmd_buf_;
 
     };
 
