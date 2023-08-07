@@ -78,6 +78,10 @@ namespace {
             return output;
         }
 
+        void notify_should_close() {
+            glfwSetWindowShouldClose(this->window, true);
+        }
+
     private:
         static void callback_fbuf_size(GLFWwindow* window, int width, int height) {
             auto ptr = glfwGetWindowUserPointer(window);
@@ -165,53 +169,7 @@ namespace {
     };
 
 
-    template <typename T, typename Tag>
-    class StrongType {
-
-    public:
-        StrongType() = default;
-
-        StrongType(const StrongType& rhs)
-            : value_(rhs.value_)
-        {
-
-        }
-
-        explicit StrongType(const T& value)
-            : value_(value)
-        {
-
-        }
-
-        StrongType& operator=(const StrongType& rhs) {
-            value_ = rhs.value_;
-            return *this;
-        }
-
-        StrongType& operator=(const T& value) {
-            value_ = value;
-            return *this;
-        }
-
-        // Implicit conversion operator
-        operator T() const {
-            return value_;
-        }
-
-        T get() const {
-            return value_;
-        }
-        void set(const T& value) {
-            value_ = value;
-        }
-
-    private:
-        T value_;
-
-    };
-
-
-    using FrameIndex = StrongType<int, struct FrameIndexStrongTypeTag>;
+    using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
 
 
     class FrameSync {
@@ -330,7 +288,12 @@ namespace {
 
         void do_frame() override {
             framesync_.get_cur_in_flight_fence().wait(logi_device_);
-            const auto image_index = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph(), logi_device_);
+            const auto image_index_opt = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph(), logi_device_);
+            if (!image_index_opt) {
+                spdlog::critical("Swapchain image invalidated");
+                throw std::runtime_error{ "Swapchain image invalidated" };
+            }
+            const auto image_index = image_index_opt.value();
 
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
             {
@@ -350,7 +313,7 @@ namespace {
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = renderpass_.get();
-                renderPassInfo.framebuffer = swapchain_fbufs_[image_index].get();
+                renderPassInfo.framebuffer = swapchain_fbufs_[image_index.get()].get();
                 renderPassInfo.renderArea.offset = { 0, 0 };
                 renderPassInfo.renderArea.extent = swapchain_.extent();
                 renderPassInfo.clearValueCount = 1;
@@ -402,15 +365,16 @@ namespace {
                     throw std::runtime_error("failed to submit draw command buffer!");
                 }
 
+                std::array<uint32_t, 1> swapchain_indices{ image_index.get() };
+                std::array<VkSwapchainKHR, 1> swapchains{ swapchain_.get() };
+
                 VkPresentInfoKHR presentInfo{};
                 presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
                 presentInfo.waitSemaphoreCount = 1;
                 presentInfo.pWaitSemaphores = signalSemaphores;
-
-                VkSwapchainKHR swapChains[] = { swapchain_.get() };
-                presentInfo.swapchainCount = 1;
-                presentInfo.pSwapchains = swapChains;
-                presentInfo.pImageIndices = &image_index;
+                presentInfo.swapchainCount = swapchains.size();
+                presentInfo.pSwapchains = swapchains.data();
+                presentInfo.pImageIndices = swapchain_indices.data();
                 presentInfo.pResults = nullptr;
 
                 vkQueuePresentKHR(logi_device_.present_queue(), &presentInfo);

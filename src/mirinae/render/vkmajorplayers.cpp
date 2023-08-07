@@ -606,10 +606,18 @@ namespace mirinae {
         }
     }
 
-    uint32_t Swapchain::acquire_next_image(Semaphore& img_avaiable_semaphore, LogiDevice& logi_device) {
+    std::optional<ShainImageIndex> Swapchain::acquire_next_image(Semaphore& img_avaiable_semaphore, LogiDevice& logi_device) {
         uint32_t imageIndex;
-        vkAcquireNextImageKHR(logi_device.get(), swapchain_, UINT64_MAX, img_avaiable_semaphore.get(), VK_NULL_HANDLE, &imageIndex);
-        return imageIndex;
+        const auto result = vkAcquireNextImageKHR(logi_device.get(), swapchain_, UINT64_MAX, img_avaiable_semaphore.get(), VK_NULL_HANDLE, &imageIndex);
+
+        switch (result) {
+            case VK_SUCCESS:
+            case VK_SUBOPTIMAL_KHR:
+                return ShainImageIndex{ imageIndex };
+            case VK_ERROR_OUT_OF_DATE_KHR:
+            default:
+                return std::nullopt;
+        }
     }
 
 }
