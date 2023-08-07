@@ -165,6 +165,110 @@ namespace {
     };
 
 
+    template <typename T, typename Tag>
+    class StrongType {
+
+    public:
+        StrongType() = default;
+
+        StrongType(const StrongType& rhs)
+            : value_(rhs.value_)
+        {
+
+        }
+
+        explicit StrongType(const T& value)
+            : value_(value)
+        {
+
+        }
+
+        StrongType& operator=(const StrongType& rhs) {
+            value_ = rhs.value_;
+            return *this;
+        }
+
+        StrongType& operator=(const T& value) {
+            value_ = value;
+            return *this;
+        }
+
+        // Implicit conversion operator
+        operator T() const {
+            return value_;
+        }
+
+        T get() const {
+            return value_;
+        }
+        void set(const T& value) {
+            value_ = value;
+        }
+
+    private:
+        T value_;
+
+    };
+
+
+    using FrameIndex = StrongType<int, struct FrameIndexStrongTypeTag>;
+
+
+    class FrameSync {
+
+    public:
+        void init(mirinae::LogiDevice& logi_device) {
+            img_available_semaphores_.resize(MAX_FRAMES_IN_FLIGHT);
+            render_finished_semaphores_.resize(MAX_FRAMES_IN_FLIGHT);
+            in_flight_fences_.resize(MAX_FRAMES_IN_FLIGHT);
+
+            for (auto& x : img_available_semaphores_)
+                x.init(logi_device);
+            for (auto& x : render_finished_semaphores_)
+                x.init(logi_device);
+            for (auto& x : in_flight_fences_)
+                x.init(true, logi_device);
+        }
+
+        void destroy(mirinae::LogiDevice& logi_device) {
+            for (auto& x : img_available_semaphores_)
+                x.destroy(logi_device);
+            for (auto& x : render_finished_semaphores_)
+                x.destroy(logi_device);
+            for (auto& x : in_flight_fences_)
+                x.destroy(logi_device);
+
+            img_available_semaphores_.clear();
+            render_finished_semaphores_.clear();
+            in_flight_fences_.clear();
+        }
+
+        mirinae::Semaphore& get_cur_img_ava_semaph() {
+            return img_available_semaphores_.at(cur_frame_.get());
+        }
+        mirinae::Semaphore& get_cur_render_fin_semaph() {
+            return render_finished_semaphores_.at(cur_frame_.get());
+        }
+        mirinae::Fence& get_cur_in_flight_fence() {
+            return in_flight_fences_.at(cur_frame_.get());
+        }
+
+        FrameIndex get_frame_index() const { return cur_frame_; }
+        void increase_frame_index() {
+            cur_frame_ = (cur_frame_ + 1) % MAX_FRAMES_IN_FLIGHT;
+        }
+
+        constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
+
+    private:
+        std::vector<mirinae::Semaphore> img_available_semaphores_;
+        std::vector<mirinae::Semaphore> render_finished_semaphores_;
+        std::vector<mirinae::Fence> in_flight_fences_;
+        FrameIndex cur_frame_{ 0 };
+
+    };
+
+
     class EngineGlfw : public mirinae::IEngine {
 
     public:
@@ -190,10 +294,6 @@ namespace {
                 throw std::runtime_error{ "Some extensions are not supported" };
             logi_device_.init(phys_device_, device_extensions);
 
-            img_available_semaphore_.init(logi_device_);
-            render_finished_semaphore_.init(logi_device_);
-            in_flight_fence_.init(true, logi_device_);
-
             mirinae::SwapChainSupportDetails swapchain_details;
             swapchain_details.init(surface_, phys_device_.get());
             if (!swapchain_details.is_complete()) {
@@ -203,6 +303,7 @@ namespace {
             const auto [fbuf_width, fbuf_height] = window_.get_fbuf_size();
             swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
 
+            framesync_.init(logi_device_);
             renderpass_.init(swapchain_.format(), logi_device_);
             pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, logi_device_);
 
@@ -212,32 +313,35 @@ namespace {
             }
 
             cmd_pool_.init(phys_device_.graphics_family_index().value(), logi_device_);
-            cmd_buf_ = cmd_pool_.alloc(logi_device_);
-
-            return;
+            for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i)
+                cmd_buf_.push_back(cmd_pool_.alloc(logi_device_));
         }
 
         ~EngineGlfw() {
+            cmd_pool_.destroy(logi_device_);
+            for (auto& x : swapchain_fbufs_) x.destroy(logi_device_); swapchain_fbufs_.clear();
             pipeline_.destroy(logi_device_);
             renderpass_.destroy(logi_device_);
+            framesync_.destroy(logi_device_);
             swapchain_.destroy(logi_device_);
-            vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
             logi_device_.destroy();
+            vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
         }
 
         void do_frame() override {
-            in_flight_fence_.wait(logi_device_);
-            const auto image_index = swapchain_.acquire_next_image(img_available_semaphore_, logi_device_);
+            framesync_.get_cur_in_flight_fence().wait(logi_device_);
+            const auto image_index = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph(), logi_device_);
 
-            vkResetCommandBuffer(cmd_buf_, 0);
-
+            auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
             {
+                vkResetCommandBuffer(cur_cmd_buf, 0);
+
                 VkCommandBufferBeginInfo beginInfo{};
                 beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                 beginInfo.flags = 0;
                 beginInfo.pInheritanceInfo = nullptr;
 
-                if (vkBeginCommandBuffer(cmd_buf_, &beginInfo) != VK_SUCCESS) {
+                if (vkBeginCommandBuffer(cur_cmd_buf, &beginInfo) != VK_SUCCESS) {
                     throw std::runtime_error("failed to begin recording command buffer!");
                 }
 
@@ -252,9 +356,9 @@ namespace {
                 renderPassInfo.clearValueCount = 1;
                 renderPassInfo.pClearValues = &clearColor;
 
-                vkCmdBeginRenderPass(cmd_buf_, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-                vkCmdBindPipeline(cmd_buf_, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.pipeline());
+                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.pipeline());
 
                 VkViewport viewport{};
                 viewport.x = 0.0f;
@@ -263,17 +367,17 @@ namespace {
                 viewport.height = static_cast<float>(swapchain_.extent().height);
                 viewport.minDepth = 0.0f;
                 viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cmd_buf_, 0, 1, &viewport);
+                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
 
                 VkRect2D scissor{};
                 scissor.offset = { 0, 0 };
                 scissor.extent = swapchain_.extent();
-                vkCmdSetScissor(cmd_buf_, 0, 1, &scissor);
+                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                vkCmdDraw(cmd_buf_, 3, 1, 0, 0);
-                vkCmdEndRenderPass(cmd_buf_);
+                vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
+                vkCmdEndRenderPass(cur_cmd_buf);
 
-                if (vkEndCommandBuffer(cmd_buf_) != VK_SUCCESS) {
+                if (vkEndCommandBuffer(cur_cmd_buf) != VK_SUCCESS) {
                     throw std::runtime_error("failed to record command buffer!");
                 }
             }
@@ -282,19 +386,19 @@ namespace {
                 VkSubmitInfo submitInfo{};
                 submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-                VkSemaphore waitSemaphores[] = { img_available_semaphore_.get() };
+                VkSemaphore waitSemaphores[] = { framesync_.get_cur_img_ava_semaph().get() };
                 VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
                 submitInfo.waitSemaphoreCount = 1;
                 submitInfo.pWaitSemaphores = waitSemaphores;
                 submitInfo.pWaitDstStageMask = waitStages;
                 submitInfo.commandBufferCount = 1;
-                submitInfo.pCommandBuffers = &cmd_buf_;
+                submitInfo.pCommandBuffers = &cur_cmd_buf;
 
-                VkSemaphore signalSemaphores[] = { render_finished_semaphore_.get() };
+                VkSemaphore signalSemaphores[] = { framesync_.get_cur_render_fin_semaph().get() };
                 submitInfo.signalSemaphoreCount = 1;
                 submitInfo.pSignalSemaphores = signalSemaphores;
 
-                if (vkQueueSubmit(logi_device_.graphics_queue(), 1, &submitInfo, in_flight_fence_.get()) != VK_SUCCESS) {
+                if (vkQueueSubmit(logi_device_.graphics_queue(), 1, &submitInfo, framesync_.get_cur_in_flight_fence().get()) != VK_SUCCESS) {
                     throw std::runtime_error("failed to submit draw command buffer!");
                 }
 
@@ -312,6 +416,7 @@ namespace {
                 vkQueuePresentKHR(logi_device_.present_queue(), &presentInfo);
             }
 
+            framesync_.increase_frame_index();
             window_.swap_buffer();
             glfwPollEvents();
         }
@@ -334,15 +439,13 @@ namespace {
         VkSurfaceKHR surface_ = nullptr;
         mirinae::PhysDevice phys_device_;
         mirinae::LogiDevice logi_device_;
-        mirinae::Semaphore img_available_semaphore_;
-        mirinae::Semaphore render_finished_semaphore_;
-        mirinae::Fence in_flight_fence_;
         mirinae::Swapchain swapchain_;
+        ::FrameSync framesync_;
         mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
         mirinae::CommandPool cmd_pool_;
-        VkCommandBuffer cmd_buf_;
+        std::vector<VkCommandBuffer> cmd_buf_;
 
     };
 
