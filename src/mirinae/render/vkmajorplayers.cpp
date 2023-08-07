@@ -433,11 +433,18 @@ namespace mirinae {
 
     void LogiDevice::destroy() {
         if (nullptr != device_) {
+            vkDeviceWaitIdle(device_);
             vkDestroyDevice(device_, nullptr);
             device_ = nullptr;
         }
 
         graphics_queue_ = nullptr;
+    }
+
+    void LogiDevice::wait_idle() {
+        if (nullptr != device_) {
+            vkDeviceWaitIdle(device_);
+        }
     }
 
 }
@@ -468,9 +475,12 @@ namespace mirinae {
 // Fence
 namespace mirinae {
 
-    void Fence::init(LogiDevice& logi_device) {
+    void Fence::init(bool init_signaled, LogiDevice& logi_device) {
         VkFenceCreateInfo fenceInfo{};
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+        if (init_signaled)
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
         if (vkCreateFence(logi_device.get(), &fenceInfo, nullptr, &handle_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create semaphores!");
@@ -485,17 +495,13 @@ namespace mirinae {
     }
 
     void Fence::wait(LogiDevice& logi_device) {
-        if (nullptr != handle_)
-            vkWaitForFences(logi_device.get(), 1, &handle_, VK_TRUE, UINT64_MAX);
-        else
+        if (nullptr == handle_) {
             spdlog::warn("Tried to wait on a fence that is not created");
-    }
+            return;
+        }
 
-    void Fence::reset(LogiDevice& logi_device) {
-        if (nullptr != handle_)
-            vkResetFences(logi_device.get(), 1, &handle_);
-        else
-            spdlog::warn("Tried to reset a fence that is not created");
+        vkWaitForFences(logi_device.get(), 1, &handle_, VK_TRUE, UINT64_MAX);
+        vkResetFences(logi_device.get(), 1, &handle_);
     }
 
 }
@@ -600,6 +606,12 @@ namespace mirinae {
         }
     }
 
+    uint32_t Swapchain::acquire_next_image(Semaphore& img_avaiable_semaphore, LogiDevice& logi_device) {
+        uint32_t imageIndex;
+        vkAcquireNextImageKHR(logi_device.get(), swapchain_, UINT64_MAX, img_avaiable_semaphore.get(), VK_NULL_HANDLE, &imageIndex);
+        return imageIndex;
+    }
+
 }
 
 
@@ -678,12 +690,22 @@ namespace mirinae {
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
 
+        VkSubpassDependency dependency{};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.attachmentCount = 1;
         renderPassInfo.pAttachments = &colorAttachment;
         renderPassInfo.subpassCount = 1;
         renderPassInfo.pSubpasses = &subpass;
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies = &dependency;
 
         if (vkCreateRenderPass(logi_device.get(), &renderPassInfo, nullptr, &handle_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create render pass!");
