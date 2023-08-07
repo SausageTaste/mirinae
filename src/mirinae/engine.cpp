@@ -190,6 +190,10 @@ namespace {
                 throw std::runtime_error{ "Some extensions are not supported" };
             logi_device_.init(phys_device_, device_extensions);
 
+            img_available_semaphore_.init(logi_device_);
+            render_finished_semaphore_.init(logi_device_);
+            in_flight_fence_.init(true, logi_device_);
+
             mirinae::SwapChainSupportDetails swapchain_details;
             swapchain_details.init(surface_, phys_device_.get());
             if (!swapchain_details.is_complete()) {
@@ -210,6 +214,23 @@ namespace {
             cmd_pool_.init(phys_device_.graphics_family_index().value(), logi_device_);
             cmd_buf_ = cmd_pool_.alloc(logi_device_);
 
+            return;
+        }
+
+        ~EngineGlfw() {
+            pipeline_.destroy(logi_device_);
+            renderpass_.destroy(logi_device_);
+            swapchain_.destroy(logi_device_);
+            vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
+            logi_device_.destroy();
+        }
+
+        void do_frame() override {
+            in_flight_fence_.wait(logi_device_);
+            const auto image_index = swapchain_.acquire_next_image(img_available_semaphore_, logi_device_);
+
+            vkResetCommandBuffer(cmd_buf_, 0);
+
             {
                 VkCommandBufferBeginInfo beginInfo{};
                 beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -225,7 +246,7 @@ namespace {
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = renderpass_.get();
-                renderPassInfo.framebuffer = swapchain_fbufs_[0].get();
+                renderPassInfo.framebuffer = swapchain_fbufs_[image_index].get();
                 renderPassInfo.renderArea.offset = { 0, 0 };
                 renderPassInfo.renderArea.extent = swapchain_.extent();
                 renderPassInfo.clearValueCount = 1;
@@ -257,18 +278,40 @@ namespace {
                 }
             }
 
-            return;
-        }
+            {
+                VkSubmitInfo submitInfo{};
+                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        ~EngineGlfw() {
-            pipeline_.destroy(logi_device_);
-            renderpass_.destroy(logi_device_);
-            swapchain_.destroy(logi_device_);
-            vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
-            logi_device_.destroy();
-        }
+                VkSemaphore waitSemaphores[] = { img_available_semaphore_.get() };
+                VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+                submitInfo.waitSemaphoreCount = 1;
+                submitInfo.pWaitSemaphores = waitSemaphores;
+                submitInfo.pWaitDstStageMask = waitStages;
+                submitInfo.commandBufferCount = 1;
+                submitInfo.pCommandBuffers = &cmd_buf_;
 
-        void do_frame() override {
+                VkSemaphore signalSemaphores[] = { render_finished_semaphore_.get() };
+                submitInfo.signalSemaphoreCount = 1;
+                submitInfo.pSignalSemaphores = signalSemaphores;
+
+                if (vkQueueSubmit(logi_device_.graphics_queue(), 1, &submitInfo, in_flight_fence_.get()) != VK_SUCCESS) {
+                    throw std::runtime_error("failed to submit draw command buffer!");
+                }
+
+                VkPresentInfoKHR presentInfo{};
+                presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+                presentInfo.waitSemaphoreCount = 1;
+                presentInfo.pWaitSemaphores = signalSemaphores;
+
+                VkSwapchainKHR swapChains[] = { swapchain_.get() };
+                presentInfo.swapchainCount = 1;
+                presentInfo.pSwapchains = swapChains;
+                presentInfo.pImageIndices = &image_index;
+                presentInfo.pResults = nullptr;
+
+                vkQueuePresentKHR(logi_device_.present_queue(), &presentInfo);
+            }
+
             window_.swap_buffer();
             glfwPollEvents();
         }
@@ -291,6 +334,9 @@ namespace {
         VkSurfaceKHR surface_ = nullptr;
         mirinae::PhysDevice phys_device_;
         mirinae::LogiDevice logi_device_;
+        mirinae::Semaphore img_available_semaphore_;
+        mirinae::Semaphore render_finished_semaphore_;
+        mirinae::Fence in_flight_fence_;
         mirinae::Swapchain swapchain_;
         mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;

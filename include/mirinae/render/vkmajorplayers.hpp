@@ -98,9 +98,13 @@ namespace mirinae {
         void init(PhysDevice& phys_device, const std::vector<std::string>& extensions);
         void destroy();
 
+        void wait_idle();
+
         VkDevice get() {
             return device_;
         }
+        VkQueue graphics_queue() { return graphics_queue_; }
+        VkQueue present_queue() { return present_queue_; }
 
     private:
         VkDevice device_ = nullptr;
@@ -127,13 +131,12 @@ namespace mirinae {
     class Fence {
 
     public:
-        void init(LogiDevice& logi_device);
+        void init(bool init_signaled, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
         VkFence get() { return handle_; }
 
         void wait(LogiDevice& logi_device);
-        void reset(LogiDevice& logi_device);
 
     private:
         VkFence handle_ = nullptr;
@@ -147,8 +150,11 @@ namespace mirinae {
         void init(uint32_t fbuf_width, uint32_t fbuf_height, VkSurfaceKHR surface, PhysDevice& phys_device, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
+        VkSwapchainKHR get() { return swapchain_; }
         VkFormat format() const { return format_; }
         const VkExtent2D& extent() const { return extent_; }
+
+        uint32_t acquire_next_image(Semaphore& img_avaiable_semaphore, LogiDevice& logi_device);
 
         VkImageView view_at(size_t index) { return views_.at(index); }
         size_t views_count() const { return views_.size(); }
