@@ -6,6 +6,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <mirinae/util/lightweights.hpp>
+
 
 namespace mirinae {
 
@@ -144,6 +146,10 @@ namespace mirinae {
     };
 
 
+    // It stands for Swapchain Image Index
+    using ShainImageIndex = mirinae::StrongType<uint32_t, struct SwapchainImageIndexStrongTypeTag>;
+
+
     class Swapchain {
 
     public:
@@ -154,7 +160,7 @@ namespace mirinae {
         VkFormat format() const { return format_; }
         const VkExtent2D& extent() const { return extent_; }
 
-        uint32_t acquire_next_image(Semaphore& img_avaiable_semaphore, LogiDevice& logi_device);
+        std::optional<ShainImageIndex> acquire_next_image(Semaphore& img_avaiable_semaphore, LogiDevice& logi_device);
 
         VkImageView view_at(size_t index) { return views_.at(index); }
         size_t views_count() const { return views_.size(); }
