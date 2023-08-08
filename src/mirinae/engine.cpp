@@ -244,7 +244,7 @@ namespace {
             instance_.init(instance_factory);
             surface_ = window_.create_surface(instance_);
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
-            spdlog::info("Physical device selected: {}", phys_device_.name());
+            spdlog::info("Physical device selected: {}\n{}", phys_device_.name(), phys_device_.make_report_str());
 
             std::vector<std::string> device_extensions;
             device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
