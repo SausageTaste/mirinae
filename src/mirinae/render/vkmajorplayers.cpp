@@ -316,7 +316,7 @@ namespace mirinae {
         ss << properties_.deviceName << '\n';
         ss << "----------------------------------\n";
 
-        ss << "Device type                ";
+        ss << "Device type                               ";
         switch (properties_.deviceType) {
             case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
                 ss << "Integrated\n";
@@ -335,13 +335,15 @@ namespace mirinae {
                 break;
         }
 
-        ss << "Max image 2D dimension     " << properties_.limits.maxImageDimension2D << '\n';
-        ss << "    push constant          " << properties_.limits.maxPushConstantsSize << '\n';
-        ss << "    memory alloc count     " << properties_.limits.maxMemoryAllocationCount << '\n';
-        ss << "    sampler alloc count    " << properties_.limits.maxSamplerAllocationCount << '\n';
-        ss << "    bound descriptor sets  " << properties_.limits.maxBoundDescriptorSets << '\n';
+        ss << "Max image 2D dimension                    " << properties_.limits.maxImageDimension2D << '\n';
+        ss << "    push constant                         " << properties_.limits.maxPushConstantsSize << '\n';
+        ss << "    memory alloc count                    " << properties_.limits.maxMemoryAllocationCount << '\n';
+        ss << "    sampler alloc count                   " << properties_.limits.maxSamplerAllocationCount << '\n';
+        ss << "    bound descriptor sets                 " << properties_.limits.maxBoundDescriptorSets << '\n';
+        ss << "    per stage descriptor samplers         " << properties_.limits.maxPerStageDescriptorSamplers << '\n';
+        ss << "    per stage descriptor uniform buffers  " << properties_.limits.maxPerStageDescriptorUniformBuffers << '\n';
 
-        ss << "==================================\n";
+        ss << "==================================";
         return ss.str();
     }
 
