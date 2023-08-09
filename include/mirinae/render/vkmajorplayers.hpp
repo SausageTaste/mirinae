@@ -306,4 +306,22 @@ namespace mirinae {
 
     };
 
+
+    class Buffer {
+
+    public:
+        void init(VkDeviceSize size, mirinae::PhysDevice& phys_device, LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+        VkBuffer buffer() { return buffer_; }
+        VkDeviceSize size() const { return size_; }
+
+        void set_data(void* data, size_t size, LogiDevice& logi_device);
+
+        VkBuffer buffer_ = nullptr;
+        VkDeviceMemory memory_ = nullptr;
+        VkDeviceSize size_ = 0;
+
+    };
+
 }

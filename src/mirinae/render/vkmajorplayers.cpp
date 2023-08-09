@@ -832,3 +832,78 @@ namespace mirinae {
     }
 
 }
+
+
+namespace {
+
+    uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties, mirinae::PhysDevice& phys_device) {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(phys_device.get(), &memProperties);
+
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
+            }
+        }
+
+        throw std::runtime_error("failed to find suitable memory type!");
+    }
+
+}
+
+
+// Buffer
+namespace mirinae {
+
+    void Buffer::init(VkDeviceSize size, mirinae::PhysDevice& phys_device, LogiDevice& logi_device) {
+        this->destroy(logi_device);
+
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = size;
+        bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateBuffer(logi_device.get(), &bufferInfo, nullptr, &buffer_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create vertex buffer!");
+        }
+
+        size_ = bufferInfo.size;
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(logi_device.get(), buffer_, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = find_memory_type(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, phys_device);
+
+        if (vkAllocateMemory(logi_device.get(), &allocInfo, nullptr, &memory_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate vertex buffer memory!");
+        }
+
+        vkBindBufferMemory(logi_device.get(), buffer_, memory_, 0);
+    }
+
+    void Buffer::destroy(LogiDevice& logi_device) {
+        size_ = 0;
+
+        if (nullptr != buffer_) {
+            vkDestroyBuffer(logi_device.get(), buffer_, nullptr);
+            buffer_ = nullptr;
+        }
+
+        if (nullptr != memory_) {
+            vkFreeMemory(logi_device.get(), memory_, nullptr);
+            memory_ = nullptr;
+        }
+    }
+
+    void Buffer::set_data(void* data, size_t size, LogiDevice& logi_device) {
+        void* ptr;
+        vkMapMemory(logi_device.get(), memory_, 0, size_, 0, &ptr);
+        memcpy(ptr, data, std::min<size_t>(size, size_));
+        vkUnmapMemory(logi_device.get(), memory_);
+    }
+
+}

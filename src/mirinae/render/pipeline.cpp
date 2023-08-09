@@ -135,7 +135,7 @@ namespace mirinae {
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         {
             vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertexInputInfo.vertexBindingDescriptionCount = 0;
+            vertexInputInfo.vertexBindingDescriptionCount = 1;
             vertexInputInfo.pVertexBindingDescriptions = &binding_description;
             vertexInputInfo.vertexAttributeDescriptionCount = attribute_descriptions.size();
             vertexInputInfo.pVertexAttributeDescriptions = attribute_descriptions.data();

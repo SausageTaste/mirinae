@@ -280,12 +280,20 @@ namespace {
             {
                 std::vector<mirinae::VertexStatic> vertices;
                 vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0,  -0.5, 0}, glm::vec3{1, 0, 0} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0.5, 0.5, 0}, glm::vec3{0, 1, 0} });
                 vertices.push_back(mirinae::VertexStatic{ glm::vec3{-0.5, 0.5, 0}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0.5, 0.5, 0}, glm::vec3{0, 1, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0,  -1.5, 0}, glm::vec3{1, 0, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{-0.5, 1.5, 0}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0.5, 1.5, 0}, glm::vec3{0, 1, 0} });
+                const auto data_size = sizeof(mirinae::VertexStatic) * vertices.size();
+
+                vertex_buf_.init(data_size, phys_device_, logi_device_);
+                vertex_buf_.set_data(vertices.data(), data_size, logi_device_);
             }
         }
 
         ~EngineGlfw() {
+            vertex_buf_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
             this->destroy_swapchain_and_relatives();
             logi_device_.destroy();
@@ -342,7 +350,11 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
+                VkBuffer vertexBuffers[] = { vertex_buf_.buffer() };
+                VkDeviceSize offsets[] = { 0 };
+                vkCmdBindVertexBuffers(cur_cmd_buf, 0, 1, vertexBuffers, offsets);
+                vkCmdDraw(cur_cmd_buf, vertex_buf_.size() / sizeof(mirinae::VertexStatic), 1, 0, 0);
+
                 vkCmdEndRenderPass(cur_cmd_buf);
 
                 if (vkEndCommandBuffer(cur_cmd_buf) != VK_SUCCESS) {
@@ -474,6 +486,7 @@ namespace {
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
+        mirinae::Buffer vertex_buf_;
         bool fbuf_resized_ = false;
 
     };
