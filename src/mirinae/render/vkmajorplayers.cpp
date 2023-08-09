@@ -503,6 +503,14 @@ namespace mirinae {
         }
 
         vkWaitForFences(logi_device.get(), 1, &handle_, VK_TRUE, UINT64_MAX);
+    }
+
+    void Fence::reset(LogiDevice& logi_device) {
+        if (nullptr == handle_) {
+            spdlog::warn("Tried to reset a fence that is not created");
+            return;
+        }
+
         vkResetFences(logi_device.get(), 1, &handle_);
     }
 
