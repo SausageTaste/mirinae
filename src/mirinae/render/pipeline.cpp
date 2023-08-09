@@ -130,13 +130,15 @@ namespace mirinae {
             dynamicState.pDynamicStates = dynamicStates.data();
         }
 
+        auto binding_description = VertexStatic::make_binding_description();
+        auto attribute_descriptions = VertexStatic::make_attribute_descriptions();
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         {
             vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
             vertexInputInfo.vertexBindingDescriptionCount = 0;
-            vertexInputInfo.pVertexBindingDescriptions = nullptr;
-            vertexInputInfo.vertexAttributeDescriptionCount = 0;
-            vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+            vertexInputInfo.pVertexBindingDescriptions = &binding_description;
+            vertexInputInfo.vertexAttributeDescriptionCount = attribute_descriptions.size();
+            vertexInputInfo.pVertexAttributeDescriptions = attribute_descriptions.data();
         }
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
