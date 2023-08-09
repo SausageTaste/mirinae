@@ -275,6 +275,14 @@ namespace {
             cmd_pool_.init(phys_device_.graphics_family_index().value(), logi_device_);
             for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i)
                 cmd_buf_.push_back(cmd_pool_.alloc(logi_device_));
+
+            // Vertices
+            {
+                std::vector<mirinae::VertexStatic> vertices;
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0,  -0.5, 0}, glm::vec3{1, 0, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0.5, 0.5, 0}, glm::vec3{0, 1, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{-0.5, 0.5, 0}, glm::vec3{0, 0, 1} });
+            }
         }
 
         ~EngineGlfw() {

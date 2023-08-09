@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <vector>
 #include <string>
 #include <optional>
 
 #include <vulkan/vulkan.h>
+#include <glm/glm.hpp>
 
 #include <mirinae/util/lightweights.hpp>
 
@@ -253,6 +255,54 @@ namespace mirinae {
 
     private:
         VkCommandPool handle_ = nullptr;
+
+    };
+
+
+    class VertexStatic {
+
+    public:
+        VertexStatic() = default;
+
+        VertexStatic(const glm::vec3& pos, const glm::vec3& normal)
+            : pos_(pos)
+            , normal_(normal)
+        {
+
+        }
+
+        static VkVertexInputBindingDescription make_binding_description() {
+            VkVertexInputBindingDescription bindingDescription{};
+            bindingDescription.binding = 0;
+            bindingDescription.stride = sizeof(VertexStatic);
+            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            return bindingDescription;
+        }
+
+        static std::vector<VkVertexInputAttributeDescription> make_attribute_descriptions() {
+            std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
+
+            {
+                auto& description = attributeDescriptions.emplace_back();
+                description.binding = 0;
+                description.location = 0;
+                description.format = VK_FORMAT_R32G32B32_SFLOAT;
+                description.offset = offsetof(VertexStatic, pos_);
+            }
+
+            {
+                auto& description = attributeDescriptions.emplace_back();
+                description.binding = 0;
+                description.location = 1;
+                description.format = VK_FORMAT_R32G32B32_SFLOAT;
+                description.offset = offsetof(VertexStatic, normal_);
+            }
+
+            return attributeDescriptions;
+        }
+
+        glm::vec3 pos_;
+        glm::vec3 normal_;
 
     };
 
