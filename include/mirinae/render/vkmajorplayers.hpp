@@ -139,6 +139,7 @@ namespace mirinae {
         VkFence get() { return handle_; }
 
         void wait(LogiDevice& logi_device);
+        void reset(LogiDevice& logi_device);
 
     private:
         VkFence handle_ = nullptr;

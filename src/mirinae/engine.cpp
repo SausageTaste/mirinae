@@ -41,6 +41,7 @@ namespace {
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
             this->window = glfwCreateWindow(800, 450, "Mirinapp", nullptr, nullptr);
 
+            glfwSetWindowUserPointer(this->window, userdata);
             glfwSetFramebufferSizeCallback(this->window, GlfwWindow::callback_fbuf_size);
             glfwSetKeyCallback(this->window, GlfwWindow::callback_key);
         }
@@ -76,6 +77,16 @@ namespace {
 
             glfwGetFramebufferSize(window, &output.first, &output.second);
             return output;
+        }
+
+        bool is_fbuf_too_small() const {
+            const auto [width, height] = this->get_fbuf_size();
+            if (width < 5)
+                return true;
+            if (height < 5)
+                return true;
+            else
+                return false;
         }
 
         void notify_should_close() {
@@ -274,14 +285,11 @@ namespace {
         }
 
         void do_frame() override {
-            framesync_.get_cur_in_flight_fence().wait(logi_device_);
-            const auto image_index_opt = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph(), logi_device_);
+            const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
-                this->destroy_swapchain_and_relatives();
-                this->create_swapchain_and_relatives();
+                glfwPollEvents();
                 return;
             }
-
             const auto image_index = image_index_opt.value();
 
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
@@ -379,6 +387,7 @@ namespace {
         }
 
         void notify_window_resize(unsigned width, unsigned height) {
+            fbuf_resized_ = true;
             spdlog::info("Window resized: {} x {}", width, height);
         }
 
@@ -413,6 +422,38 @@ namespace {
             swapchain_.destroy(logi_device_);
         }
 
+        std::optional<mirinae::ShainImageIndex> try_acquire_image() {
+            framesync_.get_cur_in_flight_fence().wait(logi_device_);
+
+            if (fbuf_resized_) {
+                if (this->window_.is_fbuf_too_small()) {
+                    fbuf_resized_ = true;
+                }
+                else {
+                    fbuf_resized_ = false;
+                    this->destroy_swapchain_and_relatives();
+                    this->create_swapchain_and_relatives();
+                }
+                return std::nullopt;
+            }
+
+            const auto image_index_opt = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph(), logi_device_);
+            if (!image_index_opt) {
+                if (this->window_.is_fbuf_too_small()) {
+                    fbuf_resized_ = true;
+                }
+                else {
+                    fbuf_resized_ = false;
+                    this->destroy_swapchain_and_relatives();
+                    this->create_swapchain_and_relatives();
+                }
+                return std::nullopt;
+            }
+
+            framesync_.get_cur_in_flight_fence().reset(logi_device_);
+            return image_index_opt.value();
+        }
+
         GlfwWindow window_;
         mirinae::VulkanInstance instance_;
         VkSurfaceKHR surface_ = nullptr;
@@ -425,6 +466,7 @@ namespace {
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
+        bool fbuf_resized_ = false;
 
     };
 
