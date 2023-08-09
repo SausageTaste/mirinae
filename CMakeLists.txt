@@ -59,7 +59,10 @@ target_link_libraries(mirinae
         glfw
         dalbaragi::daltools
 )
-target_compile_definitions(mirinae PRIVATE VK_USE_PLATFORM_WIN32_KHR)
+
+if (WIN32)
+    target_compile_definitions(mirinae PRIVATE VK_USE_PLATFORM_WIN32_KHR)
+endif (WIN32)
 
 
 add_executable(mirinapp
