@@ -250,6 +250,7 @@ namespace {
             device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
             if (phys_device_.count_unsupported_extensions(device_extensions))
                 throw std::runtime_error{ "Some extensions are not supported" };
+
             logi_device_.init(phys_device_, device_extensions);
 
             mirinae::SwapChainSupportDetails swapchain_details;
@@ -258,17 +259,7 @@ namespace {
                 throw std::runtime_error{ "The swapchain is not complete" };
             }
 
-            const auto [fbuf_width, fbuf_height] = window_.get_fbuf_size();
-            swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
-
-            framesync_.init(logi_device_);
-            renderpass_.init(swapchain_.format(), logi_device_);
-            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, logi_device_);
-
-            swapchain_fbufs_.resize(swapchain_.views_count());
-            for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
-                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), renderpass_, logi_device_);
-            }
+            this->create_swapchain_and_relatives();
 
             cmd_pool_.init(phys_device_.graphics_family_index().value(), logi_device_);
             for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i)
@@ -277,11 +268,7 @@ namespace {
 
         ~EngineGlfw() {
             cmd_pool_.destroy(logi_device_);
-            for (auto& x : swapchain_fbufs_) x.destroy(logi_device_); swapchain_fbufs_.clear();
-            pipeline_.destroy(logi_device_);
-            renderpass_.destroy(logi_device_);
-            framesync_.destroy(logi_device_);
-            swapchain_.destroy(logi_device_);
+            this->destroy_swapchain_and_relatives();
             logi_device_.destroy();
             vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
         }
@@ -290,9 +277,11 @@ namespace {
             framesync_.get_cur_in_flight_fence().wait(logi_device_);
             const auto image_index_opt = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph(), logi_device_);
             if (!image_index_opt) {
-                spdlog::critical("Swapchain image invalidated");
-                throw std::runtime_error{ "Swapchain image invalidated" };
+                this->destroy_swapchain_and_relatives();
+                this->create_swapchain_and_relatives();
+                return;
             }
+
             const auto image_index = image_index_opt.value();
 
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
@@ -398,6 +387,32 @@ namespace {
         }
 
     private:
+        void create_swapchain_and_relatives() {
+            this->logi_device_.wait_idle();
+
+            const auto [fbuf_width, fbuf_height] = window_.get_fbuf_size();
+            swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
+
+            framesync_.init(logi_device_);
+            renderpass_.init(swapchain_.format(), logi_device_);
+            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, logi_device_);
+
+            swapchain_fbufs_.resize(swapchain_.views_count());
+            for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
+                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), renderpass_, logi_device_);
+            }
+        }
+
+        void destroy_swapchain_and_relatives() {
+            this->logi_device_.wait_idle();
+
+            for (auto& x : swapchain_fbufs_) x.destroy(logi_device_); swapchain_fbufs_.clear();
+            pipeline_.destroy(logi_device_);
+            renderpass_.destroy(logi_device_);
+            framesync_.destroy(logi_device_);
+            swapchain_.destroy(logi_device_);
+        }
+
         GlfwWindow window_;
         mirinae::VulkanInstance instance_;
         VkSurfaceKHR surface_ = nullptr;
