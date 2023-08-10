@@ -287,8 +287,33 @@ namespace {
                 vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0.5, 1.5, 0}, glm::vec3{0, 1, 0} });
                 const auto data_size = sizeof(mirinae::VertexStatic) * vertices.size();
 
-                vertex_buf_.init(data_size, phys_device_, logi_device_);
-                vertex_buf_.set_data(vertices.data(), data_size, logi_device_);
+                mirinae::Buffer staging_buffer;
+                staging_buffer.init(
+                    data_size,
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    phys_device_,
+                    logi_device_
+                );
+                staging_buffer.set_data(vertices.data(), data_size, logi_device_);
+
+                vertex_buf_.init(data_size,
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    phys_device_,
+                    logi_device_
+                );
+
+                auto cmdbuf = cmd_pool_.alloc(logi_device_);
+                vertex_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device_);
+                VkSubmitInfo submitInfo{};
+                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                submitInfo.commandBufferCount = 1;
+                submitInfo.pCommandBuffers = &cmdbuf;
+                vkQueueSubmit(logi_device_.graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
+                vkQueueWaitIdle(logi_device_.graphics_queue());
+                cmd_pool_.free(cmdbuf, logi_device_);
+                staging_buffer.destroy(logi_device_);
             }
         }
 

@@ -831,6 +831,10 @@ namespace mirinae {
         return commandBuffer;
     }
 
+    void CommandPool::free(VkCommandBuffer cmdbuf, LogiDevice& logi_device) {
+        vkFreeCommandBuffers(logi_device.get(), handle_, 1, &cmdbuf);
+    }
+
 }
 
 
@@ -855,13 +859,13 @@ namespace {
 // Buffer
 namespace mirinae {
 
-    void Buffer::init(VkDeviceSize size, mirinae::PhysDevice& phys_device, LogiDevice& logi_device) {
+    void Buffer::init(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, mirinae::PhysDevice& phys_device, LogiDevice& logi_device) {
         this->destroy(logi_device);
 
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.size = size;
-        bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferInfo.usage = usage;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         if (vkCreateBuffer(logi_device.get(), &bufferInfo, nullptr, &buffer_) != VK_SUCCESS) {
@@ -876,7 +880,7 @@ namespace mirinae {
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = find_memory_type(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, phys_device);
+        allocInfo.memoryTypeIndex = ::find_memory_type(memRequirements.memoryTypeBits, properties, phys_device);
 
         if (vkAllocateMemory(logi_device.get(), &allocInfo, nullptr, &memory_) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate vertex buffer memory!");
@@ -904,6 +908,21 @@ namespace mirinae {
         vkMapMemory(logi_device.get(), memory_, 0, size_, 0, &ptr);
         memcpy(ptr, data, std::min<size_t>(size, size_));
         vkUnmapMemory(logi_device.get(), memory_);
+    }
+
+    void Buffer::record_copy_cmd(const Buffer& src, VkCommandBuffer cmdbuf, LogiDevice& logi_device) {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmdbuf, &beginInfo);
+
+        VkBufferCopy copyRegion{};
+        copyRegion.srcOffset = 0;
+        copyRegion.dstOffset = 0;
+        copyRegion.size = std::min<VkDeviceSize>(this->size(), src.size());
+        vkCmdCopyBuffer(cmdbuf, src.buffer_, this->buffer_, 1, &copyRegion);
+
+        vkEndCommandBuffer(cmdbuf);
     }
 
 }

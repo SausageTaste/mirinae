@@ -252,6 +252,7 @@ namespace mirinae {
         void destroy(LogiDevice& logi_device);
 
         VkCommandBuffer alloc(LogiDevice& logi_device);
+        void free(VkCommandBuffer cmdbuf, LogiDevice& logi_device);
 
     private:
         VkCommandPool handle_ = nullptr;
@@ -310,14 +311,16 @@ namespace mirinae {
     class Buffer {
 
     public:
-        void init(VkDeviceSize size, mirinae::PhysDevice& phys_device, LogiDevice& logi_device);
+        void init(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, mirinae::PhysDevice& phys_device, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
         VkBuffer buffer() { return buffer_; }
         VkDeviceSize size() const { return size_; }
 
         void set_data(void* data, size_t size, LogiDevice& logi_device);
+        void record_copy_cmd(const Buffer& src, VkCommandBuffer cmdbuf, LogiDevice& logi_device);
 
+    private:
         VkBuffer buffer_ = nullptr;
         VkDeviceMemory memory_ = nullptr;
         VkDeviceSize size_ = 0;
