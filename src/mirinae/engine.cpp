@@ -278,13 +278,12 @@ namespace {
 
             // Vertices
             {
+                constexpr float v = 0.5;
                 std::vector<mirinae::VertexStatic> vertices;
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0,  -0.5, 0}, glm::vec3{1, 0, 0} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{-0.5, 0.5, 0}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0.5, 0.5, 0}, glm::vec3{0, 1, 0} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0,  -1.5, 0}, glm::vec3{1, 0, 0} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{-0.5, 1.5, 0}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ 0.5, 1.5, 0}, glm::vec3{0, 1, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0}, glm::vec3{1, 1, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0}, glm::vec3{1, 1, 1} });
                 const auto data_size = sizeof(mirinae::VertexStatic) * vertices.size();
 
                 mirinae::Buffer staging_buffer;
@@ -315,11 +314,48 @@ namespace {
                 cmd_pool_.free(cmdbuf, logi_device_);
                 staging_buffer.destroy(logi_device_);
             }
+
+            // Indices
+            {
+                std::vector<uint16_t> indices{
+                    0, 1, 2, 0, 2, 3
+                };
+                const auto data_size = sizeof(uint16_t) * indices.size(); 
+                
+                mirinae::Buffer staging_buffer;
+                staging_buffer.init(
+                    data_size,
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    phys_device_,
+                    logi_device_
+                );
+                staging_buffer.set_data(indices.data(), data_size, logi_device_);
+
+                index_buf_.init(data_size,
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    phys_device_,
+                    logi_device_
+                );
+
+                auto cmdbuf = cmd_pool_.alloc(logi_device_);
+                index_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device_);
+                VkSubmitInfo submitInfo{};
+                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                submitInfo.commandBufferCount = 1;
+                submitInfo.pCommandBuffers = &cmdbuf;
+                vkQueueSubmit(logi_device_.graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
+                vkQueueWaitIdle(logi_device_.graphics_queue());
+                cmd_pool_.free(cmdbuf, logi_device_);
+                staging_buffer.destroy(logi_device_);
+            }
         }
 
         ~EngineGlfw() {
             this->logi_device_.wait_idle();
 
+            index_buf_.destroy(logi_device_);
             vertex_buf_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
             this->destroy_swapchain_and_relatives();
@@ -380,7 +416,8 @@ namespace {
                 VkBuffer vertexBuffers[] = { vertex_buf_.buffer() };
                 VkDeviceSize offsets[] = { 0 };
                 vkCmdBindVertexBuffers(cur_cmd_buf, 0, 1, vertexBuffers, offsets);
-                vkCmdDraw(cur_cmd_buf, vertex_buf_.size() / sizeof(mirinae::VertexStatic), 1, 0, 0);
+                vkCmdBindIndexBuffer(cur_cmd_buf, index_buf_.buffer(), 0, VK_INDEX_TYPE_UINT16);
+                vkCmdDrawIndexed(cur_cmd_buf, index_buf_.size() / sizeof(uint16_t), 1, 0, 0, 0);
 
                 vkCmdEndRenderPass(cur_cmd_buf);
 
@@ -514,6 +551,7 @@ namespace {
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::Buffer vertex_buf_;
+        mirinae::Buffer index_buf_;
         bool fbuf_resized_ = false;
 
     };
