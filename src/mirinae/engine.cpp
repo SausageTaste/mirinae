@@ -318,6 +318,8 @@ namespace {
         }
 
         ~EngineGlfw() {
+            this->logi_device_.wait_idle();
+
             vertex_buf_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
             this->destroy_swapchain_and_relatives();
