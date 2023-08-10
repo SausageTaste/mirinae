@@ -643,13 +643,13 @@ namespace mirinae {
     }
 
     void VulkanInstance::destroy() {
-        if (nullptr != instance_) {
-            vkDestroyInstance(instance_, nullptr);
-            instance_ = nullptr;
-        }
         if (nullptr != debug_messenger_) {
             ::destroy_debug_msger(instance_, debug_messenger_, nullptr);
             debug_messenger_ = nullptr;
+        }
+        if (nullptr != instance_) {
+            vkDestroyInstance(instance_, nullptr);
+            instance_ = nullptr;
         }
     }
 
