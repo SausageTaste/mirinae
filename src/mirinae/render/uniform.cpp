@@ -1,6 +1,7 @@
 #include "mirinae/render/uniform.hpp"
 
 #include <stdexcept>
+#include <vector>
 
 
 // DescriptorSetLayout
@@ -9,17 +10,20 @@ namespace mirinae {
     void DescriptorSetLayout::init(LogiDevice& logi_device) {
         this->destroy(logi_device);
 
-        VkDescriptorSetLayoutBinding binding{};
-        binding.binding = 0;
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        binding.descriptorCount = 1;
-        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        binding.pImmutableSamplers = nullptr;
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        {
+            auto& binding = bindings.emplace_back();
+            binding.binding = 0;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            binding.descriptorCount = 1;
+            binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            binding.pImmutableSamplers = nullptr;
+        }
 
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = 1;
-        layoutInfo.pBindings = &binding;
+        layoutInfo.bindingCount = bindings.size();
+        layoutInfo.pBindings = bindings.data();
 
         if (vkCreateDescriptorSetLayout(logi_device.get(), &layoutInfo, nullptr, &handle_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
@@ -40,18 +44,21 @@ namespace mirinae {
 namespace mirinae {
 
     //basic implementation for DescriptorPool methods
-    void DescriptorPool::init(uint32_t pool_size, LogiDevice& logi_device) {
+    void DescriptorPool::init(uint32_t alloc_size, LogiDevice& logi_device) {
         this->destroy(logi_device);
 
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = pool_size;
+        std::vector<VkDescriptorPoolSize> poolSizes;
+        {
+            auto& poolSize = poolSizes.emplace_back();
+            poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            poolSize.descriptorCount = alloc_size;
+        }
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSize;
-        poolInfo.maxSets = pool_size;
+        poolInfo.poolSizeCount = poolSizes.size();
+        poolInfo.pPoolSizes = poolSizes.data();
+        poolInfo.maxSets = alloc_size;
 
         if (vkCreateDescriptorPool(logi_device.get(), &poolInfo, nullptr, &handle_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
