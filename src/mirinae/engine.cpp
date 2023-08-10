@@ -320,8 +320,8 @@ namespace {
                 std::vector<uint16_t> indices{
                     0, 1, 2, 0, 2, 3
                 };
-                const auto data_size = sizeof(uint16_t) * indices.size(); 
-                
+                const auto data_size = sizeof(uint16_t) * indices.size();
+
                 mirinae::Buffer staging_buffer;
                 staging_buffer.init(
                     data_size,
@@ -350,11 +350,26 @@ namespace {
                 cmd_pool_.free(cmdbuf, logi_device_);
                 staging_buffer.destroy(logi_device_);
             }
+
+            // Uniform
+            {
+                for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i) {
+                    auto& ubuf = uniform_buf_.emplace_back();
+                    ubuf.init(
+                        sizeof(mirinae::U_Unorthodox),
+                        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        phys_device_,
+                        logi_device_
+                    );
+                }
+            }
         }
 
         ~EngineGlfw() {
             this->logi_device_.wait_idle();
 
+            for (auto& ubuf : uniform_buf_) ubuf.destroy(logi_device_); uniform_buf_.clear();
             index_buf_.destroy(logi_device_);
             vertex_buf_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
@@ -370,6 +385,21 @@ namespace {
                 return;
             }
             const auto image_index = image_index_opt.value();
+
+            // Update uniform
+            {
+                static const auto startTime = std::chrono::high_resolution_clock::now();
+                const auto currentTime = std::chrono::high_resolution_clock::now();
+                const auto time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+                auto& ubuf = uniform_buf_.at(framesync_.get_frame_index().get());
+                mirinae::U_Unorthodox ubuf_data;
+                ubuf_data.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+                ubuf_data.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+                ubuf_data.proj = glm::perspective(glm::radians(45.0f), swapchain_.extent().width / (float) swapchain_.extent().height, 0.1f, 10.0f);
+                ubuf_data.proj[1][1] *= -1;
+                ubuf.set_data(&ubuf_data, sizeof(mirinae::U_Unorthodox), logi_device_);
+            }
 
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
             {
@@ -488,7 +518,8 @@ namespace {
 
             framesync_.init(logi_device_);
             renderpass_.init(swapchain_.format(), logi_device_);
-            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, logi_device_);
+            desclayout_.init(logi_device_);
+            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, logi_device_);
 
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
@@ -501,6 +532,7 @@ namespace {
 
             for (auto& x : swapchain_fbufs_) x.destroy(logi_device_); swapchain_fbufs_.clear();
             pipeline_.destroy(logi_device_);
+            desclayout_.destroy(logi_device_);
             renderpass_.destroy(logi_device_);
             framesync_.destroy(logi_device_);
             swapchain_.destroy(logi_device_);
@@ -545,6 +577,7 @@ namespace {
         mirinae::LogiDevice logi_device_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
+        mirinae::DescriptorSetLayout desclayout_;
         mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
@@ -552,6 +585,7 @@ namespace {
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::Buffer vertex_buf_;
         mirinae::Buffer index_buf_;
+        std::vector<mirinae::Buffer> uniform_buf_;
         bool fbuf_resized_ = false;
 
     };
