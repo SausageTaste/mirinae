@@ -6,7 +6,15 @@ layout(location = 1) in vec3 i_normal;
 layout(location = 0) out vec3 v_frag_color;
 
 
+layout(binding = 0) uniform U_Unorthodox {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+} u_unorthodox;
+
+
 void main() {
-    gl_Position = vec4(i_pos, 1);
+    mat4 mvp = u_unorthodox.proj * u_unorthodox.view * u_unorthodox.model;
+    gl_Position = mvp * vec4(i_pos, 1);
     v_frag_color = i_normal;
 }

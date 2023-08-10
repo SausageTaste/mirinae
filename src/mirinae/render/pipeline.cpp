@@ -8,7 +8,7 @@
 
 
 namespace {
-    
+
     class ShaderModule {
 
     public:
@@ -20,7 +20,7 @@ namespace {
             }
         }
 
-        ShaderModule(const std::filesystem::path& spv_path, VkDevice logi_device) 
+        ShaderModule(const std::filesystem::path& spv_path, VkDevice logi_device)
             : ShaderModule(spv_path.u8string().c_str(), logi_device)
         {
 
@@ -97,7 +97,12 @@ namespace {
 
 namespace mirinae {
 
-    Pipeline create_unorthodox_pipeline(const VkExtent2D& swapchain_extent, RenderPass& renderpass, LogiDevice& logi_device) {
+    Pipeline create_unorthodox_pipeline(
+        const VkExtent2D& swapchain_extent,
+        RenderPass& renderpass,
+        DescriptorSetLayout& desclayout,
+        LogiDevice& logi_device
+    ) {
         const auto root_dir = find_resources_folder();
         ::ShaderModule vert_shader{ *root_dir / "shaders" / "unorthodox_vert.spv", logi_device.get() };
         ::ShaderModule frag_shader{ *root_dir / "shaders" / "unorthodox_frag.spv", logi_device.get() };
@@ -206,13 +211,17 @@ namespace mirinae {
             colorBlending.blendConstants[3] = 0;
         }
 
+        std::vector<VkDescriptorSetLayout> desclayouts{
+            desclayout.get(),
+        };
+
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         {
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = 0;
-            pipelineLayoutInfo.pSetLayouts = nullptr; 
-            pipelineLayoutInfo.pushConstantRangeCount = 0; 
-            pipelineLayoutInfo.pPushConstantRanges = nullptr; 
+            pipelineLayoutInfo.setLayoutCount = desclayouts.size();
+            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
+            pipelineLayoutInfo.pushConstantRangeCount = 0;
+            pipelineLayoutInfo.pPushConstantRanges = nullptr;
         }
 
         VkPipelineLayout pipelineLayout;
@@ -235,8 +244,8 @@ namespace mirinae {
         pipelineInfo.layout = pipelineLayout;
         pipelineInfo.renderPass = renderpass.get();
         pipelineInfo.subpass = 0;
-        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; 
-        pipelineInfo.basePipelineIndex = -1; 
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineInfo.basePipelineIndex = -1;
 
         VkPipeline graphicsPipeline;
         if (vkCreateGraphicsPipelines(logi_device.get(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {

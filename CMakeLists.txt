@@ -46,6 +46,7 @@ find_package(Vulkan REQUIRED)
 
 add_library(mirinae
     ./src/mirinae/render/pipeline.cpp
+    ./src/mirinae/render/uniform.cpp
     ./src/mirinae/render/vkmajorplayers.cpp
     ./src/mirinae/util/filesys.cpp
     ./src/mirinae/engine.cpp
