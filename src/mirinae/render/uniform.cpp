@@ -34,3 +34,53 @@ namespace mirinae {
     }
 
 }
+
+
+// DescriptorPool
+namespace mirinae {
+
+    //basic implementation for DescriptorPool methods
+    void DescriptorPool::init(uint32_t pool_size, LogiDevice& logi_device) {
+        this->destroy(logi_device);
+
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = pool_size;
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = pool_size;
+
+        if (vkCreateDescriptorPool(logi_device.get(), &poolInfo, nullptr, &handle_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor pool!");
+        }
+    }
+
+    // For rest of methods too
+    void DescriptorPool::destroy(LogiDevice& logi_device) {
+        if (handle_ != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(logi_device.get(), handle_, nullptr);
+            handle_ = VK_NULL_HANDLE;
+        }
+    }
+
+    std::vector<VkDescriptorSet> DescriptorPool::alloc(uint32_t count, DescriptorSetLayout& desclayout, LogiDevice& logi_device) {
+        std::vector<VkDescriptorSetLayout> layouts(count, desclayout.get());
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = handle_;
+        allocInfo.descriptorSetCount = layouts.size();
+        allocInfo.pSetLayouts = layouts.data();
+
+        std::vector<VkDescriptorSet> output(count);
+        if (vkAllocateDescriptorSets(logi_device.get(), &allocInfo, output.data()) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate descriptor set!");
+        }
+
+        return output;
+    }
+
+}

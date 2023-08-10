@@ -1,6 +1,7 @@
 #pragma once
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -26,6 +27,20 @@ namespace mirinae {
 
     private:
         VkDescriptorSetLayout handle_ = VK_NULL_HANDLE;
+
+    };
+
+
+    class DescriptorPool {
+
+    public:
+        void init(uint32_t pool_size, LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+         std::vector<VkDescriptorSet> alloc(uint32_t count, DescriptorSetLayout& desclayout, LogiDevice& logi_device);
+
+    private:
+        VkDescriptorPool handle_ = VK_NULL_HANDLE;
 
     };
 
