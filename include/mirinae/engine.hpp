@@ -10,6 +10,8 @@ namespace mirinae {
     class IEngine {
 
     public:
+        virtual ~IEngine() = default;
+
         virtual void do_frame() = 0;
         virtual bool is_ongoing() = 0;
 
