@@ -276,6 +276,9 @@ namespace {
             for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i)
                 cmd_buf_.push_back(cmd_pool_.alloc(logi_device_));
 
+            desc_pool_.init(framesync_.MAX_FRAMES_IN_FLIGHT, logi_device_);
+            desc_sets_ = desc_pool_.alloc(framesync_.MAX_FRAMES_IN_FLIGHT, desclayout_, logi_device_);
+
             // Vertices
             {
                 constexpr float v = 0.5;
@@ -364,6 +367,26 @@ namespace {
                     );
                 }
             }
+
+            for (size_t i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; i++) {
+                VkDescriptorBufferInfo bufferInfo{};
+                bufferInfo.buffer = uniform_buf_.at(i).buffer();
+                bufferInfo.offset = 0;
+                bufferInfo.range = uniform_buf_.at(i).size();
+
+                VkWriteDescriptorSet descriptorWrite{};
+                descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrite.dstSet = desc_sets_.at(i);
+                descriptorWrite.dstBinding = 0;
+                descriptorWrite.dstArrayElement = 0;
+                descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptorWrite.descriptorCount = 1;
+                descriptorWrite.pBufferInfo = &bufferInfo;
+                descriptorWrite.pImageInfo = nullptr;
+                descriptorWrite.pTexelBufferView = nullptr;
+
+                vkUpdateDescriptorSets(logi_device_.get(), 1, &descriptorWrite, 0, nullptr);
+            }
         }
 
         ~EngineGlfw() {
@@ -372,6 +395,7 @@ namespace {
             for (auto& ubuf : uniform_buf_) ubuf.destroy(logi_device_); uniform_buf_.clear();
             index_buf_.destroy(logi_device_);
             vertex_buf_.destroy(logi_device_);
+            desc_pool_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
             this->destroy_swapchain_and_relatives();
             logi_device_.destroy();
@@ -442,6 +466,17 @@ namespace {
                 scissor.offset = { 0, 0 };
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                vkCmdBindDescriptorSets(
+                    cur_cmd_buf,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    pipeline_.layout(),
+                    0,
+                    1,
+                    &desc_sets_.at(framesync_.get_frame_index().get()),
+                    0,
+                    nullptr
+                );
 
                 VkBuffer vertexBuffers[] = { vertex_buf_.buffer() };
                 VkDeviceSize offsets[] = { 0 };
@@ -583,6 +618,8 @@ namespace {
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
+        mirinae::DescriptorPool desc_pool_;
+        std::vector<VkDescriptorSet> desc_sets_;
         mirinae::Buffer vertex_buf_;
         mirinae::Buffer index_buf_;
         std::vector<mirinae::Buffer> uniform_buf_;
