@@ -24,13 +24,23 @@ namespace mirinae {
         return std::nullopt;
     }
 
-    Image2D load_image(const char* const path) {
-        Image2D image;
+    std::unique_ptr<IImage2D> load_image(const char* const path) {
         int width, height, channels;
-        const auto data = stbi_load(path, &width, &height, &channels, 0);
-        image.init(data, width, height, channels, 1);
-        stbi_image_free(data);
-        return image;
+
+        if (stbi_is_hdr(path)) {
+            const auto data = stbi_loadf(path, &width, &height, &channels, 0);
+            auto image = std::make_unique<TImage2D<float>>();
+            image->init(data, width, height, channels);
+            stbi_image_free(data);
+            return image;
+        }
+        else {
+            const auto data = stbi_load(path, &width, &height, &channels, 0);
+            auto image = std::make_unique<TImage2D<uint8_t>>();
+            image->init(data, width, height, channels);
+            stbi_image_free(data);
+            return image;
+        }
     }
 
 }

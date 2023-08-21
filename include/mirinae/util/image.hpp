@@ -7,37 +7,50 @@
 
 namespace mirinae {
 
-    class Image2D {
+    class IImage2D {
 
     public:
-        Image2D() = default;
+        virtual ~IImage2D() = default;
 
-        Image2D(const uint8_t* data, unsigned width, unsigned height, unsigned channels, unsigned value_size) {
-            this->init(data, width, height, channels, value_size);
-        }
+        virtual void destroy() = 0;
+        virtual bool is_ready() const = 0;
+        virtual unsigned width() const = 0;
+        virtual unsigned height() const = 0;
+        virtual unsigned channels() const = 0;
 
-        void init(const uint8_t* data, unsigned width, unsigned height, unsigned channels, unsigned value_size) {
+    };
+
+
+    template <typename T>
+    class TImage2D : public IImage2D {
+
+    public:
+        bool init(const T* data, unsigned width, unsigned height, unsigned channels) {
             if (nullptr == data)
-                return;
+                return false;
 
-            const auto data_size = width * height * channels * value_size;
+            const auto data_size = width * height * channels;
             this->data_.assign(data, data + data_size);
 
             this->width_ = width;
             this->height_ = height;
             this->channels_ = channels;
-            this->value_size_ = value_size;
+            return true;
         }
 
-        void destroy() {
+        void destroy() override {
             data_.clear();
         }
 
-        bool is_ready() const {
-            return !data_.empty();
+        bool is_ready() const override {
+            if (data_.empty())
+                return false;
+            if (0 == width_ || 0 == height_ || 0 == channels_)
+                return false;
+            return true;
         }
 
-        const uint8_t* data() const {
+        const T* data() const {
             return data_.data();
         }
         unsigned width() const {
@@ -50,7 +63,7 @@ namespace mirinae {
             return channels_;
         }
 
-        const uint8_t* get_texel_at_clamp(int x, int y) const {
+        const T* get_texel_at_clamp(int x, int y) const {
             x = glm::clamp<int>(x, 0, width_ - 1);
             y = glm::clamp<int>(y, 0, height_ - 1);
             const auto index = (x + width_ * y) * channels_;
@@ -58,11 +71,10 @@ namespace mirinae {
         }
 
     private:
-        std::vector<uint8_t> data_;
+        std::vector<T> data_;
         unsigned width_ = 0;
         unsigned height_ = 0;
         unsigned channels_ = 0;
-        unsigned value_size_ = 0;
 
     };
 
