@@ -37,6 +37,6 @@ namespace mirinae {
         return load_file<T>(path.u8string().c_str());
     }
 
-    Image2D load_image(const char* const path);
+    std::unique_ptr<IImage2D> load_image(const char* const path);
 
 }
