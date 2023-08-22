@@ -399,8 +399,8 @@ namespace mirinae {
 namespace mirinae {
 
     void LogiDevice::init(PhysDevice& phys_device, const std::vector<std::string>& extensions) {
-        std::set<uint32_t> unique_queue_families{ 
-            phys_device.graphics_family_index().value(), 
+        std::set<uint32_t> unique_queue_families{
+            phys_device.graphics_family_index().value(),
             phys_device.present_family_index().value(),
         };
 
@@ -835,6 +835,39 @@ namespace mirinae {
         vkFreeCommandBuffers(logi_device.get(), handle_, 1, &cmdbuf);
     }
 
+    VkCommandBuffer CommandPool::begin_single_time(LogiDevice& logi_device) {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = handle_;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(logi_device.get(), &allocInfo, &commandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        return commandBuffer;
+    }
+
+    void CommandPool::end_single_time(VkCommandBuffer cmdbuf, LogiDevice& logi_device) {
+        vkEndCommandBuffer(cmdbuf);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cmdbuf;
+
+        vkQueueSubmit(logi_device.graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(logi_device.graphics_queue());
+
+        vkFreeCommandBuffers(logi_device.get(), handle_, 1, &cmdbuf);
+    }
+
 }
 
 
@@ -851,6 +884,53 @@ namespace {
         }
 
         throw std::runtime_error("failed to find suitable memory type!");
+    }
+
+    bool create_vk_image(
+        uint32_t width,
+        uint32_t height,
+        VkFormat format,
+        VkImageTiling tiling,
+        VkImageUsageFlags usage,
+        VkMemoryPropertyFlags properties,
+        VkImage& image,
+        VkDeviceMemory& imageMemory,
+        mirinae::PhysDevice& phys_device,
+        mirinae::LogiDevice& logi_device
+    ) {
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = format;
+        imageInfo.tiling = tiling;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = usage;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateImage(logi_device.get(), &imageInfo, nullptr, &image) != VK_SUCCESS) {
+            return false;
+        }
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(logi_device.get(), image, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = ::find_memory_type(memRequirements.memoryTypeBits, properties, phys_device);
+
+        if (vkAllocateMemory(logi_device.get(), &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+            return false;
+        }
+
+        vkBindImageMemory(logi_device.get(), image, imageMemory, 0);
+        return true;
     }
 
 }
@@ -903,7 +983,7 @@ namespace mirinae {
         }
     }
 
-    void Buffer::set_data(void* data, size_t size, LogiDevice& logi_device) {
+    void Buffer::set_data(const void* data, size_t size, LogiDevice& logi_device) {
         void* ptr;
         vkMapMemory(logi_device.get(), memory_, 0, size_, 0, &ptr);
         memcpy(ptr, data, std::min<size_t>(size, size_));
@@ -923,6 +1003,43 @@ namespace mirinae {
         vkCmdCopyBuffer(cmdbuf, src.buffer_, this->buffer_, 1, &copyRegion);
 
         vkEndCommandBuffer(cmdbuf);
+    }
+
+}
+
+
+// TextureImage
+namespace mirinae {
+
+    void TextureImage::init(
+        uint32_t width,
+        uint32_t height,
+        VkFormat format,
+        VkImageTiling tiling,
+        VkImageUsageFlags usage,
+        VkMemoryPropertyFlags properties,
+        mirinae::PhysDevice& phys_device,
+        mirinae::LogiDevice& logi_device
+    ) {
+        const auto result = ::create_vk_image(
+            width, height, format, tiling, usage, properties, image_, memory_, phys_device, logi_device
+        );
+
+        if (!result) {
+            throw std::runtime_error("failed to create image!");
+        }
+    }
+
+    void TextureImage::destroy(LogiDevice& logi_device) {
+        if (VK_NULL_HANDLE != image_) {
+            vkDestroyImage(logi_device.get(), image_, nullptr);
+            image_ = VK_NULL_HANDLE;
+        }
+
+        if (VK_NULL_HANDLE != memory_) {
+            vkFreeMemory(logi_device.get(), memory_, nullptr);
+            memory_ = VK_NULL_HANDLE;
+        }
     }
 
 }

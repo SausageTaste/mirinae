@@ -6,6 +6,7 @@
 
 #include <mirinae/render/pipeline.hpp>
 #include <mirinae/render/vkmajorplayers.hpp>
+#include <mirinae/util/filesys.hpp>
 
 
 namespace {
@@ -354,6 +355,34 @@ namespace {
                 staging_buffer.destroy(logi_device_);
             }
 
+            // Texture
+            {
+                const auto path = mirinae::find_resources_folder().value() / "textures" / "grass1.tga";
+                auto image = mirinae::load_image(path.u8string().c_str());
+
+                mirinae::Buffer staging_buffer;
+                staging_buffer.init(
+                    image->data_size(),
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    phys_device_,
+                    logi_device_
+                );
+                staging_buffer.set_data(image->data(), image->data_size(), logi_device_);
+
+                texture_.init(
+                    image->width(), image->height(),
+                    VK_FORMAT_R8G8B8A8_SRGB,
+                    VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    phys_device_,
+                    logi_device_
+                );
+
+                staging_buffer.destroy(logi_device_);
+            }
+
             // Uniform
             {
                 for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -393,6 +422,7 @@ namespace {
             this->logi_device_.wait_idle();
 
             for (auto& ubuf : uniform_buf_) ubuf.destroy(logi_device_); uniform_buf_.clear();
+            texture_.destroy(logi_device_);
             index_buf_.destroy(logi_device_);
             vertex_buf_.destroy(logi_device_);
             desc_pool_.destroy(logi_device_);
@@ -622,6 +652,7 @@ namespace {
         std::vector<VkDescriptorSet> desc_sets_;
         mirinae::Buffer vertex_buf_;
         mirinae::Buffer index_buf_;
+        mirinae::TextureImage texture_;
         std::vector<mirinae::Buffer> uniform_buf_;
         bool fbuf_resized_ = false;
 

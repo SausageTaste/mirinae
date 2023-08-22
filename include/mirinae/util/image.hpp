@@ -14,9 +14,13 @@ namespace mirinae {
 
         virtual void destroy() = 0;
         virtual bool is_ready() const = 0;
-        virtual unsigned width() const = 0;
-        virtual unsigned height() const = 0;
-        virtual unsigned channels() const = 0;
+
+        virtual const uint8_t* data() const = 0;
+        virtual uint32_t data_size() const = 0;
+
+        virtual uint32_t width() const = 0;
+        virtual uint32_t height() const = 0;
+        virtual uint32_t channels() const = 0;
 
     };
 
@@ -50,16 +54,21 @@ namespace mirinae {
             return true;
         }
 
-        const T* data() const {
-            return data_.data();
+        const uint8_t* data() const override {
+            return reinterpret_cast<const uint8_t*>(data_.data());
         }
-        unsigned width() const {
+
+        uint32_t data_size() const override {
+            return data_.size() * sizeof(T);
+        }
+
+        unsigned width() const override {
             return width_;
         }
-        unsigned height() const {
+        unsigned height() const override {
             return height_;
         }
-        unsigned channels() const {
+        unsigned channels() const override {
             return channels_;
         }
 
