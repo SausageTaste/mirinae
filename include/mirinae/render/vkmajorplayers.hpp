@@ -8,6 +8,7 @@
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 
+#include <mirinae/util/image.hpp>
 #include <mirinae/util/lightweights.hpp>
 
 
@@ -254,6 +255,9 @@ namespace mirinae {
         VkCommandBuffer alloc(LogiDevice& logi_device);
         void free(VkCommandBuffer cmdbuf, LogiDevice& logi_device);
 
+        VkCommandBuffer begin_single_time(LogiDevice& logi_device);
+        void end_single_time(VkCommandBuffer cmdbuf, LogiDevice& logi_device);
+
     private:
         VkCommandPool handle_ = nullptr;
 
@@ -317,13 +321,39 @@ namespace mirinae {
         VkBuffer buffer() { return buffer_; }
         VkDeviceSize size() const { return size_; }
 
-        void set_data(void* data, size_t size, LogiDevice& logi_device);
+        void set_data(const void* data, size_t size, LogiDevice& logi_device);
         void record_copy_cmd(const Buffer& src, VkCommandBuffer cmdbuf, LogiDevice& logi_device);
 
     private:
         VkBuffer buffer_ = nullptr;
         VkDeviceMemory memory_ = nullptr;
         VkDeviceSize size_ = 0;
+
+    };
+
+
+    class TextureImage {
+
+    public:
+        void init(
+            uint32_t width,
+            uint32_t height,
+            VkFormat format,
+            VkImageTiling tiling,
+            VkImageUsageFlags usage,
+            VkMemoryPropertyFlags properties,
+            mirinae::PhysDevice& phys_device,
+            mirinae::LogiDevice& logi_device
+        );
+
+        void destroy(LogiDevice& logi_device);
+
+        VkImage image() { return image_; }
+        VkDeviceMemory memory() { return memory_; }
+
+    private:
+        VkImage image_ = VK_NULL_HANDLE;
+        VkDeviceMemory memory_ = VK_NULL_HANDLE;
 
     };
 
