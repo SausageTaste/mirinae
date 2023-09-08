@@ -7,6 +7,7 @@
 #include <mirinae/render/pipeline.hpp>
 #include <mirinae/render/vkmajorplayers.hpp>
 #include <mirinae/util/filesys.hpp>
+#include <mirinae/util/mamath.hpp>
 
 
 namespace {
@@ -469,8 +470,8 @@ namespace {
 
                 auto& ubuf = uniform_buf_.at(framesync_.get_frame_index().get());
                 mirinae::U_Unorthodox ubuf_data;
-                ubuf_data.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-                ubuf_data.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+                ubuf_data.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+                ubuf_data.view = camera_.make_view_mat();
                 ubuf_data.proj = glm::perspective(glm::radians(45.0f), swapchain_.extent().width / (float) swapchain_.extent().height, 0.1f, 10.0f);
                 ubuf_data.proj[1][1] *= -1;
                 ubuf.set_data(&ubuf_data, sizeof(mirinae::U_Unorthodox), logi_device_);
@@ -592,7 +593,28 @@ namespace {
         }
 
         void notify_key_event(const mirinae::key::Event& e) {
-
+            switch (e.action_type) {
+                case mirinae::key::ActionType::up:
+                    switch (e.key) {
+                        case mirinae::key::KeyCode::w:
+                            camera_.pos_.z -= 1;
+                            break;
+                        case mirinae::key::KeyCode::s:
+                            camera_.pos_.z += 1;
+                            break;
+                        case mirinae::key::KeyCode::left:
+                            camera_.pos_.x -= 1;
+                            break;
+                        case mirinae::key::KeyCode::right:
+                            camera_.pos_.x += 1;
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
 
     private:
@@ -677,6 +699,7 @@ namespace {
         mirinae::ImageView texture_view_;
         mirinae::Sampler texture_sampler_;
         std::vector<mirinae::Buffer> uniform_buf_;
+        mirinae::TransformQuat camera_;
         bool fbuf_resized_ = false;
 
     };
