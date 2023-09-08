@@ -13,10 +13,18 @@ namespace mirinae {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         {
             auto& binding = bindings.emplace_back();
-            binding.binding = 0;
+            binding.binding = bindings.size() - 1;
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             binding.descriptorCount = 1;
             binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            binding.pImmutableSamplers = nullptr;
+        }
+        {
+            auto& binding = bindings.emplace_back();
+            binding.binding = bindings.size() - 1;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            binding.descriptorCount = 1;
+            binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
             binding.pImmutableSamplers = nullptr;
         }
 
@@ -51,6 +59,11 @@ namespace mirinae {
         {
             auto& poolSize = poolSizes.emplace_back();
             poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            poolSize.descriptorCount = alloc_size;
+        }
+        {
+            auto& poolSize = poolSizes.emplace_back();
+            poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             poolSize.descriptorCount = alloc_size;
         }
 

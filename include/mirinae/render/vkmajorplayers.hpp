@@ -375,6 +375,8 @@ namespace mirinae {
         void init(VkImage image, VkFormat format, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
+        VkImageView get() { return handle_; }
+
     private:
         VkImageView handle_ = VK_NULL_HANDLE;
 
