@@ -353,6 +353,8 @@ namespace mirinae {
         VkImage image() { return image_; }
         VkDeviceMemory memory() { return memory_; }
 
+        VkFormat format() const { return format_; }
+
     private:
         VkImage image_ = VK_NULL_HANDLE;
         VkDeviceMemory memory_ = VK_NULL_HANDLE;
@@ -360,6 +362,18 @@ namespace mirinae {
         VkFormat format_ = VK_FORMAT_UNDEFINED;
         uint32_t width_ = 0;
         uint32_t height_ = 0;
+
+    };
+
+
+    class ImageView {
+
+    public:
+        void init(VkImage image, VkFormat format, LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+    private:
+        VkImageView handle_ = VK_NULL_HANDLE;
 
     };
 
