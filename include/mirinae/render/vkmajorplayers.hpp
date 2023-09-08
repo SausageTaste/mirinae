@@ -272,9 +272,10 @@ namespace mirinae {
     public:
         VertexStatic() = default;
 
-        VertexStatic(const glm::vec3& pos, const glm::vec3& normal)
+        VertexStatic(const glm::vec3& pos, const glm::vec2& texcoord, const glm::vec3& normal)
             : pos_(pos)
             , normal_(normal)
+            , texcoord_(texcoord)
         {
 
         }
@@ -306,11 +307,20 @@ namespace mirinae {
                 description.offset = offsetof(VertexStatic, normal_);
             }
 
+            {
+                auto& description = attributeDescriptions.emplace_back();
+                description.binding = 0;
+                description.location = 2;
+                description.format = VK_FORMAT_R32G32B32_SFLOAT;
+                description.offset = offsetof(VertexStatic, texcoord_);
+            }
+
             return attributeDescriptions;
         }
 
         glm::vec3 pos_;
         glm::vec3 normal_;
+        glm::vec2 texcoord_;
 
     };
 

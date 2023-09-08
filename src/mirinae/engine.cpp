@@ -284,10 +284,10 @@ namespace {
             {
                 constexpr float v = 0.5;
                 std::vector<mirinae::VertexStatic> vertices;
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0}, glm::vec3{1, 1, 0} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0}, glm::vec3{1, 1, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0}, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0}, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0}, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0}, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
                 const auto data_size = sizeof(mirinae::VertexStatic) * vertices.size();
 
                 mirinae::Buffer staging_buffer;
@@ -357,7 +357,7 @@ namespace {
 
             // Texture
             {
-                const auto path = mirinae::find_resources_folder().value() / "textures" / "grass1.tga";
+                const auto path = mirinae::find_resources_folder().value() / "textures" / "lorem_ipsum.png";
                 auto image = mirinae::load_image(path.u8string().c_str());
 
                 mirinae::Buffer staging_buffer;
