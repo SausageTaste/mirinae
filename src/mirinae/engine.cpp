@@ -406,18 +406,34 @@ namespace {
                 bufferInfo.offset = 0;
                 bufferInfo.range = uniform_buf_.at(i).size();
 
-                VkWriteDescriptorSet descriptorWrite{};
-                descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                descriptorWrite.dstSet = desc_sets_.at(i);
-                descriptorWrite.dstBinding = 0;
-                descriptorWrite.dstArrayElement = 0;
-                descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                descriptorWrite.descriptorCount = 1;
-                descriptorWrite.pBufferInfo = &bufferInfo;
-                descriptorWrite.pImageInfo = nullptr;
-                descriptorWrite.pTexelBufferView = nullptr;
+                VkDescriptorImageInfo imageInfo{};
+                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imageInfo.imageView = texture_view_.get();
+                imageInfo.sampler = texture_sampler_.get();
 
-                vkUpdateDescriptorSets(logi_device_.get(), 1, &descriptorWrite, 0, nullptr);
+                std::vector<VkWriteDescriptorSet> write_info{};
+                {
+                    auto& descriptorWrite = write_info.emplace_back();
+                    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    descriptorWrite.dstSet = desc_sets_.at(i);
+                    descriptorWrite.dstBinding = write_info.size() - 1;
+                    descriptorWrite.dstArrayElement = 0;
+                    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                    descriptorWrite.descriptorCount = 1;
+                    descriptorWrite.pBufferInfo = &bufferInfo;
+                }
+                {
+                    auto& descriptorWrite = write_info.emplace_back();
+                    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    descriptorWrite.dstSet = desc_sets_.at(i);
+                    descriptorWrite.dstBinding = write_info.size() - 1;
+                    descriptorWrite.dstArrayElement = 0;
+                    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    descriptorWrite.descriptorCount = 1;
+                    descriptorWrite.pImageInfo = &imageInfo;
+                }
+
+                vkUpdateDescriptorSets(logi_device_.get(), write_info.size(), write_info.data(), 0, nullptr);
             }
         }
 
