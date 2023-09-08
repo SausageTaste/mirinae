@@ -379,7 +379,7 @@ namespace {
                     phys_device_,
                     logi_device_
                 );
-
+                texture_.copy_and_transition(staging_buffer, cmd_pool_, logi_device_);
                 staging_buffer.destroy(logi_device_);
             }
 

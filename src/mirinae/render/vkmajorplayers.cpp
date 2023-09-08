@@ -933,6 +933,101 @@ namespace {
         return true;
     }
 
+    void transition_image_layout(
+        const VkImage image,
+        const uint32_t mip_levels,
+        const VkFormat format,
+        const VkImageLayout old_layout,
+        const VkImageLayout new_layout,
+        mirinae::CommandPool& cmd_pool,
+        mirinae::LogiDevice& logi_device
+    ) {
+        auto cmd_buf = cmd_pool.begin_single_time(logi_device);
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = old_layout;
+        barrier.newLayout = new_layout;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.srcAccessMask = 0; // TODO
+        barrier.dstAccessMask = 0; // TODO
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = mip_levels;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        VkPipelineStageFlags src_stage;
+        VkPipelineStageFlags dst_stage;
+        if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+            src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        }
+        else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        }
+        else {
+            spdlog::error("unsupported layout transition!");
+        }
+
+        vkCmdPipelineBarrier(
+            cmd_buf,
+            src_stage,
+            dst_stage,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier
+        );
+
+        cmd_pool.end_single_time(cmd_buf, logi_device);
+    }
+
+    void copy_buffer_to_image(
+        const VkImage dst_image,
+        const VkBuffer src_buffer,
+        const uint32_t width,
+        const uint32_t height,
+        const uint32_t mip_level,
+        mirinae::CommandPool& cmd_pool,
+        mirinae::LogiDevice& logi_device
+    ) {
+        auto cmd_buf = cmd_pool.begin_single_time(logi_device);
+
+        VkBufferImageCopy region{};
+        region.bufferOffset = 0;
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = mip_level;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount = 1;
+
+        region.imageOffset = { 0, 0, 0 };
+        region.imageExtent = { width, height, 1 };
+
+        vkCmdCopyBufferToImage(
+            cmd_buf,
+            src_buffer,
+            dst_image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &region
+        );
+
+        cmd_pool.end_single_time(cmd_buf, logi_device);
+    }
+
 }
 
 
@@ -1028,6 +1123,10 @@ namespace mirinae {
         if (!result) {
             throw std::runtime_error("failed to create image!");
         }
+
+        format_ = format;
+        width_ = width;
+        height_ = height;
     }
 
     void TextureImage::destroy(LogiDevice& logi_device) {
@@ -1040,6 +1139,40 @@ namespace mirinae {
             vkFreeMemory(logi_device.get(), memory_, nullptr);
             memory_ = VK_NULL_HANDLE;
         }
+    }
+
+    void TextureImage::copy_and_transition(mirinae::Buffer& staging_buffer, mirinae::CommandPool& cmd_pool, mirinae::LogiDevice& logi_device) {
+        ::transition_image_layout(
+            image_,
+            1,
+            format_,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            cmd_pool,
+            logi_device
+        );
+
+        ::copy_buffer_to_image(
+            image_,
+            staging_buffer.buffer(),
+            width_,
+            height_,
+            0,
+            cmd_pool,
+            logi_device
+        );
+
+        staging_buffer.destroy(logi_device);
+
+        ::transition_image_layout(
+            image_,
+            1,
+            format_,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            cmd_pool,
+            logi_device
+        );
     }
 
 }
