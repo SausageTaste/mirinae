@@ -382,6 +382,10 @@ namespace mirinae {
         return this->properties_.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     }
 
+    bool PhysDevice::is_anisotropic_filtering_supported() const {
+        return this->features_.samplerAnisotropy;
+    }
+
     std::vector<VkExtensionProperties> PhysDevice::get_extensions() const {
         std::vector<VkExtensionProperties> output;
 
@@ -434,6 +438,11 @@ namespace mirinae {
         }
 
         VkPhysicalDeviceFeatures deviceFeatures{};
+        {
+            if (phys_device.is_anisotropic_filtering_supported())
+                deviceFeatures.samplerAnisotropy = VK_TRUE;
+        }
+
         const auto char_extension = ::make_char_vec(extensions);
 
         VkDeviceCreateInfo createInfo{};
@@ -1193,5 +1202,45 @@ namespace mirinae {
             handle_ = nullptr;
         }
     }
+
+}
+
+
+// Sampler
+namespace mirinae {
+
+    void Sampler::init(PhysDevice& phys_device, LogiDevice& logi_device) {
+        this->destroy(logi_device);
+
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.magFilter = VK_FILTER_LINEAR;
+        samplerInfo.minFilter = VK_FILTER_LINEAR;
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.anisotropyEnable = phys_device.is_anisotropic_filtering_supported() ? VK_TRUE : VK_FALSE;
+        samplerInfo.maxAnisotropy = phys_device.max_sampler_anisotropy();
+        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias = 0.0f;
+        samplerInfo.minLod = 0.0f;
+        samplerInfo.maxLod = 0.0f;
+
+        if (vkCreateSampler(logi_device.get(), &samplerInfo, nullptr, &handle_) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture sampler!");
+        }
+    }
+
+    void Sampler::destroy(LogiDevice& logi_device) {
+        if (nullptr != handle_) {
+            vkDestroySampler(logi_device.get(), handle_, nullptr);
+            handle_ = nullptr;
+        }
+    }
+
 
 }

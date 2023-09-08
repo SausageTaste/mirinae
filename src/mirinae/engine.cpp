@@ -383,6 +383,7 @@ namespace {
                 staging_buffer.destroy(logi_device_);
 
                 texture_view_.init(texture_.image(), texture_.format(), logi_device_);
+                texture_sampler_.init(phys_device_, logi_device_);
             }
 
             // Uniform
@@ -424,6 +425,7 @@ namespace {
             this->logi_device_.wait_idle();
 
             for (auto& ubuf : uniform_buf_) ubuf.destroy(logi_device_); uniform_buf_.clear();
+            texture_sampler_.destroy(logi_device_);
             texture_view_.destroy(logi_device_);
             texture_.destroy(logi_device_);
             index_buf_.destroy(logi_device_);
@@ -657,6 +659,7 @@ namespace {
         mirinae::Buffer index_buf_;
         mirinae::TextureImage texture_;
         mirinae::ImageView texture_view_;
+        mirinae::Sampler texture_sampler_;
         std::vector<mirinae::Buffer> uniform_buf_;
         bool fbuf_resized_ = false;
 
