@@ -78,7 +78,10 @@ namespace mirinae {
         const char* name() const;
         std::optional<uint32_t> graphics_family_index() const;
         std::optional<uint32_t> present_family_index() const;
+
         bool is_descrete_gpu() const;
+        bool is_anisotropic_filtering_supported() const;
+        auto max_sampler_anisotropy() const { return properties_.limits.maxSamplerAnisotropy; }
 
         std::vector<VkExtensionProperties> get_extensions() const;
         size_t count_unsupported_extensions(const std::vector<std::string>& extensions) const;
@@ -374,6 +377,20 @@ namespace mirinae {
 
     private:
         VkImageView handle_ = VK_NULL_HANDLE;
+
+    };
+
+
+    class Sampler {
+
+    public:
+        void init(PhysDevice& phys_device, LogiDevice& logi_device);
+        void destroy(LogiDevice& logi_device);
+
+        VkSampler get() { return handle_; }
+
+    private:
+        VkSampler handle_ = VK_NULL_HANDLE;
 
     };
 
