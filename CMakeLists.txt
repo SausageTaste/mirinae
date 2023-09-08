@@ -49,6 +49,7 @@ add_library(mirinae
     ./src/mirinae/render/uniform.cpp
     ./src/mirinae/render/vkmajorplayers.cpp
     ./src/mirinae/util/filesys.cpp
+    ./src/mirinae/util/mamath.cpp
     ./src/mirinae/engine.cpp
 )
 target_include_directories(mirinae PUBLIC ./include ${fetch_stb_SOURCE_DIR})
