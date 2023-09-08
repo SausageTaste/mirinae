@@ -102,6 +102,25 @@ namespace {
         return output;
     }
 
+
+    VkImageView create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice device) {
+        VkImageViewCreateInfo view_info{};
+        view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        view_info.image = image;
+        view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        view_info.format = format;
+        view_info.subresourceRange.aspectMask = aspect_flags;
+        view_info.subresourceRange.baseMipLevel = 0;
+        view_info.subresourceRange.levelCount = 1;
+        view_info.subresourceRange.baseArrayLayer = 0;
+        view_info.subresourceRange.layerCount = 1;
+
+        VkImageView image_view;
+        if (VK_SUCCESS != vkCreateImageView(device, &view_info, nullptr, &image_view))
+            throw std::runtime_error("Failed to create image view");
+        return image_view;
+    }
+
 }
 
 
@@ -582,26 +601,8 @@ namespace mirinae {
         );
 
         // Create views
-        views_.resize(images_.size());
         for (size_t i = 0; i < images_.size(); i++) {
-            VkImageViewCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            createInfo.image = images_.at(i);
-            createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            createInfo.format = format_;
-            createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            createInfo.subresourceRange.baseMipLevel = 0;
-            createInfo.subresourceRange.levelCount = 1;
-            createInfo.subresourceRange.baseArrayLayer = 0;
-            createInfo.subresourceRange.layerCount = 1;
-
-            if (VK_SUCCESS != vkCreateImageView(logi_device.get(), &createInfo, nullptr, &views_[i])) {
-                throw std::runtime_error("Failed to create image view");
-            }
+            views_.push_back(::create_image_view(images_.at(i), format_, VK_IMAGE_ASPECT_COLOR_BIT, logi_device.get()));
         }
     }
 
@@ -1173,6 +1174,24 @@ namespace mirinae {
             cmd_pool,
             logi_device
         );
+    }
+
+}
+
+
+// ImageView
+namespace mirinae {
+
+    void ImageView::init(VkImage image, VkFormat format, LogiDevice& logi_device) {
+        this->destroy(logi_device);
+        this->handle_ = ::create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT, logi_device.get());
+    }
+
+    void ImageView::destroy(LogiDevice& logi_device) {
+        if (nullptr != handle_) {
+            vkDestroyImageView(logi_device.get(), handle_, nullptr);
+            handle_ = nullptr;
+        }
     }
 
 }
