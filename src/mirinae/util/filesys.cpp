@@ -30,14 +30,14 @@ namespace mirinae {
         if (stbi_is_hdr(path)) {
             const auto data = stbi_loadf(path, &width, &height, &channels, STBI_rgb_alpha);
             auto image = std::make_unique<TImage2D<float>>();
-            image->init(data, width, height, channels);
+            image->init(data, width, height, 4);
             stbi_image_free(data);
             return image;
         }
         else {
             const auto data = stbi_load(path, &width, &height, &channels, STBI_rgb_alpha);
             auto image = std::make_unique<TImage2D<uint8_t>>();
-            image->init(data, width, height, channels);
+            image->init(data, width, height, 4);
             stbi_image_free(data);
             return image;
         }

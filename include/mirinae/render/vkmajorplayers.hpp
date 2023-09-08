@@ -348,12 +348,18 @@ namespace mirinae {
 
         void destroy(LogiDevice& logi_device);
 
+        void copy_and_transition(mirinae::Buffer& staging_buffer, mirinae::CommandPool& cmd_pool, mirinae::LogiDevice& logi_device);
+
         VkImage image() { return image_; }
         VkDeviceMemory memory() { return memory_; }
 
     private:
         VkImage image_ = VK_NULL_HANDLE;
         VkDeviceMemory memory_ = VK_NULL_HANDLE;
+
+        VkFormat format_ = VK_FORMAT_UNDEFINED;
+        uint32_t width_ = 0;
+        uint32_t height_ = 0;
 
     };
 
