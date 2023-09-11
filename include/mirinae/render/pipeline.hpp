@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mirinae/render/uniform.hpp"
+#include "uniform.hpp"
 
 
 namespace mirinae {

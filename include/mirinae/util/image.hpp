@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <glm/glm.hpp>
+#include "include_glm.hpp"
 
 
 namespace mirinae {

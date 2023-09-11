@@ -4,7 +4,7 @@
 #include <fstream>
 #include <optional>
 
-#include "mirinae/util/image.hpp"
+#include "image.hpp"
 
 
 namespace mirinae {

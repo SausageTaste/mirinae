@@ -9,7 +9,7 @@
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
 
-#include <mirinae/util/konsts.hpp>
+#include "mirinae/util/konsts.hpp"
 
 
 namespace {
