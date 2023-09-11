@@ -48,6 +48,7 @@ add_library(mirinae
     ./src/mirinae/actor/transform.cpp
     ./src/mirinae/render/pipeline.cpp
     ./src/mirinae/render/uniform.cpp
+    ./src/mirinae/render/vkcomposition.cpp
     ./src/mirinae/render/vkmajorplayers.cpp
     ./src/mirinae/util/filesys.cpp
     ./src/mirinae/util/mamath.cpp

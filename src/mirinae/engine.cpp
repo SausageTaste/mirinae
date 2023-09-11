@@ -8,7 +8,7 @@
 
 #include <mirinae/actor/transform.hpp>
 #include <mirinae/render/pipeline.hpp>
-#include <mirinae/render/vkmajorplayers.hpp>
+#include <mirinae/render/vkcomposition.hpp>
 #include <mirinae/util/filesys.hpp>
 #include <mirinae/util/mamath.hpp>
 
@@ -292,71 +292,12 @@ namespace {
                 vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0}, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
                 vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0}, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
                 vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0}, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
-                const auto data_size = sizeof(mirinae::VertexStatic) * vertices.size();
 
-                mirinae::Buffer staging_buffer;
-                staging_buffer.init(
-                    data_size,
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    phys_device_,
-                    logi_device_
-                );
-                staging_buffer.set_data(vertices.data(), data_size, logi_device_);
-
-                vertex_buf_.init(data_size,
-                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                    phys_device_,
-                    logi_device_
-                );
-
-                auto cmdbuf = cmd_pool_.alloc(logi_device_);
-                vertex_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device_);
-                VkSubmitInfo submitInfo{};
-                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-                submitInfo.commandBufferCount = 1;
-                submitInfo.pCommandBuffers = &cmdbuf;
-                vkQueueSubmit(logi_device_.graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
-                vkQueueWaitIdle(logi_device_.graphics_queue());
-                cmd_pool_.free(cmdbuf, logi_device_);
-                staging_buffer.destroy(logi_device_);
-            }
-
-            // Indices
-            {
                 std::vector<uint16_t> indices{
                     0, 1, 2, 0, 2, 3
                 };
-                const auto data_size = sizeof(uint16_t) * indices.size();
 
-                mirinae::Buffer staging_buffer;
-                staging_buffer.init(
-                    data_size,
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    phys_device_,
-                    logi_device_
-                );
-                staging_buffer.set_data(indices.data(), data_size, logi_device_);
-
-                index_buf_.init(data_size,
-                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                    phys_device_,
-                    logi_device_
-                );
-
-                auto cmdbuf = cmd_pool_.alloc(logi_device_);
-                index_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device_);
-                VkSubmitInfo submitInfo{};
-                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-                submitInfo.commandBufferCount = 1;
-                submitInfo.pCommandBuffers = &cmdbuf;
-                vkQueueSubmit(logi_device_.graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
-                vkQueueWaitIdle(logi_device_.graphics_queue());
-                cmd_pool_.free(cmdbuf, logi_device_);
-                staging_buffer.destroy(logi_device_);
+                vert_index_pair_.init(vertices, indices, cmd_pool_, phys_device_, logi_device_);
             }
 
             // Texture
@@ -448,8 +389,7 @@ namespace {
             texture_sampler_.destroy(logi_device_);
             texture_view_.destroy(logi_device_);
             texture_.destroy(logi_device_);
-            index_buf_.destroy(logi_device_);
-            vertex_buf_.destroy(logi_device_);
+            vert_index_pair_.destroy(logi_device_);
             desc_pool_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
             this->destroy_swapchain_and_relatives();
@@ -536,11 +476,8 @@ namespace {
                     nullptr
                 );
 
-                VkBuffer vertexBuffers[] = { vertex_buf_.buffer() };
-                VkDeviceSize offsets[] = { 0 };
-                vkCmdBindVertexBuffers(cur_cmd_buf, 0, 1, vertexBuffers, offsets);
-                vkCmdBindIndexBuffer(cur_cmd_buf, index_buf_.buffer(), 0, VK_INDEX_TYPE_UINT16);
-                vkCmdDrawIndexed(cur_cmd_buf, index_buf_.size() / sizeof(uint16_t), 1, 0, 0, 0);
+                vert_index_pair_.record_bind(cur_cmd_buf);
+                vkCmdDrawIndexed(cur_cmd_buf, vert_index_pair_.vertex_count(), 1, 0, 0, 0);
 
                 vkCmdEndRenderPass(cur_cmd_buf);
 
@@ -678,8 +615,7 @@ namespace {
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::DescriptorPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
-        mirinae::Buffer vertex_buf_;
-        mirinae::Buffer index_buf_;
+        mirinae::VertexIndexPair vert_index_pair_;
         mirinae::TextureImage texture_;
         mirinae::ImageView texture_view_;
         mirinae::Sampler texture_sampler_;
