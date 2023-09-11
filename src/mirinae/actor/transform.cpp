@@ -22,7 +22,6 @@ namespace mirinae::syst {
                 move_dir.x += 1;
 
             if (glm::length(move_dir) > 0) {
-                move_dir = glm::normalize(move_dir);
                 move_dir = glm::mat3_cast(transform.rot_) * move_dir;
                 transform.pos_ += move_dir * delta_time * 10.0f;
             }
@@ -30,30 +29,36 @@ namespace mirinae::syst {
 
         {
             float vertical = 0;
-            if (key_states_.is_pressed(key::KeyCode::q))
+            if (key_states_.is_pressed(key::KeyCode::lctrl))
                 vertical -= 1;
-            if (key_states_.is_pressed(key::KeyCode::e))
+            if (key_states_.is_pressed(key::KeyCode::space))
                 vertical += 1;
 
-            if (vertical != 0) {
+            if (vertical != 0)
                 transform.pos_.y += vertical * delta_time * 10.0f;
-            }
         }
 
         {
-            glm::vec3 rot_dir{ 0, 0, 0 };
-            if (key_states_.is_pressed(key::KeyCode::up))
-                rot_dir.x += 1;
-            if (key_states_.is_pressed(key::KeyCode::down))
-                rot_dir.x -= 1;
+            float rot = 0;
             if (key_states_.is_pressed(key::KeyCode::left))
-                rot_dir.y += 1;
+                rot += 1;
             if (key_states_.is_pressed(key::KeyCode::right))
-                rot_dir.y -= 1;
+                rot -= 1;
 
-            if (glm::length(rot_dir) > 0) {
-                rot_dir = glm::normalize(rot_dir);
-                transform.rot_ = glm::rotate(transform.rot_, delta_time * 3.0f, rot_dir);
+            if (0 != rot)
+                transform.rotate(rot * delta_time * 2.f, glm::vec3{ 0, 1, 0 });
+        }
+
+        {
+            float rot = 0;
+            if (key_states_.is_pressed(key::KeyCode::up))
+                rot += 1;
+            if (key_states_.is_pressed(key::KeyCode::down))
+                rot -= 1;
+
+            if (0 != rot) {
+                const auto right = glm::mat3_cast(transform.rot_) * glm::vec3{ 1, 0, 0 };
+                transform.rotate(rot * delta_time * 2.f, right);
             }
         }
     }
