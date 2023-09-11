@@ -4,6 +4,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <daltools/util.h>
+
+#include <mirinae/actor/transform.hpp>
 #include <mirinae/render/pipeline.hpp>
 #include <mirinae/render/vkmajorplayers.hpp>
 #include <mirinae/util/filesys.hpp>
@@ -455,6 +458,9 @@ namespace {
         }
 
         void do_frame() override {
+            const auto delta_time = fps_timer_.check_get_elapsed();
+            camera_controller_.apply(camera_, delta_time);
+
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
                 glfwPollEvents();
@@ -593,28 +599,7 @@ namespace {
         }
 
         void notify_key_event(const mirinae::key::Event& e) {
-            switch (e.action_type) {
-                case mirinae::key::ActionType::up:
-                    switch (e.key) {
-                        case mirinae::key::KeyCode::w:
-                            camera_.pos_.z -= 1;
-                            break;
-                        case mirinae::key::KeyCode::s:
-                            camera_.pos_.z += 1;
-                            break;
-                        case mirinae::key::KeyCode::left:
-                            camera_.pos_.x -= 1;
-                            break;
-                        case mirinae::key::KeyCode::right:
-                            camera_.pos_.x += 1;
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                default:
-                    break;
-            }
+            camera_controller_.on_key_event(e);
         }
 
     private:
@@ -700,6 +685,8 @@ namespace {
         mirinae::Sampler texture_sampler_;
         std::vector<mirinae::Buffer> uniform_buf_;
         mirinae::TransformQuat camera_;
+        mirinae::syst::NoclipController camera_controller_;
+        dal::Timer fps_timer_;
         bool fbuf_resized_ = false;
 
     };

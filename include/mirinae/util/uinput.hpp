@@ -2,6 +2,7 @@
 
 #include <array>
 #include <chrono>
+#include <optional>
 
 
 namespace mirinae::key {
@@ -42,20 +43,28 @@ namespace mirinae::key {
 
     public:
         void notify(const Event& e) {
-            const auto index = this->convert_key_to_index(e.key);
+            const auto index = static_cast<size_t>(e.key);
             if (index >= this->states.size())
                 return;
 
             this->states[index].timepoint = e.timepoint;
-            this->states[index].pressed = (e.action_type == ActionType::down);
+            this->states[index].pressed = (e.action_type == key::ActionType::down);
         }
 
-        KeyState& operator[](const KeyCode key) {
-            return this->states[this->convert_key_to_index(key)];
+        bool is_pressed(KeyCode key) const {
+            const auto index = static_cast<size_t>(key);
+            if (index >= this->states.size())
+                return false;
+
+            return this->states[index].pressed;
         }
 
-        const KeyState& operator[](const KeyCode key) const {
-            return this->states[this->convert_key_to_index(key)];
+        std::optional<std::chrono::steady_clock::time_point> get_timepoint(KeyCode key) const {
+            const auto index = static_cast<size_t>(key);
+            if (index >= this->states.size())
+                return std::nullopt;
+
+            return this->states[index].timepoint;
         }
 
     private:
