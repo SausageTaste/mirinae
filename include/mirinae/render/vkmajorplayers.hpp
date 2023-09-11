@@ -311,7 +311,7 @@ namespace mirinae {
                 auto& description = attributeDescriptions.emplace_back();
                 description.binding = 0;
                 description.location = 2;
-                description.format = VK_FORMAT_R32G32B32_SFLOAT;
+                description.format = VK_FORMAT_R32G32_SFLOAT;
                 description.offset = offsetof(VertexStatic, texcoord_);
             }
 
