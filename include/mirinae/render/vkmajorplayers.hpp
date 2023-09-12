@@ -84,6 +84,7 @@ namespace mirinae {
 
         std::vector<VkExtensionProperties> get_extensions() const;
         size_t count_unsupported_extensions(const std::vector<std::string>& extensions) const;
+        VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
     private:
         VkPhysicalDevice handle_ = nullptr;
@@ -205,7 +206,7 @@ namespace mirinae {
     class RenderPass {
 
     public:
-        void init(VkFormat swapchain_format, LogiDevice& logi_device);
+        void init(VkFormat swapchain_format, VkFormat depth_format, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
         VkRenderPass get() { return handle_; }
@@ -237,7 +238,7 @@ namespace mirinae {
     class Framebuffer {
 
     public:
-        void init(const VkExtent2D& swapchain_extent, VkImageView view, RenderPass& renderpass, LogiDevice& logi_device);
+        void init(const VkExtent2D& swapchain_extent, VkImageView view, VkImageView depth_view, RenderPass& renderpass, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
         VkFramebuffer get() { return handle_; }
@@ -381,7 +382,7 @@ namespace mirinae {
     class ImageView {
 
     public:
-        void init(VkImage image, VkFormat format, LogiDevice& logi_device);
+        void init(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, LogiDevice& logi_device);
         void destroy(LogiDevice& logi_device);
 
         VkImageView get() { return handle_; }
