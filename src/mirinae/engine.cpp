@@ -293,8 +293,16 @@ namespace {
                 vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0}, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
                 vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0}, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
 
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, -v}, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, -v}, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, -v}, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, -v}, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
+
                 std::vector<uint16_t> indices{
-                    0, 1, 2, 0, 2, 3
+                    0, 1, 2, 0, 2, 3,
+                    3, 2, 0, 2, 1, 0,
+                    4, 5, 6, 4, 6, 7,
+                    7, 6, 4, 6, 5, 4,
                 };
 
                 vert_index_pair_.init(vertices, indices, cmd_pool_, phys_device_, logi_device_);
@@ -327,7 +335,7 @@ namespace {
                 texture_.copy_and_transition(staging_buffer, cmd_pool_, logi_device_);
                 staging_buffer.destroy(logi_device_);
 
-                texture_view_.init(texture_.image(), texture_.format(), logi_device_);
+                texture_view_.init(texture_.image(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, logi_device_);
                 texture_sampler_.init(phys_device_, logi_device_);
             }
 
@@ -436,7 +444,9 @@ namespace {
                     throw std::runtime_error("failed to begin recording command buffer!");
                 }
 
-                VkClearValue clearColor = { {{0, 0, 0, 1}} };
+                std::array<VkClearValue, 2> clear_values;
+                clear_values[0].color = { 0.f, 0.f, 0.f, 1.f };
+                clear_values[1].depthStencil = { 1.f, 0 };
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -444,8 +454,8 @@ namespace {
                 renderPassInfo.framebuffer = swapchain_fbufs_[image_index.get()].get();
                 renderPassInfo.renderArea.offset = { 0, 0 };
                 renderPassInfo.renderArea.extent = swapchain_.extent();
-                renderPassInfo.clearValueCount = 1;
-                renderPassInfo.pClearValues = &clearColor;
+                renderPassInfo.clearValueCount = static_cast<uint32_t>(clear_values.size());
+                renderPassInfo.pClearValues = clear_values.data();
 
                 vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -546,14 +556,35 @@ namespace {
             const auto [fbuf_width, fbuf_height] = window_.get_fbuf_size();
             swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
 
+
+            // Depth texture
+            {
+                const auto depth_format = phys_device_.find_supported_format(
+                    { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+                    VK_IMAGE_TILING_OPTIMAL,
+                    VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+                );
+
+                depth_image_.init(
+                    swapchain_.extent().width, swapchain_.extent().height,
+                    depth_format,
+                    VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    phys_device_,
+                    logi_device_
+                );
+                depth_image_view_.init(depth_image_.image(), depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, logi_device_);
+            }
+
             framesync_.init(logi_device_);
-            renderpass_.init(swapchain_.format(), logi_device_);
+            renderpass_.init(swapchain_.format(), depth_image_.format(), logi_device_);
             desclayout_.init(logi_device_);
             pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, logi_device_);
 
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
-                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), renderpass_, logi_device_);
+                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), depth_image_view_.get(), renderpass_, logi_device_);
             }
         }
 
@@ -565,6 +596,8 @@ namespace {
             desclayout_.destroy(logi_device_);
             renderpass_.destroy(logi_device_);
             framesync_.destroy(logi_device_);
+            depth_image_view_.destroy(logi_device_);
+            depth_image_.destroy(logi_device_);
             swapchain_.destroy(logi_device_);
         }
 
@@ -619,6 +652,8 @@ namespace {
         mirinae::TextureImage texture_;
         mirinae::ImageView texture_view_;
         mirinae::Sampler texture_sampler_;
+        mirinae::TextureImage depth_image_;
+        mirinae::ImageView depth_image_view_;
         std::vector<mirinae::Buffer> uniform_buf_;
         mirinae::TransformQuat camera_;
         mirinae::syst::NoclipController camera_controller_;
