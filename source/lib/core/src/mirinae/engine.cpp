@@ -1,5 +1,6 @@
 #include "mirinae/engine.hpp"
 
+#include <vulkan/vulkan.h>
 #include <spdlog/spdlog.h>
 
 #include <daltools/util.h>
@@ -97,7 +98,7 @@ namespace {
             );
 
             instance_.init(instance_factory);
-            surface_ = cinfo.surface_creator_(instance_.get());
+            surface_ = reinterpret_cast<VkSurfaceKHR>(cinfo.surface_creator_(instance_.get()));
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
             spdlog::info("Physical device selected: {}\n{}", phys_device_.name(), phys_device_.make_report_str());
 

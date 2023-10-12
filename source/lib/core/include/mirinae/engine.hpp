@@ -5,8 +5,6 @@
 #include <string>
 #include <vector>
 
-#include <vulkan/vulkan.h>
-
 #include "mirinae/util/uinput.hpp"
 
 
@@ -27,7 +25,7 @@ namespace mirinae {
 
 
     struct EngineCreateInfo {
-        using surface_creator_t = std::function<VkSurfaceKHR(VkInstance)>;
+        using surface_creator_t = std::function<void*(void*)>; // VkInstance -> VkSurfaceKHR
 
         std::vector<std::string> instance_extensions_;
         surface_creator_t surface_creator_;

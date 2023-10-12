@@ -177,8 +177,8 @@ namespace {
             : window_(800, 600, "Mirinapp")
         {
             create_info_.instance_extensions_ = ::get_glfw_extensions();
-            create_info_.surface_creator_ = [this](VkInstance instance) {
-                return this->window_.create_surface(instance);
+            create_info_.surface_creator_ = [this](void* instance) {
+                return this->window_.create_surface(reinterpret_cast<VkInstance>(instance));
             };
 
             engine_ = mirinae::create_engine(create_info_);
