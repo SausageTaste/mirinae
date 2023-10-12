@@ -1,4 +1,7 @@
 add_executable(mirinapp
     main.cpp
 )
-target_link_libraries(mirinapp mirinae::core)
+target_link_libraries(mirinapp
+    glfw
+    mirinae::core
+)

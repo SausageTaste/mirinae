@@ -12,10 +12,10 @@ add_library(mirinae::core ALIAS mirinae_core)
 target_include_directories(mirinae_core PUBLIC ./include ${fetch_stb_SOURCE_DIR})
 target_compile_features(mirinae_core PUBLIC cxx_std_17)
 target_link_libraries(mirinae_core
-    PRIVATE
+    PUBLIC
         Vulkan::Vulkan
         spdlog
-        glfw
+    PRIVATE
         dalbaragi::daltools
 )
 
