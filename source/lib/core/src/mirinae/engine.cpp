@@ -1,8 +1,7 @@
 #include "mirinae/engine.hpp"
 
+#include <vulkan/vulkan.h>
 #include <spdlog/spdlog.h>
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 
 #include <daltools/util.h>
 
@@ -15,177 +14,17 @@
 
 namespace {
 
-    auto get_glfw_extensions() {
-        uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-        return std::vector<std::string>{ glfwExtensions, glfwExtensions + glfwExtensionCount };
-    }
-
-
-    class GlfwRaii {
-
-    public:
-        GlfwRaii() {
-            glfwInit();
-            spdlog::set_level(spdlog::level::level_enum::trace);
-        }
-
-        ~GlfwRaii() {
-            glfwTerminate();
-        }
-
-    } g_glfw_raii;
-
-
-    class GlfwWindow {
-
-    public:
-        GlfwWindow(void* userdata) {
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-            glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-            this->window = glfwCreateWindow(800, 450, "Mirinapp", nullptr, nullptr);
-
-            glfwSetWindowUserPointer(this->window, userdata);
-            glfwSetFramebufferSizeCallback(this->window, GlfwWindow::callback_fbuf_size);
-            glfwSetKeyCallback(this->window, GlfwWindow::callback_key);
-        }
-
-        ~GlfwWindow() {
-            if (nullptr != this->window) {
-                glfwDestroyWindow(this->window);
-                this->window = nullptr;
-            }
-        }
-
-        void swap_buffer() {
-            glfwSwapBuffers(this->window);
-        }
-
-        bool is_ongoing() const {
-            return !glfwWindowShouldClose(this->window);
-        }
-
-        VkSurfaceKHR create_surface(const mirinae::VulkanInstance& instance) {
-            VkSurfaceKHR surface = nullptr;
-            if (VK_SUCCESS != glfwCreateWindowSurface(instance.get(), window, nullptr, &surface)) {
-                spdlog::error("Failed to create window surface");
-                return nullptr;
-            }
-            return surface;
-        }
-
-        std::pair<int, int> get_fbuf_size() const {
-            std::pair<int, int> output{ 0, 0 };
-            if (nullptr == this->window)
-                return output;
-
-            glfwGetFramebufferSize(window, &output.first, &output.second);
-            return output;
-        }
-
-        bool is_fbuf_too_small() const {
-            const auto [width, height] = this->get_fbuf_size();
-            if (width < 5)
-                return true;
-            if (height < 5)
-                return true;
-            else
-                return false;
-        }
-
-        void notify_should_close() {
-            glfwSetWindowShouldClose(this->window, true);
-        }
-
-    private:
-        static void callback_fbuf_size(GLFWwindow* window, int width, int height) {
-            auto ptr = glfwGetWindowUserPointer(window);
-            if (nullptr == ptr)
-                return;
-            auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
-            engine->notify_window_resize(width, height);
-        }
-
-        static void callback_key(GLFWwindow* window, int key, int scancode, int action, int mods) {
-            auto ptr = glfwGetWindowUserPointer(window);
-            if (nullptr == ptr)
-                return;
-            auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
-
-            mirinae::key::Event e;
-            switch (action) {
-                case GLFW_RELEASE:
-                    e.action_type = mirinae::key::ActionType::up;
-                    break;
-                case GLFW_PRESS:
-                case GLFW_REPEAT:
-                default:
-                    e.action_type = mirinae::key::ActionType::down;
-                    break;
-            }
-
-            e.key = map_key_code(key);
-            engine->notify_key_event(e);
-        }
-
-        static mirinae::key::KeyCode map_key_code(const int glfw_key) {
-            if (GLFW_KEY_A <= glfw_key && glfw_key <= GLFW_KEY_Z) {
-                auto index = glfw_key - GLFW_KEY_A + int(mirinae::key::KeyCode::a);
-                return mirinae::key::KeyCode(index);
-            }
-            else if (GLFW_KEY_0 <= glfw_key && glfw_key <= GLFW_KEY_9) {
-                auto index = glfw_key - GLFW_KEY_0 + int(mirinae::key::KeyCode::n0);
-                return mirinae::key::KeyCode(index);
-            }
-            else {
-                static const std::unordered_map<uint32_t, mirinae::key::KeyCode> map{
-                    {GLFW_KEY_GRAVE_ACCENT, mirinae::key::KeyCode::backquote},
-                    {GLFW_KEY_MINUS, mirinae::key::KeyCode::minus},
-                    {GLFW_KEY_EQUAL, mirinae::key::KeyCode::equal},
-                    {GLFW_KEY_LEFT_BRACKET, mirinae::key::KeyCode::lbracket},
-                    {GLFW_KEY_RIGHT_BRACKET, mirinae::key::KeyCode::rbracket},
-                    {GLFW_KEY_BACKSLASH, mirinae::key::KeyCode::backslash},
-                    {GLFW_KEY_SEMICOLON, mirinae::key::KeyCode::semicolon},
-                    {GLFW_KEY_APOSTROPHE, mirinae::key::KeyCode::quote},
-                    {GLFW_KEY_COMMA, mirinae::key::KeyCode::comma},
-                    {GLFW_KEY_PERIOD, mirinae::key::KeyCode::period},
-                    {GLFW_KEY_SLASH, mirinae::key::KeyCode::slash},
-
-                    {GLFW_KEY_SPACE, mirinae::key::KeyCode::space},
-                    {GLFW_KEY_ENTER, mirinae::key::KeyCode::enter},
-                    {GLFW_KEY_BACKSPACE, mirinae::key::KeyCode::backspace},
-                    {GLFW_KEY_TAB, mirinae::key::KeyCode::tab},
-
-                    {GLFW_KEY_ESCAPE, mirinae::key::KeyCode::escape},
-                    {GLFW_KEY_LEFT_SHIFT, mirinae::key::KeyCode::lshfit},
-                    {GLFW_KEY_RIGHT_SHIFT, mirinae::key::KeyCode::rshfit},
-                    {GLFW_KEY_LEFT_CONTROL, mirinae::key::KeyCode::lctrl},
-                    {GLFW_KEY_RIGHT_CONTROL, mirinae::key::KeyCode::rctrl},
-                    {GLFW_KEY_LEFT_ALT, mirinae::key::KeyCode::lalt},
-                    {GLFW_KEY_RIGHT_ALT, mirinae::key::KeyCode::ralt},
-                    {GLFW_KEY_UP, mirinae::key::KeyCode::up},
-                    {GLFW_KEY_DOWN, mirinae::key::KeyCode::down},
-                    {GLFW_KEY_LEFT, mirinae::key::KeyCode::left},
-                    {GLFW_KEY_RIGHT, mirinae::key::KeyCode::right},
-                };
-
-                auto res = map.find(glfw_key);
-                if (res == map.end()) {
-                    return mirinae::key::KeyCode::eoe;
-                }
-                else {
-                    return res->second;
-                }
-            }
-        }
-
-        GLFWwindow* window = nullptr;
-
-    };
-
-
     using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
+
+
+    bool is_fbuf_too_small(uint32_t width, uint32_t height) {
+        if (width < 5)
+            return true;
+        if (height < 5)
+            return true;
+        else
+            return false;
+    }
 
 
     class FrameSync {
@@ -246,19 +85,20 @@ namespace {
     class EngineGlfw : public mirinae::IEngine {
 
     public:
-        EngineGlfw()
-            : window_(this)
+        EngineGlfw(const mirinae::EngineCreateInfo& cinfo)
+            : create_info_(cinfo)
         {
             mirinae::InstanceFactory instance_factory;
             instance_factory.enable_validation_layer();
             instance_factory.ext_layers_.add_validation();
-            {
-                const auto glfwExtensions = ::get_glfw_extensions();
-                instance_factory.ext_layers_.extensions_.insert(instance_factory.ext_layers_.extensions_.end(), glfwExtensions.begin(), glfwExtensions.end());
-            }
+            instance_factory.ext_layers_.extensions_.insert(
+                instance_factory.ext_layers_.extensions_.end(),
+                cinfo.instance_extensions_.begin(),
+                cinfo.instance_extensions_.end()
+            );
 
             instance_.init(instance_factory);
-            surface_ = window_.create_surface(instance_);
+            surface_ = reinterpret_cast<VkSurfaceKHR>(cinfo.surface_creator_(instance_.get()));
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
             spdlog::info("Physical device selected: {}\n{}", phys_device_.name(), phys_device_.make_report_str());
 
@@ -275,7 +115,7 @@ namespace {
                 throw std::runtime_error{ "The swapchain is not complete" };
             }
 
-            this->create_swapchain_and_relatives();
+            this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
             cmd_pool_.init(phys_device_.graphics_family_index().value(), logi_device_);
             for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i)
@@ -369,7 +209,7 @@ namespace {
                     auto& descriptorWrite = write_info.emplace_back();
                     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                     descriptorWrite.dstSet = desc_sets_.at(i);
-                    descriptorWrite.dstBinding = write_info.size() - 1;
+                    descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
                     descriptorWrite.dstArrayElement = 0;
                     descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                     descriptorWrite.descriptorCount = 1;
@@ -379,14 +219,14 @@ namespace {
                     auto& descriptorWrite = write_info.emplace_back();
                     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                     descriptorWrite.dstSet = desc_sets_.at(i);
-                    descriptorWrite.dstBinding = write_info.size() - 1;
+                    descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
                     descriptorWrite.dstArrayElement = 0;
                     descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                     descriptorWrite.descriptorCount = 1;
                     descriptorWrite.pImageInfo = &imageInfo;
                 }
 
-                vkUpdateDescriptorSets(logi_device_.get(), write_info.size(), write_info.data(), 0, nullptr);
+                vkUpdateDescriptorSets(logi_device_.get(), static_cast<uint32_t>(write_info.size()), write_info.data(), 0, nullptr);
             }
         }
 
@@ -407,11 +247,10 @@ namespace {
 
         void do_frame() override {
             const auto delta_time = fps_timer_.check_get_elapsed();
-            camera_controller_.apply(camera_, delta_time);
+            camera_controller_.apply(camera_, static_cast<float>(delta_time));
 
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
-                glfwPollEvents();
                 return;
             }
             const auto image_index = image_index_opt.value();
@@ -523,7 +362,7 @@ namespace {
                 presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
                 presentInfo.waitSemaphoreCount = 1;
                 presentInfo.pWaitSemaphores = signalSemaphores;
-                presentInfo.swapchainCount = swapchains.size();
+                presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());
                 presentInfo.pSwapchains = swapchains.data();
                 presentInfo.pImageIndices = swapchain_indices.data();
                 presentInfo.pResults = nullptr;
@@ -532,30 +371,26 @@ namespace {
             }
 
             framesync_.increase_frame_index();
-            window_.swap_buffer();
-            glfwPollEvents();
         }
 
         bool is_ongoing() override {
-            return window_.is_ongoing();
+            return true;
         }
 
-        void notify_window_resize(unsigned width, unsigned height) {
+        void notify_window_resize(uint32_t width, uint32_t height) override {
+            fbuf_width_ = width;;
+            fbuf_height_ = height;
             fbuf_resized_ = true;
-            spdlog::info("Window resized: {} x {}", width, height);
         }
 
-        void notify_key_event(const mirinae::key::Event& e) {
+        void notify_key_event(const mirinae::key::Event& e) override {
             camera_controller_.on_key_event(e);
         }
 
     private:
-        void create_swapchain_and_relatives() {
+        void create_swapchain_and_relatives(uint32_t fbuf_width, uint32_t fbuf_height) {
             this->logi_device_.wait_idle();
-
-            const auto [fbuf_width, fbuf_height] = window_.get_fbuf_size();
             swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
-
 
             // Depth texture
             {
@@ -605,26 +440,26 @@ namespace {
             framesync_.get_cur_in_flight_fence().wait(logi_device_);
 
             if (fbuf_resized_) {
-                if (this->window_.is_fbuf_too_small()) {
+                if (::is_fbuf_too_small(fbuf_width_, fbuf_height_)) {
                     fbuf_resized_ = true;
                 }
                 else {
                     fbuf_resized_ = false;
                     this->destroy_swapchain_and_relatives();
-                    this->create_swapchain_and_relatives();
+                    this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
                 }
                 return std::nullopt;
             }
 
             const auto image_index_opt = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph(), logi_device_);
             if (!image_index_opt) {
-                if (this->window_.is_fbuf_too_small()) {
+                if (::is_fbuf_too_small(fbuf_width_, fbuf_height_)) {
                     fbuf_resized_ = true;
                 }
                 else {
                     fbuf_resized_ = false;
                     this->destroy_swapchain_and_relatives();
-                    this->create_swapchain_and_relatives();
+                    this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
                 }
                 return std::nullopt;
             }
@@ -633,7 +468,8 @@ namespace {
             return image_index_opt.value();
         }
 
-        GlfwWindow window_;
+        mirinae::EngineCreateInfo create_info_;
+
         mirinae::VulkanInstance instance_;
         VkSurfaceKHR surface_ = nullptr;
         mirinae::PhysDevice phys_device_;
@@ -658,6 +494,9 @@ namespace {
         mirinae::TransformQuat camera_;
         mirinae::syst::NoclipController camera_controller_;
         dal::Timer fps_timer_;
+
+        uint32_t fbuf_width_ = 0;
+        uint32_t fbuf_height_ = 0;
         bool fbuf_resized_ = false;
 
     };
@@ -667,8 +506,8 @@ namespace {
 
 namespace mirinae {
 
-    std::unique_ptr<IEngine> create_engine() {
-        return std::make_unique<EngineGlfw>();
+    std::unique_ptr<IEngine> create_engine(const EngineCreateInfo& create_info) {
+        return std::make_unique<EngineGlfw>(create_info);
     }
 
 }
