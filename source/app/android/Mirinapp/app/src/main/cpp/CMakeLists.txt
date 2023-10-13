@@ -18,6 +18,8 @@ add_library(mirinapp SHARED
 # Searches for a package provided by the game activity dependency
 find_package(game-activity REQUIRED CONFIG)
 
+add_subdirectory(../../../../../../../lib ${PROJECT_BINARY_DIR}/libmirinae)
+
 # Configure libraries CMake uses to link your target library.
 target_link_libraries(mirinapp
         # The game activity
@@ -29,4 +31,6 @@ target_link_libraries(mirinapp
         GLESv3
         jnigraphics
         android
-        log)
+        log
+        mirinae::core
+)
