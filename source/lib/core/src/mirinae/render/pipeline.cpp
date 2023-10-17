@@ -27,7 +27,7 @@ namespace {
         }
 
         ~ShaderModule() {
-            if (nullptr != handle_) {
+            if (VK_NULL_HANDLE != handle_) {
                 spdlog::warn("A ShaderModule was not destroyed correctly");
             }
         }
@@ -64,9 +64,9 @@ namespace {
         }
 
         void destroy(VkDevice logi_device) {
-            if (nullptr != handle_) {
+            if (VK_NULL_HANDLE != handle_) {
                 vkDestroyShaderModule(logi_device, handle_, nullptr);
-                handle_ = nullptr;
+                handle_ = VK_NULL_HANDLE;
             }
         }
 
@@ -88,7 +88,7 @@ namespace {
             return shaderModule;
         }
 
-        VkShaderModule handle_ = nullptr;
+        VkShaderModule handle_ = VK_NULL_HANDLE;
 
     };
 

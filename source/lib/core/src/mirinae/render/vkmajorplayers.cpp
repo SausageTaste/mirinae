@@ -52,7 +52,7 @@ namespace {
         auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
         if (nullptr == func) {
             spdlog::error("Failed to get Vulkan function: vkCreateDebugUtilsMessengerEXT");
-            return nullptr;
+            return VK_NULL_HANDLE;
         }
 
         VkDebugUtilsMessengerCreateInfoEXT create_info;
@@ -61,7 +61,7 @@ namespace {
         VkDebugUtilsMessengerEXT debug_messenger;
         if (VK_SUCCESS != func(instance, &create_info, nullptr, &debug_messenger)) {
             spdlog::error("Failed to create debug utils messenger");
-            return nullptr;
+            return VK_NULL_HANDLE;
         }
 
         return debug_messenger;
@@ -507,9 +507,9 @@ namespace mirinae {
     }
 
     void Semaphore::destroy(LogiDevice& logi_device) {
-        if (nullptr != handle_) {
+        if (VK_NULL_HANDLE != handle_) {
             vkDestroySemaphore(logi_device.get(), handle_, nullptr);
-            handle_ = nullptr;
+            handle_ = VK_NULL_HANDLE;
         }
     }
 
@@ -532,14 +532,14 @@ namespace mirinae {
     }
 
     void Fence::destroy(LogiDevice& logi_device) {
-        if (nullptr != handle_) {
+        if (VK_NULL_HANDLE != handle_) {
             vkDestroyFence(logi_device.get(), handle_, nullptr);
-            handle_ = nullptr;
+            handle_ = VK_NULL_HANDLE;
         }
     }
 
     void Fence::wait(LogiDevice& logi_device) {
-        if (nullptr == handle_) {
+        if (VK_NULL_HANDLE == handle_) {
             spdlog::warn("Tried to wait on a fence that is not created");
             return;
         }
@@ -548,7 +548,7 @@ namespace mirinae {
     }
 
     void Fence::reset(LogiDevice& logi_device) {
-        if (nullptr == handle_) {
+        if (VK_NULL_HANDLE == handle_) {
             spdlog::warn("Tried to reset a fence that is not created");
             return;
         }
@@ -634,9 +634,9 @@ namespace mirinae {
             vkDestroyImageView(logi_device.get(), view, nullptr);
         views_.clear();
 
-        if (nullptr != swapchain_) {
+        if (VK_NULL_HANDLE != swapchain_) {
             vkDestroySwapchainKHR(logi_device.get(), swapchain_, nullptr);
-            swapchain_ = nullptr;
+            swapchain_ = VK_NULL_HANDLE;
         }
     }
 
@@ -667,13 +667,13 @@ namespace mirinae {
     }
 
     void VulkanInstance::destroy() {
-        if (nullptr != debug_messenger_) {
+        if (VK_NULL_HANDLE != debug_messenger_) {
             ::destroy_debug_msger(instance_, debug_messenger_, nullptr);
-            debug_messenger_ = nullptr;
+            debug_messenger_ = VK_NULL_HANDLE;
         }
-        if (nullptr != instance_) {
+        if (VK_NULL_HANDLE != instance_) {
             vkDestroyInstance(instance_, nullptr);
-            instance_ = nullptr;
+            instance_ = VK_NULL_HANDLE;
         }
     }
 
@@ -682,13 +682,13 @@ namespace mirinae {
         vkEnumeratePhysicalDevices(instance_, &count, nullptr);
         if (0 == count) {
             spdlog::error("There is no GPU with Vulkan support");
-            return nullptr;
+            return VK_NULL_HANDLE;
         }
 
         std::vector<VkPhysicalDevice> devices(count);
         vkEnumeratePhysicalDevices(instance_, &count, devices.data());
 
-        VkPhysicalDevice output = nullptr;
+        VkPhysicalDevice output = VK_NULL_HANDLE;
         for (auto handle : devices) {
             PhysDevice phys_device;
             phys_device.set(handle, surface);
@@ -772,9 +772,9 @@ namespace mirinae {
     }
 
     void RenderPass::destroy(LogiDevice& logi_device) {
-        if (nullptr != handle_) {
+        if (VK_NULL_HANDLE != handle_) {
             vkDestroyRenderPass(logi_device.get(), handle_, nullptr);
-            handle_ = nullptr;
+            handle_ = VK_NULL_HANDLE;
         }
     }
 
@@ -790,14 +790,14 @@ namespace mirinae {
     }
 
     void Pipeline::destroy(LogiDevice& logi_device) {
-        if (nullptr != pipeline_) {
+        if (VK_NULL_HANDLE != pipeline_) {
             vkDestroyPipeline(logi_device.get(), pipeline_, nullptr);
-            pipeline_ = nullptr;
+            pipeline_ = VK_NULL_HANDLE;
         }
 
-        if (nullptr != layout_) {
+        if (VK_NULL_HANDLE != layout_) {
             vkDestroyPipelineLayout(logi_device.get(), layout_, nullptr);
-            layout_ = nullptr;
+            layout_ = VK_NULL_HANDLE;
         }
     }
 
@@ -828,9 +828,9 @@ namespace mirinae {
     }
 
     void Framebuffer::destroy(LogiDevice& logi_device) {
-        if (nullptr != handle_) {
+        if (VK_NULL_HANDLE != handle_) {
             vkDestroyFramebuffer(logi_device.get(), handle_, nullptr);
-            handle_ = nullptr;
+            handle_ = VK_NULL_HANDLE;
         }
     }
 
@@ -852,9 +852,9 @@ namespace mirinae {
     }
 
     void CommandPool::destroy(LogiDevice& logi_device) {
-        if (nullptr != handle_) {
+        if (VK_NULL_HANDLE != handle_) {
             vkDestroyCommandPool(logi_device.get(), handle_, nullptr);
-            handle_ = nullptr;
+            handle_ = VK_NULL_HANDLE;
         }
     }
 
@@ -1109,14 +1109,14 @@ namespace mirinae {
     void Buffer::destroy(LogiDevice& logi_device) {
         size_ = 0;
 
-        if (nullptr != buffer_) {
+        if (VK_NULL_HANDLE != buffer_) {
             vkDestroyBuffer(logi_device.get(), buffer_, nullptr);
-            buffer_ = nullptr;
+            buffer_ = VK_NULL_HANDLE;
         }
 
-        if (nullptr != memory_) {
+        if (VK_NULL_HANDLE != memory_) {
             vkFreeMemory(logi_device.get(), memory_, nullptr);
-            memory_ = nullptr;
+            memory_ = VK_NULL_HANDLE;
         }
     }
 
@@ -1229,9 +1229,9 @@ namespace mirinae {
     }
 
     void ImageView::destroy(LogiDevice& logi_device) {
-        if (nullptr != handle_) {
+        if (VK_NULL_HANDLE != handle_) {
             vkDestroyImageView(logi_device.get(), handle_, nullptr);
-            handle_ = nullptr;
+            handle_ = VK_NULL_HANDLE;
         }
     }
 
@@ -1268,9 +1268,9 @@ namespace mirinae {
     }
 
     void Sampler::destroy(LogiDevice& logi_device) {
-        if (nullptr != handle_) {
+        if (VK_NULL_HANDLE != handle_) {
             vkDestroySampler(logi_device.get(), handle_, nullptr);
-            handle_ = nullptr;
+            handle_ = VK_NULL_HANDLE;
         }
     }
 

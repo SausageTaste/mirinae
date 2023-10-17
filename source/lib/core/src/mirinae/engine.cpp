@@ -17,6 +17,11 @@ namespace {
     using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
 
 
+    VkSurfaceKHR surface_cast(uint64_t value) {
+        static_assert(sizeof(VkSurfaceKHR) == sizeof(uint64_t));
+        return *reinterpret_cast<VkSurfaceKHR*>(&value);
+    }
+
     bool is_fbuf_too_small(uint32_t width, uint32_t height) {
         if (width < 5)
             return true;
@@ -98,7 +103,7 @@ namespace {
             );
 
             instance_.init(instance_factory);
-            surface_ = reinterpret_cast<VkSurfaceKHR>(cinfo.surface_creator_(instance_.get()));
+            surface_ = ::surface_cast(cinfo.surface_creator_(instance_.get()));
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
             spdlog::info("Physical device selected: {}\n{}", phys_device_.name(), phys_device_.make_report_str());
 
@@ -242,7 +247,7 @@ namespace {
             cmd_pool_.destroy(logi_device_);
             this->destroy_swapchain_and_relatives();
             logi_device_.destroy();
-            vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = nullptr;
+            vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = VK_NULL_HANDLE;
         }
 
         void do_frame() override {
@@ -471,7 +476,7 @@ namespace {
         mirinae::EngineCreateInfo create_info_;
 
         mirinae::VulkanInstance instance_;
-        VkSurfaceKHR surface_ = nullptr;
+        VkSurfaceKHR surface_ = VK_NULL_HANDLE;
         mirinae::PhysDevice phys_device_;
         mirinae::LogiDevice logi_device_;
         mirinae::Swapchain swapchain_;
