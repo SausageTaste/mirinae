@@ -131,7 +131,7 @@ namespace mirinae {
         VkSemaphore get() { return handle_; }
 
     private:
-        VkSemaphore handle_ = nullptr;
+        VkSemaphore handle_ = VK_NULL_HANDLE;
 
     };
 
@@ -148,7 +148,7 @@ namespace mirinae {
         void reset(LogiDevice& logi_device);
 
     private:
-        VkFence handle_ = nullptr;
+        VkFence handle_ = VK_NULL_HANDLE;
 
     };
 
@@ -173,7 +173,7 @@ namespace mirinae {
         size_t views_count() const { return views_.size(); }
 
     private:
-        VkSwapchainKHR swapchain_ = nullptr;
+        VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;
         std::vector<VkImage> images_;
         std::vector<VkImageView> views_;
         VkFormat format_;
@@ -197,8 +197,8 @@ namespace mirinae {
         VkPhysicalDevice select_phys_device(const VkSurfaceKHR surface);
 
     private:
-        VkInstance instance_ = nullptr;
-        VkDebugUtilsMessengerEXT debug_messenger_ = nullptr;
+        VkInstance instance_ = VK_NULL_HANDLE;
+        VkDebugUtilsMessengerEXT debug_messenger_ = VK_NULL_HANDLE;
 
     };
 
@@ -212,7 +212,7 @@ namespace mirinae {
         VkRenderPass get() { return handle_; }
 
     private:
-        VkRenderPass handle_ = nullptr;
+        VkRenderPass handle_ = VK_NULL_HANDLE;
 
     };
 
@@ -229,8 +229,8 @@ namespace mirinae {
         VkPipelineLayout layout() { return layout_; }
 
     private:
-        VkPipeline pipeline_ = nullptr;
-        VkPipelineLayout layout_ = nullptr;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout layout_ = VK_NULL_HANDLE;
 
     };
 
@@ -244,7 +244,7 @@ namespace mirinae {
         VkFramebuffer get() { return handle_; }
 
     private:
-        VkFramebuffer handle_ = nullptr;
+        VkFramebuffer handle_ = VK_NULL_HANDLE;
 
     };
 
@@ -262,7 +262,7 @@ namespace mirinae {
         void end_single_time(VkCommandBuffer cmdbuf, LogiDevice& logi_device);
 
     private:
-        VkCommandPool handle_ = nullptr;
+        VkCommandPool handle_ = VK_NULL_HANDLE;
 
     };
 
@@ -338,8 +338,8 @@ namespace mirinae {
         void record_copy_cmd(const Buffer& src, VkCommandBuffer cmdbuf, LogiDevice& logi_device);
 
     private:
-        VkBuffer buffer_ = nullptr;
-        VkDeviceMemory memory_ = nullptr;
+        VkBuffer buffer_ = VK_NULL_HANDLE;
+        VkDeviceMemory memory_ = VK_NULL_HANDLE;
         VkDeviceSize size_ = 0;
 
     };
