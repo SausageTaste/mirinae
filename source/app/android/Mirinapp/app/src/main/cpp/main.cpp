@@ -1,14 +1,65 @@
 #include <jni.h>
 
-#include "AndroidOut.h"
-#include "Renderer.h"
-
 #include <game-activity/GameActivity.cpp>
 #include <game-text-input/gametextinput.cpp>
+
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_android.h>
+#include <mirinae/engine.hpp>
+
+
 
 extern "C" {
 
 #include <game-activity/native_app_glue/android_native_app_glue.c>
+
+
+class CombinedEngine {
+
+public:
+    CombinedEngine(android_app* const state) {
+        create_info_.surface_creator_ = [state](void* instance) -> uint64_t {
+            VkAndroidSurfaceCreateInfoKHR create_info{
+                    .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
+                    .pNext = nullptr,
+                    .flags = 0,
+                    .window = state->window,
+            };
+
+            VkSurfaceKHR surface = VK_NULL_HANDLE;
+            const auto create_result = vkCreateAndroidSurfaceKHR(
+                    reinterpret_cast<VkInstance>(instance),
+                    &create_info,
+                    nullptr,
+                    &surface
+            );
+
+            return *reinterpret_cast<uint64_t*>(&surface);
+        };
+
+        engine_ = mirinae::create_engine(create_info_);
+    }
+
+    void do_frame() {
+        engine_->do_frame();
+    }
+
+    [[nodiscard]]
+    bool is_ongoing() const {
+        if (nullptr == engine_)
+            return false;
+        if (!engine_->is_ongoing())
+            return false;
+
+        return true;
+    }
+
+private:
+    mirinae::EngineCreateInfo create_info_;
+    std::unique_ptr<mirinae::IEngine> engine_;
+
+};
+
 
 /*!
  * Handles commands sent to this Android application
@@ -22,7 +73,7 @@ void handle_cmd(android_app *pApp, int32_t cmd) {
             // "game" class if that suits your needs. Remember to change all instances of userData
             // if you change the class here as a reinterpret_cast is dangerous this in the
             // android_main function and the APP_CMD_TERM_WINDOW handler case.
-            pApp->userData = new Renderer(pApp);
+            pApp->userData = new ::CombinedEngine(pApp);
             break;
         case APP_CMD_TERM_WINDOW:
             // The window is being destroyed. Use this to clean up your userData to avoid leaking
@@ -30,10 +81,8 @@ void handle_cmd(android_app *pApp, int32_t cmd) {
             //
             // We have to check if userData is assigned just in case this comes in really quickly
             if (pApp->userData) {
-                //
-                auto *pRenderer = reinterpret_cast<Renderer *>(pApp->userData);
-                pApp->userData = nullptr;
-                delete pRenderer;
+                auto engine = reinterpret_cast<::CombinedEngine*>(pApp->userData);
+                delete engine;
             }
             break;
         default:
@@ -60,9 +109,6 @@ bool motion_event_filter_func(const GameActivityMotionEvent *motionEvent) {
  * This the main entry point for a native activity
  */
 void android_main(struct android_app *pApp) {
-    // Can be removed, useful to ensure your code is running
-    aout << "Welcome to android_main" << std::endl;
-
     // Register an event handler for Android events
     pApp->onAppCmd = handle_cmd;
 
@@ -84,16 +130,12 @@ void android_main(struct android_app *pApp) {
 
         // Check if any user data is associated. This is assigned in handle_cmd
         if (pApp->userData) {
+            auto engine = reinterpret_cast<::CombinedEngine*>(pApp->userData);
 
-            // We know that our user data is a Renderer, so reinterpret cast it. If you change your
-            // user data remember to change it here
-            auto *pRenderer = reinterpret_cast<Renderer *>(pApp->userData);
+            if (!engine->is_ongoing())
+                break;
 
-            // Process game input
-            pRenderer->handleInput();
-
-            // Render a frame
-            pRenderer->render();
+            engine->do_frame();
         }
     } while (!pApp->destroyRequested);
 }
