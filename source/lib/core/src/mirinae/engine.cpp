@@ -94,8 +94,10 @@ namespace {
             : create_info_(cinfo)
         {
             mirinae::InstanceFactory instance_factory;
-            instance_factory.enable_validation_layer();
-            instance_factory.ext_layers_.add_validation();
+            if (cinfo.enable_validation_layers_) {
+                instance_factory.enable_validation_layer();
+                instance_factory.ext_layers_.add_validation();
+            }
             instance_factory.ext_layers_.extensions_.insert(
                 instance_factory.ext_layers_.extensions_.end(),
                 cinfo.instance_extensions_.begin(),

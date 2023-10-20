@@ -181,6 +181,7 @@ namespace {
                 auto surface = this->window_.create_surface(reinterpret_cast<VkInstance>(instance));
                 return *reinterpret_cast<uint64_t*>(&surface);
             };
+            create_info_.enable_validation_layers_ = true;
 
             engine_ = mirinae::create_engine(create_info_);
             window_.set_userdata(engine_.get());
