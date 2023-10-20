@@ -20,6 +20,8 @@ find_package(game-activity REQUIRED CONFIG)
 
 add_subdirectory(../../../../../../../lib ${PROJECT_BINARY_DIR}/libmirinae)
 
+target_compile_definitions(mirinapp PUBLIC VK_USE_PLATFORM_ANDROID_KHR)
+
 # Configure libraries CMake uses to link your target library.
 target_link_libraries(mirinapp
         # The game activity
