@@ -4,9 +4,7 @@
 #include <game-text-input/gametextinput.cpp>
 
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_android.h>
 #include <mirinae/engine.hpp>
-
 
 
 extern "C" {
@@ -18,6 +16,10 @@ class CombinedEngine {
 
 public:
     CombinedEngine(android_app* const state) {
+        create_info_.instance_extensions_ = std::vector<std::string>{
+                "VK_KHR_surface",
+                "VK_KHR_android_surface",
+        };
         create_info_.surface_creator_ = [state](void* instance) -> uint64_t {
             VkAndroidSurfaceCreateInfoKHR create_info{
                     .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
