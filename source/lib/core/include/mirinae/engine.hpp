@@ -29,6 +29,7 @@ namespace mirinae {
 
         std::vector<std::string> instance_extensions_;
         surface_creator_t surface_creator_;
+        bool enable_validation_layers_ = false;
     };
 
     std::unique_ptr<IEngine> create_engine(const EngineCreateInfo& create_info);
