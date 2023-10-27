@@ -693,8 +693,6 @@ namespace mirinae {
             PhysDevice phys_device;
             phys_device.set(handle, surface);
 
-            if (!phys_device.is_descrete_gpu())
-                continue;
             if (!phys_device.graphics_family_index().has_value())
                 continue;
 
