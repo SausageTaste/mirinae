@@ -58,10 +58,10 @@ namespace {
         }
 
         VkSurfaceKHR create_surface(const VkInstance instance) {
-            VkSurfaceKHR surface = nullptr;
+            VkSurfaceKHR surface = VK_NULL_HANDLE;
             if (VK_SUCCESS != glfwCreateWindowSurface(instance, window_, nullptr, &surface)) {
                 spdlog::error("Failed to create window surface");
-                return nullptr;
+                return VK_NULL_HANDLE;
             }
             return surface;
         }
@@ -177,9 +177,11 @@ namespace {
             : window_(800, 600, "Mirinapp")
         {
             create_info_.instance_extensions_ = ::get_glfw_extensions();
-            create_info_.surface_creator_ = [this](void* instance) {
-                return this->window_.create_surface(reinterpret_cast<VkInstance>(instance));
+            create_info_.surface_creator_ = [this](void* instance) -> uint64_t {
+                auto surface = this->window_.create_surface(reinterpret_cast<VkInstance>(instance));
+                return *reinterpret_cast<uint64_t*>(&surface);
             };
+            create_info_.enable_validation_layers_ = true;
 
             engine_ = mirinae::create_engine(create_info_);
             window_.set_userdata(engine_.get());
