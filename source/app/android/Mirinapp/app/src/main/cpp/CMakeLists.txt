@@ -8,6 +8,7 @@ project("mirinapp")
 # Creates your game shared library. The name must be the same as the
 # one used for loading in your Kotlin/Java or AndroidManifest.txt files.
 add_library(mirinapp SHARED
+        filesys.cpp
         main.cpp
 )
 
