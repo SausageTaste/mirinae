@@ -90,9 +90,15 @@ namespace {
     class EngineGlfw : public mirinae::IEngine {
 
     public:
-        EngineGlfw(const mirinae::EngineCreateInfo& cinfo)
-            : create_info_(cinfo)
+        EngineGlfw(mirinae::EngineCreateInfo&& cinfo)
+            : create_info_(std::move(cinfo))
         {
+            // Check engine creation info
+            if (!create_info_.filesys_) {
+                spdlog::critical("Filesystem is not set");
+                throw std::runtime_error{ "Filesystem is not set" };
+            }
+
             mirinae::InstanceFactory instance_factory;
             if (cinfo.enable_validation_layers_) {
                 instance_factory.enable_validation_layer();
@@ -157,7 +163,7 @@ namespace {
 
             // Texture
             {
-                const auto path = mirinae::find_resources_folder().value() / "textures" / "lorem_ipsum.png";
+                const auto path = "asset/textures/lorem_ipsum.png";
                 const auto img_data = mirinae::load_file<std::vector<uint8_t>>(path);
                 const auto image = mirinae::parse_image(img_data->data(), img_data->size());
 
@@ -514,8 +520,8 @@ namespace {
 
 namespace mirinae {
 
-    std::unique_ptr<IEngine> create_engine(const EngineCreateInfo& create_info) {
-        return std::make_unique<EngineGlfw>(create_info);
+    std::unique_ptr<IEngine> create_engine(mirinae::EngineCreateInfo&& create_info) {
+        return std::make_unique<EngineGlfw>(std::move(create_info));
     }
 
 }

@@ -16,6 +16,7 @@ target_link_libraries(mirinae_core
     PUBLIC
         Vulkan::Vulkan
         spdlog
+        mirinae::platform
     PRIVATE
         dalbaragi::daltools
 )
