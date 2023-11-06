@@ -1,3 +1,5 @@
+#include <mutex>
+
 #include <jni.h>
 #include <android/log.h>
 #include <game-activity/GameActivity.cpp>
@@ -5,6 +7,8 @@
 #include <game-text-input/gametextinput.cpp>
 
 #include <vulkan/vulkan.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/base_sink.h>
 #include <mirinae/engine.hpp>
 
 #include "filesys.hpp"
@@ -12,10 +16,61 @@
 
 namespace {
 
+    class LogcatSink : public spdlog::sinks::base_sink<std::mutex> {
+
+    public:
+        LogcatSink() = default;
+
+    protected:
+        void sink_it_(const spdlog::details::log_msg& msg) override {
+            spdlog::memory_buf_t formatted;
+            spdlog::sinks::base_sink<std::mutex>::formatter_->format(msg, formatted);
+            const auto text = fmt::to_string(formatted);
+            const auto log_level = this->log_level_cast(msg.level);
+            __android_log_print(log_level, "Mirinae", "%s\n", text.c_str());
+        }
+
+        void flush_() override {
+
+        }
+
+    private:
+        static android_LogPriority log_level_cast(spdlog::level::level_enum e) {
+            switch (e) {
+                case spdlog::level::level_enum::trace:
+                    return ANDROID_LOG_VERBOSE;
+                case spdlog::level::level_enum::debug:
+                    return ANDROID_LOG_DEBUG;
+                case spdlog::level::level_enum::info:
+                    return ANDROID_LOG_INFO;
+                case spdlog::level::level_enum::warn:
+                    return ANDROID_LOG_WARN;
+                case spdlog::level::level_enum::err:
+                    return ANDROID_LOG_ERROR;
+                case spdlog::level::level_enum::critical:
+                    return ANDROID_LOG_FATAL;
+                case spdlog::level::level_enum::off:
+                    return ANDROID_LOG_SILENT;
+                default:
+                    return ANDROID_LOG_UNKNOWN;
+            }
+        }
+
+    };
+
+
     class CombinedEngine {
 
     public:
         CombinedEngine(android_app* const state) {
+            // Logger
+            {
+                std::vector<spdlog::sink_ptr> sinks;
+                sinks.emplace_back(std::make_shared<LogcatSink>());
+                auto logger = std::make_shared<spdlog::logger>("Mirinae", sinks.begin(), sinks.end());
+                spdlog::set_default_logger(logger);
+            }
+
             create_info_.filesys_ = mirinapp::create_filesys_android_asset(state->activity->assetManager);
 
             create_info_.instance_extensions_ = std::vector<std::string>{
