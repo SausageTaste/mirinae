@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mirinae/platform/filesys.hpp"
+
 #include "uniform.hpp"
 
 
@@ -9,6 +11,7 @@ namespace mirinae {
         const VkExtent2D& swapchain_extent,
         RenderPass& renderpass,
         DescriptorSetLayout& desclayout,
+        IFilesys& filesys,
         LogiDevice& logi_device
     );
 
