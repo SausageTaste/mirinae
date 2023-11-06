@@ -124,11 +124,6 @@ namespace {
 
 extern "C" {
 
-/*!
- * Handles commands sent to this Android application
- * @param pApp the app the commands are coming from
- * @param cmd the command to handle
- */
 void handle_cmd(android_app *pApp, int32_t cmd) {
     switch (cmd) {
         case APP_CMD_INIT_WINDOW:

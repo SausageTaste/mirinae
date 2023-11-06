@@ -7,7 +7,7 @@ def _is_dir_root(path: str):
         return False
 
     required_contents = {
-        "resources",
+        "asset",
         ".gitignore",
         "README.md",
     }
