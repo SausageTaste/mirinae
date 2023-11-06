@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <android/log.h>
 #include <game-activity/GameActivity.cpp>
+#include <game-activity/native_app_glue/android_native_app_glue.c>
 #include <game-text-input/gametextinput.cpp>
 
 #include <vulkan/vulkan.h>
@@ -9,63 +10,64 @@
 #include "filesys.hpp"
 
 
-extern "C" {
+namespace {
 
-#include <game-activity/native_app_glue/android_native_app_glue.c>
+    class CombinedEngine {
 
+    public:
+        CombinedEngine(android_app* const state) {
+            create_info_.filesys_ = mirinapp::create_filesys_android_asset(state->activity->assetManager);
 
-class CombinedEngine {
+            create_info_.instance_extensions_ = std::vector<std::string>{
+                    "VK_KHR_surface",
+                    "VK_KHR_android_surface",
+            };
+            create_info_.surface_creator_ = [state](void* instance) -> uint64_t {
+                VkAndroidSurfaceCreateInfoKHR create_info{
+                        .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
+                        .pNext = nullptr,
+                        .flags = 0,
+                        .window = state->window,
+                };
 
-public:
-    CombinedEngine(android_app* const state) {
-        create_info_.filesys_ = mirinapp::create_filesys_android_asset(state->activity->assetManager);
+                VkSurfaceKHR surface = VK_NULL_HANDLE;
+                const auto create_result = vkCreateAndroidSurfaceKHR(
+                        reinterpret_cast<VkInstance>(instance),
+                        &create_info,
+                        nullptr,
+                        &surface
+                );
 
-        create_info_.instance_extensions_ = std::vector<std::string>{
-                "VK_KHR_surface",
-                "VK_KHR_android_surface",
-        };
-        create_info_.surface_creator_ = [state](void* instance) -> uint64_t {
-            VkAndroidSurfaceCreateInfoKHR create_info{
-                    .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
-                    .pNext = nullptr,
-                    .flags = 0,
-                    .window = state->window,
+                return *reinterpret_cast<uint64_t*>(&surface);
             };
 
-            VkSurfaceKHR surface = VK_NULL_HANDLE;
-            const auto create_result = vkCreateAndroidSurfaceKHR(
-                    reinterpret_cast<VkInstance>(instance),
-                    &create_info,
-                    nullptr,
-                    &surface
-            );
+            engine_ = mirinae::create_engine(std::move(create_info_));
+        }
 
-            return *reinterpret_cast<uint64_t*>(&surface);
-        };
+        void do_frame() {
+            engine_->do_frame();
+        }
 
-        engine_ = mirinae::create_engine(std::move(create_info_));
-    }
+        [[nodiscard]]
+        bool is_ongoing() const {
+            if (nullptr == engine_)
+                return false;
+            if (!engine_->is_ongoing())
+                return false;
 
-    void do_frame() {
-        engine_->do_frame();
-    }
+            return true;
+        }
 
-    [[nodiscard]]
-    bool is_ongoing() const {
-        if (nullptr == engine_)
-            return false;
-        if (!engine_->is_ongoing())
-            return false;
+    private:
+        mirinae::EngineCreateInfo create_info_;
+        std::unique_ptr<mirinae::IEngine> engine_;
 
-        return true;
-    }
+    };
 
-private:
-    mirinae::EngineCreateInfo create_info_;
-    std::unique_ptr<mirinae::IEngine> engine_;
+}
 
-};
 
+extern "C" {
 
 /*!
  * Handles commands sent to this Android application
@@ -145,4 +147,5 @@ void android_main(struct android_app *pApp) {
         }
     } while (!pApp->destroyRequested);
 }
+
 }
