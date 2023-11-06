@@ -429,7 +429,7 @@ namespace {
             framesync_.init(logi_device_);
             renderpass_.init(swapchain_.format(), depth_image_.format(), logi_device_);
             desclayout_.init(logi_device_);
-            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, logi_device_);
+            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, *create_info_.filesys_, logi_device_);
 
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
