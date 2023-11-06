@@ -30,4 +30,5 @@ FetchContent_MakeAvailable(
 find_package(Vulkan REQUIRED)
 
 
+add_subdirectory(platform)
 add_subdirectory(core)

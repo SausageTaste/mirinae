@@ -176,14 +176,17 @@ namespace {
         CombinedEngine()
             : window_(800, 600, "Mirinapp")
         {
-            create_info_.instance_extensions_ = ::get_glfw_extensions();
-            create_info_.surface_creator_ = [this](void* instance) -> uint64_t {
+            mirinae::EngineCreateInfo create_info;
+            create_info.filesys_ = mirinae::create_filesys_std();
+
+            create_info.instance_extensions_ = ::get_glfw_extensions();
+            create_info.surface_creator_ = [this](void* instance) -> uint64_t {
                 auto surface = this->window_.create_surface(reinterpret_cast<VkInstance>(instance));
                 return *reinterpret_cast<uint64_t*>(&surface);
             };
-            create_info_.enable_validation_layers_ = true;
+            create_info.enable_validation_layers_ = true;
 
-            engine_ = mirinae::create_engine(create_info_);
+            engine_ = mirinae::create_engine(std::move(create_info));
             window_.set_userdata(engine_.get());
         }
 
@@ -206,7 +209,6 @@ namespace {
 
     private:
         GlfwWindow window_;
-        mirinae::EngineCreateInfo create_info_;
         std::unique_ptr<mirinae::IEngine> engine_;
 
     };
