@@ -8,7 +8,6 @@
 #include <mirinae/actor/transform.hpp>
 #include <mirinae/render/pipeline.hpp>
 #include <mirinae/render/vkcomposition.hpp>
-#include <mirinae/util/filesys.hpp>
 #include <mirinae/util/mamath.hpp>
 
 
@@ -100,18 +99,18 @@ namespace {
             }
 
             mirinae::InstanceFactory instance_factory;
-            if (cinfo.enable_validation_layers_) {
+            if (create_info_.enable_validation_layers_) {
                 instance_factory.enable_validation_layer();
                 instance_factory.ext_layers_.add_validation();
             }
             instance_factory.ext_layers_.extensions_.insert(
                 instance_factory.ext_layers_.extensions_.end(),
-                cinfo.instance_extensions_.begin(),
-                cinfo.instance_extensions_.end()
+                create_info_.instance_extensions_.begin(),
+                create_info_.instance_extensions_.end()
             );
 
             instance_.init(instance_factory);
-            surface_ = ::surface_cast(cinfo.surface_creator_(instance_.get()));
+            surface_ = ::surface_cast(create_info_.surface_creator_(instance_.get()));
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
             spdlog::info("Physical device selected: {}\n{}", phys_device_.name(), phys_device_.make_report_str());
 
@@ -163,9 +162,10 @@ namespace {
 
             // Texture
             {
-                const auto path = "asset/textures/lorem_ipsum.png";
-                const auto img_data = mirinae::load_file<std::vector<uint8_t>>(path);
-                const auto image = mirinae::parse_image(img_data->data(), img_data->size());
+                const auto path = "textures/lorem_ipsum.png";
+                std::vector<uint8_t> img_data;
+                create_info_.filesys_->read_file_to_vector(path, img_data);
+                const auto image = mirinae::parse_image(img_data.data(), img_data.size());
 
                 mirinae::Buffer staging_buffer;
                 staging_buffer.init(
