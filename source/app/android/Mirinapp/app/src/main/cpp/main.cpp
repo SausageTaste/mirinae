@@ -1,10 +1,12 @@
 #include <jni.h>
-
+#include <android/log.h>
 #include <game-activity/GameActivity.cpp>
 #include <game-text-input/gametextinput.cpp>
 
 #include <vulkan/vulkan.h>
 #include <mirinae/engine.hpp>
+
+#include "filesys.hpp"
 
 
 extern "C" {
@@ -16,6 +18,8 @@ class CombinedEngine {
 
 public:
     CombinedEngine(android_app* const state) {
+        create_info_.filesys_ = mirinapp::create_filesys_android_asset(state->activity->assetManager);
+
         create_info_.instance_extensions_ = std::vector<std::string>{
                 "VK_KHR_surface",
                 "VK_KHR_android_surface",
@@ -39,7 +43,7 @@ public:
             return *reinterpret_cast<uint64_t*>(&surface);
         };
 
-        engine_ = mirinae::create_engine(create_info_);
+        engine_ = mirinae::create_engine(std::move(create_info_));
     }
 
     void do_frame() {
