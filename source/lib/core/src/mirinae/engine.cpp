@@ -158,7 +158,8 @@ namespace {
             // Texture
             {
                 const auto path = mirinae::find_resources_folder().value() / "textures" / "lorem_ipsum.png";
-                auto image = mirinae::load_image(path.u8string().c_str());
+                const auto img_data = mirinae::load_file<std::vector<uint8_t>>(path);
+                const auto image = mirinae::parse_image(img_data->data(), img_data->size());
 
                 mirinae::Buffer staging_buffer;
                 staging_buffer.init(

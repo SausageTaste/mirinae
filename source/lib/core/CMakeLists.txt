@@ -5,6 +5,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/render/vkcomposition.cpp
     ./src/mirinae/render/vkmajorplayers.cpp
     ./src/mirinae/util/filesys.cpp
+    ./src/mirinae/util/image.cpp
     ./src/mirinae/util/mamath.cpp
     ./src/mirinae/engine.cpp
 )

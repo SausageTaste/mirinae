@@ -1,7 +1,5 @@
 #include "mirinae/util/filesys.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 #include <spdlog/spdlog.h>
 
 
@@ -22,25 +20,6 @@ namespace mirinae {
 
         spdlog::error("Cannot find resources folder");
         return std::nullopt;
-    }
-
-    std::unique_ptr<IImage2D> load_image(const char* const path) {
-        int width, height, channels;
-
-        if (stbi_is_hdr(path)) {
-            const auto data = stbi_loadf(path, &width, &height, &channels, STBI_rgb_alpha);
-            auto image = std::make_unique<TImage2D<float>>();
-            image->init(data, width, height, 4);
-            stbi_image_free(data);
-            return image;
-        }
-        else {
-            const auto data = stbi_load(path, &width, &height, &channels, STBI_rgb_alpha);
-            auto image = std::make_unique<TImage2D<uint8_t>>();
-            image->init(data, width, height, 4);
-            stbi_image_free(data);
-            return image;
-        }
     }
 
 }

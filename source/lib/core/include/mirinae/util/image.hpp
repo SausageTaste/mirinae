@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 
 #include "include_glm.hpp"
 
@@ -86,5 +87,8 @@ namespace mirinae {
         unsigned channels_ = 0;
 
     };
+
+
+    std::unique_ptr<IImage2D> parse_image(const uint8_t* data, size_t data_size);
 
 }
