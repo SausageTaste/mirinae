@@ -12,7 +12,7 @@ namespace {
         std::filesystem::path cur_path = ".";
 
         for (int i = 0; i < 10; ++i) {
-            const auto folder_path = cur_path / "resources";
+            const auto folder_path = cur_path / "asset";
             if (std::filesystem::is_directory(folder_path)) {
                 return folder_path;
             }

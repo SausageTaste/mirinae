@@ -11,14 +11,14 @@ def __try_mkdir(path: str):
 
 
 def __create_shader_folder(root_dir: str):
-    __try_mkdir(os.path.join(root_dir, "resources"))
-    __try_mkdir(os.path.join(root_dir, "resources", "shaders"))
+    __try_mkdir(os.path.join(root_dir, "asset"))
+    __try_mkdir(os.path.join(root_dir, "asset", "spv"))
 
 
 def main():
     vulkan_sdk_dir = utils.find_vulkan_sdk();
     root_dir = utils.find_root_dir()
-    glsl_dir = os.path.join(root_dir, "resource_source", "glsl")
+    glsl_dir = os.path.join(root_dir, "asset", "glsl")
     compiler_path = os.path.join(vulkan_sdk_dir, "Bin", "glslc.exe")
     if not os.path.isfile(compiler_path):
         raise FileNotFoundError("GLSL compiler not found at '{}'".format(compiler_path))
