@@ -1071,78 +1071,6 @@ namespace {
 }
 
 
-// Buffer
-namespace mirinae {
-
-    void Buffer::init(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, mirinae::PhysDevice& phys_device, LogiDevice& logi_device) {
-        this->destroy(logi_device);
-
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateBuffer(logi_device.get(), &bufferInfo, nullptr, &buffer_) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create vertex buffer!");
-        }
-
-        size_ = bufferInfo.size;
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(logi_device.get(), buffer_, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = ::find_memory_type(memRequirements.memoryTypeBits, properties, phys_device);
-
-        if (vkAllocateMemory(logi_device.get(), &allocInfo, nullptr, &memory_) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate vertex buffer memory!");
-        }
-
-        vkBindBufferMemory(logi_device.get(), buffer_, memory_, 0);
-    }
-
-    void Buffer::destroy(LogiDevice& logi_device) {
-        size_ = 0;
-
-        if (VK_NULL_HANDLE != buffer_) {
-            vkDestroyBuffer(logi_device.get(), buffer_, nullptr);
-            buffer_ = VK_NULL_HANDLE;
-        }
-
-        if (VK_NULL_HANDLE != memory_) {
-            vkFreeMemory(logi_device.get(), memory_, nullptr);
-            memory_ = VK_NULL_HANDLE;
-        }
-    }
-
-    void Buffer::set_data(const void* data, size_t size, LogiDevice& logi_device) {
-        void* ptr;
-        vkMapMemory(logi_device.get(), memory_, 0, size_, 0, &ptr);
-        memcpy(ptr, data, std::min<size_t>(size, size_));
-        vkUnmapMemory(logi_device.get(), memory_);
-    }
-
-    void Buffer::record_copy_cmd(const Buffer& src, VkCommandBuffer cmdbuf, LogiDevice& logi_device) {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(cmdbuf, &beginInfo);
-
-        VkBufferCopy copyRegion{};
-        copyRegion.srcOffset = 0;
-        copyRegion.dstOffset = 0;
-        copyRegion.size = std::min<VkDeviceSize>(this->size(), src.size());
-        vkCmdCopyBuffer(cmdbuf, src.buffer_, this->buffer_, 1, &copyRegion);
-
-        vkEndCommandBuffer(cmdbuf);
-    }
-
-}
-
-
 // TextureImage
 namespace mirinae {
 
@@ -1181,7 +1109,7 @@ namespace mirinae {
         }
     }
 
-    void TextureImage::copy_and_transition(mirinae::Buffer& staging_buffer, mirinae::CommandPool& cmd_pool, mirinae::LogiDevice& logi_device) {
+    void TextureImage::copy_and_transition(VkBuffer staging_buffer, mirinae::CommandPool& cmd_pool, mirinae::LogiDevice& logi_device) {
         ::transition_image_layout(
             image_,
             1,
@@ -1194,15 +1122,13 @@ namespace mirinae {
 
         ::copy_buffer_to_image(
             image_,
-            staging_buffer.buffer(),
+            staging_buffer,
             width_,
             height_,
             0,
             cmd_pool,
             logi_device
         );
-
-        staging_buffer.destroy(logi_device);
 
         ::transition_image_layout(
             image_,

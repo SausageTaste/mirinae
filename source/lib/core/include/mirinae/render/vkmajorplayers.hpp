@@ -325,26 +325,6 @@ namespace mirinae {
     };
 
 
-    class Buffer {
-
-    public:
-        void init(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, mirinae::PhysDevice& phys_device, LogiDevice& logi_device);
-        void destroy(LogiDevice& logi_device);
-
-        VkBuffer buffer() { return buffer_; }
-        VkDeviceSize size() const { return size_; }
-
-        void set_data(const void* data, size_t size, LogiDevice& logi_device);
-        void record_copy_cmd(const Buffer& src, VkCommandBuffer cmdbuf, LogiDevice& logi_device);
-
-    private:
-        VkBuffer buffer_ = VK_NULL_HANDLE;
-        VkDeviceMemory memory_ = VK_NULL_HANDLE;
-        VkDeviceSize size_ = 0;
-
-    };
-
-
     class TextureImage {
 
     public:
@@ -361,7 +341,7 @@ namespace mirinae {
 
         void destroy(LogiDevice& logi_device);
 
-        void copy_and_transition(mirinae::Buffer& staging_buffer, mirinae::CommandPool& cmd_pool, mirinae::LogiDevice& logi_device);
+        void copy_and_transition(VkBuffer staging_buffer, mirinae::CommandPool& cmd_pool, mirinae::LogiDevice& logi_device);
 
         VkImage image() { return image_; }
         VkDeviceMemory memory() { return memory_; }

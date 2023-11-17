@@ -21,10 +21,17 @@ FetchContent_Declare(
     BUILD_COMMAND     ""
 )
 
+FetchContent_Declare(
+    fetch_vma
+    GIT_REPOSITORY    https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+    GIT_TAG           v3.0.1
+)
+
 FetchContent_MakeAvailable(
     fetch_spdlog
     fetch_daltools
     fetch_stb
+    fetch_vma
 )
 
 find_package(Vulkan REQUIRED)
