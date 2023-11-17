@@ -6,6 +6,7 @@
 #include <daltools/util.h>
 
 #include <mirinae/actor/transform.hpp>
+#include <mirinae/render/mem_alloc.hpp>
 #include <mirinae/render/pipeline.hpp>
 #include <mirinae/render/vkcomposition.hpp>
 #include <mirinae/util/mamath.hpp>
@@ -120,6 +121,7 @@ namespace {
                 throw std::runtime_error{ "Some extensions are not supported" };
 
             logi_device_.init(phys_device_, device_extensions);
+            mem_allocator_ = mirinae::create_vma_allocator(instance_.get(), phys_device_.get(), logi_device_.get());
 
             mirinae::SwapChainSupportDetails swapchain_details;
             swapchain_details.init(surface_, phys_device_.get());
@@ -157,7 +159,7 @@ namespace {
                     7, 6, 4, 6, 5, 4,
                 };
 
-                vert_index_pair_.init(vertices, indices, cmd_pool_, phys_device_, logi_device_);
+                vert_index_pair_.init(vertices, indices, cmd_pool_, mem_allocator_, logi_device_);
             }
 
             // Texture
@@ -167,14 +169,8 @@ namespace {
                 const auto image = mirinae::parse_image(img_data->data(), img_data->size());
 
                 mirinae::Buffer staging_buffer;
-                staging_buffer.init(
-                    image->data_size(),
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    phys_device_,
-                    logi_device_
-                );
-                staging_buffer.set_data(image->data(), image->data_size(), logi_device_);
+                staging_buffer.init_staging(image->data_size(), mem_allocator_);
+                staging_buffer.set_data(image->data(), image->data_size(), mem_allocator_);
 
                 texture_.init(
                     image->width(), image->height(),
@@ -185,8 +181,8 @@ namespace {
                     phys_device_,
                     logi_device_
                 );
-                texture_.copy_and_transition(staging_buffer, cmd_pool_, logi_device_);
-                staging_buffer.destroy(logi_device_);
+                texture_.copy_and_transition(staging_buffer.get(), cmd_pool_, logi_device_);
+                staging_buffer.destroy(mem_allocator_);
 
                 texture_view_.init(texture_.image(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, logi_device_);
                 texture_sampler_.init(phys_device_, logi_device_);
@@ -196,13 +192,7 @@ namespace {
             {
                 for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i) {
                     auto& ubuf = uniform_buf_.emplace_back();
-                    ubuf.init(
-                        sizeof(mirinae::U_Unorthodox),
-                        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                        phys_device_,
-                        logi_device_
-                    );
+                    ubuf.init_ubuf(sizeof(mirinae::U_Unorthodox), mem_allocator_);
                 }
             }
 
@@ -246,14 +236,15 @@ namespace {
         ~EngineGlfw() {
             this->logi_device_.wait_idle();
 
-            for (auto& ubuf : uniform_buf_) ubuf.destroy(logi_device_); uniform_buf_.clear();
+            for (auto& ubuf : uniform_buf_) ubuf.destroy(mem_allocator_); uniform_buf_.clear();
             texture_sampler_.destroy(logi_device_);
             texture_view_.destroy(logi_device_);
             texture_.destroy(logi_device_);
-            vert_index_pair_.destroy(logi_device_);
+            vert_index_pair_.destroy(mem_allocator_);
             desc_pool_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
             this->destroy_swapchain_and_relatives();
+            mirinae::destroy_vma_allocator(mem_allocator_); mem_allocator_ = nullptr;
             logi_device_.destroy();
             vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = VK_NULL_HANDLE;
         }
@@ -280,7 +271,7 @@ namespace {
                 ubuf_data.view = camera_.make_view_mat();
                 ubuf_data.proj = glm::perspective(glm::radians(45.0f), swapchain_.extent().width / (float) swapchain_.extent().height, 0.1f, 10.0f);
                 ubuf_data.proj[1][1] *= -1;
-                ubuf.set_data(&ubuf_data, sizeof(mirinae::U_Unorthodox), logi_device_);
+                ubuf.set_data(&ubuf_data, sizeof(mirinae::U_Unorthodox), mem_allocator_);
             }
 
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
@@ -487,6 +478,7 @@ namespace {
         VkSurfaceKHR surface_ = VK_NULL_HANDLE;
         mirinae::PhysDevice phys_device_;
         mirinae::LogiDevice logi_device_;
+        mirinae::VulkanMemoryAllocator mem_allocator_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         mirinae::DescriptorSetLayout desclayout_;

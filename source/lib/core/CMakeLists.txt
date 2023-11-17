@@ -1,5 +1,6 @@
 add_library(mirinae_core STATIC
     ./src/mirinae/actor/transform.cpp
+    ./src/mirinae/render/mem_alloc.cpp
     ./src/mirinae/render/pipeline.cpp
     ./src/mirinae/render/uniform.cpp
     ./src/mirinae/render/vkcomposition.cpp
@@ -17,6 +18,7 @@ target_link_libraries(mirinae_core
         spdlog
         mirinae::platform
     PRIVATE
+        VulkanMemoryAllocator
         dalbaragi::daltools
 )
 
