@@ -136,7 +136,6 @@ namespace mirinae {
         }
     }
 
-
     void Buffer::destroy(VulkanMemoryAllocator allocator) {
         if (buffer_ != VK_NULL_HANDLE) {
             vmaDestroyBuffer(allocator->get(), buffer_, allocation_);
@@ -168,6 +167,72 @@ namespace mirinae {
         vkCmdCopyBuffer(cmdbuf, src.buffer_, buffer_, 1, &copyRegion);
 
         vkEndCommandBuffer(cmdbuf);
+    }
+
+}
+
+
+// Image
+namespace mirinae {
+
+    void Image::init_rgba8_srgb(uint32_t width, uint32_t height, VulkanMemoryAllocator allocator) {
+        this->destroy(allocator);
+
+        img_info_.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        img_info_.imageType = VK_IMAGE_TYPE_2D;
+        img_info_.extent.width = width;
+        img_info_.extent.height = height;
+        img_info_.extent.depth = 1;
+        img_info_.mipLevels = 1;
+        img_info_.arrayLayers = 1;
+        img_info_.format = VK_FORMAT_R8G8B8A8_SRGB;
+        img_info_.tiling = VK_IMAGE_TILING_OPTIMAL;
+        img_info_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        img_info_.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        img_info_.samples = VK_SAMPLE_COUNT_1_BIT;
+        img_info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo alloc_info = {};
+        alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        if (VK_SUCCESS != vmaCreateImage(allocator->get(), &img_info_, &alloc_info, &image_, &allocation_, nullptr)) {
+            throw std::runtime_error("failed to create VMA image");
+        }
+    }
+
+    void Image::init_depth(uint32_t width, uint32_t height, VkFormat format, VulkanMemoryAllocator allocator) {
+        this->destroy(allocator);
+
+        img_info_.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        img_info_.imageType = VK_IMAGE_TYPE_2D;
+        img_info_.extent.width = width;
+        img_info_.extent.height = height;
+        img_info_.extent.depth = 1;
+        img_info_.mipLevels = 1;
+        img_info_.arrayLayers = 1;
+        img_info_.format = format;
+        img_info_.tiling = VK_IMAGE_TILING_OPTIMAL;
+        img_info_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        img_info_.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        img_info_.samples = VK_SAMPLE_COUNT_1_BIT;
+        img_info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo alloc_info = {};
+        alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        if (VK_SUCCESS != vmaCreateImage(allocator->get(), &img_info_, &alloc_info, &image_, &allocation_, nullptr)) {
+            throw std::runtime_error("failed to create VMA image");
+        }
+    }
+
+    void Image::destroy(VulkanMemoryAllocator allocator) {
+        img_info_ = {};
+
+        if (image_ != VK_NULL_HANDLE) {
+            vmaDestroyImage(allocator->get(), image_, allocation_);
+            image_ = VK_NULL_HANDLE;
+            allocation_ = VK_NULL_HANDLE;
+        }
     }
 
 }

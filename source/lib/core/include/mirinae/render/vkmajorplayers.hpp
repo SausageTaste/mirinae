@@ -325,40 +325,6 @@ namespace mirinae {
     };
 
 
-    class TextureImage {
-
-    public:
-        void init(
-            uint32_t width,
-            uint32_t height,
-            VkFormat format,
-            VkImageTiling tiling,
-            VkImageUsageFlags usage,
-            VkMemoryPropertyFlags properties,
-            mirinae::PhysDevice& phys_device,
-            mirinae::LogiDevice& logi_device
-        );
-
-        void destroy(LogiDevice& logi_device);
-
-        void copy_and_transition(VkBuffer staging_buffer, mirinae::CommandPool& cmd_pool, mirinae::LogiDevice& logi_device);
-
-        VkImage image() { return image_; }
-        VkDeviceMemory memory() { return memory_; }
-
-        VkFormat format() const { return format_; }
-
-    private:
-        VkImage image_ = VK_NULL_HANDLE;
-        VkDeviceMemory memory_ = VK_NULL_HANDLE;
-
-        VkFormat format_ = VK_FORMAT_UNDEFINED;
-        uint32_t width_ = 0;
-        uint32_t height_ = 0;
-
-    };
-
-
     class ImageView {
 
     public:
@@ -385,5 +351,16 @@ namespace mirinae {
         VkSampler handle_ = VK_NULL_HANDLE;
 
     };
+
+
+    void copy_to_img_and_transition(
+        VkImage image,
+        uint32_t width,
+        uint32_t height,
+        VkFormat format,
+        VkBuffer staging_buffer,
+        mirinae::CommandPool& cmd_pool,
+        mirinae::LogiDevice& logi_device
+    );
 
 }
