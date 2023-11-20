@@ -14,6 +14,12 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
+    fetch_sungtools
+    GIT_REPOSITORY https://github.com/SausageTaste/SungToolsCpp
+    GIT_TAG        main
+)
+
+FetchContent_Declare(
     fetch_stb
     GIT_REPOSITORY    https://github.com/nothings/stb
     GIT_TAG           master
@@ -30,6 +36,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(
     fetch_spdlog
     fetch_daltools
+    fetch_sungtools
     fetch_stb
     fetch_vma
 )
