@@ -20,6 +20,7 @@ target_link_libraries(mirinae_core
     PRIVATE
         VulkanMemoryAllocator
         dalbaragi::daltools
+        sung::math
 )
 
 if (WIN32)

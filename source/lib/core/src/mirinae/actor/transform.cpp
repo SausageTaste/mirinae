@@ -46,7 +46,7 @@ namespace mirinae::syst {
                 rot -= 1;
 
             if (0 != rot)
-                transform.rotate(rot * delta_time * 2.f, glm::vec3{ 0, 1, 0 });
+                transform.rotate(sung::Angle::from_rad(rot * delta_time * 2.f), glm::vec3{ 0, 1, 0 });
         }
 
         {
@@ -58,7 +58,7 @@ namespace mirinae::syst {
 
             if (0 != rot) {
                 const auto right = glm::mat3_cast(transform.rot_) * glm::vec3{ 1, 0, 0 };
-                transform.rotate(rot * delta_time * 2.f, right);
+                transform.rotate(sung::Angle::from_rad(rot * delta_time * 2.f), right);
             }
         }
     }

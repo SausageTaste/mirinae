@@ -1,17 +1,19 @@
 #pragma once
 
+#include <sung/math/angle.hpp>
+
 #include "include_glm.hpp"
 
 
 namespace mirinae {
 
-    glm::quat rotate_quat(const glm::quat& q, const float angle, const glm::vec3& axis);
+    glm::quat rotate_quat(const glm::quat& q, sung::Angle angle, const glm::vec3& axis);
 
 
     class TransformQuat {
 
     public:
-        void rotate(const float angle, const glm::vec3& axis);
+        void rotate(sung::Angle angle, const glm::vec3& axis);
 
         glm::mat4 make_model_mat() const;
         glm::mat4 make_view_mat() const;
