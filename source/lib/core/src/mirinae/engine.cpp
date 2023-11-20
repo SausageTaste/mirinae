@@ -172,16 +172,16 @@ namespace {
                 staging_buffer.init_staging(image->data_size(), mem_allocator_);
                 staging_buffer.set_data(image->data(), image->data_size(), mem_allocator_);
 
-                texture_.init(
-                    image->width(), image->height(),
-                    VK_FORMAT_R8G8B8A8_SRGB,
-                    VK_IMAGE_TILING_OPTIMAL,
-                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                    phys_device_,
+                texture_.init_rgba8_srgb( image->width(), image->height(), mem_allocator_);
+                mirinae::copy_to_img_and_transition(
+                    texture_.image(),
+                    texture_.width(),
+                    texture_.height(),
+                    texture_.format(),
+                    staging_buffer.buffer(),
+                    cmd_pool_,
                     logi_device_
                 );
-                texture_.copy_and_transition(staging_buffer.get(), cmd_pool_, logi_device_);
                 staging_buffer.destroy(mem_allocator_);
 
                 texture_view_.init(texture_.image(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, logi_device_);
@@ -239,7 +239,7 @@ namespace {
             for (auto& ubuf : uniform_buf_) ubuf.destroy(mem_allocator_); uniform_buf_.clear();
             texture_sampler_.destroy(logi_device_);
             texture_view_.destroy(logi_device_);
-            texture_.destroy(logi_device_);
+            texture_.destroy(mem_allocator_);
             vert_index_pair_.destroy(mem_allocator_);
             desc_pool_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
@@ -404,15 +404,7 @@ namespace {
                     VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
                 );
 
-                depth_image_.init(
-                    swapchain_.extent().width, swapchain_.extent().height,
-                    depth_format,
-                    VK_IMAGE_TILING_OPTIMAL,
-                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                    phys_device_,
-                    logi_device_
-                );
+                depth_image_.init_depth(  swapchain_.extent().width, swapchain_.extent().height, depth_format, mem_allocator_);
                 depth_image_view_.init(depth_image_.image(), depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, logi_device_);
             }
 
@@ -436,7 +428,7 @@ namespace {
             renderpass_.destroy(logi_device_);
             framesync_.destroy(logi_device_);
             depth_image_view_.destroy(logi_device_);
-            depth_image_.destroy(logi_device_);
+            depth_image_.destroy(mem_allocator_);
             swapchain_.destroy(logi_device_);
         }
 
@@ -490,10 +482,10 @@ namespace {
         mirinae::DescriptorPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
         mirinae::VertexIndexPair vert_index_pair_;
-        mirinae::TextureImage texture_;
+        mirinae::Image texture_;
         mirinae::ImageView texture_view_;
         mirinae::Sampler texture_sampler_;
-        mirinae::TextureImage depth_image_;
+        mirinae::Image depth_image_;
         mirinae::ImageView depth_image_view_;
         std::vector<mirinae::Buffer> uniform_buf_;
         mirinae::TransformQuat camera_;

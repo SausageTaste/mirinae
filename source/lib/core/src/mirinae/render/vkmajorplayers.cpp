@@ -122,7 +122,6 @@ namespace {
 }
 
 
-
 // InstanceFactory
 namespace mirinae {
 
@@ -1071,79 +1070,6 @@ namespace {
 }
 
 
-// TextureImage
-namespace mirinae {
-
-    void TextureImage::init(
-        uint32_t width,
-        uint32_t height,
-        VkFormat format,
-        VkImageTiling tiling,
-        VkImageUsageFlags usage,
-        VkMemoryPropertyFlags properties,
-        mirinae::PhysDevice& phys_device,
-        mirinae::LogiDevice& logi_device
-    ) {
-        const auto result = ::create_vk_image(
-            width, height, format, tiling, usage, properties, image_, memory_, phys_device, logi_device
-        );
-
-        if (!result) {
-            throw std::runtime_error("failed to create image!");
-        }
-
-        format_ = format;
-        width_ = width;
-        height_ = height;
-    }
-
-    void TextureImage::destroy(LogiDevice& logi_device) {
-        if (VK_NULL_HANDLE != image_) {
-            vkDestroyImage(logi_device.get(), image_, nullptr);
-            image_ = VK_NULL_HANDLE;
-        }
-
-        if (VK_NULL_HANDLE != memory_) {
-            vkFreeMemory(logi_device.get(), memory_, nullptr);
-            memory_ = VK_NULL_HANDLE;
-        }
-    }
-
-    void TextureImage::copy_and_transition(VkBuffer staging_buffer, mirinae::CommandPool& cmd_pool, mirinae::LogiDevice& logi_device) {
-        ::transition_image_layout(
-            image_,
-            1,
-            format_,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            cmd_pool,
-            logi_device
-        );
-
-        ::copy_buffer_to_image(
-            image_,
-            staging_buffer,
-            width_,
-            height_,
-            0,
-            cmd_pool,
-            logi_device
-        );
-
-        ::transition_image_layout(
-            image_,
-            1,
-            format_,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            cmd_pool,
-            logi_device
-        );
-    }
-
-}
-
-
 // ImageView
 namespace mirinae {
 
@@ -1198,5 +1124,50 @@ namespace mirinae {
         }
     }
 
+}
+
+
+// Free functions
+namespace mirinae {
+
+    void copy_to_img_and_transition(
+        VkImage image,
+        uint32_t width,
+        uint32_t height,
+        VkFormat format,
+        VkBuffer staging_buffer,
+        mirinae::CommandPool& cmd_pool,
+        mirinae::LogiDevice& logi_device
+    ) {
+        ::transition_image_layout(
+            image,
+            1,
+            format,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            cmd_pool,
+            logi_device
+        );
+
+        ::copy_buffer_to_image(
+            image,
+            staging_buffer,
+            width,
+            height,
+            0,
+            cmd_pool,
+            logi_device
+        );
+
+        ::transition_image_layout(
+            image,
+            1,
+            format,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            cmd_pool,
+            logi_device
+        );
+    }
 
 }
