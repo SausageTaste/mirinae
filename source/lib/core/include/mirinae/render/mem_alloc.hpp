@@ -8,9 +8,6 @@
 #define MIRINAE_DEFINE_OPAQUE_HANDLE(name) class name##_T; using name = name##_T*;
 
 
-class VmaAllocation_T;
-
-
 namespace mirinae {
 
     MIRINAE_DEFINE_OPAQUE_HANDLE(VulkanMemoryAllocator);
