@@ -3,7 +3,7 @@
 
 namespace mirinae {
 
-    glm::quat rotate_quat(const glm::quat& q, const sung::Angle angle, const glm::vec3& axis) {
+    glm::quat rotate_quat(const glm::quat& q, const Angle angle, const glm::vec3& axis) {
         return glm::normalize(glm::angleAxis<float>(angle.rad(), axis) * q);
     }
 
@@ -13,7 +13,7 @@ namespace mirinae {
 // TransformQuat
 namespace mirinae {
 
-    void TransformQuat::rotate(sung::Angle angle, const glm::vec3& axis) {
+    void TransformQuat::rotate(Angle angle, const glm::vec3& axis) {
         rot_ = rotate_quat(rot_, angle, axis);
     }
 
