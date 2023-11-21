@@ -7,13 +7,16 @@
 
 namespace mirinae {
 
-    glm::quat rotate_quat(const glm::quat& q, sung::Angle angle, const glm::vec3& axis);
+    using Angle = sung::TAngle<float>;
+
+
+    glm::quat rotate_quat(const glm::quat& q, Angle angle, const glm::vec3& axis);
 
 
     class TransformQuat {
 
     public:
-        void rotate(sung::Angle angle, const glm::vec3& axis);
+        void rotate(Angle angle, const glm::vec3& axis);
 
         glm::mat4 make_model_mat() const;
         glm::mat4 make_view_mat() const;
