@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sung/math/angle.hpp>
+#include <sung/general/angle.hpp>
 
 #include "include_glm.hpp"
 
