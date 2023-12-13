@@ -87,6 +87,84 @@ namespace {
     };
 
 
+    class TextureManager {
+
+    public:
+        struct TextureData {
+            mirinae::Image texture_;
+            mirinae::ImageView texture_view_;
+            std::string id_;
+        };
+
+        std::shared_ptr<TextureData> request(
+            const std::string& path,
+            mirinae::IFilesys& filesys,
+            mirinae::VulkanMemoryAllocator mem_alloc,
+            mirinae::CommandPool& cmd_pool,
+            mirinae::LogiDevice& logi_device
+        ) {
+            if (auto index = this->find_index(path))
+                return textures_.at(index.value());
+
+            const auto img_data = filesys.read_file_to_vector(path.c_str());
+            const auto image = mirinae::parse_image(img_data->data(), img_data->size());
+            auto& output = textures_.emplace_back(new TextureData);
+            output->id_ = path;
+            this->create(*image, *output, mem_alloc, cmd_pool, logi_device);
+            return output;
+        }
+
+        void claer(mirinae::VulkanMemoryAllocator mem_alloc, mirinae::LogiDevice& logi_device) {
+            for (auto& tex : textures_) {
+                if (tex.use_count() > 1)
+                    spdlog::warn("Want to destroy texture '{}' is still in use", tex->id_);
+
+                tex->texture_view_.destroy(logi_device);
+                tex->texture_.destroy(mem_alloc);
+            }
+            textures_.clear();
+        }
+
+    private:
+        std::optional<size_t> find_index(const std::string& id) {
+            for (size_t i = 0; i < textures_.size(); ++i) {
+                if (textures_.at(i)->id_ == id)
+                    return i;
+            }
+            return std::nullopt;
+        }
+
+        static void create(
+            const mirinae::IImage2D& image,
+            TextureData& output,
+            mirinae::VulkanMemoryAllocator mem_alloc,
+            mirinae::CommandPool& cmd_pool,
+            mirinae::LogiDevice& logi_device
+        ) {
+            mirinae::Buffer staging_buffer;
+            staging_buffer.init_staging(image.data_size(), mem_alloc);
+            staging_buffer.set_data(image.data(), image.data_size(), mem_alloc);
+
+            output.texture_.init_rgba8_srgb(image.width(), image.height(), mem_alloc);
+            mirinae::copy_to_img_and_transition(
+                output.texture_.image(),
+                output.texture_.width(),
+                output.texture_.height(),
+                output.texture_.format(),
+                staging_buffer.buffer(),
+                cmd_pool,
+                logi_device
+            );
+            staging_buffer.destroy(mem_alloc);
+
+            output.texture_view_.init(output.texture_.image(), output.texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, logi_device);
+        }
+
+        std::vector<std::shared_ptr<TextureData>> textures_;
+
+    };
+
+
     class EngineGlfw : public mirinae::IEngine {
 
     public:
@@ -163,30 +241,8 @@ namespace {
             }
 
             // Texture
-            {
-                const auto path = "textures/lorem_ipsum.png";
-                const auto img_data = create_info_.filesys_->read_file_to_vector(path);
-                const auto image = mirinae::parse_image(img_data->data(), img_data->size());
-
-                mirinae::Buffer staging_buffer;
-                staging_buffer.init_staging(image->data_size(), mem_allocator_);
-                staging_buffer.set_data(image->data(), image->data_size(), mem_allocator_);
-
-                texture_.init_rgba8_srgb( image->width(), image->height(), mem_allocator_);
-                mirinae::copy_to_img_and_transition(
-                    texture_.image(),
-                    texture_.width(),
-                    texture_.height(),
-                    texture_.format(),
-                    staging_buffer.buffer(),
-                    cmd_pool_,
-                    logi_device_
-                );
-                staging_buffer.destroy(mem_allocator_);
-
-                texture_view_.init(texture_.image(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, logi_device_);
-                texture_sampler_.init(phys_device_, logi_device_);
-            }
+            auto texture_lorem = tex_man_.request("textures/lorem_ipsum.png", *create_info_.filesys_, mem_allocator_, cmd_pool_, logi_device_);
+            texture_sampler_.init(phys_device_, logi_device_);
 
             // Uniform
             {
@@ -204,7 +260,7 @@ namespace {
 
                 VkDescriptorImageInfo imageInfo{};
                 imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                imageInfo.imageView = texture_view_.get();
+                imageInfo.imageView = texture_lorem->texture_view_.get();
                 imageInfo.sampler = texture_sampler_.get();
 
                 std::vector<VkWriteDescriptorSet> write_info{};
@@ -238,8 +294,7 @@ namespace {
 
             for (auto& ubuf : uniform_buf_) ubuf.destroy(mem_allocator_); uniform_buf_.clear();
             texture_sampler_.destroy(logi_device_);
-            texture_view_.destroy(logi_device_);
-            texture_.destroy(mem_allocator_);
+            tex_man_.claer(mem_allocator_, logi_device_);
             vert_index_pair_.destroy(mem_allocator_);
             desc_pool_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
@@ -473,6 +528,7 @@ namespace {
         mirinae::VulkanMemoryAllocator mem_allocator_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
+        ::TextureManager tex_man_;
         mirinae::DescriptorSetLayout desclayout_;
         mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;
@@ -482,8 +538,6 @@ namespace {
         mirinae::DescriptorPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
         mirinae::VertexIndexPair vert_index_pair_;
-        mirinae::Image texture_;
-        mirinae::ImageView texture_view_;
         mirinae::Sampler texture_sampler_;
         mirinae::Image depth_image_;
         mirinae::ImageView depth_image_view_;
