@@ -165,6 +165,121 @@ namespace {
     };
 
 
+    class RenderUnit {
+
+    public:
+        void init(
+            uint32_t max_flight_count,
+            VkImageView image_view,
+            VkSampler texture_sampler,
+            mirinae::CommandPool& cmd_pool,
+            mirinae::DescriptorSetLayout& layout,
+            mirinae::VulkanMemoryAllocator mem_alloc,
+            mirinae::LogiDevice& logi_device
+        ) {
+            desc_pool_.init(max_flight_count, logi_device);
+            desc_sets_ = desc_pool_.alloc(max_flight_count, layout, logi_device);
+
+            for (uint32_t i = 0; i < max_flight_count; ++i) {
+                auto& ubuf = uniform_buf_.emplace_back();
+                ubuf.init_ubuf(sizeof(mirinae::U_Unorthodox), mem_alloc);
+            }
+
+            for (size_t i = 0; i < max_flight_count; i++) {
+                VkDescriptorBufferInfo bufferInfo{};
+                bufferInfo.buffer = uniform_buf_.at(i).buffer();
+                bufferInfo.offset = 0;
+                bufferInfo.range = uniform_buf_.at(i).size();
+
+                VkDescriptorImageInfo imageInfo{};
+                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imageInfo.imageView = image_view;
+                imageInfo.sampler = texture_sampler;
+
+                std::vector<VkWriteDescriptorSet> write_info{};
+                {
+                    auto& descriptorWrite = write_info.emplace_back();
+                    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    descriptorWrite.dstSet = desc_sets_.at(i);
+                    descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
+                    descriptorWrite.dstArrayElement = 0;
+                    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                    descriptorWrite.descriptorCount = 1;
+                    descriptorWrite.pBufferInfo = &bufferInfo;
+                }
+                {
+                    auto& descriptorWrite = write_info.emplace_back();
+                    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    descriptorWrite.dstSet = desc_sets_.at(i);
+                    descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
+                    descriptorWrite.dstArrayElement = 0;
+                    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    descriptorWrite.descriptorCount = 1;
+                    descriptorWrite.pImageInfo = &imageInfo;
+                }
+
+                vkUpdateDescriptorSets(logi_device.get(), static_cast<uint32_t>(write_info.size()), write_info.data(), 0, nullptr);
+            }
+
+            // Vertices
+            {
+                constexpr float v = 0.5;
+                std::vector<mirinae::VertexStatic> vertices;
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0 }, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0 }, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0 }, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
+                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0 }, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
+
+                std::vector<uint16_t> indices{
+                    0, 1, 2, 0, 2, 3,
+                    3, 2, 0, 2, 1, 0,
+                };
+
+                vert_index_pair_.init(vertices, indices, cmd_pool, mem_alloc, logi_device);
+            }
+        }
+
+        void destroy(mirinae::VulkanMemoryAllocator mem_alloc, mirinae::LogiDevice& logi_device) {
+            for (auto& ubuf : uniform_buf_)
+                ubuf.destroy(mem_alloc);
+            uniform_buf_.clear();
+
+            vert_index_pair_.destroy(mem_alloc);
+            desc_pool_.destroy(logi_device);
+        }
+
+        void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, mirinae::VulkanMemoryAllocator mem_alloc) {
+            auto& ubuf = uniform_buf_.at(index);
+            ubuf_data_.model = transform_.make_model_mat();
+            ubuf_data_.view = view_mat;
+            ubuf_data_.proj = proj_mat;
+            ubuf.set_data(&ubuf_data_, sizeof(mirinae::U_Unorthodox), mem_alloc);
+        }
+
+        VkDescriptorSet get_desc_set(size_t index) {
+            return desc_sets_.at(index);
+        }
+
+        void record_bind_vert_buf(VkCommandBuffer cmdbuf) {
+            vert_index_pair_.record_bind(cmdbuf);
+        }
+
+        auto vertex_count() const {
+            return vert_index_pair_.vertex_count();
+        }
+
+        mirinae::TransformQuat transform_;
+
+    private:
+        mirinae::U_Unorthodox ubuf_data_;
+        mirinae::DescriptorPool desc_pool_;
+        mirinae::VertexIndexPair vert_index_pair_;
+        std::vector<VkDescriptorSet> desc_sets_;
+        std::vector<mirinae::Buffer> uniform_buf_;
+
+    };
+
+
     class EngineGlfw : public mirinae::IEngine {
 
     public:
@@ -213,90 +328,42 @@ namespace {
             for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i)
                 cmd_buf_.push_back(cmd_pool_.alloc(logi_device_));
 
-            desc_pool_.init(framesync_.MAX_FRAMES_IN_FLIGHT, logi_device_);
-            desc_sets_ = desc_pool_.alloc(framesync_.MAX_FRAMES_IN_FLIGHT, desclayout_, logi_device_);
-
-            // Vertices
-            {
-                constexpr float v = 0.5;
-                std::vector<mirinae::VertexStatic> vertices;
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0}, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0}, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0}, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0}, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
-
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, -v}, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, -v}, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, -v}, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, -v}, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
-
-                std::vector<uint16_t> indices{
-                    0, 1, 2, 0, 2, 3,
-                    3, 2, 0, 2, 1, 0,
-                    4, 5, 6, 4, 6, 7,
-                    7, 6, 4, 6, 5, 4,
-                };
-
-                vert_index_pair_.init(vertices, indices, cmd_pool_, mem_allocator_, logi_device_);
-            }
-
             // Texture
-            auto texture_lorem = tex_man_.request("textures/lorem_ipsum.png", *create_info_.filesys_, mem_allocator_, cmd_pool_, logi_device_);
             texture_sampler_.init(phys_device_, logi_device_);
 
-            // Uniform
-            {
-                for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i) {
-                    auto& ubuf = uniform_buf_.emplace_back();
-                    ubuf.init_ubuf(sizeof(mirinae::U_Unorthodox), mem_allocator_);
-                }
-            }
+            const std::vector<std::string> texture_paths{
+                "textures/grass1.tga",
+                "textures/iceland_heightmap.png",
+                "textures/lorem_ipsum.png",
+                "textures/missing_texture.png",
+            };
 
-            for (size_t i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; i++) {
-                VkDescriptorBufferInfo bufferInfo{};
-                bufferInfo.buffer = uniform_buf_.at(i).buffer();
-                bufferInfo.offset = 0;
-                bufferInfo.range = uniform_buf_.at(i).size();
+            for (int i = 0; i < 20; ++i) {
+                auto texture = tex_man_.request(texture_paths.at(i % texture_paths.size()), *create_info_.filesys_, mem_allocator_, cmd_pool_, logi_device_);
+                auto& ren_unit = render_units_.emplace_back();
+                ren_unit.init(
+                    framesync_.MAX_FRAMES_IN_FLIGHT,
+                    texture->texture_view_.get(),
+                    texture_sampler_.get(),
+                    cmd_pool_,
+                    desclayout_,
+                    mem_allocator_,
+                    logi_device_
+                );
 
-                VkDescriptorImageInfo imageInfo{};
-                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                imageInfo.imageView = texture_lorem->texture_view_.get();
-                imageInfo.sampler = texture_sampler_.get();
-
-                std::vector<VkWriteDescriptorSet> write_info{};
-                {
-                    auto& descriptorWrite = write_info.emplace_back();
-                    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    descriptorWrite.dstSet = desc_sets_.at(i);
-                    descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
-                    descriptorWrite.dstArrayElement = 0;
-                    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    descriptorWrite.descriptorCount = 1;
-                    descriptorWrite.pBufferInfo = &bufferInfo;
-                }
-                {
-                    auto& descriptorWrite = write_info.emplace_back();
-                    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    descriptorWrite.dstSet = desc_sets_.at(i);
-                    descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
-                    descriptorWrite.dstArrayElement = 0;
-                    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                    descriptorWrite.descriptorCount = 1;
-                    descriptorWrite.pImageInfo = &imageInfo;
-                }
-
-                vkUpdateDescriptorSets(logi_device_.get(), static_cast<uint32_t>(write_info.size()), write_info.data(), 0, nullptr);
+                ren_unit.transform_.pos_ = glm::vec3{ 1.2 * i, 0, 0 };
             }
         }
 
         ~EngineGlfw() {
             this->logi_device_.wait_idle();
 
-            for (auto& ubuf : uniform_buf_) ubuf.destroy(mem_allocator_); uniform_buf_.clear();
+            for (auto& ren_unit : render_units_)
+                ren_unit.destroy(mem_allocator_, logi_device_);
+            render_units_.clear();
+
             texture_sampler_.destroy(logi_device_);
             tex_man_.claer(mem_allocator_, logi_device_);
-            vert_index_pair_.destroy(mem_allocator_);
-            desc_pool_.destroy(logi_device_);
             cmd_pool_.destroy(logi_device_);
             this->destroy_swapchain_and_relatives();
             mirinae::destroy_vma_allocator(mem_allocator_); mem_allocator_ = nullptr;
@@ -320,13 +387,14 @@ namespace {
                 const auto currentTime = std::chrono::high_resolution_clock::now();
                 const auto time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-                auto& ubuf = uniform_buf_.at(framesync_.get_frame_index().get());
-                mirinae::U_Unorthodox ubuf_data;
-                ubuf_data.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-                ubuf_data.view = camera_.make_view_mat();
-                ubuf_data.proj = glm::perspective(glm::radians(45.0f), swapchain_.extent().width / (float) swapchain_.extent().height, 0.1f, 10.0f);
-                ubuf_data.proj[1][1] *= -1;
-                ubuf.set_data(&ubuf_data, sizeof(mirinae::U_Unorthodox), mem_allocator_);
+                auto proj_mat = glm::perspective(glm::radians(45.0f), swapchain_.extent().width / (float) swapchain_.extent().height, 0.1f, 100.0f);
+                proj_mat[1][1] *= -1;
+
+                for (size_t i = 0; i < render_units_.size(); ++i) {
+                    render_units_.at(i).udpate_ubuf(
+                        framesync_.get_frame_index().get(), camera_.make_view_mat(), proj_mat, mem_allocator_
+                    );
+                }
             }
 
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
@@ -373,19 +441,24 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                vkCmdBindDescriptorSets(
-                    cur_cmd_buf,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pipeline_.layout(),
-                    0,
-                    1,
-                    &desc_sets_.at(framesync_.get_frame_index().get()),
-                    0,
-                    nullptr
-                );
+                for (auto& ren_unit : render_units_) {
+                    std::array<VkDescriptorSet, 1> desc_sets{
+                        ren_unit.get_desc_set(framesync_.get_frame_index().get())
+                    };
+                    vkCmdBindDescriptorSets(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline_.layout(),
+                        0,
+                        static_cast<uint32_t>(desc_sets.size()),
+                        desc_sets.data(),
+                        0,
+                        nullptr
+                    );
 
-                vert_index_pair_.record_bind(cur_cmd_buf);
-                vkCmdDrawIndexed(cur_cmd_buf, vert_index_pair_.vertex_count(), 1, 0, 0, 0);
+                    ren_unit.record_bind_vert_buf(cur_cmd_buf);
+                    vkCmdDrawIndexed(cur_cmd_buf, ren_unit.vertex_count(), 1, 0, 0, 0);
+                }
 
                 vkCmdEndRenderPass(cur_cmd_buf);
 
@@ -535,13 +608,10 @@ namespace {
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
-        mirinae::DescriptorPool desc_pool_;
-        std::vector<VkDescriptorSet> desc_sets_;
-        mirinae::VertexIndexPair vert_index_pair_;
+        std::vector<RenderUnit> render_units_;
         mirinae::Sampler texture_sampler_;
         mirinae::Image depth_image_;
         mirinae::ImageView depth_image_view_;
-        std::vector<mirinae::Buffer> uniform_buf_;
         mirinae::TransformQuat camera_;
         mirinae::syst::NoclipController camera_controller_;
         dal::Timer fps_timer_;
