@@ -353,6 +353,9 @@ namespace mirinae {
     };
 
 
+    VkVertexInputBindingDescription make_vertex_static_binding_description();
+    std::vector<VkVertexInputAttributeDescription> make_vertex_static_attribute_descriptions();
+
     void copy_to_img_and_transition(
         VkImage image,
         uint32_t width,
