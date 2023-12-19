@@ -5,15 +5,14 @@
 namespace mirinae {
 
     void VertexIndexPair::init(
-        const std::vector<mirinae::VertexStatic>& vertices,
-        const std::vector<uint16_t>& indices,
+        const VerticesStaticPair& vertices,
         CommandPool& cmdpool,
         VulkanMemoryAllocator allocator,
         LogiDevice& logi_device
     ) {
-        this->init_vertices(vertices, cmdpool, allocator, logi_device);
-        this->init_indices(indices, cmdpool, allocator, logi_device);
-        vertex_count_ = indices.size();
+        this->init_vertices(vertices.vertices_, cmdpool, allocator, logi_device);
+        this->init_indices(vertices.indices_, cmdpool, allocator, logi_device);
+        vertex_count_ = vertices.indices_.size();
     }
 
     void VertexIndexPair::destroy(VulkanMemoryAllocator allocator) {

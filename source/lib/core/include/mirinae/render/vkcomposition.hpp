@@ -10,8 +10,7 @@ namespace mirinae {
 
     public:
         void init(
-            const std::vector<mirinae::VertexStatic>& vertices,
-            const std::vector<uint16_t>& indices,
+            const VerticesStaticPair& vertices,
             CommandPool& cmdpool,
             VulkanMemoryAllocator allocator,
             LogiDevice& logi_device
