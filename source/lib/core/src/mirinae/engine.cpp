@@ -170,6 +170,7 @@ namespace {
     public:
         void init(
             uint32_t max_flight_count,
+            const mirinae::VerticesStaticPair& vertices,
             VkImageView image_view,
             VkSampler texture_sampler,
             mirinae::CommandPool& cmd_pool,
@@ -221,22 +222,7 @@ namespace {
                 vkUpdateDescriptorSets(logi_device.get(), static_cast<uint32_t>(write_info.size()), write_info.data(), 0, nullptr);
             }
 
-            // Vertices
-            {
-                constexpr float v = 0.5;
-                std::vector<mirinae::VertexStatic> vertices;
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0 }, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0 }, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0 }, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
-                vertices.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0 }, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
-
-                std::vector<uint16_t> indices{
-                    0, 1, 2, 0, 2, 3,
-                    3, 2, 0, 2, 1, 0,
-                };
-
-                vert_index_pair_.init(vertices, indices, cmd_pool, mem_alloc, logi_device);
-            }
+            vert_index_pair_.init(vertices, cmd_pool, mem_alloc, logi_device);
         }
 
         void destroy(mirinae::VulkanMemoryAllocator mem_alloc, mirinae::LogiDevice& logi_device) {
@@ -338,11 +324,24 @@ namespace {
                 "textures/missing_texture.png",
             };
 
+            constexpr float v = 0.5;
+            mirinae::VerticesStaticPair vertices;
+            vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0 }, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
+            vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0 }, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
+            vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0 }, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
+            vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0 }, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
+
+            vertices.indices_ = std::vector<uint16_t>{
+                0, 1, 2, 0, 2, 3,
+                3, 2, 0, 2, 1, 0,
+            };
+
             for (int i = 0; i < 20; ++i) {
                 auto texture = tex_man_.request(texture_paths.at(i % texture_paths.size()), *create_info_.filesys_, mem_allocator_, cmd_pool_, logi_device_);
                 auto& ren_unit = render_units_.emplace_back();
                 ren_unit.init(
                     framesync_.MAX_FRAMES_IN_FLIGHT,
+                    vertices,
                     texture->texture_view_.get(),
                     texture_sampler_.get(),
                     cmd_pool_,
