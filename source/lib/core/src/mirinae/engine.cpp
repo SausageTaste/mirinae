@@ -324,6 +324,18 @@ namespace {
                 "textures/missing_texture.png",
             };
 
+            const std::vector<std::string> mesh_paths{
+                "models/cube.dmd",
+                "models/sphere.dmd",
+                "models/suzanne.dmd",
+            };
+            std::vector<mirinae::VerticesStaticPair> meshes;
+            for (auto& mesh_path : mesh_paths) {
+                const auto content = create_info_.filesys_->read_file_to_vector(mesh_path.c_str());
+                meshes.push_back(mirinae::parse_dmd_static(content->data(), content->size()).value());
+            }
+
+            /*
             constexpr float v = 0.5;
             mirinae::VerticesStaticPair vertices;
             vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0 }, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
@@ -335,13 +347,15 @@ namespace {
                 0, 1, 2, 0, 2, 3,
                 3, 2, 0, 2, 1, 0,
             };
+            */
+
 
             for (int i = 0; i < 20; ++i) {
                 auto texture = tex_man_.request(texture_paths.at(i % texture_paths.size()), *create_info_.filesys_, mem_allocator_, cmd_pool_, logi_device_);
                 auto& ren_unit = render_units_.emplace_back();
                 ren_unit.init(
                     framesync_.MAX_FRAMES_IN_FLIGHT,
-                    vertices,
+                    meshes.at(i % meshes.size()),
                     texture->texture_view_.get(),
                     texture_sampler_.get(),
                     cmd_pool_,
@@ -350,7 +364,7 @@ namespace {
                     logi_device_
                 );
 
-                ren_unit.transform_.pos_ = glm::vec3{ 1.2 * i, 0, 0 };
+                ren_unit.transform_.pos_ = glm::vec3{ 2.5 * i, 0, 0 };
             }
         }
 
