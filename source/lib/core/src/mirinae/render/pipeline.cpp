@@ -107,8 +107,8 @@ namespace mirinae {
             dynamicState.pDynamicStates = dynamicStates.data();
         }
 
-        auto binding_description = VertexStatic::make_binding_description();
-        auto attribute_descriptions = VertexStatic::make_attribute_descriptions();
+        auto binding_description = make_vertex_static_binding_description();
+        auto attribute_descriptions = make_vertex_static_attribute_descriptions();
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         {
             vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

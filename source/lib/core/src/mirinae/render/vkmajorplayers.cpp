@@ -1130,6 +1130,44 @@ namespace mirinae {
 // Free functions
 namespace mirinae {
 
+    VkVertexInputBindingDescription make_vertex_static_binding_description() {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(VertexStatic);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return bindingDescription;
+    }
+
+    std::vector<VkVertexInputAttributeDescription> make_vertex_static_attribute_descriptions() {
+        std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 0;
+            description.format = VK_FORMAT_R32G32B32_SFLOAT;
+            description.offset = offsetof(VertexStatic, pos_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 1;
+            description.format = VK_FORMAT_R32G32B32_SFLOAT;
+            description.offset = offsetof(VertexStatic, normal_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 2;
+            description.format = VK_FORMAT_R32G32_SFLOAT;
+            description.offset = offsetof(VertexStatic, texcoord_);
+        }
+
+        return attributeDescriptions;
+    }
+
     void copy_to_img_and_transition(
         VkImage image,
         uint32_t width,
