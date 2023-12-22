@@ -91,19 +91,17 @@ namespace {
 
         std::shared_ptr<TextureData> request(
             const std::string& path,
-            mirinae::IFilesys& filesys,
-            mirinae::VulkanMemoryAllocator mem_alloc,
             mirinae::CommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
             if (auto index = this->find_index(path))
                 return textures_.at(index.value());
 
-            const auto img_data = filesys.read_file_to_vector(path.c_str());
+            const auto img_data = device.filesys().read_file_to_vector(path.c_str());
             const auto image = mirinae::parse_image(img_data->data(), img_data->size());
             auto& output = textures_.emplace_back(new TextureData);
             output->id_ = path;
-            this->create(*image, *output, mem_alloc, cmd_pool, device.graphics_queue(), device.logi_device());
+            this->create(*image, *output, device.mem_alloc(), cmd_pool, device.graphics_queue(), device.logi_device());
             return output;
         }
 
@@ -164,15 +162,8 @@ namespace {
 
     public:
         EngineGlfw(mirinae::EngineCreateInfo&& cinfo)
-            : create_info_(std::move(cinfo))
-            , device_(create_info_)
+            : device_(std::move(cinfo))
         {
-            // Check engine creation info
-            if (!create_info_.filesys_) {
-                spdlog::critical("Filesystem is not set");
-                throw std::runtime_error{ "Filesystem is not set" };
-            }
-
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
             cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
@@ -200,7 +191,7 @@ namespace {
             };
             std::vector<mirinae::VerticesStaticPair> meshes;
             for (auto& mesh_path : mesh_paths) {
-                const auto content = create_info_.filesys_->read_file_to_vector(mesh_path.c_str());
+                const auto content = device_.filesys().read_file_to_vector(mesh_path.c_str());
                 meshes.push_back(mirinae::parse_dmd_static(content->data(), content->size()).value());
             }
 
@@ -221,8 +212,6 @@ namespace {
             for (int i = 0; i < 20; ++i) {
                 auto texture = tex_man_.request(
                     texture_paths.at(i % texture_paths.size()),
-                    *create_info_.filesys_,
-                    device_.mem_alloc(),
                     cmd_pool_,
                     device_
                 );
@@ -423,7 +412,7 @@ namespace {
             framesync_.init(device_.logi_device());
             renderpass_.init(swapchain_.format(), depth_image_.format(), device_.logi_device());
             desclayout_.init(device_.logi_device());
-            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, *create_info_.filesys_, device_.logi_device());
+            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, device_.filesys(), device_.logi_device());
 
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
@@ -475,8 +464,6 @@ namespace {
             framesync_.get_cur_in_flight_fence().reset(device_.logi_device());
             return image_index_opt.value();
         }
-
-        mirinae::EngineCreateInfo create_info_;
 
         mirinae::VulkanDevice device_;
         mirinae::Swapchain swapchain_;

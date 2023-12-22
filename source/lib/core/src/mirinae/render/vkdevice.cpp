@@ -607,7 +607,15 @@ namespace mirinae {
     class VulkanDevice::Pimpl {
 
     public:
-        Pimpl(const mirinae::EngineCreateInfo& create_info_) {
+        Pimpl(mirinae::EngineCreateInfo&& create_info)
+            : create_info_(std::move(create_info))
+        {
+            // Check engine creation info
+            if (!create_info_.filesys_) {
+                spdlog::critical("Filesystem is not set");
+                throw std::runtime_error{ "Filesystem is not set" };
+            }
+
             ::InstanceFactory instance_factory;
             if (create_info_.enable_validation_layers_) {
                 instance_factory.enable_validation_layer();
@@ -653,6 +661,7 @@ namespace mirinae {
         ::LogiDevice logi_device_;
         ::SwapChainSupportDetails swapchain_details_;
         mirinae::VulkanMemoryAllocator mem_allocator_;
+        mirinae::EngineCreateInfo create_info_;
         VkSurfaceKHR surface_ = VK_NULL_HANDLE;
 
     };
@@ -663,8 +672,8 @@ namespace mirinae {
 // VulkanDevice
 namespace mirinae {
 
-    VulkanDevice::VulkanDevice(const mirinae::EngineCreateInfo& create_info)
-        : pimpl_(std::make_unique<Pimpl>(create_info))
+    VulkanDevice::VulkanDevice(mirinae::EngineCreateInfo&& create_info)
+        : pimpl_(std::make_unique<Pimpl>(std::move(create_info)))
     {
 
     }
@@ -707,6 +716,10 @@ namespace mirinae {
 
     VulkanMemoryAllocator VulkanDevice::mem_alloc() {
         return pimpl_->mem_allocator_;
+    }
+
+    IFilesys& VulkanDevice::filesys() {
+        return *pimpl_->create_info_.filesys_;
     }
 
 }
