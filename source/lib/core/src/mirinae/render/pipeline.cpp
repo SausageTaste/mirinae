@@ -74,10 +74,10 @@ namespace mirinae {
         RenderPass& renderpass,
         DescriptorSetLayout& desclayout,
         IFilesys& filesys,
-        LogiDevice& logi_device
+        VkDevice logi_device
     ) {
-        ::ShaderModule vert_shader{ filesys.read_file_to_vector("spv/unorthodox_vert.spv").value(), logi_device.get() };
-        ::ShaderModule frag_shader{ filesys.read_file_to_vector("spv/unorthodox_frag.spv").value(), logi_device.get() };
+        ::ShaderModule vert_shader{ filesys.read_file_to_vector("spv/unorthodox_vert.spv").value(), logi_device };
+        ::ShaderModule frag_shader{ filesys.read_file_to_vector("spv/unorthodox_frag.spv").value(), logi_device };
 
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
         {
@@ -211,7 +211,7 @@ namespace mirinae {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(logi_device.get(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(logi_device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create pipeline layout!");
         }
 
@@ -234,12 +234,12 @@ namespace mirinae {
         pipelineInfo.basePipelineIndex = -1;
 
         VkPipeline graphicsPipeline;
-        if (vkCreateGraphicsPipelines(logi_device.get(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+        if (vkCreateGraphicsPipelines(logi_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
             throw std::runtime_error("failed to create graphics pipeline!");
         }
 
-        vert_shader.destroy(logi_device.get());
-        frag_shader.destroy(logi_device.get());
+        vert_shader.destroy(logi_device);
+        frag_shader.destroy(logi_device);
 
         return Pipeline{ graphicsPipeline, pipelineLayout };
     }

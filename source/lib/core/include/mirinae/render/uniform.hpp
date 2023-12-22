@@ -17,8 +17,8 @@ namespace mirinae {
     class DescriptorSetLayout {
 
     public:
-        void init(LogiDevice& logi_device);
-        void destroy(LogiDevice& logi_device);
+        void init(VkDevice logi_device);
+        void destroy(VkDevice logi_device);
 
         VkDescriptorSetLayout get() { return handle_; }
 
@@ -31,10 +31,10 @@ namespace mirinae {
     class DescriptorPool {
 
     public:
-        void init(uint32_t pool_size, LogiDevice& logi_device);
-        void destroy(LogiDevice& logi_device);
+        void init(uint32_t pool_size, VkDevice logi_device);
+        void destroy(VkDevice logi_device);
 
-         std::vector<VkDescriptorSet> alloc(uint32_t count, DescriptorSetLayout& desclayout, LogiDevice& logi_device);
+         std::vector<VkDescriptorSet> alloc(uint32_t count, DescriptorSetLayout& desclayout, VkDevice logi_device);
 
     private:
         VkDescriptorPool handle_ = VK_NULL_HANDLE;

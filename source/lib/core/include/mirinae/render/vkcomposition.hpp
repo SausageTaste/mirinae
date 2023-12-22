@@ -13,7 +13,8 @@ namespace mirinae {
             const VerticesStaticPair& vertices,
             CommandPool& cmdpool,
             VulkanMemoryAllocator allocator,
-            LogiDevice& logi_device
+            VkQueue graphics_q,
+            VkDevice logi_device
         );
         void destroy(VulkanMemoryAllocator allocator);
 
@@ -26,14 +27,16 @@ namespace mirinae {
             const std::vector<mirinae::VertexStatic>& vertices,
             CommandPool& cmdpool,
             VulkanMemoryAllocator allocator,
-            LogiDevice& logi_device
+            VkQueue graphics_q,
+            VkDevice logi_device
         );
 
         void init_indices(
             const std::vector<uint16_t>& indices,
             CommandPool& cmdpool,
             VulkanMemoryAllocator allocator,
-            LogiDevice& logi_device
+            VkQueue graphics_q,
+            VkDevice logi_device
         );
 
         mirinae::Buffer vertex_buf_;
