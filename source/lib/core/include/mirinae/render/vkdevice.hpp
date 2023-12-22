@@ -16,7 +16,7 @@ namespace mirinae {
     class VulkanDevice {
 
     public:
-        VulkanDevice(const mirinae::EngineCreateInfo& create_info);
+        VulkanDevice(mirinae::EngineCreateInfo&& create_info);
         ~VulkanDevice();
 
         // Logical device
@@ -31,8 +31,9 @@ namespace mirinae {
         float max_sampler_anisotropy() const;
         VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
-        // Memory allocator
+        // Misc
         VulkanMemoryAllocator mem_alloc();
+        IFilesys& filesys();
 
         class Pimpl;
         std::unique_ptr<Pimpl> pimpl_;
