@@ -22,7 +22,7 @@ namespace mirinae {
     class TextureManager {
 
     public:
-        TextureManager(mirinae::VulkanDevice& device);
+        TextureManager(VulkanDevice& device);
         ~TextureManager();
 
         std::shared_ptr<ITexture> request(const std::string& res_id);
@@ -39,28 +39,28 @@ namespace mirinae {
     public:
         void init(
             uint32_t max_flight_count,
-            const mirinae::VerticesStaticPair& vertices,
+            const VerticesStaticPair& vertices,
             VkImageView image_view,
             VkSampler texture_sampler,
-            mirinae::CommandPool& cmd_pool,
-            mirinae::DescriptorSetLayout& layout,
+            CommandPool& cmd_pool,
+            DescriptorSetLayout& layout,
             VulkanDevice& vulkan_device
         );
-        void destroy(mirinae::VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
+        void destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
 
-        void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, mirinae::VulkanMemoryAllocator mem_alloc);
+        void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, VulkanMemoryAllocator mem_alloc);
         VkDescriptorSet get_desc_set(size_t index);
         void record_bind_vert_buf(VkCommandBuffer cmdbuf);
         uint32_t vertex_count() const;
 
-        mirinae::TransformQuat transform_;
+        TransformQuat transform_;
 
     private:
-        mirinae::U_Unorthodox ubuf_data_;
-        mirinae::DescriptorPool desc_pool_;
-        mirinae::VertexIndexPair vert_index_pair_;
+        U_Unorthodox ubuf_data_;
+        DescriptorPool desc_pool_;
+        VertexIndexPair vert_index_pair_;
         std::vector<VkDescriptorSet> desc_sets_;
-        std::vector<mirinae::Buffer> uniform_buf_;
+        std::vector<Buffer> uniform_buf_;
 
     };
 
