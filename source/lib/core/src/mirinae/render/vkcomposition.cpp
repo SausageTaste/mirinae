@@ -8,10 +8,11 @@ namespace mirinae {
         const VerticesStaticPair& vertices,
         CommandPool& cmdpool,
         VulkanMemoryAllocator allocator,
-        LogiDevice& logi_device
+        VkQueue graphics_q,
+        VkDevice logi_device
     ) {
-        this->init_vertices(vertices.vertices_, cmdpool, allocator, logi_device);
-        this->init_indices(vertices.indices_, cmdpool, allocator, logi_device);
+        this->init_vertices(vertices.vertices_, cmdpool, allocator, graphics_q, logi_device);
+        this->init_indices(vertices.indices_, cmdpool, allocator, graphics_q, logi_device);
         vertex_count_ = vertices.indices_.size();
     }
 
@@ -36,7 +37,8 @@ namespace mirinae {
         const std::vector<mirinae::VertexStatic>& vertices,
         CommandPool& cmdpool,
         VulkanMemoryAllocator allocator,
-        LogiDevice& logi_device
+        VkQueue graphics_q,
+        VkDevice logi_device
     ) {
         const auto data_size = sizeof(mirinae::VertexStatic) * vertices.size();
 
@@ -47,13 +49,13 @@ namespace mirinae {
         vertex_buf_.init_vertices(data_size, allocator);
 
         auto cmdbuf = cmdpool.alloc(logi_device);
-        vertex_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device.get());
+        vertex_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device);
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmdbuf;
-        vkQueueSubmit(logi_device.graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(logi_device.graphics_queue());
+        vkQueueSubmit(graphics_q, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphics_q);
         cmdpool.free(cmdbuf, logi_device);
         staging_buffer.destroy(allocator);
     }
@@ -62,7 +64,8 @@ namespace mirinae {
         const std::vector<uint16_t>& indices,
         CommandPool& cmdpool,
         VulkanMemoryAllocator allocator,
-        LogiDevice& logi_device
+        VkQueue graphics_q,
+        VkDevice logi_device
     ) {
         const auto data_size = sizeof(uint16_t) * indices.size();
 
@@ -73,13 +76,13 @@ namespace mirinae {
         index_buf_.init_indices(data_size, allocator);
 
         auto cmdbuf = cmdpool.alloc(logi_device);
-        index_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device.get());
+        index_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device);
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmdbuf;
-        vkQueueSubmit(logi_device.graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(logi_device.graphics_queue());
+        vkQueueSubmit(graphics_q, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphics_q);
         cmdpool.free(cmdbuf, logi_device);
         staging_buffer.destroy(allocator);
     }

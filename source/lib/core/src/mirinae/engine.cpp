@@ -15,11 +15,6 @@ namespace {
     using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
 
 
-    VkSurfaceKHR surface_cast(uint64_t value) {
-        static_assert(sizeof(VkSurfaceKHR) == sizeof(uint64_t));
-        return *reinterpret_cast<VkSurfaceKHR*>(&value);
-    }
-
     bool is_fbuf_too_small(uint32_t width, uint32_t height) {
         if (width < 5)
             return true;
@@ -33,7 +28,7 @@ namespace {
     class FrameSync {
 
     public:
-        void init(mirinae::LogiDevice& logi_device) {
+        void init(VkDevice logi_device) {
             img_available_semaphores_.resize(MAX_FRAMES_IN_FLIGHT);
             render_finished_semaphores_.resize(MAX_FRAMES_IN_FLIGHT);
             in_flight_fences_.resize(MAX_FRAMES_IN_FLIGHT);
@@ -46,7 +41,7 @@ namespace {
                 x.init(true, logi_device);
         }
 
-        void destroy(mirinae::LogiDevice& logi_device) {
+        void destroy(VkDevice logi_device) {
             for (auto& x : img_available_semaphores_)
                 x.destroy(logi_device);
             for (auto& x : render_finished_semaphores_)
@@ -99,7 +94,7 @@ namespace {
             mirinae::IFilesys& filesys,
             mirinae::VulkanMemoryAllocator mem_alloc,
             mirinae::CommandPool& cmd_pool,
-            mirinae::LogiDevice& logi_device
+            mirinae::VulkanDevice& device
         ) {
             if (auto index = this->find_index(path))
                 return textures_.at(index.value());
@@ -108,11 +103,11 @@ namespace {
             const auto image = mirinae::parse_image(img_data->data(), img_data->size());
             auto& output = textures_.emplace_back(new TextureData);
             output->id_ = path;
-            this->create(*image, *output, mem_alloc, cmd_pool, logi_device);
+            this->create(*image, *output, mem_alloc, cmd_pool, device.graphics_queue(), device.logi_device());
             return output;
         }
 
-        void claer(mirinae::VulkanMemoryAllocator mem_alloc, mirinae::LogiDevice& logi_device) {
+        void claer(mirinae::VulkanMemoryAllocator mem_alloc, VkDevice logi_device) {
             for (auto& tex : textures_) {
                 if (tex.use_count() > 1)
                     spdlog::warn("Want to destroy texture '{}' is still in use", tex->id_);
@@ -137,7 +132,8 @@ namespace {
             TextureData& output,
             mirinae::VulkanMemoryAllocator mem_alloc,
             mirinae::CommandPool& cmd_pool,
-            mirinae::LogiDevice& logi_device
+            VkQueue graphics_q,
+            VkDevice logi_device
         ) {
             mirinae::Buffer staging_buffer;
             staging_buffer.init_staging(image.data_size(), mem_alloc);
@@ -151,6 +147,7 @@ namespace {
                 output.texture_.format(),
                 staging_buffer.buffer(),
                 cmd_pool,
+                graphics_q,
                 logi_device
             );
             staging_buffer.destroy(mem_alloc);
@@ -168,6 +165,7 @@ namespace {
     public:
         EngineGlfw(mirinae::EngineCreateInfo&& cinfo)
             : create_info_(std::move(cinfo))
+            , device_(create_info_)
         {
             // Check engine creation info
             if (!create_info_.filesys_) {
@@ -175,44 +173,18 @@ namespace {
                 throw std::runtime_error{ "Filesystem is not set" };
             }
 
-            mirinae::InstanceFactory instance_factory;
-            if (create_info_.enable_validation_layers_) {
-                instance_factory.enable_validation_layer();
-                instance_factory.ext_layers_.add_validation();
-            }
-            instance_factory.ext_layers_.extensions_.insert(
-                instance_factory.ext_layers_.extensions_.end(),
-                create_info_.instance_extensions_.begin(),
-                create_info_.instance_extensions_.end()
-            );
-
-            instance_.init(instance_factory);
-            surface_ = ::surface_cast(create_info_.surface_creator_(instance_.get()));
-            phys_device_.set(instance_.select_phys_device(surface_), surface_);
-            spdlog::info("Physical device selected: {}\n{}", phys_device_.name(), phys_device_.make_report_str());
-
-            std::vector<std::string> device_extensions;
-            device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-            if (phys_device_.count_unsupported_extensions(device_extensions))
-                throw std::runtime_error{ "Some extensions are not supported" };
-
-            logi_device_.init(phys_device_, device_extensions);
-            mem_allocator_ = mirinae::create_vma_allocator(instance_.get(), phys_device_.get(), logi_device_.get());
-
-            mirinae::SwapChainSupportDetails swapchain_details;
-            swapchain_details.init(surface_, phys_device_.get());
-            if (!swapchain_details.is_complete()) {
-                throw std::runtime_error{ "The swapchain is not complete" };
-            }
-
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
-            cmd_pool_.init(phys_device_.graphics_family_index().value(), logi_device_);
+            cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
             for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i)
-                cmd_buf_.push_back(cmd_pool_.alloc(logi_device_));
+                cmd_buf_.push_back(cmd_pool_.alloc(device_.logi_device()));
 
             // Texture
-            texture_sampler_.init(phys_device_, logi_device_);
+            texture_sampler_.init(
+                device_.is_anisotropic_filtering_supported(),
+                device_.max_sampler_anisotropy(),
+                device_.logi_device()
+            );
 
             const std::vector<std::string> texture_paths{
                 "textures/grass1.tga",
@@ -246,9 +218,15 @@ namespace {
             };
             */
 
-
             for (int i = 0; i < 20; ++i) {
-                auto texture = tex_man_.request(texture_paths.at(i % texture_paths.size()), *create_info_.filesys_, mem_allocator_, cmd_pool_, logi_device_);
+                auto texture = tex_man_.request(
+                    texture_paths.at(i % texture_paths.size()),
+                    *create_info_.filesys_,
+                    device_.mem_alloc(),
+                    cmd_pool_,
+                    device_
+                );
+
                 auto& ren_unit = render_units_.emplace_back();
                 ren_unit.init(
                     framesync_.MAX_FRAMES_IN_FLIGHT,
@@ -257,8 +235,7 @@ namespace {
                     texture_sampler_.get(),
                     cmd_pool_,
                     desclayout_,
-                    mem_allocator_,
-                    logi_device_
+                    device_
                 );
 
                 ren_unit.transform_.pos_ = glm::vec3{ 2.5 * i, 0, 0 };
@@ -266,19 +243,16 @@ namespace {
         }
 
         ~EngineGlfw() {
-            this->logi_device_.wait_idle();
+            device_.wait_idle();
 
             for (auto& ren_unit : render_units_)
-                ren_unit.destroy(mem_allocator_, logi_device_);
+                ren_unit.destroy(device_.mem_alloc(), device_.logi_device());
             render_units_.clear();
 
-            texture_sampler_.destroy(logi_device_);
-            tex_man_.claer(mem_allocator_, logi_device_);
-            cmd_pool_.destroy(logi_device_);
+            texture_sampler_.destroy(device_.logi_device());
+            tex_man_.claer(device_.mem_alloc(), device_.logi_device());
+            cmd_pool_.destroy(device_.logi_device());
             this->destroy_swapchain_and_relatives();
-            mirinae::destroy_vma_allocator(mem_allocator_); mem_allocator_ = nullptr;
-            logi_device_.destroy();
-            vkDestroySurfaceKHR(instance_.get(), surface_, nullptr); surface_ = VK_NULL_HANDLE;
         }
 
         void do_frame() override {
@@ -302,7 +276,7 @@ namespace {
 
                 for (size_t i = 0; i < render_units_.size(); ++i) {
                     render_units_.at(i).udpate_ubuf(
-                        framesync_.get_frame_index().get(), camera_.make_view_mat(), proj_mat, mem_allocator_
+                        framesync_.get_frame_index().get(), camera_.make_view_mat(), proj_mat, device_.mem_alloc()
                     );
                 }
             }
@@ -393,7 +367,7 @@ namespace {
                 submitInfo.signalSemaphoreCount = 1;
                 submitInfo.pSignalSemaphores = signalSemaphores;
 
-                if (vkQueueSubmit(logi_device_.graphics_queue(), 1, &submitInfo, framesync_.get_cur_in_flight_fence().get()) != VK_SUCCESS) {
+                if (vkQueueSubmit(device_.graphics_queue(), 1, &submitInfo, framesync_.get_cur_in_flight_fence().get()) != VK_SUCCESS) {
                     throw std::runtime_error("failed to submit draw command buffer!");
                 }
 
@@ -409,7 +383,7 @@ namespace {
                 presentInfo.pImageIndices = swapchain_indices.data();
                 presentInfo.pResults = nullptr;
 
-                vkQueuePresentKHR(logi_device_.present_queue(), &presentInfo);
+                vkQueuePresentKHR(device_.present_queue(), &presentInfo);
             }
 
             framesync_.increase_frame_index();
@@ -431,47 +405,47 @@ namespace {
 
     private:
         void create_swapchain_and_relatives(uint32_t fbuf_width, uint32_t fbuf_height) {
-            this->logi_device_.wait_idle();
-            swapchain_.init(fbuf_width, fbuf_height, surface_, phys_device_, logi_device_);
+            device_.wait_idle();
+            swapchain_.init(fbuf_width, fbuf_height, device_);
 
             // Depth texture
             {
-                const auto depth_format = phys_device_.find_supported_format(
+                const auto depth_format = device_.find_supported_format(
                     { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
                     VK_IMAGE_TILING_OPTIMAL,
                     VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
                 );
 
-                depth_image_.init_depth(  swapchain_.extent().width, swapchain_.extent().height, depth_format, mem_allocator_);
-                depth_image_view_.init(depth_image_.image(), depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, logi_device_);
+                depth_image_.init_depth(  swapchain_.extent().width, swapchain_.extent().height, depth_format, device_.mem_alloc());
+                depth_image_view_.init(depth_image_.image(), depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
             }
 
-            framesync_.init(logi_device_);
-            renderpass_.init(swapchain_.format(), depth_image_.format(), logi_device_);
-            desclayout_.init(logi_device_);
-            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, *create_info_.filesys_, logi_device_);
+            framesync_.init(device_.logi_device());
+            renderpass_.init(swapchain_.format(), depth_image_.format(), device_.logi_device());
+            desclayout_.init(device_.logi_device());
+            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, *create_info_.filesys_, device_.logi_device());
 
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
-                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), depth_image_view_.get(), renderpass_, logi_device_);
+                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), depth_image_view_.get(), renderpass_, device_.logi_device());
             }
         }
 
         void destroy_swapchain_and_relatives() {
-            this->logi_device_.wait_idle();
+            device_.wait_idle();
 
-            for (auto& x : swapchain_fbufs_) x.destroy(logi_device_); swapchain_fbufs_.clear();
-            pipeline_.destroy(logi_device_);
-            desclayout_.destroy(logi_device_);
-            renderpass_.destroy(logi_device_);
-            framesync_.destroy(logi_device_);
-            depth_image_view_.destroy(logi_device_);
-            depth_image_.destroy(mem_allocator_);
-            swapchain_.destroy(logi_device_);
+            for (auto& x : swapchain_fbufs_) x.destroy(device_.logi_device()); swapchain_fbufs_.clear();
+            pipeline_.destroy(device_.logi_device());
+            desclayout_.destroy(device_.logi_device());
+            renderpass_.destroy(device_.logi_device());
+            framesync_.destroy(device_.logi_device());
+            depth_image_view_.destroy(device_.logi_device());
+            depth_image_.destroy(device_.mem_alloc());
+            swapchain_.destroy(device_.logi_device());
         }
 
         std::optional<mirinae::ShainImageIndex> try_acquire_image() {
-            framesync_.get_cur_in_flight_fence().wait(logi_device_);
+            framesync_.get_cur_in_flight_fence().wait(device_.logi_device());
 
             if (fbuf_resized_) {
                 if (::is_fbuf_too_small(fbuf_width_, fbuf_height_)) {
@@ -485,7 +459,7 @@ namespace {
                 return std::nullopt;
             }
 
-            const auto image_index_opt = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph(), logi_device_);
+            const auto image_index_opt = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph().get(), device_.logi_device());
             if (!image_index_opt) {
                 if (::is_fbuf_too_small(fbuf_width_, fbuf_height_)) {
                     fbuf_resized_ = true;
@@ -498,17 +472,13 @@ namespace {
                 return std::nullopt;
             }
 
-            framesync_.get_cur_in_flight_fence().reset(logi_device_);
+            framesync_.get_cur_in_flight_fence().reset(device_.logi_device());
             return image_index_opt.value();
         }
 
         mirinae::EngineCreateInfo create_info_;
 
-        mirinae::VulkanInstance instance_;
-        VkSurfaceKHR surface_ = VK_NULL_HANDLE;
-        mirinae::PhysDevice phys_device_;
-        mirinae::LogiDevice logi_device_;
-        mirinae::VulkanMemoryAllocator mem_allocator_;
+        mirinae::VulkanDevice device_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         ::TextureManager tex_man_;

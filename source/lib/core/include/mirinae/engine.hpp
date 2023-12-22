@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "mirinae/platform/filesys.hpp"
+#include "mirinae/util/create_info.hpp"
 #include "mirinae/util/uinput.hpp"
 
 
@@ -24,16 +25,6 @@ namespace mirinae {
 
     };
 
-
-    struct EngineCreateInfo {
-        using surface_creator_t = std::function<uint64_t(void*)>; // VkInstance -> VkSurfaceKHR
-
-        std::unique_ptr<IFilesys> filesys_;
-
-        std::vector<std::string> instance_extensions_;
-        surface_creator_t surface_creator_;
-        bool enable_validation_layers_ = false;
-    };
 
     std::unique_ptr<IEngine> create_engine(mirinae::EngineCreateInfo&& create_info);
 

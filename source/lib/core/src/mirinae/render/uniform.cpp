@@ -7,7 +7,7 @@
 // DescriptorSetLayout
 namespace mirinae {
 
-    void DescriptorSetLayout::init(LogiDevice& logi_device) {
+    void DescriptorSetLayout::init(VkDevice logi_device) {
         this->destroy(logi_device);
 
         std::vector<VkDescriptorSetLayoutBinding> bindings;
@@ -33,14 +33,14 @@ namespace mirinae {
         layoutInfo.bindingCount = bindings.size();
         layoutInfo.pBindings = bindings.data();
 
-        if (vkCreateDescriptorSetLayout(logi_device.get(), &layoutInfo, nullptr, &handle_) != VK_SUCCESS) {
+        if (vkCreateDescriptorSetLayout(logi_device, &layoutInfo, nullptr, &handle_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
         }
     }
 
-    void DescriptorSetLayout::destroy(LogiDevice& logi_device) {
+    void DescriptorSetLayout::destroy(VkDevice logi_device) {
         if (handle_ != VK_NULL_HANDLE) {
-            vkDestroyDescriptorSetLayout(logi_device.get(), handle_, nullptr);
+            vkDestroyDescriptorSetLayout(logi_device, handle_, nullptr);
             handle_ = VK_NULL_HANDLE;
         }
     }
@@ -52,7 +52,7 @@ namespace mirinae {
 namespace mirinae {
 
     //basic implementation for DescriptorPool methods
-    void DescriptorPool::init(uint32_t alloc_size, LogiDevice& logi_device) {
+    void DescriptorPool::init(uint32_t alloc_size, VkDevice logi_device) {
         this->destroy(logi_device);
 
         std::vector<VkDescriptorPoolSize> poolSizes;
@@ -73,20 +73,20 @@ namespace mirinae {
         poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = alloc_size;
 
-        if (vkCreateDescriptorPool(logi_device.get(), &poolInfo, nullptr, &handle_) != VK_SUCCESS) {
+        if (vkCreateDescriptorPool(logi_device, &poolInfo, nullptr, &handle_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
     }
 
     // For rest of methods too
-    void DescriptorPool::destroy(LogiDevice& logi_device) {
+    void DescriptorPool::destroy(VkDevice logi_device) {
         if (handle_ != VK_NULL_HANDLE) {
-            vkDestroyDescriptorPool(logi_device.get(), handle_, nullptr);
+            vkDestroyDescriptorPool(logi_device, handle_, nullptr);
             handle_ = VK_NULL_HANDLE;
         }
     }
 
-    std::vector<VkDescriptorSet> DescriptorPool::alloc(uint32_t count, DescriptorSetLayout& desclayout, LogiDevice& logi_device) {
+    std::vector<VkDescriptorSet> DescriptorPool::alloc(uint32_t count, DescriptorSetLayout& desclayout, VkDevice logi_device) {
         std::vector<VkDescriptorSetLayout> layouts(count, desclayout.get());
 
         VkDescriptorSetAllocateInfo allocInfo{};
@@ -96,7 +96,7 @@ namespace mirinae {
         allocInfo.pSetLayouts = layouts.data();
 
         std::vector<VkDescriptorSet> output(count);
-        if (vkAllocateDescriptorSets(logi_device.get(), &allocInfo, output.data()) != VK_SUCCESS) {
+        if (vkAllocateDescriptorSets(logi_device, &allocInfo, output.data()) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate descriptor set!");
         }
 

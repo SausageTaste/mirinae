@@ -6,6 +6,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/render/renderee.cpp
     ./src/mirinae/render/uniform.cpp
     ./src/mirinae/render/vkcomposition.cpp
+    ./src/mirinae/render/vkdevice.cpp
     ./src/mirinae/render/vkmajorplayers.cpp
     ./src/mirinae/util/image.cpp
     ./src/mirinae/util/mamath.cpp

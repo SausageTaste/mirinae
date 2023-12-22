@@ -7,6 +7,7 @@
 #include "mem_alloc.hpp"
 #include "uniform.hpp"
 #include "vkcomposition.hpp"
+#include "vkdevice.hpp"
 
 
 namespace mirinae {
@@ -21,10 +22,9 @@ namespace mirinae {
             VkSampler texture_sampler,
             mirinae::CommandPool& cmd_pool,
             mirinae::DescriptorSetLayout& layout,
-            mirinae::VulkanMemoryAllocator mem_alloc,
-            mirinae::LogiDevice& logi_device
+            VulkanDevice& vulkan_device
         );
-        void destroy(mirinae::VulkanMemoryAllocator mem_alloc, mirinae::LogiDevice& logi_device);
+        void destroy(mirinae::VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
 
         void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, mirinae::VulkanMemoryAllocator mem_alloc);
         VkDescriptorSet get_desc_set(size_t index);

@@ -12,7 +12,7 @@ namespace mirinae {
         RenderPass& renderpass,
         DescriptorSetLayout& desclayout,
         IFilesys& filesys,
-        LogiDevice& logi_device
+        VkDevice logi_device
     );
 
 }
