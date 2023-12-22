@@ -5,10 +5,8 @@
 
 #include <daltools/util.h>
 
-#include <mirinae/actor/transform.hpp>
-#include <mirinae/render/mem_alloc.hpp>
 #include <mirinae/render/pipeline.hpp>
-#include <mirinae/render/vkcomposition.hpp>
+#include <mirinae/render/renderee.hpp>
 #include <mirinae/util/mamath.hpp>
 
 
@@ -161,107 +159,6 @@ namespace {
         }
 
         std::vector<std::shared_ptr<TextureData>> textures_;
-
-    };
-
-
-    class RenderUnit {
-
-    public:
-        void init(
-            uint32_t max_flight_count,
-            const mirinae::VerticesStaticPair& vertices,
-            VkImageView image_view,
-            VkSampler texture_sampler,
-            mirinae::CommandPool& cmd_pool,
-            mirinae::DescriptorSetLayout& layout,
-            mirinae::VulkanMemoryAllocator mem_alloc,
-            mirinae::LogiDevice& logi_device
-        ) {
-            desc_pool_.init(max_flight_count, logi_device);
-            desc_sets_ = desc_pool_.alloc(max_flight_count, layout, logi_device);
-
-            for (uint32_t i = 0; i < max_flight_count; ++i) {
-                auto& ubuf = uniform_buf_.emplace_back();
-                ubuf.init_ubuf(sizeof(mirinae::U_Unorthodox), mem_alloc);
-            }
-
-            for (size_t i = 0; i < max_flight_count; i++) {
-                VkDescriptorBufferInfo bufferInfo{};
-                bufferInfo.buffer = uniform_buf_.at(i).buffer();
-                bufferInfo.offset = 0;
-                bufferInfo.range = uniform_buf_.at(i).size();
-
-                VkDescriptorImageInfo imageInfo{};
-                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                imageInfo.imageView = image_view;
-                imageInfo.sampler = texture_sampler;
-
-                std::vector<VkWriteDescriptorSet> write_info{};
-                {
-                    auto& descriptorWrite = write_info.emplace_back();
-                    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    descriptorWrite.dstSet = desc_sets_.at(i);
-                    descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
-                    descriptorWrite.dstArrayElement = 0;
-                    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    descriptorWrite.descriptorCount = 1;
-                    descriptorWrite.pBufferInfo = &bufferInfo;
-                }
-                {
-                    auto& descriptorWrite = write_info.emplace_back();
-                    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    descriptorWrite.dstSet = desc_sets_.at(i);
-                    descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
-                    descriptorWrite.dstArrayElement = 0;
-                    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                    descriptorWrite.descriptorCount = 1;
-                    descriptorWrite.pImageInfo = &imageInfo;
-                }
-
-                vkUpdateDescriptorSets(logi_device.get(), static_cast<uint32_t>(write_info.size()), write_info.data(), 0, nullptr);
-            }
-
-            vert_index_pair_.init(vertices, cmd_pool, mem_alloc, logi_device);
-        }
-
-        void destroy(mirinae::VulkanMemoryAllocator mem_alloc, mirinae::LogiDevice& logi_device) {
-            for (auto& ubuf : uniform_buf_)
-                ubuf.destroy(mem_alloc);
-            uniform_buf_.clear();
-
-            vert_index_pair_.destroy(mem_alloc);
-            desc_pool_.destroy(logi_device);
-        }
-
-        void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, mirinae::VulkanMemoryAllocator mem_alloc) {
-            auto& ubuf = uniform_buf_.at(index);
-            ubuf_data_.model = transform_.make_model_mat();
-            ubuf_data_.view = view_mat;
-            ubuf_data_.proj = proj_mat;
-            ubuf.set_data(&ubuf_data_, sizeof(mirinae::U_Unorthodox), mem_alloc);
-        }
-
-        VkDescriptorSet get_desc_set(size_t index) {
-            return desc_sets_.at(index);
-        }
-
-        void record_bind_vert_buf(VkCommandBuffer cmdbuf) {
-            vert_index_pair_.record_bind(cmdbuf);
-        }
-
-        auto vertex_count() const {
-            return vert_index_pair_.vertex_count();
-        }
-
-        mirinae::TransformQuat transform_;
-
-    private:
-        mirinae::U_Unorthodox ubuf_data_;
-        mirinae::DescriptorPool desc_pool_;
-        mirinae::VertexIndexPair vert_index_pair_;
-        std::vector<VkDescriptorSet> desc_sets_;
-        std::vector<mirinae::Buffer> uniform_buf_;
 
     };
 
@@ -621,7 +518,7 @@ namespace {
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
-        std::vector<RenderUnit> render_units_;
+        std::vector<mirinae::RenderUnit> render_units_;
         mirinae::Sampler texture_sampler_;
         mirinae::Image depth_image_;
         mirinae::ImageView depth_image_view_;
