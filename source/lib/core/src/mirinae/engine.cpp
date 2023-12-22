@@ -80,89 +80,12 @@ namespace {
     };
 
 
-    class TextureManager {
-
-    public:
-        struct TextureData {
-            mirinae::Image texture_;
-            mirinae::ImageView texture_view_;
-            std::string id_;
-        };
-
-        std::shared_ptr<TextureData> request(
-            const std::string& path,
-            mirinae::CommandPool& cmd_pool,
-            mirinae::VulkanDevice& device
-        ) {
-            if (auto index = this->find_index(path))
-                return textures_.at(index.value());
-
-            const auto img_data = device.filesys().read_file_to_vector(path.c_str());
-            const auto image = mirinae::parse_image(img_data->data(), img_data->size());
-            auto& output = textures_.emplace_back(new TextureData);
-            output->id_ = path;
-            this->create(*image, *output, device.mem_alloc(), cmd_pool, device.graphics_queue(), device.logi_device());
-            return output;
-        }
-
-        void claer(mirinae::VulkanMemoryAllocator mem_alloc, VkDevice logi_device) {
-            for (auto& tex : textures_) {
-                if (tex.use_count() > 1)
-                    spdlog::warn("Want to destroy texture '{}' is still in use", tex->id_);
-
-                tex->texture_view_.destroy(logi_device);
-                tex->texture_.destroy(mem_alloc);
-            }
-            textures_.clear();
-        }
-
-    private:
-        std::optional<size_t> find_index(const std::string& id) {
-            for (size_t i = 0; i < textures_.size(); ++i) {
-                if (textures_.at(i)->id_ == id)
-                    return i;
-            }
-            return std::nullopt;
-        }
-
-        static void create(
-            const mirinae::IImage2D& image,
-            TextureData& output,
-            mirinae::VulkanMemoryAllocator mem_alloc,
-            mirinae::CommandPool& cmd_pool,
-            VkQueue graphics_q,
-            VkDevice logi_device
-        ) {
-            mirinae::Buffer staging_buffer;
-            staging_buffer.init_staging(image.data_size(), mem_alloc);
-            staging_buffer.set_data(image.data(), image.data_size(), mem_alloc);
-
-            output.texture_.init_rgba8_srgb(image.width(), image.height(), mem_alloc);
-            mirinae::copy_to_img_and_transition(
-                output.texture_.image(),
-                output.texture_.width(),
-                output.texture_.height(),
-                output.texture_.format(),
-                staging_buffer.buffer(),
-                cmd_pool,
-                graphics_q,
-                logi_device
-            );
-            staging_buffer.destroy(mem_alloc);
-
-            output.texture_view_.init(output.texture_.image(), output.texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, logi_device);
-        }
-
-        std::vector<std::shared_ptr<TextureData>> textures_;
-
-    };
-
-
     class EngineGlfw : public mirinae::IEngine {
 
     public:
         EngineGlfw(mirinae::EngineCreateInfo&& cinfo)
             : device_(std::move(cinfo))
+            , tex_man_(device_)
         {
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
@@ -210,17 +133,13 @@ namespace {
             */
 
             for (int i = 0; i < 20; ++i) {
-                auto texture = tex_man_.request(
-                    texture_paths.at(i % texture_paths.size()),
-                    cmd_pool_,
-                    device_
-                );
+                auto texture = tex_man_.request(texture_paths.at(i % texture_paths.size()));
 
                 auto& ren_unit = render_units_.emplace_back();
                 ren_unit.init(
                     framesync_.MAX_FRAMES_IN_FLIGHT,
                     meshes.at(i % meshes.size()),
-                    texture->texture_view_.get(),
+                    texture->image_view(),
                     texture_sampler_.get(),
                     cmd_pool_,
                     desclayout_,
@@ -239,7 +158,6 @@ namespace {
             render_units_.clear();
 
             texture_sampler_.destroy(device_.logi_device());
-            tex_man_.claer(device_.mem_alloc(), device_.logi_device());
             cmd_pool_.destroy(device_.logi_device());
             this->destroy_swapchain_and_relatives();
         }
@@ -466,9 +384,9 @@ namespace {
         }
 
         mirinae::VulkanDevice device_;
+        mirinae::TextureManager tex_man_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
-        ::TextureManager tex_man_;
         mirinae::DescriptorSetLayout desclayout_;
         mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;
