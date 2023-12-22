@@ -11,13 +11,13 @@ namespace mirinae {
     public:
         void init(
             const std::string& id,
-            const mirinae::IImage2D& image,
-            mirinae::CommandPool& cmd_pool,
+            const IImage2D& image,
+            CommandPool& cmd_pool,
             VulkanDevice& device
         ) {
             id_ = id;
 
-            mirinae::Buffer staging_buffer;
+            Buffer staging_buffer;
             staging_buffer.init_staging(image.data_size(), device.mem_alloc());
             staging_buffer.set_data(image.data(), image.data_size(), device.mem_alloc());
 
@@ -49,8 +49,8 @@ namespace mirinae {
         auto& id() const { return id_; }
 
     private:
-        mirinae::Image texture_;
-        mirinae::ImageView texture_view_;
+        Image texture_;
+        ImageView texture_view_;
         std::string id_;
 
     };
@@ -59,7 +59,7 @@ namespace mirinae {
     class TextureManager::Pimpl {
 
     public:
-        Pimpl(mirinae::VulkanDevice& device)
+        Pimpl(VulkanDevice& device)
             : device_(device)
         {
             cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
@@ -128,11 +128,11 @@ namespace mirinae {
 
     void RenderUnit::init(
         uint32_t max_flight_count,
-        const mirinae::VerticesStaticPair& vertices,
+        const VerticesStaticPair& vertices,
         VkImageView image_view,
         VkSampler texture_sampler,
-        mirinae::CommandPool& cmd_pool,
-        mirinae::DescriptorSetLayout& layout,
+        CommandPool& cmd_pool,
+        DescriptorSetLayout& layout,
         VulkanDevice& vulkan_device
     ) {
         desc_pool_.init(max_flight_count, vulkan_device.logi_device());
@@ -140,7 +140,7 @@ namespace mirinae {
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();
-            ubuf.init_ubuf(sizeof(mirinae::U_Unorthodox), vulkan_device.mem_alloc());
+            ubuf.init_ubuf(sizeof(U_Unorthodox), vulkan_device.mem_alloc());
         }
 
         for (size_t i = 0; i < max_flight_count; i++) {
@@ -188,7 +188,7 @@ namespace mirinae {
         );
     }
 
-    void RenderUnit::destroy(mirinae::VulkanMemoryAllocator mem_alloc, VkDevice logi_device) {
+    void RenderUnit::destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device) {
         for (auto& ubuf : uniform_buf_)
             ubuf.destroy(mem_alloc);
         uniform_buf_.clear();
@@ -197,12 +197,12 @@ namespace mirinae {
         desc_pool_.destroy(logi_device);
     }
 
-    void RenderUnit::udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, mirinae::VulkanMemoryAllocator mem_alloc) {
+    void RenderUnit::udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, VulkanMemoryAllocator mem_alloc) {
         auto& ubuf = uniform_buf_.at(index);
         ubuf_data_.model = transform_.make_model_mat();
         ubuf_data_.view = view_mat;
         ubuf_data_.proj = proj_mat;
-        ubuf.set_data(&ubuf_data_, sizeof(mirinae::U_Unorthodox), mem_alloc);
+        ubuf.set_data(&ubuf_data_, sizeof(U_Unorthodox), mem_alloc);
     }
 
     VkDescriptorSet RenderUnit::get_desc_set(size_t index) {
