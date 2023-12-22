@@ -1,5 +1,127 @@
 #include "mirinae/render/renderee.hpp"
 
+#include <spdlog/spdlog.h>
+
+
+// TextureManager
+namespace mirinae {
+
+    class TextureData : public ITexture {
+
+    public:
+        void init(
+            const std::string& id,
+            const mirinae::IImage2D& image,
+            mirinae::CommandPool& cmd_pool,
+            VulkanDevice& device
+        ) {
+            id_ = id;
+
+            mirinae::Buffer staging_buffer;
+            staging_buffer.init_staging(image.data_size(), device.mem_alloc());
+            staging_buffer.set_data(image.data(), image.data_size(), device.mem_alloc());
+
+            texture_.init_rgba8_srgb(image.width(), image.height(), device.mem_alloc());
+            mirinae::copy_to_img_and_transition(
+                texture_.image(),
+                texture_.width(),
+                texture_.height(),
+                texture_.format(),
+                staging_buffer.buffer(),
+                cmd_pool,
+                device.graphics_queue(),
+                device.logi_device()
+            );
+            staging_buffer.destroy(device.mem_alloc());
+
+            texture_view_.init(texture_.image(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device.logi_device());
+        }
+
+        void destroy(VulkanDevice& device) {
+            texture_view_.destroy(device.logi_device());
+            texture_.destroy(device.mem_alloc());
+        }
+
+        VkImageView image_view() override {
+            return texture_view_.get();
+        }
+
+        auto& id() const { return id_; }
+
+    private:
+        mirinae::Image texture_;
+        mirinae::ImageView texture_view_;
+        std::string id_;
+
+    };
+
+
+    class TextureManager::Pimpl {
+
+    public:
+        Pimpl(mirinae::VulkanDevice& device)
+            : device_(device)
+        {
+            cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
+        }
+
+        ~Pimpl() {
+            this->destroy_all();
+            cmd_pool_.destroy(device_.logi_device());
+        }
+
+        std::shared_ptr<TextureData> request(const std::string& res_id) {
+            if (auto index = this->find_index(res_id))
+                return textures_.at(index.value());
+
+            const auto img_data = device_.filesys().read_file_to_vector(res_id.c_str());
+            const auto image = mirinae::parse_image(img_data->data(), img_data->size());
+            auto& output = textures_.emplace_back(new TextureData);
+            output->init(res_id, *image, cmd_pool_, device_);
+            return output;
+        }
+
+    private:
+        std::optional<size_t> find_index(const std::string& id) {
+            for (size_t i = 0; i < textures_.size(); ++i) {
+                if (textures_.at(i)->id() == id)
+                    return i;
+            }
+            return std::nullopt;
+        }
+
+        void destroy_all() {
+            for (auto& tex : textures_) {
+                if (tex.use_count() > 1)
+                    spdlog::warn("Want to destroy texture '{}' is still in use", tex->id());
+                tex->destroy(device_);
+            }
+            textures_.clear();
+        }
+
+        VulkanDevice& device_;
+        CommandPool cmd_pool_;
+        std::vector<std::shared_ptr<TextureData>> textures_;
+
+    };
+
+
+    TextureManager::TextureManager(VulkanDevice& device)
+        : pimpl_(std::make_unique<Pimpl>(device))
+    {
+
+    }
+
+    TextureManager::~TextureManager() {
+
+    }
+
+    std::shared_ptr<ITexture> TextureManager::request(const std::string& res_id) {
+        return pimpl_->request(res_id);
+    }
+
+}
+
 
 // RenderUnit
 namespace mirinae {

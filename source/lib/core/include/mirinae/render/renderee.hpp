@@ -4,13 +4,35 @@
 
 #include "mirinae/actor/transform.hpp"
 
-#include "mem_alloc.hpp"
 #include "uniform.hpp"
 #include "vkcomposition.hpp"
-#include "vkdevice.hpp"
 
 
 namespace mirinae {
+
+    class ITexture {
+
+    public:
+        virtual ~ITexture() = default;
+        virtual VkImageView image_view() = 0;
+
+    };
+
+
+    class TextureManager {
+
+    public:
+        TextureManager(mirinae::VulkanDevice& device);
+        ~TextureManager();
+
+        std::shared_ptr<ITexture> request(const std::string& res_id);
+
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> pimpl_;
+
+    };
+
 
     class RenderUnit {
 
