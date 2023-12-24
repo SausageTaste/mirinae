@@ -640,8 +640,9 @@ namespace mirinae {
             logi_device_.init(phys_device_, device_extensions);
             mem_allocator_ = mirinae::create_vma_allocator(instance_.get(), phys_device_.get(), logi_device_.get());
 
-            swapchain_details_.init(surface_, phys_device_.get());
-            if (!swapchain_details_.is_complete()) {
+            ::SwapChainSupportDetails swapchain_details;
+            swapchain_details.init(surface_, phys_device_.get());
+            if (!swapchain_details.is_complete()) {
                 throw std::runtime_error{ "The swapchain is not complete" };
             }
         }
@@ -659,7 +660,6 @@ namespace mirinae {
         ::VulkanInstance instance_;
         ::PhysDevice phys_device_;
         ::LogiDevice logi_device_;
-        ::SwapChainSupportDetails swapchain_details_;
         mirinae::VulkanMemoryAllocator mem_allocator_;
         mirinae::EngineCreateInfo create_info_;
         VkSurfaceKHR surface_ = VK_NULL_HANDLE;
@@ -730,7 +730,9 @@ namespace mirinae {
 
     void Swapchain::init(uint32_t fbuf_width, uint32_t fbuf_height, VulkanDevice& vulkan_device) {
         auto logi_device = vulkan_device.logi_device();
-        auto& swapchain_details = vulkan_device.pimpl_->swapchain_details_;
+
+        ::SwapChainSupportDetails swapchain_details;
+        swapchain_details.init(vulkan_device.pimpl_->surface_, vulkan_device.pimpl_->phys_device_.get());
 
         std::array<uint32_t, 2> queue_family_indices{
             vulkan_device.pimpl_->phys_device_.graphics_family_index().value(),
