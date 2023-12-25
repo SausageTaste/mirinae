@@ -1,11 +1,29 @@
 #include "mirinae/engine.hpp"
 
+#include <filesystem>
+
 #include <spdlog/spdlog.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 
 namespace {
+
+    std::string get_windows_documents_path(const char* app_name) {
+        if (auto pPath = getenv("USERPROFILE")) {
+            auto path = std::filesystem::path(pPath) / "Documents" / app_name;
+
+            if (!std::filesystem::is_directory(path)) {
+                if (!std::filesystem::create_directories(path)) {
+                    throw std::runtime_error("Failed to create directory");
+                }
+            }
+
+            return path.u8string();
+        }
+
+        throw std::runtime_error("Failed to get user profile path");
+    }
 
     auto get_glfw_extensions() {
         uint32_t glfwExtensionCount = 0;
@@ -177,7 +195,7 @@ namespace {
             : window_(800, 600, "Mirinapp")
         {
             mirinae::EngineCreateInfo create_info;
-            create_info.filesys_ = mirinae::create_filesys_std();
+            create_info.filesys_ = mirinae::create_filesys_std(::get_windows_documents_path("Mirinapp"));
 
             create_info.instance_extensions_ = ::get_glfw_extensions();
             create_info.surface_creator_ = [this](void* instance) -> uint64_t {

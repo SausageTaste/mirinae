@@ -101,16 +101,17 @@ namespace {
             );
 
             const std::vector<std::string> texture_paths{
-                "textures/grass1.tga",
-                "textures/iceland_heightmap.png",
-                "textures/lorem_ipsum.png",
-                "textures/missing_texture.png",
+                "asset/textures/grass1.tga",
+                "asset/textures/iceland_heightmap.png",
+                "asset/textures/lorem_ipsum.png",
+                "asset/textures/missing_texture.png",
             };
 
             const std::vector<std::string> mesh_paths{
-                "models/cube.dmd",
-                "models/sphere.dmd",
-                "models/suzanne.dmd",
+                "honoka sugar perfume/DOAXVV Honoka - Sugar Perfume.dmd",
+                "asset/models/cube.dmd",
+                "asset/models/sphere.dmd",
+                "asset/models/suzanne.dmd",
             };
             std::vector<mirinae::VerticesStaticPair> meshes;
             for (auto& mesh_path : mesh_paths) {
