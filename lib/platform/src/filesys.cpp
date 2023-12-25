@@ -8,7 +8,7 @@
 // FilesysStd
 namespace {
 
-    std::optional<std::filesystem::path> find_resources_folder() {
+    std::optional<std::filesystem::path> find_asset_folder() {
         std::filesystem::path cur_path = ".";
 
         for (int i = 0; i < 10; ++i) {
@@ -28,12 +28,20 @@ namespace {
     class FilesysStd : public mirinae::IFilesys {
 
     public:
-        bool read_file_to_vector(const char* file_path, std::vector<uint8_t>& output) override {
+        FilesysStd(const std::string& resources_dir)
+            : resources_dir_{ resources_dir }
+        {
+
+        }
+
+        bool read_file_to_vector(const std::string& res_path, std::vector<uint8_t>& output) override {
             using namespace std::string_literals;
 
-            const auto full_path = find_resources_folder().value_or("."s) / file_path;
-            std::ifstream file{ full_path, std::ios::ate | std::ios::binary | std::ios::in };
+            const auto full_path = this->resolve_res_path(res_path);
+            if (!full_path.has_value())
+                return false;
 
+            std::ifstream file{ full_path.value(), std::ios::ate | std::ios::binary | std::ios::in };
             if (!file.is_open())
                 return false;
 
@@ -46,6 +54,25 @@ namespace {
             return true;
         }
 
+        std::optional<std::string> resolve_res_path(const std::string& res_path) override {
+            if (res_path.rfind("asset", 0) == 0) {
+                std::filesystem::path path = res_path;
+                auto it = path.begin(); ++it;
+                std::filesystem::path output = ::find_asset_folder().value();
+                while (it != path.end()) {
+                    output /= *it;
+                    ++it;
+                }
+                return output.u8string();
+            }
+            else {
+                return (resources_dir_ / res_path).u8string();
+            }
+        }
+
+    private:
+        std::filesystem::path resources_dir_;
+
     };
 
 }
@@ -53,8 +80,8 @@ namespace {
 
 namespace mirinae {
 
-    std::unique_ptr<IFilesys> create_filesys_std() {
-        return std::make_unique<FilesysStd>();
+    std::unique_ptr<IFilesys> create_filesys_std(const std::string& resources_dir) {
+        return std::make_unique<FilesysStd>(resources_dir);
     }
 
 }

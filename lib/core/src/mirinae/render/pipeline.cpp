@@ -76,8 +76,8 @@ namespace mirinae {
         IFilesys& filesys,
         VkDevice logi_device
     ) {
-        ::ShaderModule vert_shader{ filesys.read_file_to_vector("spv/unorthodox_vert.spv").value(), logi_device };
-        ::ShaderModule frag_shader{ filesys.read_file_to_vector("spv/unorthodox_frag.spv").value(), logi_device };
+        ::ShaderModule vert_shader{ filesys.read_file_to_vector("asset/spv/unorthodox_vert.spv").value(), logi_device };
+        ::ShaderModule frag_shader{ filesys.read_file_to_vector("asset/spv/unorthodox_frag.spv").value(), logi_device };
 
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
         {
