@@ -74,9 +74,19 @@ namespace {
 
         }
 
-        bool read_file_to_vector(const char* file_path, std::vector<uint8_t>& output) override {
+        bool read_file_to_vector(const std::string& file_path, std::vector<uint8_t>& output) override {
+            auto index = file_path.find("asset");
+            std::string new_path;
+            if (std::string::npos != index) {
+                auto trun_size = index + 6;
+                new_path = file_path.substr(trun_size, file_path.size() - trun_size);
+            }
+            else {
+                new_path = file_path;
+            }
+
             AssetFile file;
-            if (!file.open(file_path, mgr_))
+            if (!file.open(new_path.c_str(), mgr_))
                 return false;
 
             output.resize(file.size());

@@ -108,7 +108,7 @@ namespace {
             };
 
             const std::vector<std::string> mesh_paths{
-                "honoka sugar perfume/DOAXVV Honoka - Sugar Perfume.dmd",
+                //"honoka sugar perfume/DOAXVV Honoka - Sugar Perfume.dmd",
                 "asset/models/cube.dmd",
                 "asset/models/sphere.dmd",
                 "asset/models/suzanne.dmd",

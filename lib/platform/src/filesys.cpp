@@ -54,7 +54,7 @@ namespace {
             return true;
         }
 
-        std::optional<std::string> resolve_res_path(const std::string& res_path) override {
+        std::optional<std::string> resolve_res_path(const std::string& res_path) const {
             if (res_path.rfind("asset", 0) == 0) {
                 std::filesystem::path path = res_path;
                 auto it = path.begin(); ++it;

@@ -16,7 +16,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     fetch_sungtools
     GIT_REPOSITORY https://github.com/SausageTaste/SungToolsCpp
-    GIT_TAG        f0e33e7027906d126088d2b9b91d0cf4b0f418b8
+    GIT_TAG        ce94acda78e25a56c8d372672400d39f8ad7bbd6
 )
 
 FetchContent_Declare(
