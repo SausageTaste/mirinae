@@ -4,38 +4,65 @@
 #include <vector>
 
 
+// DescLayoutBuilder
+namespace {
+
+    class DescLayoutBuilder {
+
+    public:
+        void add_uniform_buffer(VkShaderStageFlagBits stage_flags, uint32_t count) {
+            auto& binding = bindings_.emplace_back();
+            binding.binding = bindings_.size() - 1;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            binding.descriptorCount = count;
+            binding.stageFlags = stage_flags;
+            binding.pImmutableSamplers = nullptr;
+        }
+
+        void add_combined_image_sampler(VkShaderStageFlagBits stage_flags, uint32_t count) {
+            auto& binding = bindings_.emplace_back();
+            binding.binding = bindings_.size() - 1;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            binding.descriptorCount = count;
+            binding.stageFlags = stage_flags;
+            binding.pImmutableSamplers = nullptr;
+        }
+
+        std::optional<VkDescriptorSetLayout> build(VkDevice logi_device) const {
+            VkDescriptorSetLayoutCreateInfo create_info = {};
+            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            create_info.bindingCount = static_cast<uint32_t>(bindings_.size());
+            create_info.pBindings = bindings_.data();
+
+            VkDescriptorSetLayout handle;
+            if (VK_SUCCESS != vkCreateDescriptorSetLayout(logi_device, &create_info, nullptr, &handle))
+                return std::nullopt;
+
+            return handle;
+        }
+
+    public:
+        std::vector<VkDescriptorSetLayoutBinding> bindings_;
+
+    };
+
+}
+
+
 // DescriptorSetLayout
 namespace mirinae {
 
     void DescriptorSetLayout::init(VkDevice logi_device) {
         this->destroy(logi_device);
 
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
-        {
-            auto& binding = bindings.emplace_back();
-            binding.binding = bindings.size() - 1;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            binding.descriptorCount = 1;
-            binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            binding.pImmutableSamplers = nullptr;
-        }
-        {
-            auto& binding = bindings.emplace_back();
-            binding.binding = bindings.size() - 1;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            binding.descriptorCount = 1;
-            binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-            binding.pImmutableSamplers = nullptr;
-        }
+        DescLayoutBuilder builder;
+        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = bindings.size();
-        layoutInfo.pBindings = bindings.data();
-
-        if (vkCreateDescriptorSetLayout(logi_device, &layoutInfo, nullptr, &handle_) != VK_SUCCESS) {
+        if (auto& handle = builder.build(logi_device))
+            handle_ = handle.value();
+        else
             throw std::runtime_error("failed to create descriptor set layout!");
-        }
     }
 
     void DescriptorSetLayout::destroy(VkDevice logi_device) {
