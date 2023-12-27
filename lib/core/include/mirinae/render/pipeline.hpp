@@ -11,8 +11,7 @@ namespace mirinae {
         const VkExtent2D& swapchain_extent,
         RenderPass& renderpass,
         DescriptorSetLayout& desclayout,
-        IFilesys& filesys,
-        VkDevice logi_device
+        VulkanDevice& device
     );
 
 }

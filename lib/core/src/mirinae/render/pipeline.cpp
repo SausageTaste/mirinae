@@ -10,34 +10,25 @@ namespace {
     class ShaderModule {
 
     public:
-        ShaderModule() = default;
-
-        ShaderModule(const std::vector<uint8_t>& spv, VkDevice logi_device) {
-            if (!this->init(spv, logi_device)) {
-                throw std::runtime_error{ "Failed to initialize a ShaderModule" };
+        ShaderModule(const mirinae::respath_t& spv_path, mirinae::VulkanDevice& device)
+            : device_{ device }
+        {
+            if (auto spv = device.filesys().read_file_to_vector(spv_path)) {
+                if (auto shader = this->create_shader_module(spv.value(), device.logi_device())) {
+                    handle_ = shader.value();
+                }
+                else {
+                    throw std::runtime_error{ fmt::format("Failed to create shader module with given data: {}", spv_path) };
+                }
+            }
+            else {
+                throw std::runtime_error{ fmt::format("Failed to read a shader file: {}", spv_path) };
             }
         }
 
         ~ShaderModule() {
             if (VK_NULL_HANDLE != handle_) {
-                spdlog::warn("A ShaderModule was not destroyed correctly");
-            }
-        }
-
-        bool init(const std::vector<uint8_t>& spv, VkDevice logi_device) {
-            if (auto shader = this->create_shader_module(spv, logi_device)) {
-                handle_ = shader.value();
-                return true;
-            }
-            else {
-                spdlog::error("Failed to create shader module with given data");
-                return false;
-            }
-        }
-
-        void destroy(VkDevice logi_device) {
-            if (VK_NULL_HANDLE != handle_) {
-                vkDestroyShaderModule(logi_device, handle_, nullptr);
+                vkDestroyShaderModule(device_.logi_device(), handle_, nullptr);
                 handle_ = VK_NULL_HANDLE;
             }
         }
@@ -60,6 +51,7 @@ namespace {
             return shaderModule;
         }
 
+        mirinae::VulkanDevice& device_;
         VkShaderModule handle_ = VK_NULL_HANDLE;
 
     };
@@ -73,11 +65,10 @@ namespace mirinae {
         const VkExtent2D& swapchain_extent,
         RenderPass& renderpass,
         DescriptorSetLayout& desclayout,
-        IFilesys& filesys,
-        VkDevice logi_device
+        VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ filesys.read_file_to_vector("asset/spv/unorthodox_vert.spv").value(), logi_device };
-        ::ShaderModule frag_shader{ filesys.read_file_to_vector("asset/spv/unorthodox_frag.spv").value(), logi_device };
+        ::ShaderModule vert_shader{ "asset/spv/unorthodox_vert.spv", device };
+        ::ShaderModule frag_shader{ "asset/spv/unorthodox_frag.spv", device };
 
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
         {
@@ -211,8 +202,8 @@ namespace mirinae {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(logi_device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create pipeline layout!");
+        if (vkCreatePipelineLayout(device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create pipeline layout");
         }
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -234,12 +225,9 @@ namespace mirinae {
         pipelineInfo.basePipelineIndex = -1;
 
         VkPipeline graphicsPipeline;
-        if (vkCreateGraphicsPipelines(logi_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create graphics pipeline!");
+        if (vkCreateGraphicsPipelines(device.logi_device(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create graphics pipeline");
         }
-
-        vert_shader.destroy(logi_device);
-        frag_shader.destroy(logi_device);
 
         return Pipeline{ graphicsPipeline, pipelineLayout };
     }

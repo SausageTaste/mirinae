@@ -8,6 +8,9 @@
 
 namespace mirinae {
 
+    using respath_t = std::string;
+
+
     class IFilesys {
 
     public:
