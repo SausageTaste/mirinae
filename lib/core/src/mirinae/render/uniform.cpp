@@ -75,6 +75,46 @@ namespace mirinae {
 }
 
 
+// DescLayout
+namespace mirinae {
+
+    DescLayout DescLayout::create_model(VulkanDevice& device) {
+        DescLayoutBuilder builder;
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+
+        if (auto& handle = builder.build(device.logi_device()))
+            return DescLayout(handle.value(), device);
+        else
+            throw std::runtime_error("Failed to create descriptor set layout: model");
+    }
+
+    DescLayout DescLayout::create_actor(VulkanDevice& device) {
+        DescLayoutBuilder builder;
+        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);
+
+        if (auto& handle = builder.build(device.logi_device()))
+            return DescLayout(handle.value(), device);
+        else
+            throw std::runtime_error("Failed to create descriptor set layout: actor");
+    }
+
+    void DescLayout::destroy() {
+        if (handle_ != VK_NULL_HANDLE) {
+            vkDestroyDescriptorSetLayout(device_.logi_device(), handle_, nullptr);
+            handle_ = VK_NULL_HANDLE;
+        }
+    }
+
+    DescLayout::DescLayout(VkDescriptorSetLayout handle, VulkanDevice& device)
+        : handle_(handle)
+        , device_(device)
+    {
+
+    }
+
+}
+
+
 // DescriptorPool
 namespace mirinae {
 
