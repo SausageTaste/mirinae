@@ -28,6 +28,28 @@ namespace mirinae {
     };
 
 
+    class DescLayout {
+
+    public:
+        static DescLayout create_model(VulkanDevice& device);
+        static DescLayout create_actor(VulkanDevice& device);
+
+        ~DescLayout() {
+            this->destroy();
+        }
+
+        void destroy();
+        VkDescriptorSetLayout get() { return handle_; }
+
+    private:
+        DescLayout(VkDescriptorSetLayout handle, VulkanDevice& device);
+
+        VulkanDevice& device_;
+        VkDescriptorSetLayout handle_ = VK_NULL_HANDLE;
+
+    };
+
+
     class DescriptorPool {
 
     public:
