@@ -77,6 +77,11 @@ namespace mirinae {
                 return textures_.at(index.value());
 
             const auto img_data = device_.filesys().read_file_to_vector(res_id.c_str());
+            if (!img_data.has_value()) {
+                spdlog::error("Failed to read image file: {}", res_id);
+                return nullptr;
+            }
+
             const auto image = mirinae::parse_image(img_data->data(), img_data->size());
             auto& output = textures_.emplace_back(new TextureData);
             output->init(res_id, *image, cmd_pool_, device_);
@@ -257,7 +262,7 @@ namespace mirinae {
                 const auto new_texture_path = replace_file_name_ext(res_id, src_unit.material_.albedo_map_);
                 auto texture = tex_man.request(new_texture_path);
                 if (!texture)
-                    auto texture = tex_man.request("asset/textures/missing_texture.png");
+                    texture = tex_man.request("asset/textures/missing_texture.png");
 
                 auto& dst_unit = output->render_units_.emplace_back();
                 dst_unit.init(

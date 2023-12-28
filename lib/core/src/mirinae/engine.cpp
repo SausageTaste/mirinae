@@ -116,8 +116,14 @@ namespace {
 
             for (size_t i = 0; i < mesh_paths.size(); ++i) {
                 const auto& model_path = mesh_paths.at(i);
+                auto model = model_man_.request_static(model_path, desclayout_, tex_man_);
+                if (!model) {
+                    spdlog::error("Failed to load model: {}", model_path);
+                    continue;
+                }
+
                 auto& ren_pair = draw_sheet_.ren_pairs_.emplace_back();
-                ren_pair.model_ = model_man_.request_static(model_path, desclayout_, tex_man_);
+                ren_pair.model_ = model;
 
                 auto& actor = ren_pair.actors_.emplace_back(std::make_shared<mirinae::RenderActor>(device_));
                 actor->init(
