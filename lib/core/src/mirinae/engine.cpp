@@ -29,9 +29,9 @@ namespace {
 
     public:
         void init(VkDevice logi_device) {
-            img_available_semaphores_.resize(MAX_FRAMES_IN_FLIGHT);
-            render_finished_semaphores_.resize(MAX_FRAMES_IN_FLIGHT);
-            in_flight_fences_.resize(MAX_FRAMES_IN_FLIGHT);
+            img_available_semaphores_.resize(mirinae::MAX_FRAMES_IN_FLIGHT);
+            render_finished_semaphores_.resize(mirinae::MAX_FRAMES_IN_FLIGHT);
+            in_flight_fences_.resize(mirinae::MAX_FRAMES_IN_FLIGHT);
 
             for (auto& x : img_available_semaphores_)
                 x.init(logi_device);
@@ -66,10 +66,8 @@ namespace {
 
         FrameIndex get_frame_index() const { return cur_frame_; }
         void increase_frame_index() {
-            cur_frame_ = (cur_frame_ + 1) % MAX_FRAMES_IN_FLIGHT;
+            cur_frame_ = (cur_frame_ + 1) % mirinae::MAX_FRAMES_IN_FLIGHT;
         }
-
-        constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
 
     private:
         std::vector<mirinae::Semaphore> img_available_semaphores_;
@@ -101,7 +99,7 @@ namespace {
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
             cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
-            for (int i = 0; i < framesync_.MAX_FRAMES_IN_FLIGHT; ++i)
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
                 cmd_buf_.push_back(cmd_pool_.alloc(device_.logi_device()));
 
             // Texture
@@ -135,7 +133,7 @@ namespace {
                 auto& unit = ren_pair.model_->render_units_.emplace_back();
                 auto texture = tex_man_.request(texture_paths.at(i % texture_paths.size()));
                 unit.init(
-                    framesync_.MAX_FRAMES_IN_FLIGHT,
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
                     model_data.value(),
                     texture->image_view(),
                     texture_sampler_.get(),
@@ -147,7 +145,7 @@ namespace {
                 for (size_t j = 0; j < 10; ++j) {
                     auto& actor = ren_pair.actors_.emplace_back(std::make_shared<mirinae::RenderActor>(device_));
                     actor->init(
-                        framesync_.MAX_FRAMES_IN_FLIGHT,
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
                         desclayout_
                     );
                     actor->transform_.pos_ = glm::vec3{ 2.5 * j, 0, 2.5 * i };
