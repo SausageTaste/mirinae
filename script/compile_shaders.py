@@ -29,7 +29,7 @@ def main():
 
         if os.path.isfile(glsl_path):
             output_filename_ext = "{}_{}.spv".format(glsl_filename, glsl_ext.strip("."))
-            output_path = os.path.join(root_dir, "resources", "shaders", output_filename_ext)
+            output_path = os.path.join(root_dir, "asset", "spv", output_filename_ext)
             cmd = f'{compiler_path} "{glsl_path}" -o "{output_path}"'
 
             print(cmd)
