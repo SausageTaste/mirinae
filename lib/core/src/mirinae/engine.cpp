@@ -403,8 +403,8 @@ namespace {
         mirinae::Sampler texture_sampler_;
         mirinae::Image depth_image_;
         mirinae::ImageView depth_image_view_;
-        mirinae::TransformQuat camera_view_;
-        mirinae::PerspectiveCamera<float> camera_proj_;
+        mirinae::cpnt::Transform camera_view_;
+        mirinae::PerspectiveCamera<double> camera_proj_;
         mirinae::syst::NoclipController camera_controller_;
         dal::Timer fps_timer_;
 

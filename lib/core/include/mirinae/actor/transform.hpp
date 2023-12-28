@@ -7,7 +7,7 @@
 
 namespace mirinae::cpnt {
 
-    using Transform = TransformQuat;
+    using Transform = TransformQuat<double>;
 
 }
 
