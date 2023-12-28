@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <daltools/model_parser.h>
+
 
 // TextureManager
 namespace mirinae {
@@ -194,6 +196,104 @@ namespace mirinae {
     RenderModel::~RenderModel() {
         for (auto& unit : render_units_)
             unit.destroy(device_.mem_alloc(), device_.logi_device());
+    }
+
+}
+
+
+// ModelManager
+namespace mirinae {
+
+    class ModelManager::Pimpl {
+
+    public:
+        Pimpl(VulkanDevice& device)
+            : device_(device)
+        {
+            texture_sampler_.init(
+                device_.is_anisotropic_filtering_supported(),
+                device_.max_sampler_anisotropy(),
+                device_.logi_device()
+            );
+            cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
+        }
+
+        ~Pimpl() {
+            cmd_pool_.destroy(device_.logi_device());
+            texture_sampler_.destroy(device_.logi_device());
+        }
+
+        std::shared_ptr<RenderModel> request_static(const std::string& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man) {
+            auto found = models_.find(res_id);
+            if (models_.end() != found)
+                return found->second;
+
+            const auto content = device_.filesys().read_file_to_vector(res_id.c_str());
+            if (!content.has_value()) {
+                spdlog::error("Failed to read dmd file: {}", res_id);
+                return nullptr;
+            }
+
+            dal::parser::Model parsed_model;
+            const auto parse_result = dal::parser::parse_dmd(parsed_model, content->data(), content->size());
+            if (dal::parser::ModelParseResult::success != parse_result) {
+                spdlog::error("Failed to parse dmd file: {}", static_cast<int>(parse_result));
+                return nullptr;
+            }
+
+            std::shared_ptr<RenderModel> output = std::make_shared<RenderModel>(device_);
+
+            for (const auto& src_unit : parsed_model.units_indexed_) {
+                VerticesStaticPair dst_vertices;
+                dst_vertices.indices_.assign(src_unit.mesh_.indices_.begin(), src_unit.mesh_.indices_.end());
+
+                for (auto& src_vertex : src_unit.mesh_.vertices_) {
+                    auto& dst_vertex = dst_vertices.vertices_.emplace_back();
+                    dst_vertex.pos_ = src_vertex.pos_;
+                    dst_vertex.normal_ = src_vertex.normal_;
+                    dst_vertex.texcoord_ = src_vertex.uv_;
+                }
+
+                auto texture = tex_man.request("asset/textures/missing_texture.png");
+
+                auto& dst_unit = output->render_units_.emplace_back();
+                dst_unit.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    dst_vertices,
+                    texture->image_view(),
+                    texture_sampler_.get(),
+                    cmd_pool_,
+                    desclayouts,
+                    device_
+                );
+            }
+
+            models_[res_id] = output;
+            return output;
+        }
+
+    private:
+        VulkanDevice& device_;
+        Sampler texture_sampler_;
+        CommandPool cmd_pool_;
+
+        std::map<std::string, std::shared_ptr<RenderModel>> models_;
+
+    };
+
+
+    ModelManager::ModelManager(VulkanDevice& device)
+        : pimpl_(std::make_unique<Pimpl>(device))
+    {
+
+    }
+
+    ModelManager::~ModelManager() {
+
+    }
+
+    std::shared_ptr<RenderModel> ModelManager::request_static(const std::string& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man) {
+        return pimpl_->request_static(res_id, desclayouts, tex_man);
     }
 
 }
