@@ -43,24 +43,59 @@ namespace mirinae {
             VkImageView image_view,
             VkSampler texture_sampler,
             CommandPool& cmd_pool,
-            DescriptorSetLayout& layout,
+            DescLayoutBundle& desclayouts,
             VulkanDevice& vulkan_device
         );
         void destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
 
-        void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, VulkanMemoryAllocator mem_alloc);
         VkDescriptorSet get_desc_set(size_t index);
         void record_bind_vert_buf(VkCommandBuffer cmdbuf);
         uint32_t vertex_count() const;
 
-        TransformQuat transform_;
-
     private:
-        U_Unorthodox ubuf_data_;
         DescriptorPool desc_pool_;
         VertexIndexPair vert_index_pair_;
         std::vector<VkDescriptorSet> desc_sets_;
+
+    };
+
+
+    class RenderModel {
+
+    public:
+        RenderModel(VulkanDevice& vulkan_device) : device_(vulkan_device) {}
+        ~RenderModel();
+
+    public:
+        std::vector<RenderUnit> render_units_;
+        VulkanDevice& device_;
+
+    };
+
+
+    class RenderActor {
+
+    public:
+        RenderActor(VulkanDevice& vulkan_device) : device_(vulkan_device) {}
+        ~RenderActor() { this->destroy(); }
+
+        void init(
+            uint32_t max_flight_count,
+            DescLayoutBundle& desclayouts
+        );
+        void destroy();
+
+        void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, VulkanMemoryAllocator mem_alloc);
+        VkDescriptorSet get_desc_set(size_t index);
+
+        TransformQuat transform_;
+
+    private:
+        DescriptorPool desc_pool_;
+        U_Unorthodox ubuf_data_;
         std::vector<Buffer> uniform_buf_;
+        std::vector<VkDescriptorSet> desc_sets_;
+        VulkanDevice& device_;
 
     };
 

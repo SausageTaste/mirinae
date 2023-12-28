@@ -8,7 +8,7 @@ layout(location = 0) out vec3 v_frag_color;
 layout(location = 1) out vec2 v_texcoord;
 
 
-layout(binding = 0) uniform U_Unorthodox {
+layout(set = 1, binding = 0) uniform U_Unorthodox {
     mat4 model;
     mat4 view;
     mat4 proj;

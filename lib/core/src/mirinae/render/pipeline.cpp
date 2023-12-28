@@ -64,7 +64,7 @@ namespace mirinae {
     Pipeline create_unorthodox_pipeline(
         const VkExtent2D& swapchain_extent,
         RenderPass& renderpass,
-        DescriptorSetLayout& desclayout,
+        DescLayoutBundle& desclayout_bundle,
         VulkanDevice& device
     ) {
         ::ShaderModule vert_shader{ "asset/spv/unorthodox_vert.spv", device };
@@ -189,13 +189,14 @@ namespace mirinae {
         }
 
         std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout.get(),
+            desclayout_bundle.model_.get(),
+            desclayout_bundle.actor_.get(),
         };
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         {
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = desclayouts.size();
+            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desclayouts.size());
             pipelineLayoutInfo.pSetLayouts = desclayouts.data();
             pipelineLayoutInfo.pushConstantRangeCount = 0;
             pipelineLayoutInfo.pPushConstantRanges = nullptr;

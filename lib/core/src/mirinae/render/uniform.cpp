@@ -17,6 +17,8 @@ namespace {
             binding.descriptorCount = count;
             binding.stageFlags = stage_flags;
             binding.pImmutableSamplers = nullptr;
+
+            ++uniform_buffer_count_;
         }
 
         void add_combined_image_sampler(VkShaderStageFlagBits stage_flags, uint32_t count) {
@@ -26,6 +28,8 @@ namespace {
             binding.descriptorCount = count;
             binding.stageFlags = stage_flags;
             binding.pImmutableSamplers = nullptr;
+
+            ++combined_image_sampler_count_;
         }
 
         std::optional<VkDescriptorSetLayout> build(VkDevice logi_device) const {
@@ -41,36 +45,15 @@ namespace {
             return handle;
         }
 
+        auto ubuf_count() const { return uniform_buffer_count_; }
+        auto img_sampler_count() const { return combined_image_sampler_count_; }
+
     public:
         std::vector<VkDescriptorSetLayoutBinding> bindings_;
+        size_t uniform_buffer_count_ = 0;
+        size_t combined_image_sampler_count_ = 0;
 
     };
-
-}
-
-
-// DescriptorSetLayout
-namespace mirinae {
-
-    void DescriptorSetLayout::init(VkDevice logi_device) {
-        this->destroy(logi_device);
-
-        DescLayoutBuilder builder;
-        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-
-        if (auto& handle = builder.build(logi_device))
-            handle_ = handle.value();
-        else
-            throw std::runtime_error("failed to create descriptor set layout!");
-    }
-
-    void DescriptorSetLayout::destroy(VkDevice logi_device) {
-        if (handle_ != VK_NULL_HANDLE) {
-            vkDestroyDescriptorSetLayout(logi_device, handle_, nullptr);
-            handle_ = VK_NULL_HANDLE;
-        }
-    }
 
 }
 
@@ -153,8 +136,8 @@ namespace mirinae {
         }
     }
 
-    std::vector<VkDescriptorSet> DescriptorPool::alloc(uint32_t count, DescriptorSetLayout& desclayout, VkDevice logi_device) {
-        std::vector<VkDescriptorSetLayout> layouts(count, desclayout.get());
+    std::vector<VkDescriptorSet> DescriptorPool::alloc(uint32_t count, VkDescriptorSetLayout desclayout, VkDevice logi_device) {
+        std::vector<VkDescriptorSetLayout> layouts(count, desclayout);
 
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
