@@ -110,7 +110,7 @@ namespace {
                 device_.logi_device()
             );
 
-            const std::vector<std::string> mesh_paths{
+            const std::vector<mirinae::respath_t> mesh_paths{
                 "sponza/sponza.dmd",
             };
 

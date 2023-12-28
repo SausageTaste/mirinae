@@ -80,6 +80,21 @@ namespace {
 
 namespace mirinae {
 
+    respath_t replace_file_name_ext(const respath_t& res_path, const respath_t& new_file_name_ext) {
+        const auto last_slash = res_path.find_last_of('/');
+        if (std::string::npos == last_slash) {
+            return new_file_name_ext;
+        }
+        else {
+            return res_path.substr(0, last_slash + 1) + new_file_name_ext;
+        }
+    }
+
+}
+
+
+namespace mirinae {
+
     std::unique_ptr<IFilesys> create_filesys_std(const std::string& resources_dir) {
         return std::make_unique<FilesysStd>(resources_dir);
     }

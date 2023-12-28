@@ -223,7 +223,7 @@ namespace mirinae {
             texture_sampler_.destroy(device_.logi_device());
         }
 
-        std::shared_ptr<RenderModel> request_static(const std::string& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man) {
+        std::shared_ptr<RenderModel> request_static(const mirinae::respath_t& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man) {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return found->second;
@@ -254,7 +254,10 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
-                auto texture = tex_man.request("asset/textures/missing_texture.png");
+                const auto new_texture_path = replace_file_name_ext(res_id, src_unit.material_.albedo_map_);
+                auto texture = tex_man.request(new_texture_path);
+                if (!texture)
+                    auto texture = tex_man.request("asset/textures/missing_texture.png");
 
                 auto& dst_unit = output->render_units_.emplace_back();
                 dst_unit.init(
@@ -292,7 +295,7 @@ namespace mirinae {
 
     }
 
-    std::shared_ptr<RenderModel> ModelManager::request_static(const std::string& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man) {
+    std::shared_ptr<RenderModel> ModelManager::request_static(const mirinae::respath_t& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man) {
         return pimpl_->request_static(res_id, desclayouts, tex_man);
     }
 
