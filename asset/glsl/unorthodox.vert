@@ -4,8 +4,9 @@ layout(location = 0) in vec3 i_pos;
 layout(location = 1) in vec3 i_normal;
 layout(location = 2) in vec2 i_texcoord;
 
-layout(location = 0) out vec3 v_frag_color;
-layout(location = 1) out vec2 v_texcoord;
+layout(location = 0) out vec3 v_normal;
+layout(location = 1) out vec3 v_world_pos;
+layout(location = 2) out vec2 v_texcoord;
 
 
 layout(set = 1, binding = 0) uniform U_Unorthodox {
@@ -16,8 +17,10 @@ layout(set = 1, binding = 0) uniform U_Unorthodox {
 
 
 void main() {
-    mat4 mvp = u_unorthodox.proj * u_unorthodox.view * u_unorthodox.model;
-    gl_Position = mvp * vec4(i_pos, 1);
-    v_frag_color = i_normal;
+    vec4 world_pos = u_unorthodox.model * vec4(i_pos, 1);
+    gl_Position = (u_unorthodox.proj * u_unorthodox.view) * world_pos;
+
+    v_normal = i_normal;
+    v_world_pos = world_pos.xyz;
     v_texcoord = i_texcoord;
 }
