@@ -73,6 +73,21 @@ namespace mirinae {
     };
 
 
+    class ModelManager {
+
+    public:
+        ModelManager(VulkanDevice& device);
+        ~ModelManager();
+
+        std::shared_ptr<RenderModel> request_static(const std::string& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man);
+
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> pimpl_;
+
+    };
+
+
     class RenderActor {
 
     public:

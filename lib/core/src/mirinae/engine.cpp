@@ -94,6 +94,7 @@ namespace {
         EngineGlfw(mirinae::EngineCreateInfo&& cinfo)
             : device_(std::move(cinfo))
             , tex_man_(device_)
+            , model_man_(device_)
             , desclayout_(device_)
         {
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
@@ -109,47 +110,21 @@ namespace {
                 device_.logi_device()
             );
 
-            const std::vector<std::string> texture_paths{
-                "asset/textures/grass1.tga",
-                "asset/textures/iceland_heightmap.png",
-                "asset/textures/lorem_ipsum.png",
-                "asset/textures/missing_texture.png",
-            };
-
             const std::vector<std::string> mesh_paths{
-                //"honoka sugar perfume/DOAXVV Honoka - Sugar Perfume.dmd",
-                "asset/models/cube.dmd",
-                "asset/models/sphere.dmd",
-                "asset/models/suzanne.dmd",
+                "sponza/sponza.dmd",
             };
 
             for (size_t i = 0; i < mesh_paths.size(); ++i) {
-                const auto& mesh_path = mesh_paths.at(i);
-                const auto content = device_.filesys().read_file_to_vector(mesh_path.c_str());
-                const auto model_data = mirinae::parse_dmd_static(content->data(), content->size());
-
+                const auto& model_path = mesh_paths.at(i);
                 auto& ren_pair = draw_sheet_.ren_pairs_.emplace_back();
-                ren_pair.model_ = std::make_shared<mirinae::RenderModel>(device_);
-                auto& unit = ren_pair.model_->render_units_.emplace_back();
-                auto texture = tex_man_.request(texture_paths.at(i % texture_paths.size()));
-                unit.init(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    model_data.value(),
-                    texture->image_view(),
-                    texture_sampler_.get(),
-                    cmd_pool_,
-                    desclayout_,
-                    device_
-                );
+                ren_pair.model_ = model_man_.request_static(model_path, desclayout_, tex_man_);
 
-                for (size_t j = 0; j < 10; ++j) {
-                    auto& actor = ren_pair.actors_.emplace_back(std::make_shared<mirinae::RenderActor>(device_));
-                    actor->init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        desclayout_
-                    );
-                    actor->transform_.pos_ = glm::vec3{ 2.5 * j, 0, 2.5 * i };
-                }
+                auto& actor = ren_pair.actors_.emplace_back(std::make_shared<mirinae::RenderActor>(device_));
+                actor->init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    desclayout_
+                );
+                actor->transform_.scale_ = glm::vec3(0.05f);
             }
         }
 
@@ -389,6 +364,7 @@ namespace {
 
         mirinae::VulkanDevice device_;
         mirinae::TextureManager tex_man_;
+        mirinae::ModelManager model_man_;
         mirinae::DescLayoutBundle desclayout_;
         DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
