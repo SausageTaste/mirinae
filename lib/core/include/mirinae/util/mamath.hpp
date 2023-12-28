@@ -10,20 +10,38 @@ namespace mirinae {
     using Angle = sung::TAngle<float>;
 
 
-    glm::quat rotate_quat(const glm::quat& q, Angle angle, const glm::vec3& axis);
+    template <typename T>
+    glm::tquat<T> rotate_quat(const glm::tquat<T>& q, sung::TAngle<T> angle, const glm::tvec3<T>& axis)  {
+        return glm::normalize(glm::angleAxis<T>(angle.rad(), axis) * q);
+    }
 
 
+    template <typename T>
     class TransformQuat {
 
     public:
-        void rotate(Angle angle, const glm::vec3& axis);
+        using Angle = sung::TAngle<T>;
 
-        glm::mat4 make_model_mat() const;
-        glm::mat4 make_view_mat() const;
+        void rotate(sung::TAngle<T> angle, const glm::tvec3<T>& axis) {
+            rot_ = rotate_quat(rot_, angle, axis);
+        }
 
-        glm::quat rot_{ 1, 0, 0, 0 };
-        glm::vec3 pos_{ 0, 0, 0 };
-        glm::vec3 scale_{ 1, 1, 1 };
+        glm::tmat4x4<T> make_model_mat() const {
+            const auto rot_mat = glm::mat4_cast(rot_);
+            const auto scale_mat = glm::scale(glm::tmat4x4<T>(1), scale_);
+            const auto translate_mat = glm::translate(glm::tmat4x4<T>(1), pos_);
+            return translate_mat * rot_mat * scale_mat;
+        }
+
+        glm::tmat4x4<T> make_view_mat() const {
+            const auto rot_mat = glm::mat4_cast(glm::conjugate(rot_));
+            const auto translate_mat = glm::translate(glm::tmat4x4<T>(1), -pos_);
+            return rot_mat * translate_mat;
+        }
+
+        glm::tquat<T> rot_{ 1, 0, 0, 0 };
+        glm::tvec3<T> pos_{ 0, 0, 0 };
+        glm::tvec3<T> scale_{ 1, 1, 1 };
 
     };
 

@@ -88,7 +88,7 @@ namespace mirinae {
         void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, VulkanMemoryAllocator mem_alloc);
         VkDescriptorSet get_desc_set(size_t index);
 
-        TransformQuat transform_;
+        TransformQuat<double> transform_;
 
     private:
         DescriptorPool desc_pool_;
