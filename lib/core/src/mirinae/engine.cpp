@@ -165,7 +165,7 @@ namespace {
 
         void do_frame() override {
             const auto delta_time = fps_timer_.check_get_elapsed();
-            camera_controller_.apply(camera_, static_cast<float>(delta_time));
+            camera_controller_.apply(camera_view_, static_cast<float>(delta_time));
 
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
@@ -178,13 +178,12 @@ namespace {
                 static const auto startTime = std::chrono::high_resolution_clock::now();
                 const auto currentTime = std::chrono::high_resolution_clock::now();
                 const auto time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-                auto proj_mat = glm::perspective(glm::radians(45.0f), swapchain_.extent().width / (float) swapchain_.extent().height, 0.1f, 100.0f);
-                proj_mat[1][1] *= -1;
+                const auto proj_mat = camera_proj_.make_proj_mat(swapchain_.extent().width, swapchain_.extent().height);
+                const auto view_mat = camera_view_.make_view_mat();
 
                 for (auto& pair : draw_sheet_.ren_pairs_) {
                     for (auto& actor : pair.actors_) {
-                        actor->udpate_ubuf(framesync_.get_frame_index().get(), camera_.make_view_mat(), proj_mat, device_.mem_alloc());
+                        actor->udpate_ubuf(framesync_.get_frame_index().get(), view_mat, proj_mat, device_.mem_alloc());
                     }
                 }
             }
@@ -404,7 +403,8 @@ namespace {
         mirinae::Sampler texture_sampler_;
         mirinae::Image depth_image_;
         mirinae::ImageView depth_image_view_;
-        mirinae::TransformQuat camera_;
+        mirinae::TransformQuat camera_view_;
+        mirinae::PerspectiveCamera<float> camera_proj_;
         mirinae::syst::NoclipController camera_controller_;
         dal::Timer fps_timer_;
 
