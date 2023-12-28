@@ -80,12 +80,23 @@ namespace {
     };
 
 
+    struct DrawSheet {
+        struct RenderPairs {
+            std::shared_ptr<mirinae::RenderModel> model_;
+            std::vector<std::shared_ptr<mirinae::RenderActor>> actors_;
+        };
+
+        std::vector<RenderPairs> ren_pairs_;
+    };
+
+
     class EngineGlfw : public mirinae::IEngine {
 
     public:
         EngineGlfw(mirinae::EngineCreateInfo&& cinfo)
             : device_(std::move(cinfo))
             , tex_man_(device_)
+            , desclayout_(device_)
         {
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
@@ -113,33 +124,19 @@ namespace {
                 "asset/models/sphere.dmd",
                 "asset/models/suzanne.dmd",
             };
-            std::vector<mirinae::VerticesStaticPair> meshes;
-            for (auto& mesh_path : mesh_paths) {
+
+            for (size_t i = 0; i < mesh_paths.size(); ++i) {
+                const auto& mesh_path = mesh_paths.at(i);
                 const auto content = device_.filesys().read_file_to_vector(mesh_path.c_str());
-                meshes.push_back(mirinae::parse_dmd_static(content->data(), content->size()).value());
-            }
+                const auto model_data = mirinae::parse_dmd_static(content->data(), content->size());
 
-            /*
-            constexpr float v = 0.5;
-            mirinae::VerticesStaticPair vertices;
-            vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{ -v, -v, 0 }, glm::vec2{0, 0}, glm::vec3{1, 1, 0} });
-            vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{ -v,  v, 0 }, glm::vec2{0, 1}, glm::vec3{0, 0, 1} });
-            vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{  v,  v, 0 }, glm::vec2{1, 1}, glm::vec3{0, 0, 1} });
-            vertices.vertices_.push_back(mirinae::VertexStatic{ glm::vec3{  v, -v, 0 }, glm::vec2{1, 0}, glm::vec3{1, 1, 1} });
-
-            vertices.indices_ = std::vector<uint16_t>{
-                0, 1, 2, 0, 2, 3,
-                3, 2, 0, 2, 1, 0,
-            };
-            */
-
-            for (int i = 0; i < 20; ++i) {
+                auto& ren_pair = draw_sheet_.ren_pairs_.emplace_back();
+                ren_pair.model_ = std::make_shared<mirinae::RenderModel>(device_);
+                auto& unit = ren_pair.model_->render_units_.emplace_back();
                 auto texture = tex_man_.request(texture_paths.at(i % texture_paths.size()));
-
-                auto& ren_unit = render_units_.emplace_back();
-                ren_unit.init(
+                unit.init(
                     framesync_.MAX_FRAMES_IN_FLIGHT,
-                    meshes.at(i % meshes.size()),
+                    model_data.value(),
                     texture->image_view(),
                     texture_sampler_.get(),
                     cmd_pool_,
@@ -147,16 +144,19 @@ namespace {
                     device_
                 );
 
-                ren_unit.transform_.pos_ = glm::vec3{ 2.5 * i, 0, 0 };
+                for (size_t j = 0; j < 10; ++j) {
+                    auto& actor = ren_pair.actors_.emplace_back(std::make_shared<mirinae::RenderActor>(device_));
+                    actor->init(
+                        framesync_.MAX_FRAMES_IN_FLIGHT,
+                        desclayout_
+                    );
+                    actor->transform_.pos_ = glm::vec3{ 2.5 * j, 0, 2.5 * i };
+                }
             }
         }
 
         ~EngineGlfw() {
             device_.wait_idle();
-
-            for (auto& ren_unit : render_units_)
-                ren_unit.destroy(device_.mem_alloc(), device_.logi_device());
-            render_units_.clear();
 
             texture_sampler_.destroy(device_.logi_device());
             cmd_pool_.destroy(device_.logi_device());
@@ -182,10 +182,10 @@ namespace {
                 auto proj_mat = glm::perspective(glm::radians(45.0f), swapchain_.extent().width / (float) swapchain_.extent().height, 0.1f, 100.0f);
                 proj_mat[1][1] *= -1;
 
-                for (size_t i = 0; i < render_units_.size(); ++i) {
-                    render_units_.at(i).udpate_ubuf(
-                        framesync_.get_frame_index().get(), camera_.make_view_mat(), proj_mat, device_.mem_alloc()
-                    );
+                for (auto& pair : draw_sheet_.ren_pairs_) {
+                    for (auto& actor : pair.actors_) {
+                        actor->udpate_ubuf(framesync_.get_frame_index().get(), camera_.make_view_mat(), proj_mat, device_.mem_alloc());
+                    }
                 }
             }
 
@@ -233,23 +233,31 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& ren_unit : render_units_) {
-                    std::array<VkDescriptorSet, 1> desc_sets{
-                        ren_unit.get_desc_set(framesync_.get_frame_index().get())
-                    };
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        pipeline_.layout(),
-                        0,
-                        static_cast<uint32_t>(desc_sets.size()),
-                        desc_sets.data(),
-                        0,
-                        nullptr
-                    );
+                for (auto& pair : draw_sheet_.ren_pairs_) {
+                    for (auto& unit : pair.model_->render_units_) {
+                        auto unit_desc = unit.get_desc_set(framesync_.get_frame_index().get());
+                        vkCmdBindDescriptorSets(
+                            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline_.layout(),
+                            0,
+                            1, &unit_desc,
+                            0, nullptr
+                        );
+                        unit.record_bind_vert_buf(cur_cmd_buf);
 
-                    ren_unit.record_bind_vert_buf(cur_cmd_buf);
-                    vkCmdDrawIndexed(cur_cmd_buf, ren_unit.vertex_count(), 1, 0, 0, 0);
+                        for (auto& actor : pair.actors_) {
+                            auto actor_desc = actor->get_desc_set(framesync_.get_frame_index().get());
+                            vkCmdBindDescriptorSets(
+                                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipeline_.layout(),
+                                1,
+                                1, &actor_desc,
+                                0, nullptr
+                            );
+
+                            vkCmdDrawIndexed(cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0);
+                        }
+                    }
                 }
 
                 vkCmdEndRenderPass(cur_cmd_buf);
@@ -330,7 +338,6 @@ namespace {
 
             framesync_.init(device_.logi_device());
             renderpass_.init(swapchain_.format(), depth_image_.format(), device_.logi_device());
-            desclayout_.init(device_.logi_device());
             pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, device_);
 
             swapchain_fbufs_.resize(swapchain_.views_count());
@@ -344,7 +351,6 @@ namespace {
 
             for (auto& x : swapchain_fbufs_) x.destroy(device_.logi_device()); swapchain_fbufs_.clear();
             pipeline_.destroy(device_.logi_device());
-            desclayout_.destroy(device_.logi_device());
             renderpass_.destroy(device_.logi_device());
             framesync_.destroy(device_.logi_device());
             depth_image_view_.destroy(device_.logi_device());
@@ -386,15 +392,15 @@ namespace {
 
         mirinae::VulkanDevice device_;
         mirinae::TextureManager tex_man_;
+        mirinae::DescLayoutBundle desclayout_;
+        DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
-        mirinae::DescriptorSetLayout desclayout_;
         mirinae::Pipeline pipeline_;
         mirinae::RenderPass renderpass_;
         std::vector<mirinae::Framebuffer> swapchain_fbufs_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
-        std::vector<mirinae::RenderUnit> render_units_;
         mirinae::Sampler texture_sampler_;
         mirinae::Image depth_image_;
         mirinae::ImageView depth_image_view_;

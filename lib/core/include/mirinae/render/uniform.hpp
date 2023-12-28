@@ -14,20 +14,6 @@ namespace mirinae {
     };
 
 
-    class DescriptorSetLayout {
-
-    public:
-        void init(VkDevice logi_device);
-        void destroy(VkDevice logi_device);
-
-        VkDescriptorSetLayout get() { return handle_; }
-
-    private:
-        VkDescriptorSetLayout handle_ = VK_NULL_HANDLE;
-
-    };
-
-
     class DescLayout {
 
     public:
@@ -50,13 +36,26 @@ namespace mirinae {
     };
 
 
+    struct DescLayoutBundle {
+        DescLayoutBundle(VulkanDevice& device)
+            : model_(DescLayout::create_model(device))
+            , actor_(DescLayout::create_actor(device))
+        {
+
+        }
+
+        DescLayout model_;
+        DescLayout actor_;
+    };
+
+
     class DescriptorPool {
 
     public:
         void init(uint32_t pool_size, VkDevice logi_device);
         void destroy(VkDevice logi_device);
 
-         std::vector<VkDescriptorSet> alloc(uint32_t count, DescriptorSetLayout& desclayout, VkDevice logi_device);
+         std::vector<VkDescriptorSet> alloc(uint32_t count, VkDescriptorSetLayout desclayout, VkDevice logi_device);
 
     private:
         VkDescriptorPool handle_ = VK_NULL_HANDLE;
