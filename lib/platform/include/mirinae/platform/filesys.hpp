@@ -10,6 +10,8 @@ namespace mirinae {
 
     using respath_t = std::string;
 
+    respath_t replace_file_name_ext(const respath_t& res_path, const respath_t& new_file_name_ext);
+
 
     class IFilesys {
 
