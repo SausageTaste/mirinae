@@ -112,6 +112,13 @@ namespace {
 
             const std::vector<mirinae::respath_t> mesh_paths{
                 "sponza/sponza.dmd",
+                "honoka sugar perfume/DOAXVV Honoka - Sugar Perfume.dmd",
+                "artist/artist_de_subset.dmd",
+            };
+            const std::vector<double> model_scales{
+                0.01,
+                1,
+                1,
             };
 
             for (size_t i = 0; i < mesh_paths.size(); ++i) {
@@ -130,7 +137,8 @@ namespace {
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     desclayout_
                 );
-                actor->transform_.scale_ = glm::vec3(0.05f);
+                actor->transform_.pos_ = glm::vec3(i*3, 0, 0);
+                actor->transform_.scale_ = glm::vec3(model_scales[i]);
             }
         }
 
