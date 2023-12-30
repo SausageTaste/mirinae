@@ -276,6 +276,34 @@ namespace mirinae {
                 );
             }
 
+            for (const auto& src_unit : parsed_model.units_indexed_joint_) {
+                VerticesStaticPair dst_vertices;
+                dst_vertices.indices_.assign(src_unit.mesh_.indices_.begin(), src_unit.mesh_.indices_.end());
+
+                for (auto& src_vertex : src_unit.mesh_.vertices_) {
+                    auto& dst_vertex = dst_vertices.vertices_.emplace_back();
+                    dst_vertex.pos_ = src_vertex.pos_;
+                    dst_vertex.normal_ = src_vertex.normal_;
+                    dst_vertex.texcoord_ = src_vertex.uv_;
+                }
+
+                const auto new_texture_path = replace_file_name_ext(res_id, src_unit.material_.albedo_map_);
+                auto texture = tex_man.request(new_texture_path);
+                if (!texture)
+                    texture = tex_man.request("asset/textures/missing_texture.png");
+
+                auto& dst_unit = output->render_units_.emplace_back();
+                dst_unit.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    dst_vertices,
+                    texture->image_view(),
+                    texture_sampler_.get(),
+                    cmd_pool_,
+                    desclayouts,
+                    device_
+                );
+            }
+
             models_[res_id] = output;
             return output;
         }
