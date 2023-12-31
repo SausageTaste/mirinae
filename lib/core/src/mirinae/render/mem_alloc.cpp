@@ -83,6 +83,8 @@ namespace mirinae {
         if (VK_SUCCESS != vmaCreateBuffer(allocator->get(), &buffer_info, &alloc_info, &buffer_, &allocation_, nullptr)) {
             throw std::runtime_error("failed to create VMA buffer as staging buffer");
         }
+
+        data_size_ = size;
     }
 
     void Buffer::init_ubuf(VkDeviceSize size, VulkanMemoryAllocator allocator) {
@@ -100,6 +102,8 @@ namespace mirinae {
         if (VK_SUCCESS != vmaCreateBuffer(allocator->get(), &buffer_info, &alloc_info, &buffer_, &allocation_, nullptr)) {
             throw std::runtime_error("failed to create VMA buffer as uniform buffer");
         }
+
+        data_size_ = size;
     }
 
     void Buffer::init_vertices(VkDeviceSize size, VulkanMemoryAllocator allocator) {
@@ -117,6 +121,8 @@ namespace mirinae {
         if (VK_SUCCESS != vmaCreateBuffer(allocator->get(), &buffer_info, &alloc_info, &buffer_, &allocation_, nullptr)) {
             throw std::runtime_error("failed to create VMA buffer as vertex buffer");
         }
+
+        data_size_ = size;
     }
 
     void Buffer::init_indices(VkDeviceSize size, VulkanMemoryAllocator allocator) {
@@ -134,6 +140,8 @@ namespace mirinae {
         if (VK_SUCCESS != vmaCreateBuffer(allocator->get(), &buffer_info, &alloc_info, &buffer_, &allocation_, nullptr)) {
             throw std::runtime_error("failed to create VMA buffer as index buffer");
         }
+
+        data_size_ = size;
     }
 
     void Buffer::destroy(VulkanMemoryAllocator allocator) {
@@ -144,7 +152,7 @@ namespace mirinae {
     }
 
     VkDeviceSize Buffer::size() const {
-        return allocation_->GetSize();
+        return data_size_;
     }
 
     void Buffer::set_data(const void* data, size_t size, VulkanMemoryAllocator allocator) {
