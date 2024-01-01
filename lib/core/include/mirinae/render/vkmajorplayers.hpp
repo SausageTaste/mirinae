@@ -111,20 +111,6 @@ namespace mirinae {
     };
 
 
-    class ImageView {
-
-    public:
-        void init(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice logi_device);
-        void destroy(VkDevice logi_device);
-
-        VkImageView get() { return handle_; }
-
-    private:
-        VkImageView handle_ = VK_NULL_HANDLE;
-
-    };
-
-
     class Sampler {
 
     public:

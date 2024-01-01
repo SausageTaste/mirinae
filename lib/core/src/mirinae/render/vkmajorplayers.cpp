@@ -438,24 +438,6 @@ namespace {
 }
 
 
-// ImageView
-namespace mirinae {
-
-    void ImageView::init(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice logi_device) {
-        this->destroy(logi_device);
-        this->handle_ = mirinae::create_image_view(image, format, aspect_flags, logi_device);
-    }
-
-    void ImageView::destroy(VkDevice logi_device) {
-        if (VK_NULL_HANDLE != handle_) {
-            vkDestroyImageView(logi_device, handle_, nullptr);
-            handle_ = VK_NULL_HANDLE;
-        }
-    }
-
-}
-
-
 // Sampler
 namespace mirinae {
 

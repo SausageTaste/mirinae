@@ -310,25 +310,14 @@ namespace {
             device_.wait_idle();
             swapchain_.init(fbuf_width, fbuf_height, device_);
 
-            // Depth texture
-            {
-                const auto depth_format = device_.find_supported_format(
-                    { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-                    VK_IMAGE_TILING_OPTIMAL,
-                    VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-                );
-
-                depth_image_.init_depth(  swapchain_.extent().width, swapchain_.extent().height, depth_format, device_.mem_alloc());
-                depth_image_view_.init(depth_image_.image(), depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
-            }
-
+            depth_texture_ = tex_man_.create_depth(swapchain_.extent().width, swapchain_.extent().height);
             framesync_.init(device_.logi_device());
-            renderpass_.init(swapchain_.format(), depth_image_.format(), device_.logi_device());
+            renderpass_.init(swapchain_.format(), depth_texture_->format(), device_.logi_device());
             pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, device_);
 
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
-                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), depth_image_view_.get(), renderpass_, device_.logi_device());
+                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), depth_texture_->image_view(), renderpass_, device_.logi_device());
             }
         }
 
@@ -336,11 +325,10 @@ namespace {
             device_.wait_idle();
 
             for (auto& x : swapchain_fbufs_) x.destroy(device_.logi_device()); swapchain_fbufs_.clear();
+            depth_texture_.reset();
             pipeline_.destroy(device_.logi_device());
             renderpass_.destroy(device_.logi_device());
             framesync_.destroy(device_.logi_device());
-            depth_image_view_.destroy(device_.logi_device());
-            depth_image_.destroy(device_.mem_alloc());
             swapchain_.destroy(device_.logi_device());
         }
 
@@ -389,8 +377,7 @@ namespace {
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::Sampler texture_sampler_;
-        mirinae::Image depth_image_;
-        mirinae::ImageView depth_image_view_;
+        std::unique_ptr<mirinae::ITexture> depth_texture_;
         mirinae::cpnt::Transform camera_view_;
         mirinae::PerspectiveCamera<double> camera_proj_;
         mirinae::syst::NoclipController camera_controller_;

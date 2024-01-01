@@ -14,6 +14,7 @@ namespace mirinae {
 
     public:
         virtual ~ITexture() = default;
+        virtual VkFormat format() = 0;
         virtual VkImageView image_view() = 0;
 
     };
@@ -26,6 +27,7 @@ namespace mirinae {
         ~TextureManager();
 
         std::shared_ptr<ITexture> request(const std::string& res_id);
+        std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height);
 
     private:
         class Pimpl;
