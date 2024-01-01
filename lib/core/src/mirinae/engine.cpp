@@ -115,8 +115,8 @@ namespace {
                 "honoka sugar perfume/DOAXVV Honoka - Sugar Perfume.dmd",
                 "artist/artist_de_subset.dmd",
             };
-            const std::vector<double> model_scales{
-                0.01,
+            const std::vector<float> model_scales{
+                0.01f,
                 1,
                 1,
             };

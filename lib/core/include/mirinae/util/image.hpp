@@ -60,7 +60,7 @@ namespace mirinae {
         }
 
         uint32_t data_size() const override {
-            return data_.size() * sizeof(T);
+            return static_cast<uint32_t>(data_.size() * sizeof(T));
         }
 
         unsigned width() const override {

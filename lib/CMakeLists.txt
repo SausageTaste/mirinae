@@ -43,6 +43,9 @@ FetchContent_MakeAvailable(
 
 find_package(Vulkan REQUIRED)
 
+# define global macro
+add_compile_definitions(_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
+
 
 add_subdirectory(platform)
 add_subdirectory(core)

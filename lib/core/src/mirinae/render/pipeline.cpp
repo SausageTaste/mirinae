@@ -94,7 +94,7 @@ namespace mirinae {
         VkPipelineDynamicStateCreateInfo dynamicState{};
         {
             dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamicState.dynamicStateCount = dynamicStates.size();
+            dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
             dynamicState.pDynamicStates = dynamicStates.data();
         }
 
@@ -105,7 +105,7 @@ namespace mirinae {
             vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
             vertexInputInfo.vertexBindingDescriptionCount = 1;
             vertexInputInfo.pVertexBindingDescriptions = &binding_description;
-            vertexInputInfo.vertexAttributeDescriptionCount = attribute_descriptions.size();
+            vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size());
             vertexInputInfo.pVertexAttributeDescriptions = attribute_descriptions.data();
         }
 
@@ -209,7 +209,7 @@ namespace mirinae {
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount = shaderStages.size();;
+        pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
         pipelineInfo.pStages = shaderStages.data();
         pipelineInfo.pVertexInputState = &vertexInputInfo;
         pipelineInfo.pInputAssemblyState = &inputAssembly;

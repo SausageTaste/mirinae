@@ -12,7 +12,7 @@ namespace {
     public:
         void add_uniform_buffer(VkShaderStageFlagBits stage_flags, uint32_t count) {
             auto& binding = bindings_.emplace_back();
-            binding.binding = bindings_.size() - 1;
+            binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             binding.descriptorCount = count;
             binding.stageFlags = stage_flags;
@@ -23,7 +23,7 @@ namespace {
 
         void add_combined_image_sampler(VkShaderStageFlagBits stage_flags, uint32_t count) {
             auto& binding = bindings_.emplace_back();
-            binding.binding = bindings_.size() - 1;
+            binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
             binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             binding.descriptorCount = count;
             binding.stageFlags = stage_flags;
@@ -119,7 +119,7 @@ namespace mirinae {
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = poolSizes.size();
+        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
         poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = alloc_size;
 
@@ -142,7 +142,7 @@ namespace mirinae {
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = handle_;
-        allocInfo.descriptorSetCount = layouts.size();
+        allocInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
         allocInfo.pSetLayouts = layouts.data();
 
         std::vector<VkDescriptorSet> output(count);
