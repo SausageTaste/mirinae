@@ -206,6 +206,9 @@ namespace mirinae {
         if (VK_SUCCESS != vmaCreateImage(allocator->get(), &img_info_, &alloc_info, &image_, &allocation_, nullptr)) {
             throw std::runtime_error("failed to create VMA image");
         }
+
+        assert(image_ != VK_NULL_HANDLE);
+        assert(allocation_ != VK_NULL_HANDLE);
     }
 
     void Image::init_depth(uint32_t width, uint32_t height, VkFormat format, VulkanMemoryAllocator allocator) {
@@ -231,6 +234,9 @@ namespace mirinae {
         if (VK_SUCCESS != vmaCreateImage(allocator->get(), &img_info_, &alloc_info, &image_, &allocation_, nullptr)) {
             throw std::runtime_error("failed to create VMA image");
         }
+
+        assert(image_ != VK_NULL_HANDLE);
+        assert(allocation_ != VK_NULL_HANDLE);
     }
 
     void Image::destroy(VulkanMemoryAllocator allocator) {

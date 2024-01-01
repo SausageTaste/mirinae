@@ -5,25 +5,57 @@
 #include <daltools/model_parser.h>
 
 
+namespace {
+
+    class ImageView {
+
+    public:
+        void init(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice logi_device) {
+            this->destroy(logi_device);
+            this->handle_ = mirinae::create_image_view(image, format, aspect_flags, logi_device);
+        }
+
+        void destroy(VkDevice logi_device) {
+            if (VK_NULL_HANDLE != handle_) {
+                vkDestroyImageView(logi_device, handle_, nullptr);
+                handle_ = VK_NULL_HANDLE;
+            }
+        }
+
+        VkImageView get() { return handle_; }
+
+    private:
+        VkImageView handle_ = VK_NULL_HANDLE;
+
+    };
+
+}
+
+
 // TextureManager
 namespace mirinae {
 
     class TextureData : public ITexture {
 
     public:
+        TextureData(VulkanDevice& device) : device_(device) {}
+
+        ~TextureData() {
+            this->destroy();
+        }
+
         void init(
             const std::string& id,
             const IImage2D& image,
-            CommandPool& cmd_pool,
-            VulkanDevice& device
+            CommandPool& cmd_pool
         ) {
             id_ = id;
 
             Buffer staging_buffer;
-            staging_buffer.init_staging(image.data_size(), device.mem_alloc());
-            staging_buffer.set_data(image.data(), image.data_size(), device.mem_alloc());
+            staging_buffer.init_staging(image.data_size(), device_.mem_alloc());
+            staging_buffer.set_data(image.data(), image.data_size(), device_.mem_alloc());
 
-            texture_.init_rgba8_srgb(image.width(), image.height(), device.mem_alloc());
+            texture_.init_rgba8_srgb(image.width(), image.height(), device_.mem_alloc());
             mirinae::copy_to_img_and_transition(
                 texture_.image(),
                 texture_.width(),
@@ -31,17 +63,34 @@ namespace mirinae {
                 texture_.format(),
                 staging_buffer.buffer(),
                 cmd_pool,
-                device.graphics_queue(),
-                device.logi_device()
+                device_.graphics_queue(),
+                device_.logi_device()
             );
-            staging_buffer.destroy(device.mem_alloc());
+            staging_buffer.destroy(device_.mem_alloc());
 
-            texture_view_.init(texture_.image(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device.logi_device());
+            texture_view_.init(texture_.image(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device_.logi_device());
         }
 
-        void destroy(VulkanDevice& device) {
-            texture_view_.destroy(device.logi_device());
-            texture_.destroy(device.mem_alloc());
+        void init_depth(uint32_t width, uint32_t height) {
+            id_ = "<depth>";
+
+            const auto depth_format = device_.find_supported_format(
+                { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+            );
+
+            texture_.init_depth(width, height, depth_format, device_.mem_alloc());
+            texture_view_.init(texture_.image(), depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
+        }
+
+        void destroy() {
+            texture_view_.destroy(device_.logi_device());
+            texture_.destroy(device_.mem_alloc());
+        }
+
+        VkFormat format() override {
+            return texture_.format();
         }
 
         VkImageView image_view() override {
@@ -51,8 +100,9 @@ namespace mirinae {
         auto& id() const { return id_; }
 
     private:
+        VulkanDevice& device_;
         Image texture_;
-        ImageView texture_view_;
+        ::ImageView texture_view_;
         std::string id_;
 
     };
@@ -83,8 +133,14 @@ namespace mirinae {
             }
 
             const auto image = mirinae::parse_image(img_data->data(), img_data->size());
-            auto& output = textures_.emplace_back(new TextureData);
-            output->init(res_id, *image, cmd_pool_, device_);
+            auto& output = textures_.emplace_back(new TextureData{ device_ });
+            output->init(res_id, *image, cmd_pool_);
+            return output;
+        }
+
+        std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height) {
+            auto output = std::make_unique<TextureData>(device_);
+            output->init_depth(width, height);
             return output;
         }
 
@@ -101,7 +157,7 @@ namespace mirinae {
             for (auto& tex : textures_) {
                 if (tex.use_count() > 1)
                     spdlog::warn("Want to destroy texture '{}' is still in use", tex->id());
-                tex->destroy(device_);
+                tex->destroy();
             }
             textures_.clear();
         }
@@ -125,6 +181,10 @@ namespace mirinae {
 
     std::shared_ptr<ITexture> TextureManager::request(const std::string& res_id) {
         return pimpl_->request(res_id);
+    }
+
+    std::unique_ptr<ITexture> TextureManager::create_depth(uint32_t width, uint32_t height) {
+        return pimpl_->create_depth(width, height);
     }
 
 }
