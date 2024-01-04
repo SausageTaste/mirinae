@@ -65,7 +65,7 @@ namespace mirinae {
         DescLayoutBuilder builder;
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 
-        if (auto& handle = builder.build(device.logi_device()))
+        if (auto handle = builder.build(device.logi_device()))
             return DescLayout(handle.value(), device);
         else
             throw std::runtime_error("Failed to create descriptor set layout: model");
@@ -75,7 +75,7 @@ namespace mirinae {
         DescLayoutBuilder builder;
         builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);
 
-        if (auto& handle = builder.build(device.logi_device()))
+        if (auto handle = builder.build(device.logi_device()))
             return DescLayout(handle.value(), device);
         else
             throw std::runtime_error("Failed to create descriptor set layout: actor");
