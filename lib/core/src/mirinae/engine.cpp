@@ -29,9 +29,7 @@ namespace {
 
     public:
         void init(VkDevice logi_device) {
-            img_available_semaphores_.resize(mirinae::MAX_FRAMES_IN_FLIGHT);
-            render_finished_semaphores_.resize(mirinae::MAX_FRAMES_IN_FLIGHT);
-            in_flight_fences_.resize(mirinae::MAX_FRAMES_IN_FLIGHT);
+            this->destroy(logi_device);
 
             for (auto& x : img_available_semaphores_)
                 x.init(logi_device);
@@ -48,10 +46,6 @@ namespace {
                 x.destroy(logi_device);
             for (auto& x : in_flight_fences_)
                 x.destroy(logi_device);
-
-            img_available_semaphores_.clear();
-            render_finished_semaphores_.clear();
-            in_flight_fences_.clear();
         }
 
         mirinae::Semaphore& get_cur_img_ava_semaph() {
@@ -70,9 +64,9 @@ namespace {
         }
 
     private:
-        std::vector<mirinae::Semaphore> img_available_semaphores_;
-        std::vector<mirinae::Semaphore> render_finished_semaphores_;
-        std::vector<mirinae::Fence> in_flight_fences_;
+        std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT> img_available_semaphores_;
+        std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT> render_finished_semaphores_;
+        std::array<mirinae::Fence, mirinae::MAX_FRAMES_IN_FLIGHT> in_flight_fences_;
         FrameIndex cur_frame_{ 0 };
 
     };
@@ -97,6 +91,7 @@ namespace {
             , model_man_(device_)
             , desclayout_(device_)
         {
+            framesync_.init(device_.logi_device());
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
             cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
@@ -148,6 +143,7 @@ namespace {
             texture_sampler_.destroy(device_.logi_device());
             cmd_pool_.destroy(device_.logi_device());
             this->destroy_swapchain_and_relatives();
+            framesync_.destroy(device_.logi_device());
         }
 
         void do_frame() override {
@@ -162,9 +158,6 @@ namespace {
 
             // Update uniform
             {
-                static const auto startTime = std::chrono::high_resolution_clock::now();
-                const auto currentTime = std::chrono::high_resolution_clock::now();
-                const auto time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
                 const auto proj_mat = camera_proj_.make_proj_mat(swapchain_.extent().width, swapchain_.extent().height);
                 const auto view_mat = camera_view_.make_view_mat();
 
@@ -311,7 +304,6 @@ namespace {
             swapchain_.init(fbuf_width, fbuf_height, device_);
 
             depth_texture_ = tex_man_.create_depth(swapchain_.extent().width, swapchain_.extent().height);
-            framesync_.init(device_.logi_device());
             renderpass_.init(swapchain_.format(), depth_texture_->format(), device_.logi_device());
             pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, device_);
 
@@ -328,7 +320,6 @@ namespace {
             depth_texture_.reset();
             pipeline_.destroy(device_.logi_device());
             renderpass_.destroy(device_.logi_device());
-            framesync_.destroy(device_.logi_device());
             swapchain_.destroy(device_.logi_device());
         }
 
@@ -364,7 +355,7 @@ namespace {
             return image_index_opt.value();
         }
 
-        mirinae::VulkanDevice device_;
+        mirinae::VulkanDevice device_;  // This must be the first member variable
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DescLayoutBundle desclayout_;
