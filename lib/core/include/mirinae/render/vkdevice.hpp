@@ -14,7 +14,7 @@ namespace mirinae {
     constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
 
 
-    VkImageView create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice device);
+    VkImageView create_image_view(VkImage image, uint32_t mip_levels, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice device);
 
 
     class VulkanDevice {

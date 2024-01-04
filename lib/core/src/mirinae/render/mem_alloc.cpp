@@ -1,5 +1,7 @@
 #include "mirinae/render/mem_alloc.hpp"
 
+#include <cmath>
+
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
@@ -191,12 +193,12 @@ namespace mirinae {
         img_info_.extent.width = width;
         img_info_.extent.height = height;
         img_info_.extent.depth = 1;
-        img_info_.mipLevels = 1;
+        img_info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(width, height)))) + 1;
         img_info_.arrayLayers = 1;
         img_info_.format = VK_FORMAT_R8G8B8A8_SRGB;
         img_info_.tiling = VK_IMAGE_TILING_OPTIMAL;
         img_info_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        img_info_.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        img_info_.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         img_info_.samples = VK_SAMPLE_COUNT_1_BIT;
         img_info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
