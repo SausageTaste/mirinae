@@ -78,14 +78,19 @@ namespace {
         void init(uint32_t width, uint32_t height, mirinae::TextureManager& tex_man) {
             depth_ = tex_man.create_depth(width, height);
             albedo_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "albedo");
+            normal_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "normal");
             composition_ = tex_man.create_attachment(width, height, VK_FORMAT_B10G11R11_UFLOAT_PACK32, mirinae::FbufUsage::color_attachment, "composition");
         }
 
         mirinae::ITexture& depth() { return *depth_; }
+        mirinae::ITexture& albedo() { return *albedo_; }
+        mirinae::ITexture& normal() { return *normal_; }
+        mirinae::ITexture& composition() { return *composition_; }
 
     private:
         std::unique_ptr<mirinae::ITexture> depth_;
         std::unique_ptr<mirinae::ITexture> albedo_;
+        std::unique_ptr<mirinae::ITexture> normal_;
         std::unique_ptr<mirinae::ITexture> composition_;
 
     };
@@ -200,9 +205,11 @@ namespace {
                     throw std::runtime_error("failed to begin recording command buffer!");
                 }
 
-                std::array<VkClearValue, 2> clear_values;
+                std::array<VkClearValue, 4> clear_values;
                 clear_values[0].color = { 0.f, 0.f, 0.f, 1.f };
                 clear_values[1].depthStencil = { 1.f, 0 };
+                clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
+                clear_values[3].color = { 0.f, 0.f, 0.f, 1.f };
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -324,7 +331,13 @@ namespace {
             const auto extent = swapchain_.extent();
 
             fbuf_bundle_.init(extent.width, extent.height, tex_man_);
-            renderpass_.init(swapchain_.format(), fbuf_bundle_.depth().format(), device_.logi_device());
+            renderpass_.init(
+                swapchain_.format(),
+                fbuf_bundle_.albedo().format(),
+                fbuf_bundle_.normal().format(),
+                fbuf_bundle_.depth().format(),
+                device_.logi_device()
+            );
             pipeline_ = mirinae::create_unorthodox_pipeline(renderpass_, desclayout_, device_);
 
             swapchain_fbufs_.resize(swapchain_.views_count());
@@ -332,6 +345,8 @@ namespace {
                 swapchain_fbufs_[i].init(
                     extent,
                     swapchain_.view_at(i),
+                    fbuf_bundle_.albedo().image_view(),
+                    fbuf_bundle_.normal().image_view(),
                     fbuf_bundle_.depth().image_view(),
                     renderpass_,
                     device_.logi_device()

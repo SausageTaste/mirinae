@@ -50,7 +50,7 @@ namespace mirinae {
     class RenderPass {
 
     public:
-        void init(VkFormat swapchain_format, VkFormat depth_format, VkDevice logi_device);
+        void init(VkFormat swapchain_format, VkFormat albedo_format, VkFormat normal_format, VkFormat depth_format, VkDevice logi_device);
         void destroy(VkDevice logi_device);
 
         VkRenderPass get() { return handle_; }
@@ -82,7 +82,16 @@ namespace mirinae {
     class Framebuffer {
 
     public:
-        void init(const VkExtent2D& swapchain_extent, VkImageView view, VkImageView depth_view, RenderPass& renderpass, VkDevice logi_device);
+        void init(
+            const VkExtent2D& swapchain_extent,
+            VkImageView swapchain_view,
+            VkImageView albedo_view,
+            VkImageView normal_view,
+            VkImageView depth_view,
+            RenderPass& renderpass,
+            VkDevice logi_device
+        );
+
         void destroy(VkDevice logi_device);
 
         VkFramebuffer get() { return handle_; }
