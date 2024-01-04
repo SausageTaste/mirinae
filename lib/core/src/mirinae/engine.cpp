@@ -305,7 +305,7 @@ namespace {
 
             depth_texture_ = tex_man_.create_depth(swapchain_.extent().width, swapchain_.extent().height);
             renderpass_.init(swapchain_.format(), depth_texture_->format(), device_.logi_device());
-            pipeline_ = mirinae::create_unorthodox_pipeline(swapchain_.extent(), renderpass_, desclayout_, device_);
+            pipeline_ = mirinae::create_unorthodox_pipeline(renderpass_, desclayout_, device_);
 
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
