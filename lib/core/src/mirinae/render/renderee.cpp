@@ -164,10 +164,101 @@ namespace {
         cmd_pool.end_single_time(cmd_buf, graphics_queue, logi_device);
     }
 
+    void generate_mipmaps(
+        VkImage image,
+        uint32_t width,
+        uint32_t height,
+        uint32_t mip_levels,
+        mirinae::CommandPool& cmd_pool,
+        VkQueue graphics_queue,
+        VkDevice logi_device
+    ) {
+        auto cmd_buf = cmd_pool.begin_single_time(logi_device);
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.image = image;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+        barrier.subresourceRange.levelCount = 1;
+
+        int32_t mipWidth = width;
+        int32_t mipHeight = height;
+        for (uint32_t i = 1; i < mip_levels; i++) {
+            barrier.subresourceRange.baseMipLevel = i - 1;
+            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+            vkCmdPipelineBarrier(cmd_buf,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                0, nullptr,
+                0, nullptr,
+                1, &barrier
+            );
+
+            VkImageBlit blit{};
+            blit.srcOffsets[0] = { 0, 0, 0 };
+            blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+            blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit.srcSubresource.mipLevel = i - 1;
+            blit.srcSubresource.baseArrayLayer = 0;
+            blit.srcSubresource.layerCount = 1;
+            blit.dstOffsets[0] = { 0, 0, 0 };
+            blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+            blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit.dstSubresource.mipLevel = i;
+            blit.dstSubresource.baseArrayLayer = 0;
+            blit.dstSubresource.layerCount = 1;
+
+            vkCmdBlitImage(cmd_buf,
+                image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1, &blit,
+                VK_FILTER_LINEAR
+            );
+
+            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            vkCmdPipelineBarrier(cmd_buf,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                0, nullptr,
+                0, nullptr,
+                1, &barrier
+            );
+
+            if (mipWidth > 1) mipWidth /= 2;
+            if (mipHeight > 1) mipHeight /= 2;
+        }
+
+        barrier.subresourceRange.baseMipLevel = mip_levels - 1;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        vkCmdPipelineBarrier(cmd_buf,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier
+        );
+
+        cmd_pool.end_single_time(cmd_buf, graphics_queue, logi_device);
+    }
+
     void copy_to_img_and_transition(
         VkImage image,
         uint32_t width,
         uint32_t height,
+        uint32_t mip_levels,
         VkFormat format,
         VkBuffer staging_buffer,
         mirinae::CommandPool& cmd_pool,
@@ -176,7 +267,7 @@ namespace {
     ) {
         ::transition_image_layout(
             image,
-            1,
+            mip_levels,
             format,
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -196,12 +287,11 @@ namespace {
             logi_device
         );
 
-        ::transition_image_layout(
+        ::generate_mipmaps(
             image,
-            1,
-            format,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            width,
+            height,
+            mip_levels,
             cmd_pool,
             graphics_queue,
             logi_device
@@ -212,9 +302,9 @@ namespace {
     class ImageView {
 
     public:
-        void init(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice logi_device) {
+        void init(VkImage image, uint32_t mip_levels, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice logi_device) {
             this->destroy(logi_device);
-            this->handle_ = mirinae::create_image_view(image, format, aspect_flags, logi_device);
+            this->handle_ = mirinae::create_image_view(image, mip_levels, format, aspect_flags, logi_device);
         }
 
         void destroy(VkDevice logi_device) {
@@ -262,6 +352,7 @@ namespace mirinae {
                 texture_.image(),
                 texture_.width(),
                 texture_.height(),
+                texture_.mip_levels(),
                 texture_.format(),
                 staging_buffer.buffer(),
                 cmd_pool,
@@ -270,7 +361,7 @@ namespace mirinae {
             );
             staging_buffer.destroy(device_.mem_alloc());
 
-            texture_view_.init(texture_.image(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device_.logi_device());
+            texture_view_.init(texture_.image(), texture_.mip_levels(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device_.logi_device());
         }
 
         void init_depth(uint32_t width, uint32_t height) {
@@ -283,7 +374,7 @@ namespace mirinae {
             );
 
             texture_.init_depth(width, height, depth_format, device_.mem_alloc());
-            texture_view_.init(texture_.image(), depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
+            texture_view_.init(texture_.image(), 1, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
         }
 
         void destroy() {

@@ -53,6 +53,7 @@ namespace mirinae {
         VkFormat format() const { return img_info_.format; }
         uint32_t width() const { return img_info_.extent.width; }
         uint32_t height() const { return img_info_.extent.height; }
+        uint32_t mip_levels() const { return img_info_.mipLevels; }
 
     private:
         VkImageCreateInfo img_info_ = {};

@@ -580,7 +580,7 @@ namespace {
 // Free functions
 namespace mirinae {
 
-    VkImageView create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice device) {
+    VkImageView create_image_view(VkImage image, uint32_t mip_levels, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice device) {
         VkImageViewCreateInfo view_info{};
         view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         view_info.image = image;
@@ -588,7 +588,7 @@ namespace mirinae {
         view_info.format = format;
         view_info.subresourceRange.aspectMask = aspect_flags;
         view_info.subresourceRange.baseMipLevel = 0;
-        view_info.subresourceRange.levelCount = 1;
+        view_info.subresourceRange.levelCount = mip_levels;
         view_info.subresourceRange.baseArrayLayer = 0;
         view_info.subresourceRange.layerCount = 1;
 
@@ -794,7 +794,7 @@ namespace mirinae {
 
         // Create views
         for (size_t i = 0; i < images_.size(); i++) {
-            views_.push_back(mirinae::create_image_view(images_.at(i), format_, VK_IMAGE_ASPECT_COLOR_BIT, logi_device));
+            views_.push_back(mirinae::create_image_view(images_.at(i), 1, format_, VK_IMAGE_ASPECT_COLOR_BIT, logi_device));
         }
     }
 
