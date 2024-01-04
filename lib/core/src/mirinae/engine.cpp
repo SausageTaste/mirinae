@@ -72,6 +72,25 @@ namespace {
     };
 
 
+    class FbufBundle {
+
+    public:
+        void init(uint32_t width, uint32_t height, mirinae::TextureManager& tex_man) {
+            depth_ = tex_man.create_depth(width, height);
+            albedo_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "albedo");
+            composition_ = tex_man.create_attachment(width, height, VK_FORMAT_B10G11R11_UFLOAT_PACK32, mirinae::FbufUsage::color_attachment, "composition");
+        }
+
+        mirinae::ITexture& depth() { return *depth_; }
+
+    private:
+        std::unique_ptr<mirinae::ITexture> depth_;
+        std::unique_ptr<mirinae::ITexture> albedo_;
+        std::unique_ptr<mirinae::ITexture> composition_;
+
+    };
+
+
     struct DrawSheet {
         struct RenderPairs {
             std::shared_ptr<mirinae::RenderModel> model_;
@@ -302,14 +321,21 @@ namespace {
         void create_swapchain_and_relatives(uint32_t fbuf_width, uint32_t fbuf_height) {
             device_.wait_idle();
             swapchain_.init(fbuf_width, fbuf_height, device_);
+            const auto extent = swapchain_.extent();
 
-            depth_texture_ = tex_man_.create_depth(swapchain_.extent().width, swapchain_.extent().height);
-            renderpass_.init(swapchain_.format(), depth_texture_->format(), device_.logi_device());
+            fbuf_bundle_.init(extent.width, extent.height, tex_man_);
+            renderpass_.init(swapchain_.format(), fbuf_bundle_.depth().format(), device_.logi_device());
             pipeline_ = mirinae::create_unorthodox_pipeline(renderpass_, desclayout_, device_);
 
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
-                swapchain_fbufs_[i].init(swapchain_.extent(), swapchain_.view_at(i), depth_texture_->image_view(), renderpass_, device_.logi_device());
+                swapchain_fbufs_[i].init(
+                    extent,
+                    swapchain_.view_at(i),
+                    fbuf_bundle_.depth().image_view(),
+                    renderpass_,
+                    device_.logi_device()
+                );
             }
         }
 
@@ -317,7 +343,6 @@ namespace {
             device_.wait_idle();
 
             for (auto& x : swapchain_fbufs_) x.destroy(device_.logi_device()); swapchain_fbufs_.clear();
-            depth_texture_.reset();
             pipeline_.destroy(device_.logi_device());
             renderpass_.destroy(device_.logi_device());
             swapchain_.destroy(device_.logi_device());
@@ -359,7 +384,8 @@ namespace {
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DescLayoutBundle desclayout_;
-        DrawSheet draw_sheet_;
+        ::FbufBundle fbuf_bundle_;
+        ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         mirinae::Pipeline pipeline_;
@@ -368,7 +394,6 @@ namespace {
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::Sampler texture_sampler_;
-        std::unique_ptr<mirinae::ITexture> depth_texture_;
         mirinae::cpnt::Transform camera_view_;
         mirinae::PerspectiveCamera<double> camera_proj_;
         mirinae::syst::NoclipController camera_controller_;

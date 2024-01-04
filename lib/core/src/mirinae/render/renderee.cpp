@@ -427,7 +427,7 @@ namespace mirinae {
             texture_.destroy(device_.mem_alloc());
         }
 
-        VkFormat format() override {
+        VkFormat format() const override {
             return texture_.format();
         }
 
