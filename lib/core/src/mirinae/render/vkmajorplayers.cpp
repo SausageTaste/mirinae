@@ -144,15 +144,19 @@ namespace {
 // RenderPass
 namespace mirinae {
 
-    void RenderPass::init(VkFormat swapchain_format, VkFormat depth_format, VkDevice logi_device) {
+    void RenderPass::init(VkFormat swapchain_format, VkFormat albedo_format, VkFormat normal_format, VkFormat depth_format, VkDevice logi_device) {
         this->destroy(logi_device);
 
         ::AttachmentDescBuilder attachments;
         attachments.add(swapchain_format, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         attachments.add(depth_format, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        attachments.add(albedo_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        attachments.add(normal_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
-        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // swapchain
+        color_attachment_refs.add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // albedo
+        color_attachment_refs.add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // normal
 
         const VkAttachmentReference depth_attachment_ref{ 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
@@ -220,10 +224,20 @@ namespace mirinae {
 // Framebuffer
 namespace mirinae {
 
-    void Framebuffer::init(const VkExtent2D& swapchain_extent, VkImageView view, VkImageView depth_view, RenderPass& renderpass, VkDevice logi_device) {
-        std::array<VkImageView, 2> attachments{
-            view,
+    void Framebuffer::init(
+        const VkExtent2D& swapchain_extent,
+        VkImageView swapchain_view,
+        VkImageView albedo_view,
+        VkImageView normal_view,
+        VkImageView depth_view,
+        RenderPass& renderpass,
+        VkDevice logi_device
+    ) {
+        std::vector<VkImageView> attachments{
+            swapchain_view,
             depth_view,
+            albedo_view,
+            normal_view,
         };
 
         VkFramebufferCreateInfo framebufferInfo{};
