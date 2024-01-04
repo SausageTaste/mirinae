@@ -70,45 +70,97 @@ namespace mirinae {
 }
 
 
+namespace {
+
+    class AttachmentDescBuilder {
+
+    public:
+        const VkAttachmentDescription* data() const {
+            return attachments_.data();
+        }
+
+        uint32_t size() const {
+            return static_cast<uint32_t>(attachments_.size());
+        }
+
+        VkAttachmentDescription& add(
+            const VkFormat format,
+            const VkImageLayout final_layout,
+            const VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED,
+            const VkAttachmentLoadOp load_op = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            const VkAttachmentStoreOp store_op = VK_ATTACHMENT_STORE_OP_STORE,
+            const VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            const VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            const VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT
+        ) {
+            auto& added = attachments_.emplace_back();
+            added = {};
+
+            added.format = format;
+            added.samples = samples;
+            added.loadOp = load_op;
+            added.storeOp = store_op;
+            added.stencilLoadOp = stencil_load_op;
+            added.stencilStoreOp = stencil_store_op;
+            added.initialLayout = initial_layout;
+            added.finalLayout = final_layout;
+
+            return added;
+        }
+
+    private:
+        std::vector<VkAttachmentDescription> attachments_;
+
+    };
+
+
+    class AttachmentRefBuilder {
+
+    public:
+        const VkAttachmentReference* data() const {
+            return attachments_.data();
+        }
+
+        uint32_t size() const {
+            return static_cast<uint32_t>(attachments_.size());
+        }
+
+        void add(uint32_t index, VkImageLayout layout) {
+            auto& added = attachments_.emplace_back();
+            added = {};
+
+            added.attachment = index;
+            added.layout = layout;
+        }
+
+    private:
+        std::vector<VkAttachmentReference> attachments_;
+
+    };
+
+}
+
+
 // RenderPass
 namespace mirinae {
 
     void RenderPass::init(VkFormat swapchain_format, VkFormat depth_format, VkDevice logi_device) {
         this->destroy(logi_device);
 
-        VkAttachmentDescription colorAttachment{};
-        colorAttachment.format = swapchain_format;
-        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        ::AttachmentDescBuilder attachments;
+        attachments.add(swapchain_format, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        attachments.add(depth_format, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-        VkAttachmentReference colorAttachmentRef{};
-        colorAttachmentRef.attachment = 0;
-        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        ::AttachmentRefBuilder color_attachment_refs;
+        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-        VkAttachmentDescription depthAttachment{};
-        depthAttachment.format = depth_format;
-        depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        VkAttachmentReference depthAttachmentRef{};
-        depthAttachmentRef.attachment = 1;
-        depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        const VkAttachmentReference depth_attachment_ref{ 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &colorAttachmentRef;
-        subpass.pDepthStencilAttachment = &depthAttachmentRef;
+        subpass.colorAttachmentCount = color_attachment_refs.size();
+        subpass.pColorAttachments = color_attachment_refs.data();
+        subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -118,18 +170,16 @@ namespace mirinae {
         dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-        std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+        VkRenderPassCreateInfo create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        create_info.attachmentCount = attachments.size();
+        create_info.pAttachments = attachments.data();
+        create_info.subpassCount = 1;
+        create_info.pSubpasses = &subpass;
+        create_info.dependencyCount = 1;
+        create_info.pDependencies = &dependency;
 
-        VkRenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = (uint32_t)attachments.size();
-        renderPassInfo.pAttachments = attachments.data();
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
-
-        if (vkCreateRenderPass(logi_device, &renderPassInfo, nullptr, &handle_) != VK_SUCCESS) {
+        if (VK_SUCCESS != vkCreateRenderPass(logi_device, &create_info, nullptr, &handle_)) {
             throw std::runtime_error("failed to create render pass!");
         }
     }
