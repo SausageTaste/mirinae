@@ -7,6 +7,43 @@
 
 namespace {
 
+    auto interpret_fbuf_usage(const mirinae::FbufUsage usage) {
+        VkImageAspectFlags aspect_mask = 0;
+        VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkImageUsageFlags flag = 0;
+
+        switch (usage) {
+            case mirinae::FbufUsage::color_attachment:
+                aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+                image_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                flag = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+                break;
+
+            case mirinae::FbufUsage::depth_map:
+                aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+                image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                flag =  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+                break;
+
+            case mirinae::FbufUsage::depth_stencil_attachment:
+                aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+                image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                flag = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+                break;
+
+            case mirinae::FbufUsage::depth_attachment:
+                aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+                image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                flag = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+                break;
+
+            default:
+                throw std::runtime_error(fmt::format("unsupported framebuffer usage: {}", (int)usage));
+        }
+
+        return std::make_tuple(flag, aspect_mask, image_layout);
+    }
+
     uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice phys_device) {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(phys_device, &memProperties);
@@ -373,8 +410,16 @@ namespace mirinae {
                 VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
             );
 
-            texture_.init_depth(width, height, depth_format, device_.mem_alloc());
+            texture_.init_attachment(width, height, depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, device_.mem_alloc());
             texture_view_.init(texture_.image(), 1, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
+        }
+
+        void init_attachment(uint32_t width, uint32_t height, VkFormat format, FbufUsage usage, const char* name) {
+            id_ = name;
+
+            const auto [usage_flag, aspect_mask, image_layout] = ::interpret_fbuf_usage(usage);
+            texture_.init_attachment(width, height, format, usage_flag, device_.mem_alloc());
+            texture_view_.init(texture_.image(), 1, format, aspect_mask, device_.logi_device());
         }
 
         void destroy() {
@@ -437,6 +482,12 @@ namespace mirinae {
             return output;
         }
 
+        std::unique_ptr<ITexture> create_attachment(uint32_t width, uint32_t height, VkFormat format, FbufUsage usage, const char* name) {
+            auto output = std::make_unique<TextureData>(device_);
+            output->init_attachment(width, height, format, usage, name);
+            return output;
+        }
+
     private:
         std::optional<size_t> find_index(const std::string& id) {
             for (size_t i = 0; i < textures_.size(); ++i) {
@@ -478,6 +529,10 @@ namespace mirinae {
 
     std::unique_ptr<ITexture> TextureManager::create_depth(uint32_t width, uint32_t height) {
         return pimpl_->create_depth(width, height);
+    }
+
+    std::unique_ptr<ITexture> TextureManager::create_attachment(uint32_t width, uint32_t height, VkFormat format, FbufUsage usage, const char* name) {
+        return pimpl_->create_attachment(width, height, format, usage, name);
     }
 
 }

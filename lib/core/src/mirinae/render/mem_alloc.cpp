@@ -213,7 +213,7 @@ namespace mirinae {
         assert(allocation_ != VK_NULL_HANDLE);
     }
 
-    void Image::init_depth(uint32_t width, uint32_t height, VkFormat format, VulkanMemoryAllocator allocator) {
+    void Image::init_attachment(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage_flags, VulkanMemoryAllocator allocator) {
         this->destroy(allocator);
 
         img_info_.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -226,7 +226,7 @@ namespace mirinae {
         img_info_.format = format;
         img_info_.tiling = VK_IMAGE_TILING_OPTIMAL;
         img_info_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        img_info_.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        img_info_.usage = usage_flags;
         img_info_.samples = VK_SAMPLE_COUNT_1_BIT;
         img_info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
