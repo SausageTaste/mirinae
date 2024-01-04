@@ -22,7 +22,7 @@ namespace mirinae {
 
     public:
         virtual ~ITexture() = default;
-        virtual VkFormat format() = 0;
+        virtual VkFormat format() const = 0;
         virtual VkImageView image_view() = 0;
 
     };
