@@ -45,7 +45,7 @@ namespace mirinae {
 
     public:
         void init_rgba8_srgb(uint32_t width, uint32_t height, VulkanMemoryAllocator allocator);
-        void init_depth(uint32_t width, uint32_t height, VkFormat format, VulkanMemoryAllocator allocator);
+        void init_attachment(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage_flags, VulkanMemoryAllocator allocator);
 
         void destroy(VulkanMemoryAllocator allocator);
 
