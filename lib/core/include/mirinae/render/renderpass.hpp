@@ -5,17 +5,14 @@
 
 namespace mirinae {
 
-    class RenderPassBundle {
+    class IRenderPassBundle {
 
-    private:
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSetLayout> desclayouts_;
+    public:
+        void destroy();
 
     };
 
 
-    std::optional<RenderPassBundle> create_unorthodox(VulkanDevice& device);
+    std::unique_ptr<IRenderPassBundle> create_unorthodox(VkFormat swapchain_format, VkFormat depthmap_format, VulkanDevice& device);
 
 }
