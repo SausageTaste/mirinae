@@ -6,7 +6,6 @@
 #include <daltools/util.h>
 
 #include <mirinae/render/pipeline.hpp>
-#include <mirinae/render/renderee.hpp>
 #include <mirinae/render/renderpass.hpp>
 #include <mirinae/util/mamath.hpp>
 
@@ -69,30 +68,6 @@ namespace {
         std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT> render_finished_semaphores_;
         std::array<mirinae::Fence, mirinae::MAX_FRAMES_IN_FLIGHT> in_flight_fences_;
         FrameIndex cur_frame_{ 0 };
-
-    };
-
-
-    class FbufBundle {
-
-    public:
-        void init(uint32_t width, uint32_t height, mirinae::TextureManager& tex_man) {
-            depth_ = tex_man.create_depth(width, height);
-            albedo_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "albedo");
-            normal_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "normal");
-            composition_ = tex_man.create_attachment(width, height, VK_FORMAT_B10G11R11_UFLOAT_PACK32, mirinae::FbufUsage::color_attachment, "composition");
-        }
-
-        mirinae::ITexture& depth() { return *depth_; }
-        mirinae::ITexture& albedo() { return *albedo_; }
-        mirinae::ITexture& normal() { return *normal_; }
-        mirinae::ITexture& composition() { return *composition_; }
-
-    private:
-        std::unique_ptr<mirinae::ITexture> depth_;
-        std::unique_ptr<mirinae::ITexture> albedo_;
-        std::unique_ptr<mirinae::ITexture> normal_;
-        std::unique_ptr<mirinae::ITexture> composition_;
 
     };
 
@@ -214,8 +189,8 @@ namespace {
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = renderpass_.get();
-                renderPassInfo.framebuffer = swapchain_fbufs_[image_index.get()].get();
+                renderPassInfo.renderPass = rp_unorthodox_->renderpass();
+                renderPassInfo.framebuffer = rp_unorthodox_->fbuf_at(image_index.get());
                 renderPassInfo.renderArea.offset = { 0, 0 };
                 renderPassInfo.renderArea.extent = swapchain_.extent();
                 renderPassInfo.clearValueCount = static_cast<uint32_t>(clear_values.size());
@@ -223,7 +198,7 @@ namespace {
 
                 vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.pipeline());
+                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp_unorthodox_->pipeline());
 
                 VkViewport viewport{};
                 viewport.x = 0.0f;
@@ -244,7 +219,7 @@ namespace {
                         auto unit_desc = unit.get_desc_set(framesync_.get_frame_index().get());
                         vkCmdBindDescriptorSets(
                             cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline_.layout(),
+                            rp_unorthodox_->pipeline_layout(),
                             0,
                             1, &unit_desc,
                             0, nullptr
@@ -255,7 +230,7 @@ namespace {
                             auto actor_desc = actor->get_desc_set(framesync_.get_frame_index().get());
                             vkCmdBindDescriptorSets(
                                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                pipeline_.layout(),
+                                rp_unorthodox_->pipeline_layout(),
                                 1,
                                 1, &actor_desc,
                                 0, nullptr
@@ -331,38 +306,13 @@ namespace {
             swapchain_.init(fbuf_width, fbuf_height, device_);
             const auto extent = swapchain_.extent();
 
-            fbuf_bundle_.init(extent.width, extent.height, tex_man_);
-            renderpass_.init(
-                swapchain_.format(),
-                fbuf_bundle_.albedo().format(),
-                fbuf_bundle_.normal().format(),
-                fbuf_bundle_.depth().format(),
-                device_.logi_device()
-            );
-            pipeline_ = mirinae::create_unorthodox_pipeline(renderpass_, desclayout_, device_);
-
-            rp_unorthodox_ = mirinae::create_unorthodox(swapchain_.format(), fbuf_bundle_.depth().format(), device_);
-
-            swapchain_fbufs_.resize(swapchain_.views_count());
-            for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
-                swapchain_fbufs_[i].init(
-                    extent,
-                    swapchain_.view_at(i),
-                    fbuf_bundle_.albedo().image_view(),
-                    fbuf_bundle_.normal().image_view(),
-                    fbuf_bundle_.depth().image_view(),
-                    renderpass_,
-                    device_.logi_device()
-                );
-            }
+            fbuf_images_.init(extent.width, extent.height, tex_man_);
+            rp_unorthodox_ = mirinae::create_unorthodox(extent.width, extent.height, swapchain_, fbuf_images_, device_);
         }
 
         void destroy_swapchain_and_relatives() {
             device_.wait_idle();
-
-            for (auto& x : swapchain_fbufs_) x.destroy(device_.logi_device()); swapchain_fbufs_.clear();
-            pipeline_.destroy(device_.logi_device());
-            renderpass_.destroy(device_.logi_device());
+            rp_unorthodox_.reset();
             swapchain_.destroy(device_.logi_device());
         }
 
@@ -402,14 +352,11 @@ namespace {
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DescLayoutBundle desclayout_;
+        mirinae::FbufImageBundle fbuf_images_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_unorthodox_;
-        ::FbufBundle fbuf_bundle_;
         ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
-        mirinae::Pipeline pipeline_;
-        mirinae::RenderPass renderpass_;
-        std::vector<mirinae::Framebuffer> swapchain_fbufs_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::Sampler texture_sampler_;

@@ -10,6 +10,31 @@
 // Builders
 namespace {
 
+    VkFramebuffer create_framebuffer(
+        uint32_t width,
+        uint32_t height,
+        VkRenderPass renderpass,
+        VkDevice logi_device,
+        const std::vector<VkImageView>& attachments
+    ) {
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = renderpass;
+        framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        framebufferInfo.pAttachments = attachments.data();
+        framebufferInfo.width = width;
+        framebufferInfo.height = height;
+        framebufferInfo.layers = 1;
+
+        VkFramebuffer output = VK_NULL_HANDLE;
+        if (vkCreateFramebuffer(logi_device, &framebufferInfo, nullptr, &output) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create framebuffer!");
+        }
+
+        return output;
+    }
+
+
     class DescLayoutBuilder {
 
     public:
@@ -230,7 +255,7 @@ namespace { namespace unorthodox {
             throw std::runtime_error("Failed to create descriptor set layout: actor");
     }
 
-    VkRenderPass create_renderpass(VkFormat swapchain_format, VkFormat albedo_format, VkFormat normal_format, VkFormat depth_format, VkDevice logi_device) {
+    VkRenderPass create_renderpass(VkFormat swapchain_format, VkFormat depth_format, VkFormat albedo_format, VkFormat normal_format, VkDevice logi_device) {
         ::AttachmentDescBuilder attachments;
         attachments.add(swapchain_format, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         attachments.add(depth_format, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -451,24 +476,29 @@ namespace { namespace unorthodox {
     class RenderPassBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(VkFormat swapchain_format, VkFormat depthmap_format, mirinae::VulkanDevice& device)
+        RenderPassBundle(
+            uint32_t width,
+            uint32_t height,
+            mirinae::Swapchain& swapchain,
+            mirinae::FbufImageBundle& fbuf_bundle,
+            mirinae::VulkanDevice& device
+        )
             : device_(device)
         {
             formats_ = {
-                swapchain_format,
-                depthmap_format,
-                VK_FORMAT_R8G8B8A8_UNORM,  // albedo
-                VK_FORMAT_R8G8B8A8_UNORM,  // normal
-                VK_FORMAT_B10G11R11_UFLOAT_PACK32,  // composition
+                swapchain.format(),
+                fbuf_bundle.depth().format(),
+                fbuf_bundle.albedo().format(),
+                fbuf_bundle.normal().format(),
             };
 
             desclayouts_.push_back(::unorthodox::create_desclayout_model(device));
             desclayouts_.push_back(::unorthodox::create_desclayout_actor(device));
             renderpass_ = ::unorthodox::create_renderpass(
                 formats_.at(0),
+                formats_.at(1),
                 formats_.at(2),
                 formats_.at(3),
-                formats_.at(1),
                 device.logi_device()
             );
             layout_ = ::unorthodox::create_pipeline_layout(
@@ -481,13 +511,28 @@ namespace { namespace unorthodox {
                 layout_,
                 device
             );
+
+            for (int i = 0; i < swapchain.views_count(); ++i) {
+                fbufs_.push_back(::create_framebuffer(
+                    width,
+                    height,
+                    renderpass_,
+                    device.logi_device(),
+                    {
+                        swapchain.view_at(i),
+                        fbuf_bundle.depth().image_view(),
+                        fbuf_bundle.albedo().image_view(),
+                        fbuf_bundle.normal().image_view(),
+                    }
+                ));
+            }
         }
 
-        ~RenderPassBundle() {
+        ~RenderPassBundle() override {
             this->destroy();
         }
 
-        void destroy() {
+        void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
                 vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
                 pipeline_ = VK_NULL_HANDLE;
@@ -508,7 +553,28 @@ namespace { namespace unorthodox {
             }
             desclayouts_.clear();
 
+            for (auto& handle : fbufs_) {
+                vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
+            }
+            fbufs_.clear();
+
             formats_.clear();
+        }
+
+        VkRenderPass renderpass() override {
+            return renderpass_;
+        }
+
+        VkPipeline pipeline() override {
+            return pipeline_;
+        }
+
+        VkPipelineLayout pipeline_layout() override {
+            return layout_;
+        }
+
+        VkFramebuffer fbuf_at(uint32_t index) override {
+            return fbufs_.at(index);
         }
 
     private:
@@ -517,6 +583,7 @@ namespace { namespace unorthodox {
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayout> desclayouts_;
+        std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
         std::vector<VkFormat> formats_;
 
     };
@@ -526,8 +593,14 @@ namespace { namespace unorthodox {
 
 namespace mirinae {
 
-    std::unique_ptr<IRenderPassBundle> create_unorthodox(VkFormat swapchain_format, VkFormat depthmap_format, VulkanDevice& device) {
-        return std::make_unique<::unorthodox::RenderPassBundle>(swapchain_format, depthmap_format, device);
+    std::unique_ptr<IRenderPassBundle> create_unorthodox(
+        uint32_t width,
+        uint32_t height,
+        Swapchain& swapchain,
+        FbufImageBundle& fbuf_bundle,
+        VulkanDevice& device
+    ) {
+        return std::make_unique<::unorthodox::RenderPassBundle>(width, height, swapchain, fbuf_bundle, device);
     }
 
 }
