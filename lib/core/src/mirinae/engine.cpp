@@ -306,7 +306,7 @@ namespace {
             const auto extent = swapchain_.extent();
 
             fbuf_images_.init(extent.width, extent.height, tex_man_);
-            rp_unorthodox_ = mirinae::create_unorthodox(extent.width, extent.height, swapchain_, fbuf_images_, device_);
+            rp_unorthodox_ = mirinae::create_unorthodox(extent.width, extent.height, fbuf_images_, desclayout_, swapchain_, device_);
         }
 
         void destroy_swapchain_and_relatives() {
@@ -350,7 +350,7 @@ namespace {
         mirinae::VulkanDevice device_;  // This must be the first member variable
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
-        mirinae::DescLayoutBundle desclayout_;
+        mirinae::DesclayoutManager desclayout_;
         mirinae::FbufImageBundle fbuf_images_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_unorthodox_;
         ::DrawSheet draw_sheet_;

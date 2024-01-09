@@ -14,38 +14,20 @@ namespace mirinae {
     };
 
 
-    class DescLayout {
+    class DesclayoutManager {
 
     public:
-        static DescLayout create_model(VulkanDevice& device);
-        static DescLayout create_actor(VulkanDevice& device);
+        DesclayoutManager(VulkanDevice& device);
+        ~DesclayoutManager();
 
-        ~DescLayout() {
-            this->destroy();
-        }
-
-        void destroy();
-        VkDescriptorSetLayout get() { return handle_; }
+        VkDescriptorSetLayout add(const char* name, VkDescriptorSetLayout handle);
+        VkDescriptorSetLayout get(const std::string& name);
 
     private:
-        DescLayout(VkDescriptorSetLayout handle, VulkanDevice& device);
-
+        class Item;
+        std::vector<Item> data_;
         VulkanDevice& device_;
-        VkDescriptorSetLayout handle_ = VK_NULL_HANDLE;
 
-    };
-
-
-    struct DescLayoutBundle {
-        DescLayoutBundle(VulkanDevice& device)
-            : model_(DescLayout::create_model(device))
-            , actor_(DescLayout::create_actor(device))
-        {
-
-        }
-
-        DescLayout model_;
-        DescLayout actor_;
     };
 
 
