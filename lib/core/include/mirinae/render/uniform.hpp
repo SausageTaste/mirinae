@@ -20,7 +20,7 @@ namespace mirinae {
         DesclayoutManager(VulkanDevice& device);
         ~DesclayoutManager();
 
-        VkDescriptorSetLayout add(const char* name, VkDescriptorSetLayout handle);
+        void add(const std::string& name, VkDescriptorSetLayout handle);
         VkDescriptorSetLayout get(const std::string& name);
 
     private:
