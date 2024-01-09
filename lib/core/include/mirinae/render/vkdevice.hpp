@@ -55,11 +55,11 @@ namespace mirinae {
         void init(uint32_t fbuf_width, uint32_t fbuf_height, VulkanDevice& vulkan_device);
         void destroy(VkDevice logi_device);
 
-        VkSwapchainKHR get() { return swapchain_; }
-        VkFormat format() const { return format_; }
-        const VkExtent2D& extent() const { return extent_; }
+        auto get() { return swapchain_; }
+        auto format() const { return format_; }
         auto width() const { return extent_.width; }
         auto height() const { return extent_.height; }
+        auto& extent() const { return extent_; }
 
         std::optional<ShainImageIndex> acquire_next_image(VkSemaphore img_avaiable_semaphore, VkDevice logi_device);
 
