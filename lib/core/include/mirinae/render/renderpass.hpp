@@ -8,7 +8,8 @@ namespace mirinae {
     class IRenderPassBundle {
 
     public:
-        void destroy();
+        virtual ~IRenderPassBundle() = default;
+        virtual void destroy() = 0;
 
     };
 
