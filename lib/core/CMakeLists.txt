@@ -4,6 +4,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/render/meshdata.cpp
     ./src/mirinae/render/pipeline.cpp
     ./src/mirinae/render/renderee.cpp
+    ./src/mirinae/render/renderpass.cpp
     ./src/mirinae/render/uniform.cpp
     ./src/mirinae/render/vkcomposition.cpp
     ./src/mirinae/render/vkdevice.cpp
