@@ -78,8 +78,4 @@ namespace mirinae {
 
     };
 
-
-    VkVertexInputBindingDescription make_vertex_static_binding_description();
-    std::vector<VkVertexInputAttributeDescription> make_vertex_static_attribute_descriptions();
-
 }
