@@ -46,8 +46,9 @@ namespace mirinae {
     std::unique_ptr<IRenderPassBundle> create_unorthodox(
         uint32_t width,
         uint32_t height,
-        Swapchain& swapchain,
         FbufImageBundle& fbuf_bundle,
+        DesclayoutManager& desclayouts,
+        Swapchain& swapchain,
         VulkanDevice& device
     );
 

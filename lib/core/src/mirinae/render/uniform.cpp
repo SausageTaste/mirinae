@@ -3,96 +3,53 @@
 #include <stdexcept>
 #include <vector>
 
+#include <spdlog/spdlog.h>
 
-// DescLayoutBuilder
-namespace {
 
-    class DescLayoutBuilder {
+// DesclayoutManager
+namespace mirinae {
 
-    public:
-        void add_uniform_buffer(VkShaderStageFlagBits stage_flags, uint32_t count) {
-            auto& binding = bindings_.emplace_back();
-            binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            binding.descriptorCount = count;
-            binding.stageFlags = stage_flags;
-            binding.pImmutableSamplers = nullptr;
-
-            ++uniform_buffer_count_;
-        }
-
-        void add_combined_image_sampler(VkShaderStageFlagBits stage_flags, uint32_t count) {
-            auto& binding = bindings_.emplace_back();
-            binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            binding.descriptorCount = count;
-            binding.stageFlags = stage_flags;
-            binding.pImmutableSamplers = nullptr;
-
-            ++combined_image_sampler_count_;
-        }
-
-        std::optional<VkDescriptorSetLayout> build(VkDevice logi_device) const {
-            VkDescriptorSetLayoutCreateInfo create_info = {};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = static_cast<uint32_t>(bindings_.size());
-            create_info.pBindings = bindings_.data();
-
-            VkDescriptorSetLayout handle;
-            if (VK_SUCCESS != vkCreateDescriptorSetLayout(logi_device, &create_info, nullptr, &handle))
-                return std::nullopt;
-
-            return handle;
-        }
-
-        auto ubuf_count() const { return uniform_buffer_count_; }
-        auto img_sampler_count() const { return combined_image_sampler_count_; }
+    class DesclayoutManager::Item {
 
     public:
-        std::vector<VkDescriptorSetLayoutBinding> bindings_;
-        size_t uniform_buffer_count_ = 0;
-        size_t combined_image_sampler_count_ = 0;
+        Item(const char* name, VkDescriptorSetLayout handle)
+            : name_(name)
+            , handle_(handle)
+        {
+
+        }
+
+        void destroy(VkDevice logi_device) {
+            vkDestroyDescriptorSetLayout(logi_device, handle_, nullptr);
+            handle_ = VK_NULL_HANDLE;
+            name_.clear();
+        }
+
+        std::string name_;
+        VkDescriptorSetLayout handle_;
 
     };
 
-}
 
+    DesclayoutManager::DesclayoutManager(VulkanDevice& device) : device_(device) {}
 
-// DescLayout
-namespace mirinae {
-
-    DescLayout DescLayout::create_model(VulkanDevice& device) {
-        DescLayoutBuilder builder;
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-
-        if (auto handle = builder.build(device.logi_device()))
-            return DescLayout(handle.value(), device);
-        else
-            throw std::runtime_error("Failed to create descriptor set layout: model");
+    DesclayoutManager::~DesclayoutManager() {
+        for (auto& item : data_)
+            item.destroy(device_.logi_device());
+        data_.clear();
     }
 
-    DescLayout DescLayout::create_actor(VulkanDevice& device) {
-        DescLayoutBuilder builder;
-        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);
-
-        if (auto handle = builder.build(device.logi_device()))
-            return DescLayout(handle.value(), device);
-        else
-            throw std::runtime_error("Failed to create descriptor set layout: actor");
+    VkDescriptorSetLayout DesclayoutManager::add(const char* name, VkDescriptorSetLayout handle) {
+        return data_.emplace_back(name, handle).handle_;
     }
 
-    void DescLayout::destroy() {
-        if (handle_ != VK_NULL_HANDLE) {
-            vkDestroyDescriptorSetLayout(device_.logi_device(), handle_, nullptr);
-            handle_ = VK_NULL_HANDLE;
+    VkDescriptorSetLayout DesclayoutManager::get(const std::string& name) {
+        for (auto& item : data_) {
+            if (item.name_ == name)
+                return item.handle_;
         }
-    }
 
-    DescLayout::DescLayout(VkDescriptorSetLayout handle, VulkanDevice& device)
-        : handle_(handle)
-        , device_(device)
-    {
-
+        throw std::runtime_error{ fmt::format("Failed to find descriptor set layout: {}", name) };
     }
 
 }

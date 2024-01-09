@@ -547,11 +547,11 @@ namespace mirinae {
         VkImageView image_view,
         VkSampler texture_sampler,
         CommandPool& cmd_pool,
-        DescLayoutBundle& desclayouts,
+        DesclayoutManager& desclayouts,
         VulkanDevice& vulkan_device
     ) {
         desc_pool_.init(max_flight_count, vulkan_device.logi_device());
-        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.model_.get(), vulkan_device.logi_device());
+        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("unorthodox:model"), vulkan_device.logi_device());
 
         for (size_t i = 0; i < max_flight_count; i++) {
             VkDescriptorImageInfo imageInfo{};
@@ -636,7 +636,7 @@ namespace mirinae {
             texture_sampler_.destroy(device_.logi_device());
         }
 
-        std::shared_ptr<RenderModel> request_static(const mirinae::respath_t& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man) {
+        std::shared_ptr<RenderModel> request_static(const mirinae::respath_t& res_id, DesclayoutManager& desclayouts, TextureManager& tex_man) {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return found->second;
@@ -736,7 +736,7 @@ namespace mirinae {
 
     }
 
-    std::shared_ptr<RenderModel> ModelManager::request_static(const mirinae::respath_t& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man) {
+    std::shared_ptr<RenderModel> ModelManager::request_static(const mirinae::respath_t& res_id, DesclayoutManager& desclayouts, TextureManager& tex_man) {
         return pimpl_->request_static(res_id, desclayouts, tex_man);
     }
 
@@ -746,12 +746,9 @@ namespace mirinae {
 // RenderActor
 namespace mirinae {
 
-    void RenderActor::init(
-        uint32_t max_flight_count,
-        DescLayoutBundle& desclayouts
-    ) {
+    void RenderActor::init(uint32_t max_flight_count, DesclayoutManager& desclayouts) {
         desc_pool_.init(max_flight_count, device_.logi_device());
-        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.actor_.get(), device_.logi_device());
+        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("unorthodox:actor"), device_.logi_device());
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();

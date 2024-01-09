@@ -479,8 +479,9 @@ namespace { namespace unorthodox {
         RenderPassBundle(
             uint32_t width,
             uint32_t height,
-            mirinae::Swapchain& swapchain,
             mirinae::FbufImageBundle& fbuf_bundle,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
             : device_(device)
@@ -492,8 +493,6 @@ namespace { namespace unorthodox {
                 fbuf_bundle.normal().format(),
             };
 
-            desclayouts_.push_back(::unorthodox::create_desclayout_model(device));
-            desclayouts_.push_back(::unorthodox::create_desclayout_actor(device));
             renderpass_ = ::unorthodox::create_renderpass(
                 formats_.at(0),
                 formats_.at(1),
@@ -502,8 +501,8 @@ namespace { namespace unorthodox {
                 device.logi_device()
             );
             layout_ = ::unorthodox::create_pipeline_layout(
-                desclayouts_.at(0),
-                desclayouts_.at(1),
+                desclayouts.add("unorthodox:model", ::unorthodox::create_desclayout_model(device)),
+                desclayouts.add("unorthodox:actor", ::unorthodox::create_desclayout_actor(device)),
                 device
             );
             pipeline_ = ::unorthodox::create_pipeline(
@@ -548,11 +547,6 @@ namespace { namespace unorthodox {
                 renderpass_ = VK_NULL_HANDLE;
             }
 
-            for (auto& handle : desclayouts_) {
-                vkDestroyDescriptorSetLayout(device_.logi_device(), handle, nullptr);
-            }
-            desclayouts_.clear();
-
             for (auto& handle : fbufs_) {
                 vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
             }
@@ -582,7 +576,6 @@ namespace { namespace unorthodox {
         VkRenderPass renderpass_ = VK_NULL_HANDLE;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout layout_ = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSetLayout> desclayouts_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
         std::vector<VkFormat> formats_;
 
@@ -596,11 +589,12 @@ namespace mirinae {
     std::unique_ptr<IRenderPassBundle> create_unorthodox(
         uint32_t width,
         uint32_t height,
-        Swapchain& swapchain,
         FbufImageBundle& fbuf_bundle,
+        DesclayoutManager& desclayouts,
+        Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        return std::make_unique<::unorthodox::RenderPassBundle>(width, height, swapchain, fbuf_bundle, device);
+        return std::make_unique<::unorthodox::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
     }
 
 }

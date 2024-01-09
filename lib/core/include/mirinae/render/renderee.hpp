@@ -54,7 +54,7 @@ namespace mirinae {
             VkImageView image_view,
             VkSampler texture_sampler,
             CommandPool& cmd_pool,
-            DescLayoutBundle& desclayouts,
+            DesclayoutManager& desclayouts,
             VulkanDevice& vulkan_device
         );
         void destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
@@ -90,7 +90,7 @@ namespace mirinae {
         ModelManager(VulkanDevice& device);
         ~ModelManager();
 
-        std::shared_ptr<RenderModel> request_static(const mirinae::respath_t& res_id, DescLayoutBundle& desclayouts, TextureManager& tex_man);
+        std::shared_ptr<RenderModel> request_static(const mirinae::respath_t& res_id, DesclayoutManager& desclayouts, TextureManager& tex_man);
 
     private:
         class Pimpl;
@@ -105,10 +105,7 @@ namespace mirinae {
         RenderActor(VulkanDevice& vulkan_device) : device_(vulkan_device) {}
         ~RenderActor() { this->destroy(); }
 
-        void init(
-            uint32_t max_flight_count,
-            DescLayoutBundle& desclayouts
-        );
+        void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
         void destroy();
 
         void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, VulkanMemoryAllocator mem_alloc);
