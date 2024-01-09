@@ -157,7 +157,7 @@ namespace {
 
             // Update uniform
             {
-                const auto proj_mat = camera_proj_.make_proj_mat(swapchain_.extent().width, swapchain_.extent().height);
+                const auto proj_mat = camera_proj_.make_proj_mat(swapchain_.width(), swapchain_.height());
                 const auto view_mat = camera_view_.make_view_mat();
 
                 for (auto& pair : draw_sheet_.ren_pairs_) {
@@ -202,8 +202,8 @@ namespace {
                 VkViewport viewport{};
                 viewport.x = 0.0f;
                 viewport.y = 0.0f;
-                viewport.width = static_cast<float>(swapchain_.extent().width);
-                viewport.height = static_cast<float>(swapchain_.extent().height);
+                viewport.width = static_cast<float>(swapchain_.width());
+                viewport.height = static_cast<float>(swapchain_.height());
                 viewport.minDepth = 0.0f;
                 viewport.maxDepth = 1.0f;
                 vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
@@ -303,10 +303,8 @@ namespace {
         void create_swapchain_and_relatives(uint32_t fbuf_width, uint32_t fbuf_height) {
             device_.wait_idle();
             swapchain_.init(fbuf_width, fbuf_height, device_);
-            const auto extent = swapchain_.extent();
-
-            fbuf_images_.init(extent.width, extent.height, tex_man_);
-            rp_unorthodox_ = mirinae::create_unorthodox(extent.width, extent.height, fbuf_images_, desclayout_, swapchain_, device_);
+            fbuf_images_.init(swapchain_.width(), swapchain_.height(), tex_man_);
+            rp_unorthodox_ = mirinae::create_unorthodox(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
         }
 
         void destroy_swapchain_and_relatives() {
