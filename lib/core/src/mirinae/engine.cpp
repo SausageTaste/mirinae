@@ -7,6 +7,7 @@
 
 #include <mirinae/render/pipeline.hpp>
 #include <mirinae/render/renderee.hpp>
+#include <mirinae/render/renderpass.hpp>
 #include <mirinae/util/mamath.hpp>
 
 
@@ -340,6 +341,8 @@ namespace {
             );
             pipeline_ = mirinae::create_unorthodox_pipeline(renderpass_, desclayout_, device_);
 
+            rp_unorthodox_ = mirinae::create_unorthodox(swapchain_.format(), fbuf_bundle_.depth().format(), device_);
+
             swapchain_fbufs_.resize(swapchain_.views_count());
             for (size_t i = 0; i < swapchain_fbufs_.size(); ++i) {
                 swapchain_fbufs_[i].init(
@@ -399,6 +402,7 @@ namespace {
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DescLayoutBundle desclayout_;
+        std::unique_ptr<mirinae::IRenderPassBundle> rp_unorthodox_;
         ::FbufBundle fbuf_bundle_;
         ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
