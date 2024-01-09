@@ -76,6 +76,8 @@ namespace {
     class DescLayoutBuilder {
 
     public:
+        DescLayoutBuilder(const char* name) : name_{ name } {}
+
         void add_uniform_buffer(VkShaderStageFlagBits stage_flags, uint32_t count) {
             auto& binding = bindings_.emplace_back();
             binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
@@ -98,7 +100,7 @@ namespace {
             ++combined_image_sampler_count_;
         }
 
-        std::optional<VkDescriptorSetLayout> build(VkDevice logi_device) const {
+        VkDescriptorSetLayout build(VkDevice logi_device) const {
             VkDescriptorSetLayoutCreateInfo create_info = {};
             create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
             create_info.bindingCount = static_cast<uint32_t>(bindings_.size());
@@ -106,15 +108,23 @@ namespace {
 
             VkDescriptorSetLayout handle;
             if (VK_SUCCESS != vkCreateDescriptorSetLayout(logi_device, &create_info, nullptr, &handle))
-                return std::nullopt;
+                throw std::runtime_error{ fmt::format("Failed to create descriptor set layout: {}", name_) };
 
             return handle;
         }
 
+        VkDescriptorSetLayout build_in_place(mirinae::DesclayoutManager& desclayouts, VkDevice logi_device) {
+            auto handle = this->build(logi_device);
+            desclayouts.add(name_, handle);
+            return handle;
+        }
+
+        auto& name() const { return name_; }
         auto ubuf_count() const { return uniform_buffer_count_; }
         auto img_sampler_count() const { return combined_image_sampler_count_; }
 
     public:
+        std::string name_;
         std::vector<VkDescriptorSetLayoutBinding> bindings_;
         size_t uniform_buffer_count_ = 0;
         size_t combined_image_sampler_count_ = 0;
@@ -273,24 +283,16 @@ namespace {
 // Unorthodox
 namespace { namespace unorthodox {
 
-    VkDescriptorSetLayout create_desclayout_model(mirinae::VulkanDevice& device) {
-        DescLayoutBuilder builder;
+    VkDescriptorSetLayout create_desclayout_model(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+        DescLayoutBuilder builder{ "unorthodox:model" };
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-
-        if (auto handle = builder.build(device.logi_device()))
-            return handle.value();
-        else
-            throw std::runtime_error("Failed to create descriptor set layout: model");
+        return builder.build_in_place(desclayouts, device.logi_device());
     }
 
-    VkDescriptorSetLayout create_desclayout_actor(mirinae::VulkanDevice& device) {
-        DescLayoutBuilder builder;
+    VkDescriptorSetLayout create_desclayout_actor(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+        DescLayoutBuilder builder{ "unorthodox:actor" };
         builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);
-
-        if (auto handle = builder.build(device.logi_device()))
-            return handle.value();
-        else
-            throw std::runtime_error("Failed to create descriptor set layout: actor");
+        return builder.build_in_place(desclayouts, device.logi_device());
     }
 
     VkRenderPass create_renderpass(VkFormat swapchain_format, VkFormat depth_format, VkFormat albedo_format, VkFormat normal_format, VkDevice logi_device) {
@@ -539,8 +541,8 @@ namespace { namespace unorthodox {
                 device.logi_device()
             );
             layout_ = ::unorthodox::create_pipeline_layout(
-                desclayouts.add("unorthodox:model", ::unorthodox::create_desclayout_model(device)),
-                desclayouts.add("unorthodox:actor", ::unorthodox::create_desclayout_actor(device)),
+                ::unorthodox::create_desclayout_model(desclayouts, device),
+                ::unorthodox::create_desclayout_actor(desclayouts, device),
                 device
             );
             pipeline_ = ::unorthodox::create_pipeline(

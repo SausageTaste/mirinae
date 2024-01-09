@@ -12,7 +12,7 @@ namespace mirinae {
     class DesclayoutManager::Item {
 
     public:
-        Item(const char* name, VkDescriptorSetLayout handle)
+        Item(const std::string& name, VkDescriptorSetLayout handle)
             : name_(name)
             , handle_(handle)
         {
@@ -39,8 +39,8 @@ namespace mirinae {
         data_.clear();
     }
 
-    VkDescriptorSetLayout DesclayoutManager::add(const char* name, VkDescriptorSetLayout handle) {
-        return data_.emplace_back(name, handle).handle_;
+    void DesclayoutManager::add(const std::string& name, VkDescriptorSetLayout handle) {
+        data_.emplace_back(name, handle);
     }
 
     VkDescriptorSetLayout DesclayoutManager::get(const std::string& name) {
