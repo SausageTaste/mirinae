@@ -47,61 +47,6 @@ namespace mirinae {
     };
 
 
-    class RenderPass {
-
-    public:
-        void init(VkFormat swapchain_format, VkFormat albedo_format, VkFormat normal_format, VkFormat depth_format, VkDevice logi_device);
-        void destroy(VkDevice logi_device);
-
-        VkRenderPass get() { return handle_; }
-
-    private:
-        VkRenderPass handle_ = VK_NULL_HANDLE;
-
-    };
-
-
-    class Pipeline {
-
-    public:
-        Pipeline() = default;
-        Pipeline(VkPipeline pipeline, VkPipelineLayout layout);
-
-        void destroy(VkDevice logi_device);
-
-        VkPipeline pipeline() { return pipeline_; }
-        VkPipelineLayout layout() { return layout_; }
-
-    private:
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
-
-    };
-
-
-    class Framebuffer {
-
-    public:
-        void init(
-            const VkExtent2D& swapchain_extent,
-            VkImageView swapchain_view,
-            VkImageView albedo_view,
-            VkImageView normal_view,
-            VkImageView depth_view,
-            RenderPass& renderpass,
-            VkDevice logi_device
-        );
-
-        void destroy(VkDevice logi_device);
-
-        VkFramebuffer get() { return handle_; }
-
-    private:
-        VkFramebuffer handle_ = VK_NULL_HANDLE;
-
-    };
-
-
     class CommandPool {
 
     public:
