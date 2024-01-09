@@ -10,6 +10,44 @@
 // Builders
 namespace {
 
+    VkVertexInputBindingDescription make_vertex_static_binding_description() {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(mirinae::VertexStatic);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return bindingDescription;
+    }
+
+    std::vector<VkVertexInputAttributeDescription> make_vertex_static_attribute_descriptions() {
+        std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 0;
+            description.format = VK_FORMAT_R32G32B32_SFLOAT;
+            description.offset = offsetof(mirinae::VertexStatic, pos_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 1;
+            description.format = VK_FORMAT_R32G32B32_SFLOAT;
+            description.offset = offsetof(mirinae::VertexStatic, normal_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 2;
+            description.format = VK_FORMAT_R32G32_SFLOAT;
+            description.offset = offsetof(mirinae::VertexStatic, texcoord_);
+        }
+
+        return attributeDescriptions;
+    }
+
     VkFramebuffer create_framebuffer(
         uint32_t width,
         uint32_t height,
@@ -363,8 +401,8 @@ namespace { namespace unorthodox {
             dynamicState.pDynamicStates = dynamicStates.data();
         }
 
-        auto binding_description = mirinae::make_vertex_static_binding_description();
-        auto attribute_descriptions = mirinae::make_vertex_static_attribute_descriptions();
+        auto binding_description = ::make_vertex_static_binding_description();
+        auto attribute_descriptions = ::make_vertex_static_attribute_descriptions();
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         {
             vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
