@@ -5,7 +5,6 @@
 
 #include <daltools/util.h>
 
-#include <mirinae/render/pipeline.hpp>
 #include <mirinae/render/renderpass.hpp>
 #include <mirinae/util/mamath.hpp>
 
