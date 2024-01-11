@@ -31,6 +31,24 @@ namespace mirinae {
     };
 
 
+    class DescWriteInfoBuilder {
+
+    public:
+        static VkDescriptorBufferInfo create_buffer_info(const mirinae::Buffer& buffer);
+        static VkDescriptorImageInfo create_image_info(VkImageView image_view, VkSampler sampler);
+
+        void add(const VkDescriptorBufferInfo& buffer_info, VkDescriptorSet descset);
+        void add(const VkDescriptorImageInfo& image_info, VkDescriptorSet descset);
+
+        const VkWriteDescriptorSet* data() const { return data_.data(); }
+        uint32_t size() const { return static_cast<uint32_t>(data_.size()); }
+
+    private:
+        std::vector<VkWriteDescriptorSet> data_;
+
+    };
+
+
     class DescriptorPool {
 
     public:

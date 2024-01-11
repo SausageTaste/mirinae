@@ -554,24 +554,12 @@ namespace mirinae {
         desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("unorthodox:model"), vulkan_device.logi_device());
 
         for (size_t i = 0; i < max_flight_count; i++) {
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = image_view;
-            imageInfo.sampler = texture_sampler;
+            DescWriteInfoBuilder builder;
 
-            std::vector<VkWriteDescriptorSet> write_info{};
-            {
-                auto& descriptorWrite = write_info.emplace_back();
-                descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                descriptorWrite.dstSet = desc_sets_.at(i);
-                descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
-                descriptorWrite.dstArrayElement = 0;
-                descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                descriptorWrite.descriptorCount = 1;
-                descriptorWrite.pImageInfo = &imageInfo;
-            }
+            const auto img0 = builder.create_image_info(image_view, texture_sampler);
+            builder.add(img0, desc_sets_.at(i));
 
-            vkUpdateDescriptorSets(vulkan_device.logi_device(), static_cast<uint32_t>(write_info.size()), write_info.data(), 0, nullptr);
+            vkUpdateDescriptorSets(vulkan_device.logi_device(), builder.size(), builder.data(), 0, nullptr);
         }
 
         vert_index_pair_.init(
@@ -756,24 +744,12 @@ namespace mirinae {
         }
 
         for (size_t i = 0; i < max_flight_count; i++) {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniform_buf_.at(i).buffer();
-            bufferInfo.offset = 0;
-            bufferInfo.range = uniform_buf_.at(i).size();
+            DescWriteInfoBuilder builder;
 
-            std::vector<VkWriteDescriptorSet> write_info{};
-            {
-                auto& descriptorWrite = write_info.emplace_back();
-                descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                descriptorWrite.dstSet = desc_sets_.at(i);
-                descriptorWrite.dstBinding = static_cast<uint32_t>(write_info.size() - 1);
-                descriptorWrite.dstArrayElement = 0;
-                descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                descriptorWrite.descriptorCount = 1;
-                descriptorWrite.pBufferInfo = &bufferInfo;
-            }
+            auto buf0 = builder.create_buffer_info(uniform_buf_.at(i));
+            builder.add(buf0, desc_sets_.at(i));
 
-            vkUpdateDescriptorSets(device_.logi_device(), static_cast<uint32_t>(write_info.size()), write_info.data(), 0, nullptr);
+            vkUpdateDescriptorSets(device_.logi_device(), builder.size(), builder.data(), 0, nullptr);
         }
     }
 
