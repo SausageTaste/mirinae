@@ -55,6 +55,50 @@ namespace mirinae {
 }
 
 
+// DescWriteInfoBuilder
+namespace mirinae {
+
+    VkDescriptorBufferInfo DescWriteInfoBuilder::create_buffer_info(const mirinae::Buffer& buffer) {
+        VkDescriptorBufferInfo buffer_info{};
+        buffer_info.buffer = buffer.buffer();
+        buffer_info.offset = 0;
+        buffer_info.range = buffer.size();
+        return buffer_info;
+    }
+
+    VkDescriptorImageInfo DescWriteInfoBuilder::create_image_info(VkImageView image_view, VkSampler sampler) {
+        VkDescriptorImageInfo image_info{};
+        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        image_info.imageView = image_view;
+        image_info.sampler = sampler;
+        return image_info;
+    }
+
+    void DescWriteInfoBuilder::add(const VkDescriptorBufferInfo& buffer_info, VkDescriptorSet descset) {
+        auto& descriptorWrite = data_.emplace_back();
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = descset;
+        descriptorWrite.dstBinding = static_cast<uint32_t>(data_.size() - 1);
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &buffer_info;
+    }
+
+    void DescWriteInfoBuilder::add(const VkDescriptorImageInfo& image_info, VkDescriptorSet descset) {
+        auto& descriptorWrite = data_.emplace_back();
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = descset;
+        descriptorWrite.dstBinding = static_cast<uint32_t>(data_.size() - 1);
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pImageInfo = &image_info;
+    }
+
+}
+
+
 // DescriptorPool
 namespace mirinae {
 
