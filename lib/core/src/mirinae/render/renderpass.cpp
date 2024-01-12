@@ -295,19 +295,17 @@ namespace { namespace unorthodox {
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
-    VkRenderPass create_renderpass(VkFormat swapchain_format, VkFormat depth_format, VkFormat albedo_format, VkFormat normal_format, VkDevice logi_device) {
+    VkRenderPass create_renderpass(VkFormat depth_format, VkFormat albedo_format, VkFormat normal_format, VkDevice logi_device) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(swapchain_format, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         attachments.add(depth_format, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
         attachments.add(albedo_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         attachments.add(normal_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
-        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // swapchain
-        color_attachment_refs.add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // albedo
-        color_attachment_refs.add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // normal
+        color_attachment_refs.add(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // albedo
+        color_attachment_refs.add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // normal
 
-        const VkAttachmentReference depth_attachment_ref{ 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+        const VkAttachmentReference depth_attachment_ref{ 0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -372,8 +370,8 @@ namespace { namespace unorthodox {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/unorthodox_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/unorthodox_frag.spv", device };
+        ::ShaderModule vert_shader{ "asset/spv/gbuf_vert.spv", device };
+        ::ShaderModule frag_shader{ "asset/spv/gbuf_frag.spv", device };
 
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
         {
@@ -471,7 +469,6 @@ namespace { namespace unorthodox {
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add();
         color_blend_attachment_states.add();
-        color_blend_attachment_states.add();
 
         VkPipelineColorBlendStateCreateInfo colorBlending{};
         {
@@ -527,17 +524,19 @@ namespace { namespace unorthodox {
             : device_(device)
         {
             formats_ = {
-                swapchain.format(),
                 fbuf_bundle.depth().format(),
                 fbuf_bundle.albedo().format(),
                 fbuf_bundle.normal().format(),
             };
 
+            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            clear_values_.at(2).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
             renderpass_ = ::unorthodox::create_renderpass(
                 formats_.at(0),
                 formats_.at(1),
                 formats_.at(2),
-                formats_.at(3),
                 device.logi_device()
             );
             layout_ = ::unorthodox::create_pipeline_layout(
@@ -558,7 +557,6 @@ namespace { namespace unorthodox {
                     renderpass_,
                     device.logi_device(),
                     {
-                        swapchain.view_at(i),
                         fbuf_bundle.depth().image_view(),
                         fbuf_bundle.albedo().image_view(),
                         fbuf_bundle.normal().image_view(),
@@ -591,8 +589,6 @@ namespace { namespace unorthodox {
                 vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
             }
             fbufs_.clear();
-
-            formats_.clear();
         }
 
         VkRenderPass renderpass() override {
@@ -611,13 +607,22 @@ namespace { namespace unorthodox {
             return fbufs_.at(index);
         }
 
+        const VkClearValue* clear_values() const override {
+            return clear_values_.data();
+        }
+
+        uint32_t clear_value_count() const override {
+            return static_cast<uint32_t>(clear_values_.size());
+        }
+
     private:
         mirinae::VulkanDevice& device_;
         VkRenderPass renderpass_ = VK_NULL_HANDLE;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout layout_ = VK_NULL_HANDLE;
+        std::array<VkFormat, 3> formats_;
+        std::array<VkClearValue, 3> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
-        std::vector<VkFormat> formats_;
 
     };
 

@@ -180,11 +180,10 @@ namespace {
                     throw std::runtime_error("failed to begin recording command buffer!");
                 }
 
-                std::array<VkClearValue, 4> clear_values;
-                clear_values[0].color = { 0.f, 0.f, 0.f, 1.f };
-                clear_values[1].depthStencil = { 1.f, 0 };
+                std::array<VkClearValue, 3> clear_values;
+                clear_values[0].depthStencil = { 1.f, 0 };
+                clear_values[1].color = { 0.f, 0.f, 0.f, 1.f };
                 clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
-                clear_values[3].color = { 0.f, 0.f, 0.f, 1.f };
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -192,8 +191,8 @@ namespace {
                 renderPassInfo.framebuffer = rp_unorthodox_->fbuf_at(image_index.get());
                 renderPassInfo.renderArea.offset = { 0, 0 };
                 renderPassInfo.renderArea.extent = swapchain_.extent();
-                renderPassInfo.clearValueCount = static_cast<uint32_t>(clear_values.size());
-                renderPassInfo.pClearValues = clear_values.data();
+                renderPassInfo.clearValueCount = rp_unorthodox_->clear_value_count();
+                renderPassInfo.pClearValues = rp_unorthodox_->clear_values();
 
                 vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 

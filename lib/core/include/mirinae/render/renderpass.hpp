@@ -40,6 +40,9 @@ namespace mirinae {
         virtual VkPipelineLayout pipeline_layout() = 0;
         virtual VkFramebuffer fbuf_at(uint32_t index) = 0;
 
+        virtual const VkClearValue* clear_values() const = 0;
+        virtual uint32_t clear_value_count() const = 0;
+
     };
 
 
