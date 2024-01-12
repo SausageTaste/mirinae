@@ -100,6 +100,17 @@ namespace {
             ++combined_image_sampler_count_;
         }
 
+        void add_input_attachment(VkShaderStageFlagBits stage_flags, uint32_t count) {
+            auto& binding = bindings_.emplace_back();
+            binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+            binding.descriptorCount = count;
+            binding.stageFlags = stage_flags;
+            binding.pImmutableSamplers = nullptr;
+
+            ++input_attachment_count_;
+        }
+
         VkDescriptorSetLayout build(VkDevice logi_device) const {
             VkDescriptorSetLayoutCreateInfo create_info = {};
             create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -128,6 +139,7 @@ namespace {
         std::vector<VkDescriptorSetLayoutBinding> bindings_;
         size_t uniform_buffer_count_ = 0;
         size_t combined_image_sampler_count_ = 0;
+        size_t input_attachment_count_ = 0;
 
     };
 
