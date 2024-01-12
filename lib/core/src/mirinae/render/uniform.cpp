@@ -58,42 +58,56 @@ namespace mirinae {
 // DescWriteInfoBuilder
 namespace mirinae {
 
-    VkDescriptorBufferInfo DescWriteInfoBuilder::create_buffer_info(const mirinae::Buffer& buffer) {
-        VkDescriptorBufferInfo buffer_info{};
+    void DescWriteInfoBuilder::add_uniform_buffer(const mirinae::Buffer& buffer, VkDescriptorSet descset) {
+        auto& buffer_info = buffer_info_.emplace_back();
         buffer_info.buffer = buffer.buffer();
         buffer_info.offset = 0;
         buffer_info.range = buffer.size();
-        return buffer_info;
+
+        auto& write = data_.emplace_back();
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = descset;
+        write.dstBinding = static_cast<uint32_t>(data_.size() - 1);
+        write.dstArrayElement = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        write.descriptorCount = 1;
+        write.pBufferInfo = &buffer_info;
     }
 
-    VkDescriptorImageInfo DescWriteInfoBuilder::create_image_info(VkImageView image_view, VkSampler sampler) {
-        VkDescriptorImageInfo image_info{};
+    void DescWriteInfoBuilder::add_combinded_image_sampler(VkImageView image_view, VkSampler sampler, VkDescriptorSet descset) {
+        auto& image_info = image_info_.emplace_back();
         image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         image_info.imageView = image_view;
         image_info.sampler = sampler;
-        return image_info;
+
+        auto& write = data_.emplace_back();
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = descset;
+        write.dstBinding = static_cast<uint32_t>(data_.size() - 1);
+        write.dstArrayElement = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write.descriptorCount = 1;
+        write.pImageInfo = &image_info;
     }
 
-    void DescWriteInfoBuilder::add(const VkDescriptorBufferInfo& buffer_info, VkDescriptorSet descset) {
-        auto& descriptorWrite = data_.emplace_back();
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = descset;
-        descriptorWrite.dstBinding = static_cast<uint32_t>(data_.size() - 1);
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &buffer_info;
+    void DescWriteInfoBuilder::add_input_attachment(VkImageView image_view, VkDescriptorSet descset) {
+        auto& image_info = image_info_.emplace_back();
+        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        image_info.imageView = image_view;
+        image_info.sampler = VK_NULL_HANDLE;
+
+        auto& write = data_.emplace_back();
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = descset;
+        write.dstBinding = static_cast<uint32_t>(data_.size() - 1);
+        write.dstArrayElement = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        write.descriptorCount = 1;
+        write.pImageInfo = &image_info;
     }
 
-    void DescWriteInfoBuilder::add(const VkDescriptorImageInfo& image_info, VkDescriptorSet descset) {
-        auto& descriptorWrite = data_.emplace_back();
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = descset;
-        descriptorWrite.dstBinding = static_cast<uint32_t>(data_.size() - 1);
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pImageInfo = &image_info;
+    void DescWriteInfoBuilder::apply_all(VkDevice logi_device) {
+        vkUpdateDescriptorSets(logi_device, data_.size(), data_.data(), 0, nullptr);
     }
 
 }

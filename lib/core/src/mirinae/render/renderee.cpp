@@ -555,11 +555,8 @@ namespace mirinae {
 
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
-
-            const auto img0 = builder.create_image_info(image_view, texture_sampler);
-            builder.add(img0, desc_sets_.at(i));
-
-            vkUpdateDescriptorSets(vulkan_device.logi_device(), builder.size(), builder.data(), 0, nullptr);
+            builder.add_combinded_image_sampler(image_view, texture_sampler, desc_sets_.at(i));
+            builder.apply_all(vulkan_device.logi_device());
         }
 
         vert_index_pair_.init(
@@ -745,11 +742,8 @@ namespace mirinae {
 
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
-
-            auto buf0 = builder.create_buffer_info(uniform_buf_.at(i));
-            builder.add(buf0, desc_sets_.at(i));
-
-            vkUpdateDescriptorSets(device_.logi_device(), builder.size(), builder.data(), 0, nullptr);
+            builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i));
+            builder.apply_all(device_.logi_device());
         }
     }
 
