@@ -292,17 +292,17 @@ namespace {
 }
 
 
-// Unorthodox
-namespace { namespace unorthodox {
+// gbuf
+namespace { namespace gbuf {
 
     VkDescriptorSetLayout create_desclayout_model(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
-        DescLayoutBuilder builder{ "unorthodox:model" };
+        DescLayoutBuilder builder{ "gbuf:model" };
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
     VkDescriptorSetLayout create_desclayout_actor(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
-        DescLayoutBuilder builder{ "unorthodox:actor" };
+        DescLayoutBuilder builder{ "gbuf:actor" };
         builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);
         return builder.build_in_place(desclayouts, device.logi_device());
     }
@@ -545,18 +545,18 @@ namespace { namespace unorthodox {
             clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             clear_values_.at(2).color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-            renderpass_ = ::unorthodox::create_renderpass(
+            renderpass_ = create_renderpass(
                 formats_.at(0),
                 formats_.at(1),
                 formats_.at(2),
                 device.logi_device()
             );
-            layout_ = ::unorthodox::create_pipeline_layout(
-                ::unorthodox::create_desclayout_model(desclayouts, device),
-                ::unorthodox::create_desclayout_actor(desclayouts, device),
+            layout_ = create_pipeline_layout(
+                create_desclayout_model(desclayouts, device),
+                create_desclayout_actor(desclayouts, device),
                 device
             );
-            pipeline_ = ::unorthodox::create_pipeline(
+            pipeline_ = create_pipeline(
                 renderpass_,
                 layout_,
                 device
@@ -958,7 +958,7 @@ namespace { namespace fillscreen {
 
 namespace mirinae {
 
-    std::unique_ptr<IRenderPassBundle> create_unorthodox(
+    std::unique_ptr<IRenderPassBundle> create_gbuf(
         uint32_t width,
         uint32_t height,
         FbufImageBundle& fbuf_bundle,
@@ -966,7 +966,7 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        return std::make_unique<::unorthodox::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
+        return std::make_unique<::gbuf::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
     }
 
     std::unique_ptr<IRenderPassBundle> create_fillscreen(

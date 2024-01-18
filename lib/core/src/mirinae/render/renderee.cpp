@@ -551,7 +551,7 @@ namespace mirinae {
         VulkanDevice& vulkan_device
     ) {
         desc_pool_.init(max_flight_count, vulkan_device.logi_device());
-        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("unorthodox:model"), vulkan_device.logi_device());
+        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("gbuf:model"), vulkan_device.logi_device());
 
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
@@ -733,11 +733,11 @@ namespace mirinae {
 
     void RenderActor::init(uint32_t max_flight_count, DesclayoutManager& desclayouts) {
         desc_pool_.init(max_flight_count, device_.logi_device());
-        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("unorthodox:actor"), device_.logi_device());
+        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("gbuf:actor"), device_.logi_device());
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();
-            ubuf.init_ubuf(sizeof(U_Unorthodox), device_.mem_alloc());
+            ubuf.init_ubuf(sizeof(U_GbufModel), device_.mem_alloc());
         }
 
         for (size_t i = 0; i < max_flight_count; i++) {
@@ -760,7 +760,7 @@ namespace mirinae {
         ubuf_data_.model = transform_.make_model_mat();
         ubuf_data_.view = view_mat;
         ubuf_data_.proj = proj_mat;
-        ubuf.set_data(&ubuf_data_, sizeof(U_Unorthodox), mem_alloc);
+        ubuf.set_data(&ubuf_data_, sizeof(U_GbufModel), mem_alloc);
     }
 
     VkDescriptorSet RenderActor::get_desc_set(size_t index) {

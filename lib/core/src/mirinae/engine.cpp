@@ -187,17 +187,19 @@ namespace {
             }
 
             {
+                auto& rp = *rp_gbuf_;
+
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp_unorthodox_->renderpass();
-                renderPassInfo.framebuffer = rp_unorthodox_->fbuf_at(image_index.get());
+                renderPassInfo.renderPass = rp.renderpass();
+                renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
                 renderPassInfo.renderArea.offset = { 0, 0 };
                 renderPassInfo.renderArea.extent = swapchain_.extent();
-                renderPassInfo.clearValueCount = rp_unorthodox_->clear_value_count();
-                renderPassInfo.pClearValues = rp_unorthodox_->clear_values();
+                renderPassInfo.clearValueCount = rp.clear_value_count();
+                renderPassInfo.pClearValues = rp.clear_values();
 
                 vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp_unorthodox_->pipeline());
+                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
 
                 VkViewport viewport{};
                 viewport.x = 0.0f;
@@ -218,7 +220,7 @@ namespace {
                         auto unit_desc = unit.get_desc_set(framesync_.get_frame_index().get());
                         vkCmdBindDescriptorSets(
                             cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp_unorthodox_->pipeline_layout(),
+                            rp.pipeline_layout(),
                             0,
                             1, &unit_desc,
                             0, nullptr
@@ -229,7 +231,7 @@ namespace {
                             auto actor_desc = actor->get_desc_set(framesync_.get_frame_index().get());
                             vkCmdBindDescriptorSets(
                                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp_unorthodox_->pipeline_layout(),
+                                rp.pipeline_layout(),
                                 1,
                                 1, &actor_desc,
                                 0, nullptr
@@ -339,13 +341,13 @@ namespace {
             device_.wait_idle();
             swapchain_.init(fbuf_width, fbuf_height, device_);
             fbuf_images_.init(swapchain_.width(), swapchain_.height(), tex_man_);
-            rp_unorthodox_ = mirinae::create_unorthodox(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
+            rp_gbuf_ = mirinae::create_gbuf(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_fillscreen_ = mirinae::create_fillscreen(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
         }
 
         void destroy_swapchain_and_relatives() {
             device_.wait_idle();
-            rp_unorthodox_.reset();
+            rp_gbuf_.reset();
             rp_fillscreen_.reset();
             swapchain_.destroy(device_.logi_device());
         }
@@ -387,7 +389,7 @@ namespace {
         mirinae::ModelManager model_man_;
         mirinae::DesclayoutManager desclayout_;
         mirinae::FbufImageBundle fbuf_images_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_unorthodox_;
+        std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_fillscreen_;
         ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;

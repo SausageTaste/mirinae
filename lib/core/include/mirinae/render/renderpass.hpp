@@ -46,7 +46,7 @@ namespace mirinae {
     };
 
 
-    std::unique_ptr<IRenderPassBundle> create_unorthodox(
+    std::unique_ptr<IRenderPassBundle> create_gbuf(
         uint32_t width,
         uint32_t height,
         FbufImageBundle& fbuf_bundle,
