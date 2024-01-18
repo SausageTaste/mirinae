@@ -55,6 +55,15 @@ namespace mirinae {
         VulkanDevice& device
     );
 
+    std::unique_ptr<IRenderPassBundle> create_composition(
+        uint32_t width,
+        uint32_t height,
+        FbufImageBundle& fbuf_bundle,
+        DesclayoutManager& desclayouts,
+        Swapchain& swapchain,
+        VulkanDevice& device
+    );
+
     std::unique_ptr<IRenderPassBundle> create_fillscreen(
         uint32_t width,
         uint32_t height,
