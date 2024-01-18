@@ -1291,6 +1291,334 @@ namespace { namespace fillscreen {
 }}
 
 
+// overlay
+namespace { namespace overlay {
+
+    VkDescriptorSetLayout create_desclayout_main(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+        DescLayoutBuilder builder{ "overlay:main" };
+        return builder.build_in_place(desclayouts, device.logi_device());
+    }
+
+    VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {
+        ::AttachmentDescBuilder attachments;
+        attachments.add(surface,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VK_ATTACHMENT_LOAD_OP_LOAD,
+            VK_ATTACHMENT_STORE_OP_STORE
+        );
+
+        ::AttachmentRefBuilder color_attachment_refs;
+        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = color_attachment_refs.size();
+        subpass.pColorAttachments = color_attachment_refs.data();
+        subpass.pDepthStencilAttachment = nullptr;
+
+        VkSubpassDependency dependency{};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        VkRenderPassCreateInfo create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        create_info.attachmentCount = attachments.size();
+        create_info.pAttachments = attachments.data();
+        create_info.subpassCount = 1;
+        create_info.pSubpasses = &subpass;
+        create_info.dependencyCount = 1;
+        create_info.pDependencies = &dependency;
+
+        VkRenderPass output = VK_NULL_HANDLE;
+        if (VK_SUCCESS != vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
+            throw std::runtime_error("failed to create render pass!");
+        }
+
+        return output;
+    }
+
+    VkPipelineLayout create_pipeline_layout(
+        VkDescriptorSetLayout desclayout_main,
+        mirinae::VulkanDevice& device
+    ) {
+        std::vector<VkDescriptorSetLayout> desclayouts{
+            desclayout_main,
+        };
+
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        {
+            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desclayouts.size());
+            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
+            pipelineLayoutInfo.pushConstantRangeCount = 0;
+            pipelineLayoutInfo.pPushConstantRanges = nullptr;
+        }
+
+        VkPipelineLayout pipelineLayout;
+        if (vkCreatePipelineLayout(device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create pipeline layout");
+        }
+
+        return pipelineLayout;
+    }
+
+    VkPipeline create_pipeline(
+        VkRenderPass renderpass,
+        VkPipelineLayout pipelineLayout,
+        mirinae::VulkanDevice& device
+    ) {
+        ::ShaderModule vert_shader{ "asset/spv/overlay_vert.spv", device };
+        ::ShaderModule frag_shader{ "asset/spv/overlay_frag.spv", device };
+
+        std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+        {
+            auto& shader_info = shaderStages.emplace_back();
+            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+            shader_info.module = vert_shader.get();
+            shader_info.pName = "main";
+        }
+        {
+            auto& shader_info = shaderStages.emplace_back();
+            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+            shader_info.module = frag_shader.get();
+            shader_info.pName = "main";
+        }
+
+        std::vector<VkDynamicState> dynamicStates{
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
+        };
+
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        {
+            dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+            dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+            dynamicState.pDynamicStates = dynamicStates.data();
+        }
+
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+        {
+            vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertexInputInfo.vertexBindingDescriptionCount = 0;
+            vertexInputInfo.pVertexBindingDescriptions = nullptr;
+            vertexInputInfo.vertexAttributeDescriptionCount = 0;
+            vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+        }
+
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+        {
+            inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+            inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            inputAssembly.primitiveRestartEnable = VK_FALSE;
+        }
+
+        VkPipelineViewportStateCreateInfo viewportState{};
+        {
+            viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+            viewportState.viewportCount = 1;
+            viewportState.scissorCount = 1;
+        }
+
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        {
+            rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+            rasterizer.depthClampEnable = VK_FALSE;
+            rasterizer.rasterizerDiscardEnable = VK_FALSE;
+            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+            rasterizer.lineWidth = 1;
+            rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+            rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+            rasterizer.depthBiasEnable = VK_FALSE;
+            rasterizer.depthBiasConstantFactor = 0;
+            rasterizer.depthBiasClamp = 0;
+            rasterizer.depthBiasSlopeFactor = 0;
+        }
+
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        {
+            multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+            multisampling.sampleShadingEnable = VK_FALSE;
+            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+            multisampling.minSampleShading = 1;
+            multisampling.pSampleMask = nullptr;
+            multisampling.alphaToCoverageEnable = VK_FALSE;
+            multisampling.alphaToOneEnable = VK_FALSE;
+        }
+
+        VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        {
+            depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            depthStencil.depthTestEnable = VK_FALSE;
+            depthStencil.depthWriteEnable = VK_FALSE;
+            depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+            depthStencil.depthBoundsTestEnable = VK_FALSE;
+            depthStencil.minDepthBounds = 0;
+            depthStencil.maxDepthBounds = 0;
+            depthStencil.stencilTestEnable = VK_FALSE;
+            depthStencil.front = {};
+            depthStencil.back = {};
+        }
+
+        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
+        color_blend_attachment_states.add();
+
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        {
+            colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            colorBlending.logicOpEnable = VK_FALSE;
+            colorBlending.logicOp = VK_LOGIC_OP_COPY;
+            colorBlending.attachmentCount = color_blend_attachment_states.size();
+            colorBlending.pAttachments = color_blend_attachment_states.data();
+            colorBlending.blendConstants[0] = 0;
+            colorBlending.blendConstants[1] = 0;
+            colorBlending.blendConstants[2] = 0;
+            colorBlending.blendConstants[3] = 0;
+        }
+
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+        pipelineInfo.pStages = shaderStages.data();
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = &depthStencil;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
+        pipelineInfo.layout = pipelineLayout;
+        pipelineInfo.renderPass = renderpass;
+        pipelineInfo.subpass = 0;
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineInfo.basePipelineIndex = -1;
+
+        VkPipeline graphicsPipeline;
+        if (vkCreateGraphicsPipelines(device.logi_device(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create graphics pipeline");
+        }
+
+        return graphicsPipeline;
+    }
+
+
+    class RenderPassBundle : public mirinae::IRenderPassBundle {
+
+    public:
+        RenderPassBundle(
+            uint32_t width,
+            uint32_t height,
+            mirinae::FbufImageBundle& fbuf_bundle,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::Swapchain& swapchain,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device)
+        {
+            formats_ = {
+                swapchain.format(),
+            };
+
+            clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+            renderpass_ = create_renderpass(
+                formats_.at(0),
+                device.logi_device()
+            );
+            layout_ = create_pipeline_layout(
+                create_desclayout_main(desclayouts, device),
+                device
+            );
+            pipeline_ = create_pipeline(
+                renderpass_,
+                layout_,
+                device
+            );
+
+            for (int i = 0; i < swapchain.views_count(); ++i) {
+                fbufs_.push_back(::create_framebuffer(
+                    width,
+                    height,
+                    renderpass_,
+                    device.logi_device(),
+                    {
+                        swapchain.view_at(i),
+                    }
+                ));
+            }
+        }
+
+        ~RenderPassBundle() override {
+            this->destroy();
+        }
+
+        void destroy() override {
+            if (VK_NULL_HANDLE != pipeline_) {
+                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
+                pipeline_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != layout_) {
+                vkDestroyPipelineLayout(device_.logi_device(), layout_, nullptr);
+                layout_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != renderpass_) {
+                vkDestroyRenderPass(device_.logi_device(), renderpass_, nullptr);
+                renderpass_ = VK_NULL_HANDLE;
+            }
+
+            for (auto& handle : fbufs_) {
+                vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
+            }
+            fbufs_.clear();
+        }
+
+        VkRenderPass renderpass() override {
+            return renderpass_;
+        }
+
+        VkPipeline pipeline() override {
+            return pipeline_;
+        }
+
+        VkPipelineLayout pipeline_layout() override {
+            return layout_;
+        }
+
+        VkFramebuffer fbuf_at(uint32_t index) override {
+            return fbufs_.at(index);
+        }
+
+        const VkClearValue* clear_values() const override {
+            return clear_values_.data();
+        }
+
+        uint32_t clear_value_count() const override {
+            return static_cast<uint32_t>(clear_values_.size());
+        }
+
+    private:
+        mirinae::VulkanDevice& device_;
+        VkRenderPass renderpass_ = VK_NULL_HANDLE;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout layout_ = VK_NULL_HANDLE;
+        std::array<VkFormat, 1> formats_;
+        std::array<VkClearValue, 1> clear_values_;
+        std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
+
+    };
+
+}}
+
+
 namespace mirinae {
 
     std::unique_ptr<IRenderPassBundle> create_gbuf(
@@ -1324,6 +1652,17 @@ namespace mirinae {
         VulkanDevice& device
     ) {
         return std::make_unique<::fillscreen::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
+    }
+
+    std::unique_ptr<IRenderPassBundle> create_overlay(
+        uint32_t width,
+        uint32_t height,
+        FbufImageBundle& fbuf_bundle,
+        DesclayoutManager& desclayouts,
+        Swapchain& swapchain,
+        VulkanDevice& device
+    ) {
+        return std::make_unique<::overlay::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
     }
 
 }

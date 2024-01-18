@@ -397,7 +397,39 @@ namespace {
             }
 
             {
+                auto& rp = *rp_overlay_;
+                VkRenderPassBeginInfo renderPassInfo{};
+                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderPassInfo.renderPass = rp.renderpass();
+                renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
+                renderPassInfo.renderArea.offset = { 0, 0 };
+                renderPassInfo.renderArea.extent = swapchain_.extent();
+                renderPassInfo.clearValueCount = rp.clear_value_count();
+                renderPassInfo.pClearValues = rp.clear_values();
 
+                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
+
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = static_cast<float>(swapchain_.width());
+                viewport.height = static_cast<float>(swapchain_.height());
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = swapchain_.extent();
+                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                vkCmdDraw(cur_cmd_buf, 6, 1, 0, 0);
+
+                vkCmdEndRenderPass(cur_cmd_buf);
+            }
+
+            {
                 if (vkEndCommandBuffer(cur_cmd_buf) != VK_SUCCESS) {
                     throw std::runtime_error("failed to record command buffer!");
                 }
@@ -466,6 +498,7 @@ namespace {
             rp_gbuf_ = mirinae::create_gbuf(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_composition_ = mirinae::create_composition(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_fillscreen_ = mirinae::create_fillscreen(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
+            rp_overlay_ = mirinae::create_overlay(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
 
             rp_states_composition_.init(desclayout_, fbuf_images_, texture_sampler_.get(), device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, texture_sampler_.get(), device_);
@@ -477,6 +510,7 @@ namespace {
             rp_states_fillscreen_.destroy(device_.logi_device());
             rp_states_composition_.destroy(device_.logi_device());
 
+            rp_overlay_.reset();
             rp_fillscreen_.reset();
             rp_composition_.reset();
             rp_gbuf_.reset();
@@ -524,6 +558,7 @@ namespace {
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_fillscreen_;
+        std::unique_ptr<mirinae::IRenderPassBundle> rp_overlay_;
         ::RpStatesComposition rp_states_composition_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         ::DrawSheet draw_sheet_;
