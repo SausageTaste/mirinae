@@ -119,7 +119,7 @@ namespace {
                 const auto& model_path = mesh_paths.at(i);
                 auto model = model_man_.request_static(model_path, desclayout_, tex_man_);
                 if (!model) {
-                    spdlog::error("Failed to load model: {}", model_path);
+                    spdlog::warn("Failed to load model: {}", model_path);
                     continue;
                 }
 
