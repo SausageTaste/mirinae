@@ -23,6 +23,14 @@ namespace {
             return false;
     }
 
+    template <typename T>
+    std::pair<T, T> calc_scaled_dimensions(T w, T h, double factor) {
+        return std::make_pair(
+            static_cast<T>(static_cast<double>(w) * factor),
+            static_cast<T>(static_cast<double>(h) * factor)
+        );
+    }
+
 
     class FrameSync {
 
@@ -253,7 +261,7 @@ namespace {
                 renderPassInfo.renderPass = rp.renderpass();
                 renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
                 renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = swapchain_.extent();
+                renderPassInfo.renderArea.extent = fbuf_images_.extent();
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
@@ -263,15 +271,15 @@ namespace {
                 VkViewport viewport{};
                 viewport.x = 0.0f;
                 viewport.y = 0.0f;
-                viewport.width = static_cast<float>(swapchain_.width());
-                viewport.height = static_cast<float>(swapchain_.height());
+                viewport.width = static_cast<float>(fbuf_images_.width());
+                viewport.height = static_cast<float>(fbuf_images_.height());
                 viewport.minDepth = 0.0f;
                 viewport.maxDepth = 1.0f;
                 vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
 
                 VkRect2D scissor{};
                 scissor.offset = { 0, 0 };
-                scissor.extent = swapchain_.extent();
+                scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
                 for (auto& pair : draw_sheet_.ren_pairs_) {
@@ -311,7 +319,7 @@ namespace {
                 renderPassInfo.renderPass = rp.renderpass();
                 renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
                 renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = swapchain_.extent();
+                renderPassInfo.renderArea.extent = fbuf_images_.extent();
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
@@ -321,15 +329,15 @@ namespace {
                 VkViewport viewport{};
                 viewport.x = 0.0f;
                 viewport.y = 0.0f;
-                viewport.width = static_cast<float>(swapchain_.width());
-                viewport.height = static_cast<float>(swapchain_.height());
+                viewport.width = static_cast<float>(fbuf_images_.width());
+                viewport.height = static_cast<float>(fbuf_images_.height());
                 viewport.minDepth = 0.0f;
                 viewport.maxDepth = 1.0f;
                 vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
 
                 VkRect2D scissor{};
                 scissor.offset = { 0, 0 };
-                scissor.extent = swapchain_.extent();
+                scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
                 auto desc_main = rp_states_composition_.desc_sets_.at(framesync_.get_frame_index().get());
@@ -451,10 +459,12 @@ namespace {
         void create_swapchain_and_relatives(uint32_t fbuf_width, uint32_t fbuf_height) {
             device_.wait_idle();
             swapchain_.init(fbuf_width, fbuf_height, device_);
-            fbuf_images_.init(swapchain_.width(), swapchain_.height(), tex_man_);
 
-            rp_gbuf_ = mirinae::create_gbuf(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
-            rp_composition_ = mirinae::create_composition(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
+            const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(swapchain_.width(), swapchain_.height(), 2);
+            fbuf_images_.init(gbuf_width, gbuf_height, tex_man_);
+
+            rp_gbuf_ = mirinae::create_gbuf(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
+            rp_composition_ = mirinae::create_composition(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_fillscreen_ = mirinae::create_fillscreen(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
 
             rp_states_composition_.init(desclayout_, fbuf_images_, texture_sampler_.get(), device_);

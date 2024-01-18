@@ -15,6 +15,10 @@ namespace mirinae {
             composition_ = tex_man.create_attachment(width, height, VK_FORMAT_B10G11R11_UFLOAT_PACK32, mirinae::FbufUsage::color_attachment, "composition");
         }
 
+        uint32_t width() const { return depth_->width(); }
+        uint32_t height() const { return depth_->height(); }
+        VkExtent2D extent() const { return { this->width(), this->height() }; }
+
         mirinae::ITexture& depth() { return *depth_; }
         mirinae::ITexture& albedo() { return *albedo_; }
         mirinae::ITexture& normal() { return *normal_; }
