@@ -646,9 +646,9 @@ namespace { namespace composition {
 
     VkDescriptorSetLayout create_desclayout_main(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
         DescLayoutBuilder builder{ "composition:main" };
-        builder.add_input_attachment(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // depth
-        builder.add_input_attachment(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // albedo
-        builder.add_input_attachment(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // normal
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // depth
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // albedo
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // normal
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
@@ -691,9 +691,11 @@ namespace { namespace composition {
     }
 
     VkPipelineLayout create_pipeline_layout(
+        VkDescriptorSetLayout desclayout_main,
         mirinae::VulkanDevice& device
     ) {
         const std::vector<VkDescriptorSetLayout> desclayouts{
+            desclayout_main,
         };
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -879,6 +881,7 @@ namespace { namespace composition {
                 device.logi_device()
             );
             layout_ = create_pipeline_layout(
+                create_desclayout_main(desclayouts, device),
                 device
             );
             pipeline_ = create_pipeline(
