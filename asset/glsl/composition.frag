@@ -11,9 +11,13 @@ layout(set = 0, binding = 2) uniform sampler2D u_normal_map;
 
 
 void main() {
-    vec4 depth = texture(u_depth_map, v_uv_coord);
-    vec4 albedo = texture(u_albedo_map, v_uv_coord);
-    vec4 normal = texture(u_normal_map, v_uv_coord);
+    vec4 depth_texel = texture(u_depth_map, v_uv_coord);
+    vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
+    vec4 normal_texel = texture(u_normal_map, v_uv_coord);
 
-    f_color = vec4(albedo.rgb, 1);
+    vec3 normal = normalize(normal_texel.xyz * 2 - 1);
+    vec3 light_dir = normalize(vec3(0.5, 1, 0.5));
+    float light = max(dot(normal, light_dir), 0) * 0.9 + 0.1;
+
+    f_color = vec4(albedo_texel.rgb * light, 1);
 }
