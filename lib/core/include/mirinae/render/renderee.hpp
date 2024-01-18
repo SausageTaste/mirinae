@@ -25,6 +25,9 @@ namespace mirinae {
         virtual VkFormat format() const = 0;
         virtual VkImageView image_view() = 0;
 
+        virtual uint32_t width() const = 0;
+        virtual uint32_t height() const = 0;
+
     };
 
 

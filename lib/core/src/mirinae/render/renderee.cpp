@@ -435,6 +435,9 @@ namespace mirinae {
             return texture_view_.get();
         }
 
+        uint32_t width() const override { return texture_.width(); }
+        uint32_t height() const override { return texture_.height(); }
+
         auto& id() const { return id_; }
 
     private:
