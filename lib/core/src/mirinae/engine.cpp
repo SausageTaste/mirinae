@@ -81,6 +81,37 @@ namespace {
     };
 
 
+    class RpStatesComposition {
+
+    public:
+        void init(
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::FbufImageBundle& fbufs,
+            VkSampler texture_sampler,
+            mirinae::VulkanDevice& device
+        ) {
+            desc_pool_.init(10, device.logi_device());
+            desc_sets_ = desc_pool_.alloc(mirinae::MAX_FRAMES_IN_FLIGHT, desclayouts.get("composition:main"), device.logi_device());
+
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                mirinae::DescWriteInfoBuilder builder;
+                builder.add_combinded_image_sampler(fbufs.depth().image_view(), texture_sampler, desc_sets_.at(i));
+                builder.add_combinded_image_sampler(fbufs.albedo().image_view(), texture_sampler, desc_sets_.at(i));
+                builder.add_combinded_image_sampler(fbufs.normal().image_view(), texture_sampler, desc_sets_.at(i));
+                builder.apply_all(device.logi_device());
+            }
+        }
+
+        void destroy(VkDevice logi_device) {
+            desc_pool_.destroy(logi_device);
+        }
+
+        mirinae::DescriptorPool desc_pool_;
+        std::vector<VkDescriptorSet> desc_sets_;
+
+    };
+
+
     class EngineGlfw : public mirinae::IEngine {
 
     public:
@@ -91,18 +122,17 @@ namespace {
             , desclayout_(device_)
         {
             framesync_.init(device_.logi_device());
-            this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
-
-            cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
-            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
-                cmd_buf_.push_back(cmd_pool_.alloc(device_.logi_device()));
-
-            // Texture
             texture_sampler_.init(
                 device_.is_anisotropic_filtering_supported(),
                 device_.max_sampler_anisotropy(),
                 device_.logi_device()
             );
+
+            this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
+
+            cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
+                cmd_buf_.push_back(cmd_pool_.alloc(device_.logi_device()));
 
             const std::vector<mirinae::respath_t> mesh_paths{
                 "sponza/sponza.dmd",
@@ -272,6 +302,16 @@ namespace {
                 scissor.offset = { 0, 0 };
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                auto desc_main = rp_states_composition_.desc_sets_.at(framesync_.get_frame_index().get());
+                vkCmdBindDescriptorSets(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    rp.pipeline_layout(),
+                    0,
+                    1, &desc_main,
+                    0, nullptr
+                );
+
                 vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
 
                 vkCmdEndRenderPass(cur_cmd_buf);
@@ -373,16 +413,23 @@ namespace {
             device_.wait_idle();
             swapchain_.init(fbuf_width, fbuf_height, device_);
             fbuf_images_.init(swapchain_.width(), swapchain_.height(), tex_man_);
+
             rp_gbuf_ = mirinae::create_gbuf(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_composition_ = mirinae::create_composition(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_fillscreen_ = mirinae::create_fillscreen(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
+
+            rp_states_composition_.init(desclayout_, fbuf_images_, texture_sampler_.get(), device_);
         }
 
         void destroy_swapchain_and_relatives() {
             device_.wait_idle();
+
+            rp_states_composition_.destroy(device_.logi_device());
+
             rp_fillscreen_.reset();
             rp_composition_.reset();
             rp_gbuf_.reset();
+
             swapchain_.destroy(device_.logi_device());
         }
 
@@ -426,6 +473,7 @@ namespace {
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_fillscreen_;
+        ::RpStatesComposition rp_states_composition_;
         ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
