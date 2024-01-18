@@ -7,7 +7,7 @@
 
 namespace mirinae {
 
-    struct U_Unorthodox {
+    struct U_GbufModel {
         glm::mat4 model;
         glm::mat4 view;
         glm::mat4 proj;
