@@ -309,7 +309,7 @@ namespace { namespace gbuf {
 
     VkRenderPass create_renderpass(VkFormat depth_format, VkFormat albedo_format, VkFormat normal_format, VkDevice logi_device) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(depth_format, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        attachments.add(depth_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         attachments.add(albedo_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         attachments.add(normal_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 

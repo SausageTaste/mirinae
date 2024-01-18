@@ -410,7 +410,7 @@ namespace mirinae {
                 VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
             );
 
-            texture_.init_attachment(width, height, depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, device_.mem_alloc());
+            texture_.init_attachment(width, height, depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, device_.mem_alloc());
             texture_view_.init(texture_.image(), 1, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
         }
 
