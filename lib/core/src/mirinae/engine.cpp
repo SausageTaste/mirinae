@@ -184,7 +184,9 @@ namespace {
                 clear_values[0].depthStencil = { 1.f, 0 };
                 clear_values[1].color = { 0.f, 0.f, 0.f, 1.f };
                 clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
+            }
 
+            {
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = rp_unorthodox_->renderpass();
@@ -195,7 +197,6 @@ namespace {
                 renderPassInfo.pClearValues = rp_unorthodox_->clear_values();
 
                 vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
                 vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp_unorthodox_->pipeline());
 
                 VkViewport viewport{};
@@ -240,6 +241,41 @@ namespace {
                 }
 
                 vkCmdEndRenderPass(cur_cmd_buf);
+            }
+
+            {
+                auto& rp = *rp_fillscreen_;
+                VkRenderPassBeginInfo renderPassInfo{};
+                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderPassInfo.renderPass = rp.renderpass();
+                renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
+                renderPassInfo.renderArea.offset = { 0, 0 };
+                renderPassInfo.renderArea.extent = swapchain_.extent();
+                renderPassInfo.clearValueCount = rp.clear_value_count();
+                renderPassInfo.pClearValues = rp.clear_values();
+
+                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
+
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = static_cast<float>(swapchain_.width());
+                viewport.height = static_cast<float>(swapchain_.height());
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = swapchain_.extent();
+                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
+
+                vkCmdEndRenderPass(cur_cmd_buf);
+            }
+
+            {
 
                 if (vkEndCommandBuffer(cur_cmd_buf) != VK_SUCCESS) {
                     throw std::runtime_error("failed to record command buffer!");
@@ -304,11 +340,13 @@ namespace {
             swapchain_.init(fbuf_width, fbuf_height, device_);
             fbuf_images_.init(swapchain_.width(), swapchain_.height(), tex_man_);
             rp_unorthodox_ = mirinae::create_unorthodox(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
+            rp_fillscreen_ = mirinae::create_fillscreen(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
         }
 
         void destroy_swapchain_and_relatives() {
             device_.wait_idle();
             rp_unorthodox_.reset();
+            rp_fillscreen_.reset();
             swapchain_.destroy(device_.logi_device());
         }
 
@@ -350,6 +388,7 @@ namespace {
         mirinae::DesclayoutManager desclayout_;
         mirinae::FbufImageBundle fbuf_images_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_unorthodox_;
+        std::unique_ptr<mirinae::IRenderPassBundle> rp_fillscreen_;
         ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
