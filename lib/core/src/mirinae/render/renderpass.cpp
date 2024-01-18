@@ -654,7 +654,7 @@ namespace { namespace composition {
 
     VkRenderPass create_renderpass(VkFormat composition_format, VkDevice logi_device) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(composition_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        attachments.add(composition_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
         color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // composition
@@ -970,6 +970,12 @@ namespace { namespace composition {
 // fillscreen
 namespace { namespace fillscreen {
 
+    VkDescriptorSetLayout create_desclayout_main(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+        DescLayoutBuilder builder{ "fillscreen:main" };
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // composition
+        return builder.build_in_place(desclayouts, device.logi_device());
+    }
+
     VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {
         ::AttachmentDescBuilder attachments;
         attachments.add(surface, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
@@ -1009,9 +1015,11 @@ namespace { namespace fillscreen {
     }
 
     VkPipelineLayout create_pipeline_layout(
+        VkDescriptorSetLayout desclayout_main,
         mirinae::VulkanDevice& device
     ) {
         std::vector<VkDescriptorSetLayout> desclayouts{
+            desclayout_main,
         };
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -1197,6 +1205,7 @@ namespace { namespace fillscreen {
                 device.logi_device()
             );
             layout_ = create_pipeline_layout(
+                create_desclayout_main(desclayouts, device),
                 device
             );
             pipeline_ = create_pipeline(

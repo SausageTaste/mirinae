@@ -112,6 +112,35 @@ namespace {
     };
 
 
+    class RpStatesFillscreen {
+
+    public:
+        void init(
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::FbufImageBundle& fbufs,
+            VkSampler texture_sampler,
+            mirinae::VulkanDevice& device
+        ) {
+            desc_pool_.init(10, device.logi_device());
+            desc_sets_ = desc_pool_.alloc(mirinae::MAX_FRAMES_IN_FLIGHT, desclayouts.get("fillscreen:main"), device.logi_device());
+
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                mirinae::DescWriteInfoBuilder builder;
+                builder.add_combinded_image_sampler(fbufs.composition().image_view(), texture_sampler, desc_sets_.at(i));
+                builder.apply_all(device.logi_device());
+            }
+        }
+
+        void destroy(VkDevice logi_device) {
+            desc_pool_.destroy(logi_device);
+        }
+
+        mirinae::DescriptorPool desc_pool_;
+        std::vector<VkDescriptorSet> desc_sets_;
+
+    };
+
+
     class EngineGlfw : public mirinae::IEngine {
 
     public:
@@ -344,6 +373,16 @@ namespace {
                 scissor.offset = { 0, 0 };
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                auto desc_main = rp_states_fillscreen_.desc_sets_.at(framesync_.get_frame_index().get());
+                vkCmdBindDescriptorSets(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    rp.pipeline_layout(),
+                    0,
+                    1, &desc_main,
+                    0, nullptr
+                );
+
                 vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
 
                 vkCmdEndRenderPass(cur_cmd_buf);
@@ -419,11 +458,13 @@ namespace {
             rp_fillscreen_ = mirinae::create_fillscreen(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
 
             rp_states_composition_.init(desclayout_, fbuf_images_, texture_sampler_.get(), device_);
+            rp_states_fillscreen_.init(desclayout_, fbuf_images_, texture_sampler_.get(), device_);
         }
 
         void destroy_swapchain_and_relatives() {
             device_.wait_idle();
 
+            rp_states_fillscreen_.destroy(device_.logi_device());
             rp_states_composition_.destroy(device_.logi_device());
 
             rp_fillscreen_.reset();
@@ -474,6 +515,7 @@ namespace {
         std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_fillscreen_;
         ::RpStatesComposition rp_states_composition_;
+        ::RpStatesFillscreen rp_states_fillscreen_;
         ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
