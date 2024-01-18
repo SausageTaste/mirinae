@@ -466,7 +466,7 @@ namespace mirinae {
 
             const auto img_data = device_.filesys().read_file_to_vector(res_id.c_str());
             if (!img_data.has_value()) {
-                spdlog::error("Failed to read image file: {}", res_id);
+                spdlog::warn("Failed to read image file: {}", res_id);
                 return nullptr;
             }
 
@@ -628,14 +628,14 @@ namespace mirinae {
 
             const auto content = device_.filesys().read_file_to_vector(res_id.c_str());
             if (!content.has_value()) {
-                spdlog::error("Failed to read dmd file: {}", res_id);
+                spdlog::warn("Failed to read dmd file: {}", res_id);
                 return nullptr;
             }
 
             dal::parser::Model parsed_model;
             const auto parse_result = dal::parser::parse_dmd(parsed_model, content->data(), content->size());
             if (dal::parser::ModelParseResult::success != parse_result) {
-                spdlog::error("Failed to parse dmd file: {}", static_cast<int>(parse_result));
+                spdlog::warn("Failed to parse dmd file: {}", static_cast<int>(parse_result));
                 return nullptr;
             }
 
