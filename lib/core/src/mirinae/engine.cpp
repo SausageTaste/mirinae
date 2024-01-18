@@ -79,6 +79,59 @@ namespace {
     };
 
 
+    class OverlayEntity {
+
+    public:
+        OverlayEntity(mirinae::VulkanDevice& device) : device_(device) {}
+
+        ~OverlayEntity() {
+            this->destroy();
+        }
+
+        void init(uint32_t max_flight_count, mirinae::DesclayoutManager& desclayouts) {
+            desc_pool_.init(max_flight_count, device_.logi_device());
+            desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("overlay:main"), device_.logi_device());
+
+            for (uint32_t i = 0; i < max_flight_count; ++i) {
+                auto& ubuf = uniform_buf_.emplace_back();
+                ubuf.init_ubuf(sizeof(mirinae::U_OverlayMain), device_.mem_alloc());
+            }
+
+            for (size_t i = 0; i < max_flight_count; i++) {
+                mirinae::DescWriteInfoBuilder builder;
+                builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i));
+                builder.apply_all(device_.logi_device());
+            }
+        }
+
+        void destroy() {
+            for (auto& ubuf : uniform_buf_)
+                ubuf.destroy(device_.mem_alloc());
+            uniform_buf_.clear();
+
+            desc_pool_.destroy(device_.logi_device());
+        }
+
+        void udpate_ubuf(uint32_t index) {
+            auto& ubuf = uniform_buf_.at(index);
+            ubuf.set_data(&ubuf_data_, sizeof(mirinae::U_OverlayMain), device_.mem_alloc());
+        }
+
+        VkDescriptorSet get_desc_set(size_t index) {
+            return desc_sets_.at(index);
+        }
+
+        mirinae::U_OverlayMain ubuf_data_;
+
+    private:
+        mirinae::VulkanDevice& device_;
+        mirinae::DescriptorPool desc_pool_;
+        std::vector<mirinae::Buffer> uniform_buf_;
+        std::vector<VkDescriptorSet> desc_sets_;
+
+    };
+
+
     struct DrawSheet {
         struct RenderPairs {
             std::shared_ptr<mirinae::RenderModel> model_;
@@ -86,6 +139,7 @@ namespace {
         };
 
         std::vector<RenderPairs> ren_pairs_;
+        std::vector<OverlayEntity> overlays_;
     };
 
 
@@ -201,6 +255,11 @@ namespace {
                 actor->transform_.pos_ = glm::vec3(i*3, 0, 0);
                 actor->transform_.scale_ = glm::vec3(model_scales[i]);
             }
+
+            {
+                auto& overlay = draw_sheet_.overlays_.emplace_back(device_);
+                overlay.init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+            }
         }
 
         ~EngineGlfw() {
@@ -231,6 +290,14 @@ namespace {
                     for (auto& actor : pair.actors_) {
                         actor->udpate_ubuf(framesync_.get_frame_index().get(), view_mat, proj_mat, device_.mem_alloc());
                     }
+                }
+
+                for (auto& overlay : draw_sheet_.overlays_) {
+                    overlay.ubuf_data_.offset().x = (swapchain_.width() - 10.f - 100.f) / swapchain_.width() * 2.f - 1.f;
+                    overlay.ubuf_data_.offset().y = (swapchain_.height() - 10.f - 100.f) / swapchain_.height() * 2.f - 1.f;
+                    overlay.ubuf_data_.size().x = 100.f / swapchain_.width();
+                    overlay.ubuf_data_.size().y = 100.f / swapchain_.height();
+                    overlay.udpate_ubuf(framesync_.get_frame_index().get());
                 }
             }
 
@@ -424,7 +491,18 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                vkCmdDraw(cur_cmd_buf, 6, 1, 0, 0);
+                for (auto& overlay : draw_sheet_.overlays_) {
+                    auto desc_main = overlay.get_desc_set(framesync_.get_frame_index().get());
+                    vkCmdBindDescriptorSets(
+                        cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline_layout(),
+                        0,
+                        1, &desc_main,
+                        0, nullptr
+                    );
+
+                    vkCmdDraw(cur_cmd_buf, 6, 1, 0, 0);
+                }
 
                 vkCmdEndRenderPass(cur_cmd_buf);
             }

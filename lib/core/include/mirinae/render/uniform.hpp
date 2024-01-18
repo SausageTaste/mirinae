@@ -14,6 +14,24 @@ namespace mirinae {
     };
 
 
+    class U_OverlayMain {
+
+    public:
+        glm::vec2& size() {
+            return size_;
+        }
+        glm::vec2& offset() {
+            return offset_;
+        }
+
+    private:
+        glm::vec2 size_;
+        glm::vec2 offset_;
+
+    };
+    static_assert(sizeof(U_OverlayMain) == 16);
+
+
     class DesclayoutManager {
 
     public:

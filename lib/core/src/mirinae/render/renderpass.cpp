@@ -1296,6 +1296,7 @@ namespace { namespace overlay {
 
     VkDescriptorSetLayout create_desclayout_main(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
         DescLayoutBuilder builder{ "overlay:main" };
+        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_OverlayMain
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
