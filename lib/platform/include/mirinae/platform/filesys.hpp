@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -8,7 +9,7 @@
 
 namespace mirinae {
 
-    using respath_t = std::string;
+    using respath_t = std::filesystem::path;
 
     respath_t replace_file_name_ext(const respath_t& res_path, const respath_t& new_file_name_ext);
 
@@ -18,9 +19,9 @@ namespace mirinae {
     public:
         virtual ~IFilesys() = default;
 
-        virtual bool read_file_to_vector(const std::string& res_path, std::vector<uint8_t>& output) = 0;
+        virtual bool read_file_to_vector(const respath_t& res_path, std::vector<uint8_t>& output) = 0;
 
-        std::optional<std::vector<uint8_t>> read_file_to_vector(const std::string& file_path) {
+        std::optional<std::vector<uint8_t>> read_file_to_vector(const respath_t& file_path) {
             std::vector<uint8_t> output;
             if (this->read_file_to_vector(file_path, output)) {
                 return output;
@@ -33,6 +34,6 @@ namespace mirinae {
     };
 
 
-    std::unique_ptr<IFilesys> create_filesys_std(const std::string& resources_dir);
+    std::unique_ptr<IFilesys> create_filesys_std(const respath_t& resources_dir);
 
 }

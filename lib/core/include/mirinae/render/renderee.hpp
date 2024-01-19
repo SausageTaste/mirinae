@@ -37,7 +37,7 @@ namespace mirinae {
         TextureManager(VulkanDevice& device);
         ~TextureManager();
 
-        std::shared_ptr<ITexture> request(const std::string& res_id);
+        std::shared_ptr<ITexture> request(const respath_t& res_id);
         std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height);
         std::unique_ptr<ITexture> create_attachment(uint32_t width, uint32_t height, VkFormat, FbufUsage, const char* name);
 

@@ -463,19 +463,19 @@ namespace mirinae {
             cmd_pool_.destroy(device_.logi_device());
         }
 
-        std::shared_ptr<TextureData> request(const std::string& res_id) {
+        std::shared_ptr<TextureData> request(const respath_t& res_id) {
             if (auto index = this->find_index(res_id))
                 return textures_.at(index.value());
 
             const auto img_data = device_.filesys().read_file_to_vector(res_id.c_str());
             if (!img_data.has_value()) {
-                spdlog::warn("Failed to read image file: {}", res_id);
+                spdlog::warn("Failed to read image file: {}", res_id.u8string());
                 return nullptr;
             }
 
             const auto image = mirinae::parse_image(img_data->data(), img_data->size());
             auto& output = textures_.emplace_back(new TextureData{ device_ });
-            output->init(res_id, *image, cmd_pool_);
+            output->init(res_id.u8string(), *image, cmd_pool_);
             return output;
         }
 
@@ -492,9 +492,9 @@ namespace mirinae {
         }
 
     private:
-        std::optional<size_t> find_index(const std::string& id) {
+        std::optional<size_t> find_index(const respath_t& id) {
             for (size_t i = 0; i < textures_.size(); ++i) {
-                if (textures_.at(i)->id() == id)
+                if (textures_.at(i)->id() == id.u8string())
                     return i;
             }
             return std::nullopt;
@@ -526,7 +526,7 @@ namespace mirinae {
 
     }
 
-    std::shared_ptr<ITexture> TextureManager::request(const std::string& res_id) {
+    std::shared_ptr<ITexture> TextureManager::request(const respath_t& res_id) {
         return pimpl_->request(res_id);
     }
 
@@ -629,9 +629,9 @@ namespace mirinae {
             if (models_.end() != found)
                 return found->second;
 
-            const auto content = device_.filesys().read_file_to_vector(res_id.c_str());
+            const auto content = device_.filesys().read_file_to_vector(res_id);
             if (!content.has_value()) {
-                spdlog::warn("Failed to read dmd file: {}", res_id);
+                spdlog::warn("Failed to read dmd file: {}", res_id.u8string());
                 return nullptr;
             }
 
@@ -709,7 +709,7 @@ namespace mirinae {
         Sampler texture_sampler_;
         CommandPool cmd_pool_;
 
-        std::map<std::string, std::shared_ptr<RenderModel>> models_;
+        std::map<respath_t, std::shared_ptr<RenderModel>> models_;
 
     };
 

@@ -274,11 +274,11 @@ namespace {
                     handle_ = shader.value();
                 }
                 else {
-                    throw std::runtime_error{ fmt::format("Failed to create shader module with given data: {}", spv_path) };
+                    throw std::runtime_error{ fmt::format("Failed to create shader module with given data: {}", spv_path.u8string()) };
                 }
             }
             else {
-                throw std::runtime_error{ fmt::format("Failed to read a shader file: {}", spv_path) };
+                throw std::runtime_error{ fmt::format("Failed to read a shader file: {}", spv_path.u8string()) };
             }
         }
 

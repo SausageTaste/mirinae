@@ -3,6 +3,12 @@
 
 namespace {
 
+    std::filesystem::path get_first_dir_of_path(const std::filesystem::path& path) {
+        auto it = path.begin();
+        return *it;
+    }
+
+
     class AssetFile {
 
     private:
@@ -74,12 +80,16 @@ namespace {
 
         }
 
-        bool read_file_to_vector(const std::string& file_path, std::vector<uint8_t>& output) override {
-            auto index = file_path.find("asset");
-            std::string new_path;
-            if (std::string::npos != index) {
-                auto trun_size = index + 6;
-                new_path = file_path.substr(trun_size, file_path.size() - trun_size);
+        bool read_file_to_vector(const mirinae::respath_t& file_path, std::vector<uint8_t>& output) override {
+            mirinae::respath_t new_path;
+            if (::get_first_dir_of_path(file_path) == "asset") {
+                bool skipped_once = false;
+                for (auto element : file_path) {
+                    if (skipped_once)
+                        new_path /= element;
+                    else
+                        skipped_once = true;
+                }
             }
             else {
                 new_path = file_path;
