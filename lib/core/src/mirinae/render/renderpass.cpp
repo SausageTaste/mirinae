@@ -260,26 +260,6 @@ namespace {
 
     };
 
-
-    std::array<VkPipelineShaderStageCreateInfo, 2> create_info_shader_stages_pair(const ShaderModule& vertex, const ShaderModule& fragment) {
-        std::array<VkPipelineShaderStageCreateInfo, 2> output{};
-        {
-            auto& shader_info = output[0];
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_info.module = vertex.get();
-            shader_info.pName = "main";
-        }
-        {
-            auto& shader_info = output[1];
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_info.module = fragment.get();
-            shader_info.pName = "main";
-        }
-        return output;
-    }
-
 }
 
 
@@ -322,6 +302,137 @@ namespace {
         std::vector<VkPipelineColorBlendAttachmentState> data_;
 
     };
+
+
+    auto create_info_shader_stages_pair(const ShaderModule& vertex, const ShaderModule& fragment) {
+        std::array<VkPipelineShaderStageCreateInfo, 2> output{};
+        {
+            auto& shader_info = output[0];
+            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+            shader_info.module = vertex.get();
+            shader_info.pName = "main";
+        }
+        {
+            auto& shader_info = output[1];
+            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+            shader_info.module = fragment.get();
+            shader_info.pName = "main";
+        }
+        return output;
+    }
+
+    auto create_info_dynamic_states(const VkDynamicState* array, size_t size) {
+        VkPipelineDynamicStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        output.dynamicStateCount = static_cast<uint32_t>(size);
+        output.pDynamicStates = array;
+        return output;
+    }
+
+    auto create_info_vertex_input_states(
+        const   VkVertexInputBindingDescription* binding_descriptions = nullptr, size_t binding_count = 0,
+        const VkVertexInputAttributeDescription* attrib_descriptions  = nullptr,  size_t attrib_count = 0
+    ) {
+        VkPipelineVertexInputStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        output.vertexBindingDescriptionCount = binding_count;
+        output.pVertexBindingDescriptions = binding_descriptions;
+        output.vertexAttributeDescriptionCount = attrib_count;
+        output.pVertexAttributeDescriptions = attrib_descriptions;
+        return output;
+    }
+
+    auto create_info_input_assembly() {
+        VkPipelineInputAssemblyStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        output.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        output.primitiveRestartEnable = VK_FALSE;
+        return output;
+    }
+
+    auto create_info_viewport_state() {
+        VkPipelineViewportStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        output.viewportCount = 1;
+        output.pViewports = nullptr;
+        output.scissorCount = 1;
+        output.pScissors = nullptr;
+        return output;
+    }
+
+    auto create_info_rasterizer(
+        const VkCullModeFlags cull_mode,
+        const bool enable_bias,
+        const float bias_constant,
+        const float bias_slope,
+        const bool enable_depth_clamp = false
+    ) {
+        VkPipelineRasterizationStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+
+        output.depthClampEnable = VK_FALSE;  // vulkan-tutorial.com said this requires GPU feature enabled.
+
+        // Discards all fragents. But why would you ever want it? Well, check the link below.
+        // https://stackoverflow.com/questions/42470669/when-does-it-make-sense-to-turn-off-the-rasterization-step
+        output.rasterizerDiscardEnable = VK_FALSE;
+
+        output.polygonMode = VK_POLYGON_MODE_FILL;  // Any mode other than FILL requires GPU feature enabled.
+        output.lineWidth = 1;  // GPU feature, `wideLines` required for lines thicker than 1.
+        output.cullMode = cull_mode;
+        output.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        output.depthBiasEnable = enable_bias ? VK_TRUE : VK_FALSE;
+        output.depthBiasConstantFactor = bias_constant;
+        output.depthBiasSlopeFactor = bias_slope;
+        output.depthBiasClamp = 0;
+        output.depthClampEnable = enable_depth_clamp ? VK_TRUE : VK_FALSE;
+
+        return output;
+    }
+
+    auto create_info_multisampling() {
+        VkPipelineMultisampleStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        output.sampleShadingEnable = VK_FALSE;
+        output.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        output.minSampleShading = 1;
+        output.pSampleMask = nullptr;
+        output.alphaToCoverageEnable = VK_FALSE;
+        output.alphaToOneEnable = VK_FALSE;
+        return output;
+    }
+
+    auto create_info_depth_stencil(const bool depth_write) {
+        VkPipelineDepthStencilStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        output.depthTestEnable = VK_TRUE;
+        output.depthWriteEnable = depth_write ? VK_TRUE : VK_FALSE;
+        output.depthCompareOp = VK_COMPARE_OP_LESS;
+        output.depthBoundsTestEnable = VK_FALSE;
+        output.minDepthBounds = 0;
+        output.maxDepthBounds = 1;
+        output.stencilTestEnable = VK_FALSE;
+        output.front = {};
+        output.back = {};
+        return output;
+    }
+
+    auto create_info_color_blend(
+        const ::ColorBlendAttachmentStateBuilder& color_blend_attachments
+    ) {
+        VkPipelineColorBlendStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        output.logicOpEnable = VK_FALSE;
+        output.logicOp = VK_LOGIC_OP_COPY;
+        output.attachmentCount = color_blend_attachments.size();
+        output.pAttachments = color_blend_attachments.data();
+        output.blendConstants[0] = 0;
+        output.blendConstants[1] = 0;
+        output.blendConstants[2] = 0;
+        output.blendConstants[3] = 0;
+        return output;
+    }
 
 }
 
@@ -420,99 +531,30 @@ namespace { namespace gbuf {
         ::ShaderModule frag_shader{ "asset/spv/gbuf_frag.spv", device };
         const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
 
-        std::vector<VkDynamicState> dynamic_states{
+        std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
+        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
 
-        VkPipelineDynamicStateCreateInfo dynamic_state_info{};
-        {
-            dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamic_state_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
-            dynamic_state_info.pDynamicStates = dynamic_states.data();
-        }
+        auto binding_desc = ::make_vertex_static_binding_description();
+        auto attrib_desc = ::make_vertex_static_attribute_descriptions();
+        const auto vertex_input_info = ::create_info_vertex_input_states(&binding_desc, 1, attrib_desc.data(), attrib_desc.size());
 
-        auto binding_description = ::make_vertex_static_binding_description();
-        auto attribute_descriptions = ::make_vertex_static_attribute_descriptions();
-        VkPipelineVertexInputStateCreateInfo vertex_input_info{};
-        {
-            vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertex_input_info.vertexBindingDescriptionCount = 1;
-            vertex_input_info.pVertexBindingDescriptions = &binding_description;
-            vertex_input_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size());
-            vertex_input_info.pVertexAttributeDescriptions = attribute_descriptions.data();
-        }
+        const auto input_assembly = ::create_info_input_assembly();
 
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-        {
-            input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            input_assembly.primitiveRestartEnable = VK_FALSE;
-        }
+        const auto viewport_state = ::create_info_viewport_state();
 
-        VkPipelineViewportStateCreateInfo viewport_state{};
-        {
-            viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-            viewport_state.viewportCount = 1;
-            viewport_state.scissorCount = 1;
-        }
+        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
 
-        VkPipelineRasterizationStateCreateInfo rasterizer{};
-        {
-            rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-            rasterizer.depthClampEnable = VK_FALSE;
-            rasterizer.rasterizerDiscardEnable = VK_FALSE;
-            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-            rasterizer.lineWidth = 1;
-            rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-            rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-            rasterizer.depthBiasEnable = VK_FALSE;
-            rasterizer.depthBiasConstantFactor = 0;
-            rasterizer.depthBiasClamp = 0;
-            rasterizer.depthBiasSlopeFactor = 0;
-        }
+        const auto multisampling = ::create_info_multisampling();
 
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        {
-            multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisampling.sampleShadingEnable = VK_FALSE;
-            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-            multisampling.minSampleShading = 1;
-            multisampling.pSampleMask = nullptr;
-            multisampling.alphaToCoverageEnable = VK_FALSE;
-            multisampling.alphaToOneEnable = VK_FALSE;
-        }
-
-        VkPipelineDepthStencilStateCreateInfo depth_stencil{};
-        {
-            depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-            depth_stencil.depthTestEnable = VK_TRUE;
-            depth_stencil.depthWriteEnable = VK_TRUE;
-            depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
-            depth_stencil.depthBoundsTestEnable = VK_FALSE;
-            depth_stencil.minDepthBounds = 0;
-            depth_stencil.maxDepthBounds = 0;
-            depth_stencil.stencilTestEnable = VK_FALSE;
-            depth_stencil.front = {};
-            depth_stencil.back = {};
-        }
+        const auto depth_stencil = ::create_info_depth_stencil(true);
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<false>();
         color_blend_attachment_states.add<false>();
-
-        VkPipelineColorBlendStateCreateInfo color_blending{};
-        {
-            color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            color_blending.logicOpEnable = VK_FALSE;
-            color_blending.logicOp = VK_LOGIC_OP_COPY;
-            color_blending.attachmentCount = color_blend_attachment_states.size();
-            color_blending.pAttachments = color_blend_attachment_states.data();
-            color_blending.blendConstants[0] = 0;
-            color_blending.blendConstants[1] = 0;
-            color_blending.blendConstants[2] = 0;
-            color_blending.blendConstants[3] = 0;
-        }
+        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -743,96 +785,27 @@ namespace { namespace composition {
         ::ShaderModule frag_shader{ "asset/spv/composition_frag.spv", device };
         const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
 
-        std::vector<VkDynamicState> dynamic_states{
+        std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
+        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
 
-        VkPipelineDynamicStateCreateInfo dynamic_state_info{};
-        {
-            dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamic_state_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
-            dynamic_state_info.pDynamicStates = dynamic_states.data();
-        }
+        const auto vertex_input_info = ::create_info_vertex_input_states();
 
-        VkPipelineVertexInputStateCreateInfo vertex_input_info{};
-        {
-            vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertex_input_info.vertexBindingDescriptionCount = 0;
-            vertex_input_info.pVertexBindingDescriptions = nullptr;
-            vertex_input_info.vertexAttributeDescriptionCount = 0;
-            vertex_input_info.pVertexAttributeDescriptions = nullptr;
-        }
+        const auto input_assembly = ::create_info_input_assembly();
 
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-        {
-            input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            input_assembly.primitiveRestartEnable = VK_FALSE;
-        }
+        const auto viewport_state = ::create_info_viewport_state();
 
-        VkPipelineViewportStateCreateInfo viewport_state{};
-        {
-            viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-            viewport_state.viewportCount = 1;
-            viewport_state.scissorCount = 1;
-        }
+        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
 
-        VkPipelineRasterizationStateCreateInfo rasterizer{};
-        {
-            rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-            rasterizer.depthClampEnable = VK_FALSE;
-            rasterizer.rasterizerDiscardEnable = VK_FALSE;
-            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-            rasterizer.lineWidth = 1;
-            rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-            rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-            rasterizer.depthBiasEnable = VK_FALSE;
-            rasterizer.depthBiasConstantFactor = 0;
-            rasterizer.depthBiasClamp = 0;
-            rasterizer.depthBiasSlopeFactor = 0;
-        }
+        const auto multisampling = ::create_info_multisampling();
 
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        {
-            multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisampling.sampleShadingEnable = VK_FALSE;
-            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-            multisampling.minSampleShading = 1;
-            multisampling.pSampleMask = nullptr;
-            multisampling.alphaToCoverageEnable = VK_FALSE;
-            multisampling.alphaToOneEnable = VK_FALSE;
-        }
-
-        VkPipelineDepthStencilStateCreateInfo depth_stencil{};
-        {
-            depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-            depth_stencil.depthTestEnable = VK_TRUE;
-            depth_stencil.depthWriteEnable = VK_TRUE;
-            depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
-            depth_stencil.depthBoundsTestEnable = VK_FALSE;
-            depth_stencil.minDepthBounds = 0;
-            depth_stencil.maxDepthBounds = 0;
-            depth_stencil.stencilTestEnable = VK_FALSE;
-            depth_stencil.front = {};
-            depth_stencil.back = {};
-        }
+        const auto depth_stencil = ::create_info_depth_stencil(false);
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<false>();
-
-        VkPipelineColorBlendStateCreateInfo color_blending{};
-        {
-            color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            color_blending.logicOpEnable = VK_FALSE;
-            color_blending.logicOp = VK_LOGIC_OP_COPY;
-            color_blending.attachmentCount = color_blend_attachment_states.size();
-            color_blending.pAttachments = color_blend_attachment_states.data();
-            color_blending.blendConstants[0] = 0;
-            color_blending.blendConstants[1] = 0;
-            color_blending.blendConstants[2] = 0;
-            color_blending.blendConstants[3] = 0;
-        }
+        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1052,96 +1025,27 @@ namespace { namespace fillscreen {
         ::ShaderModule frag_shader{ "asset/spv/fill_screen_frag.spv", device };
         const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
 
-        std::vector<VkDynamicState> dynamic_states{
+        std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
+        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
 
-        VkPipelineDynamicStateCreateInfo dynamic_state_info{};
-        {
-            dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamic_state_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
-            dynamic_state_info.pDynamicStates = dynamic_states.data();
-        }
+        const auto vertex_input_info = ::create_info_vertex_input_states();
 
-        VkPipelineVertexInputStateCreateInfo vertex_input_info{};
-        {
-            vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertex_input_info.vertexBindingDescriptionCount = 0;
-            vertex_input_info.pVertexBindingDescriptions = nullptr;
-            vertex_input_info.vertexAttributeDescriptionCount = 0;
-            vertex_input_info.pVertexAttributeDescriptions = nullptr;
-        }
+        const auto input_assembly = ::create_info_input_assembly();
 
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-        {
-            input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            input_assembly.primitiveRestartEnable = VK_FALSE;
-        }
+        const auto viewport_state = ::create_info_viewport_state();
 
-        VkPipelineViewportStateCreateInfo viewport_state{};
-        {
-            viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-            viewport_state.viewportCount = 1;
-            viewport_state.scissorCount = 1;
-        }
+        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
 
-        VkPipelineRasterizationStateCreateInfo rasterizer{};
-        {
-            rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-            rasterizer.depthClampEnable = VK_FALSE;
-            rasterizer.rasterizerDiscardEnable = VK_FALSE;
-            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-            rasterizer.lineWidth = 1;
-            rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-            rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-            rasterizer.depthBiasEnable = VK_FALSE;
-            rasterizer.depthBiasConstantFactor = 0;
-            rasterizer.depthBiasClamp = 0;
-            rasterizer.depthBiasSlopeFactor = 0;
-        }
+        const auto multisampling = ::create_info_multisampling();
 
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        {
-            multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisampling.sampleShadingEnable = VK_FALSE;
-            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-            multisampling.minSampleShading = 1;
-            multisampling.pSampleMask = nullptr;
-            multisampling.alphaToCoverageEnable = VK_FALSE;
-            multisampling.alphaToOneEnable = VK_FALSE;
-        }
-
-        VkPipelineDepthStencilStateCreateInfo depth_stencil{};
-        {
-            depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-            depth_stencil.depthTestEnable = VK_FALSE;
-            depth_stencil.depthWriteEnable = VK_FALSE;
-            depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
-            depth_stencil.depthBoundsTestEnable = VK_FALSE;
-            depth_stencil.minDepthBounds = 0;
-            depth_stencil.maxDepthBounds = 0;
-            depth_stencil.stencilTestEnable = VK_FALSE;
-            depth_stencil.front = {};
-            depth_stencil.back = {};
-        }
+        const auto depth_stencil = ::create_info_depth_stencil(false);
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<false>();
-
-        VkPipelineColorBlendStateCreateInfo color_blending{};
-        {
-            color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            color_blending.logicOpEnable = VK_FALSE;
-            color_blending.logicOp = VK_LOGIC_OP_COPY;
-            color_blending.attachmentCount = color_blend_attachment_states.size();
-            color_blending.pAttachments = color_blend_attachment_states.data();
-            color_blending.blendConstants[0] = 0;
-            color_blending.blendConstants[1] = 0;
-            color_blending.blendConstants[2] = 0;
-            color_blending.blendConstants[3] = 0;
-        }
+        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1368,96 +1272,27 @@ namespace { namespace overlay {
         ::ShaderModule frag_shader{ "asset/spv/overlay_frag.spv", device };
         const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
 
-        std::vector<VkDynamicState> dynamic_states{
+        std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
+        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
 
-        VkPipelineDynamicStateCreateInfo dynamic_state_info{};
-        {
-            dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamic_state_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
-            dynamic_state_info.pDynamicStates = dynamic_states.data();
-        }
+        const auto vertex_input_info = ::create_info_vertex_input_states();
 
-        VkPipelineVertexInputStateCreateInfo vertex_input_info{};
-        {
-            vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertex_input_info.vertexBindingDescriptionCount = 0;
-            vertex_input_info.pVertexBindingDescriptions = nullptr;
-            vertex_input_info.vertexAttributeDescriptionCount = 0;
-            vertex_input_info.pVertexAttributeDescriptions = nullptr;
-        }
+        const auto input_assembly = ::create_info_input_assembly();
 
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-        {
-            input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            input_assembly.primitiveRestartEnable = VK_FALSE;
-        }
+        const auto viewport_state = ::create_info_viewport_state();
 
-        VkPipelineViewportStateCreateInfo viewport_state{};
-        {
-            viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-            viewport_state.viewportCount = 1;
-            viewport_state.scissorCount = 1;
-        }
+        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
 
-        VkPipelineRasterizationStateCreateInfo rasterizer{};
-        {
-            rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-            rasterizer.depthClampEnable = VK_FALSE;
-            rasterizer.rasterizerDiscardEnable = VK_FALSE;
-            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-            rasterizer.lineWidth = 1;
-            rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-            rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-            rasterizer.depthBiasEnable = VK_FALSE;
-            rasterizer.depthBiasConstantFactor = 0;
-            rasterizer.depthBiasClamp = 0;
-            rasterizer.depthBiasSlopeFactor = 0;
-        }
+        const auto multisampling = ::create_info_multisampling();
 
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        {
-            multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisampling.sampleShadingEnable = VK_FALSE;
-            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-            multisampling.minSampleShading = 1;
-            multisampling.pSampleMask = nullptr;
-            multisampling.alphaToCoverageEnable = VK_FALSE;
-            multisampling.alphaToOneEnable = VK_FALSE;
-        }
-
-        VkPipelineDepthStencilStateCreateInfo depth_stencil{};
-        {
-            depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-            depth_stencil.depthTestEnable = VK_FALSE;
-            depth_stencil.depthWriteEnable = VK_FALSE;
-            depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
-            depth_stencil.depthBoundsTestEnable = VK_FALSE;
-            depth_stencil.minDepthBounds = 0;
-            depth_stencil.maxDepthBounds = 0;
-            depth_stencil.stencilTestEnable = VK_FALSE;
-            depth_stencil.front = {};
-            depth_stencil.back = {};
-        }
+        const auto depth_stencil = ::create_info_depth_stencil(false);
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<true>();
-
-        VkPipelineColorBlendStateCreateInfo color_blending{};
-        {
-            color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            color_blending.logicOpEnable = VK_FALSE;
-            color_blending.logicOp = VK_LOGIC_OP_COPY;
-            color_blending.attachmentCount = color_blend_attachment_states.size();
-            color_blending.pAttachments = color_blend_attachment_states.data();
-            color_blending.blendConstants[0] = 0;
-            color_blending.blendConstants[1] = 0;
-            color_blending.blendConstants[2] = 0;
-            color_blending.blendConstants[3] = 0;
-        }
+        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
