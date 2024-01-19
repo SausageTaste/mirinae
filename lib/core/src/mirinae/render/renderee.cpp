@@ -558,8 +558,8 @@ namespace mirinae {
 
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
-            builder.add_combinded_image_sampler(image_view, texture_sampler, desc_sets_.at(i));
-            builder.apply_all(vulkan_device.logi_device());
+            builder.add_combinded_image_sampler(image_view, texture_sampler, desc_sets_.at(i))
+                .apply_all(vulkan_device.logi_device());
         }
 
         vert_index_pair_.init(
@@ -745,8 +745,8 @@ namespace mirinae {
 
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
-            builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i));
-            builder.apply_all(device_.logi_device());
+            builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i))
+                .apply_all(device_.logi_device());
         }
     }
 

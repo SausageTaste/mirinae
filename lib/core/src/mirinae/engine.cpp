@@ -106,10 +106,10 @@ namespace {
 
             for (size_t i = 0; i < max_flight_count; i++) {
                 mirinae::DescWriteInfoBuilder builder;
-                builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i));
-                builder.add_combinded_image_sampler(color_view, sampler, desc_sets_.at(i));
-                builder.add_combinded_image_sampler(mask_view, sampler, desc_sets_.at(i));
-                builder.apply_all(device_.logi_device());
+                builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i))
+                    .add_combinded_image_sampler(color_view, sampler, desc_sets_.at(i))
+                    .add_combinded_image_sampler(mask_view, sampler, desc_sets_.at(i))
+                    .apply_all(device_.logi_device());
             }
         }
 
@@ -166,10 +166,10 @@ namespace {
 
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 mirinae::DescWriteInfoBuilder builder;
-                builder.add_combinded_image_sampler(fbufs.depth().image_view(), texture_sampler, desc_sets_.at(i));
-                builder.add_combinded_image_sampler(fbufs.albedo().image_view(), texture_sampler, desc_sets_.at(i));
-                builder.add_combinded_image_sampler(fbufs.normal().image_view(), texture_sampler, desc_sets_.at(i));
-                builder.apply_all(device.logi_device());
+                builder.add_combinded_image_sampler(fbufs.depth().image_view(), texture_sampler, desc_sets_.at(i))
+                    .add_combinded_image_sampler(fbufs.albedo().image_view(), texture_sampler, desc_sets_.at(i))
+                    .add_combinded_image_sampler(fbufs.normal().image_view(), texture_sampler, desc_sets_.at(i))
+                    .apply_all(device.logi_device());
             }
         }
 
@@ -197,8 +197,8 @@ namespace {
 
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 mirinae::DescWriteInfoBuilder builder;
-                builder.add_combinded_image_sampler(fbufs.composition().image_view(), texture_sampler, desc_sets_.at(i));
-                builder.apply_all(device.logi_device());
+                builder.add_combinded_image_sampler(fbufs.composition().image_view(), texture_sampler, desc_sets_.at(i))
+                    .apply_all(device.logi_device());
             }
         }
 

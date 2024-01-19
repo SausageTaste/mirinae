@@ -52,9 +52,9 @@ namespace mirinae {
     class DescWriteInfoBuilder {
 
     public:
-        void add_uniform_buffer(const mirinae::Buffer& buffer, VkDescriptorSet descset);
-        void add_combinded_image_sampler(VkImageView image_view, VkSampler sampler, VkDescriptorSet descset);
-        void add_input_attachment(VkImageView image_view, VkDescriptorSet descset);
+        DescWriteInfoBuilder& add_uniform_buffer(const mirinae::Buffer& buffer, VkDescriptorSet descset);
+        DescWriteInfoBuilder& add_combinded_image_sampler(VkImageView image_view, VkSampler sampler, VkDescriptorSet descset);
+        DescWriteInfoBuilder& add_input_attachment(VkImageView image_view, VkDescriptorSet descset);
 
         void apply_all(VkDevice logi_device);
 
