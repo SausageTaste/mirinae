@@ -7,9 +7,6 @@
 
 namespace mirinae {
 
-    using Angle = sung::TAngle<float>;
-
-
     template <typename T>
     glm::tquat<T> rotate_quat(const glm::tquat<T>& q, sung::TAngle<T> angle, const glm::tvec3<T>& axis)  {
         return glm::normalize(glm::angleAxis<T>(angle.rad(), axis) * q);
@@ -22,7 +19,7 @@ namespace mirinae {
     public:
         using Angle = sung::TAngle<T>;
 
-        void rotate(sung::TAngle<T> angle, const glm::tvec3<T>& axis) {
+        void rotate(Angle angle, const glm::tvec3<T>& axis) {
             rot_ = rotate_quat(rot_, angle, axis);
         }
 
@@ -50,6 +47,8 @@ namespace mirinae {
     class PerspectiveCamera {
 
     public:
+        using Angle = sung::TAngle<T>;
+
         glm::tmat4x4<T> make_proj_mat(T aspect_ratio) const {
             auto m = glm::perspective(fov_.rad(), aspect_ratio, near_, far_);
             m[1][1] *= -1;
@@ -60,8 +59,7 @@ namespace mirinae {
             return this->make_proj_mat(view_width / view_height);
         }
 
-    public:
-        sung::TAngle<T> fov_ = sung::TAngle<T>::from_deg(80);
+        Angle fov_ = Angle::from_deg(80);
         T near_ = 0.1;
         T far_ = 1000;
 
