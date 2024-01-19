@@ -58,7 +58,7 @@ namespace mirinae {
 // DescWriteInfoBuilder
 namespace mirinae {
 
-    void DescWriteInfoBuilder::add_uniform_buffer(const mirinae::Buffer& buffer, VkDescriptorSet descset) {
+    DescWriteInfoBuilder& DescWriteInfoBuilder::add_uniform_buffer(const mirinae::Buffer& buffer, VkDescriptorSet descset) {
         auto& buffer_info = buffer_info_.emplace_back();
         buffer_info.buffer = buffer.buffer();
         buffer_info.offset = 0;
@@ -72,9 +72,11 @@ namespace mirinae {
         write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         write.descriptorCount = 1;
         write.pBufferInfo = &buffer_info;
+
+        return *this;
     }
 
-    void DescWriteInfoBuilder::add_combinded_image_sampler(VkImageView image_view, VkSampler sampler, VkDescriptorSet descset) {
+    DescWriteInfoBuilder& DescWriteInfoBuilder::add_combinded_image_sampler(VkImageView image_view, VkSampler sampler, VkDescriptorSet descset) {
         auto& image_info = image_info_.emplace_back();
         image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         image_info.imageView = image_view;
@@ -88,9 +90,11 @@ namespace mirinae {
         write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         write.descriptorCount = 1;
         write.pImageInfo = &image_info;
+
+        return *this;
     }
 
-    void DescWriteInfoBuilder::add_input_attachment(VkImageView image_view, VkDescriptorSet descset) {
+    DescWriteInfoBuilder& DescWriteInfoBuilder::add_input_attachment(VkImageView image_view, VkDescriptorSet descset) {
         auto& image_info = image_info_.emplace_back();
         image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         image_info.imageView = image_view;
@@ -104,6 +108,8 @@ namespace mirinae {
         write.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
         write.descriptorCount = 1;
         write.pImageInfo = &image_info;
+
+        return *this;
     }
 
     void DescWriteInfoBuilder::apply_all(VkDevice logi_device) {
