@@ -237,7 +237,7 @@ namespace {
             }
         }
 
-        VkShaderModule get() {
+        VkShaderModule get() const {
             return handle_;
         }
 
@@ -260,6 +260,31 @@ namespace {
 
     };
 
+
+    std::array<VkPipelineShaderStageCreateInfo, 2> create_info_shader_stages_pair(const ShaderModule& vertex, const ShaderModule& fragment) {
+        std::array<VkPipelineShaderStageCreateInfo, 2> output{};
+        {
+            auto& shader_info = output[0];
+            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+            shader_info.module = vertex.get();
+            shader_info.pName = "main";
+        }
+        {
+            auto& shader_info = output[1];
+            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+            shader_info.module = fragment.get();
+            shader_info.pName = "main";
+        }
+        return output;
+    }
+
+}
+
+
+// Pipeline builders
+namespace {
 
     class ColorBlendAttachmentStateBuilder {
 
@@ -393,22 +418,7 @@ namespace { namespace gbuf {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/gbuf_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/gbuf_frag.spv", device };
-
-        std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-        {
-            auto& shader_info = shaderStages.emplace_back();
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_info.module = vert_shader.get();
-            shader_info.pName = "main";
-        }
-        {
-            auto& shader_info = shaderStages.emplace_back();
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_info.module = frag_shader.get();
-            shader_info.pName = "main";
-        }
+        const auto shaderStages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
 
         std::vector<VkDynamicState> dynamicStates{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -731,22 +741,7 @@ namespace { namespace composition {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/composition_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/composition_frag.spv", device };
-
-        std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-        {
-            auto& shader_info = shaderStages.emplace_back();
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_info.module = vert_shader.get();
-            shader_info.pName = "main";
-        }
-        {
-            auto& shader_info = shaderStages.emplace_back();
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_info.module = frag_shader.get();
-            shader_info.pName = "main";
-        }
+        const auto shaderStages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
 
         std::vector<VkDynamicState> dynamicStates{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -1055,22 +1050,7 @@ namespace { namespace fillscreen {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/fill_screen_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/fill_screen_frag.spv", device };
-
-        std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-        {
-            auto& shader_info = shaderStages.emplace_back();
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_info.module = vert_shader.get();
-            shader_info.pName = "main";
-        }
-        {
-            auto& shader_info = shaderStages.emplace_back();
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_info.module = frag_shader.get();
-            shader_info.pName = "main";
-        }
+        const auto shaderStages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
 
         std::vector<VkDynamicState> dynamicStates{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -1386,22 +1366,7 @@ namespace { namespace overlay {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/overlay_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/overlay_frag.spv", device };
-
-        std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-        {
-            auto& shader_info = shaderStages.emplace_back();
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_info.module = vert_shader.get();
-            shader_info.pName = "main";
-        }
-        {
-            auto& shader_info = shaderStages.emplace_back();
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_info.module = frag_shader.get();
-            shader_info.pName = "main";
-        }
+        const auto shaderStages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
 
         std::vector<VkDynamicState> dynamicStates{
             VK_DYNAMIC_STATE_VIEWPORT,
