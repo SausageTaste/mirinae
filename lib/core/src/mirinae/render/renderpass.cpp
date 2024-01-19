@@ -147,6 +147,58 @@ namespace {
     class AttachmentDescBuilder {
 
     public:
+        class ThinView {
+
+        public:
+            ThinView(VkAttachmentDescription& desc) : desc_{ desc } {}
+
+            ~ThinView() = default;
+
+            ThinView& format(VkFormat format) {
+                desc_.format = format;
+                return *this;
+            }
+
+            ThinView& samples(VkSampleCountFlagBits samples) {
+                desc_.samples = samples;
+                return *this;
+            }
+
+            ThinView& load_op(VkAttachmentLoadOp load_op) {
+                desc_.loadOp = load_op;
+                return *this;
+            }
+
+            ThinView& store_op(VkAttachmentStoreOp store_op) {
+                desc_.storeOp = store_op;
+                return *this;
+            }
+
+            ThinView& stencil_load_op(VkAttachmentLoadOp stencil_load_op) {
+                desc_.stencilLoadOp = stencil_load_op;
+                return *this;
+            }
+
+            ThinView& stencil_store_op(VkAttachmentStoreOp stencil_store_op) {
+                desc_.stencilStoreOp = stencil_store_op;
+                return *this;
+            }
+
+            ThinView& initial_layout(VkImageLayout initial_layout) {
+                desc_.initialLayout = initial_layout;
+                return *this;
+            }
+
+            ThinView& final_layout(VkImageLayout final_layout) {
+                desc_.finalLayout = final_layout;
+                return *this;
+            }
+
+        private:
+            VkAttachmentDescription& desc_;
+
+        };
+
         const VkAttachmentDescription* data() const {
             return attachments_.data();
         }
@@ -155,7 +207,7 @@ namespace {
             return static_cast<uint32_t>(attachments_.size());
         }
 
-        VkAttachmentDescription& add(
+        ThinView add(
             const VkFormat format,
             const VkImageLayout final_layout,
             const VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -177,7 +229,7 @@ namespace {
             added.initialLayout = initial_layout;
             added.finalLayout = final_layout;
 
-            return added;
+            return ThinView{ added };
         }
 
     private:
@@ -1200,8 +1252,7 @@ namespace { namespace overlay {
         attachments.add(surface,
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            VK_ATTACHMENT_LOAD_OP_LOAD,
-            VK_ATTACHMENT_STORE_OP_STORE
+            VK_ATTACHMENT_LOAD_OP_LOAD
         );
 
         ::AttachmentRefBuilder color_attachment_refs;
