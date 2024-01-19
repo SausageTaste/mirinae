@@ -12,6 +12,7 @@ namespace mirinae {
             depth_ = tex_man.create_depth(width, height);
             albedo_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "albedo");
             normal_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "normal");
+            material_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "material");
             composition_ = tex_man.create_attachment(width, height, VK_FORMAT_B10G11R11_UFLOAT_PACK32, mirinae::FbufUsage::color_attachment, "composition");
         }
 
@@ -22,12 +23,14 @@ namespace mirinae {
         mirinae::ITexture& depth() { return *depth_; }
         mirinae::ITexture& albedo() { return *albedo_; }
         mirinae::ITexture& normal() { return *normal_; }
+        mirinae::ITexture& material() { return *material_; }
         mirinae::ITexture& composition() { return *composition_; }
 
     private:
         std::unique_ptr<mirinae::ITexture> depth_;
         std::unique_ptr<mirinae::ITexture> albedo_;
         std::unique_ptr<mirinae::ITexture> normal_;
+        std::unique_ptr<mirinae::ITexture> material_;
         std::unique_ptr<mirinae::ITexture> composition_;
 
     };

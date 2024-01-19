@@ -8,12 +8,14 @@ layout(location = 0) out vec4 f_color;
 layout(set = 0, binding = 0) uniform sampler2D u_depth_map;
 layout(set = 0, binding = 1) uniform sampler2D u_albedo_map;
 layout(set = 0, binding = 2) uniform sampler2D u_normal_map;
+layout(set = 0, binding = 3) uniform sampler2D u_material_map;
 
 
 void main() {
     vec4 depth_texel = texture(u_depth_map, v_uv_coord);
     vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
     vec4 normal_texel = texture(u_normal_map, v_uv_coord);
+    vec4 material_texel = texture(u_material_map, v_uv_coord);
 
     vec3 normal = normalize(normal_texel.xyz * 2 - 1);
     vec3 light_dir = normalize(vec3(0.5, 1, 0.5));
