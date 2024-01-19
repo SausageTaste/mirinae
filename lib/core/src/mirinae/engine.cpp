@@ -88,8 +88,15 @@ namespace {
             this->destroy();
         }
 
-        void init(uint32_t max_flight_count, mirinae::DesclayoutManager& desclayouts) {
-            desc_pool_.init(max_flight_count, device_.logi_device());
+        void init(
+            uint32_t max_flight_count,
+            VkImageView color_view,
+            VkImageView mask_view,
+            VkSampler sampler,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::TextureManager& tex_man
+        ) {
+            desc_pool_.init(max_flight_count * 2, device_.logi_device());
             desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("overlay:main"), device_.logi_device());
 
             for (uint32_t i = 0; i < max_flight_count; ++i) {
@@ -100,6 +107,8 @@ namespace {
             for (size_t i = 0; i < max_flight_count; i++) {
                 mirinae::DescWriteInfoBuilder builder;
                 builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i));
+                builder.add_combinded_image_sampler(color_view, sampler, desc_sets_.at(i));
+                builder.add_combinded_image_sampler(mask_view, sampler, desc_sets_.at(i));
                 builder.apply_all(device_.logi_device());
             }
         }
@@ -258,7 +267,14 @@ namespace {
 
             {
                 auto& overlay = draw_sheet_.overlays_.emplace_back(device_);
-                overlay.init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                overlay.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    fbuf_images_.composition().image_view(),
+                    tex_man_.request("asset/textures/white.png")->image_view(),
+                    texture_sampler_.get(),
+                    desclayout_,
+                    tex_man_
+                );
             }
         }
 
