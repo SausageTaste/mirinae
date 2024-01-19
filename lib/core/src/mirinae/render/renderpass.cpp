@@ -272,16 +272,25 @@ namespace {
             return static_cast<uint32_t>(data_.size());
         }
 
+        template <bool TBlendingEnabled>
         void add() {
             auto& added = data_.emplace_back();
             added.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-            added.blendEnable = VK_FALSE;
-            added.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-            added.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
             added.colorBlendOp = VK_BLEND_OP_ADD;
             added.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
             added.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
             added.alphaBlendOp = VK_BLEND_OP_ADD;
+
+            if constexpr (TBlendingEnabled) {
+                added.blendEnable = VK_TRUE;
+                added.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+                added.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            }
+            else {
+                added.blendEnable = VK_FALSE;
+                added.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+                added.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+            }
         }
 
     private:
@@ -479,8 +488,8 @@ namespace { namespace gbuf {
         }
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add();
-        color_blend_attachment_states.add();
+        color_blend_attachment_states.add<false>();
+        color_blend_attachment_states.add<false>();
 
         VkPipelineColorBlendStateCreateInfo colorBlending{};
         {
@@ -815,7 +824,7 @@ namespace { namespace composition {
         }
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add();
+        color_blend_attachment_states.add<false>();
 
         VkPipelineColorBlendStateCreateInfo colorBlending{};
         {
@@ -1139,7 +1148,7 @@ namespace { namespace fillscreen {
         }
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add();
+        color_blend_attachment_states.add<false>();
 
         VkPipelineColorBlendStateCreateInfo colorBlending{};
         {
@@ -1297,6 +1306,8 @@ namespace { namespace overlay {
     VkDescriptorSetLayout create_desclayout_main(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
         DescLayoutBuilder builder{ "overlay:main" };
         builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_OverlayMain
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // color
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // mask
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
@@ -1468,7 +1479,7 @@ namespace { namespace overlay {
         }
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add();
+        color_blend_attachment_states.add<true>();
 
         VkPipelineColorBlendStateCreateInfo colorBlending{};
         {
