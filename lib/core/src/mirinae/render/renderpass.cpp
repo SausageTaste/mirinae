@@ -504,15 +504,17 @@ namespace { namespace gbuf {
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
-    VkRenderPass create_renderpass(VkFormat depth_format, VkFormat albedo_format, VkFormat normal_format, VkDevice logi_device) {
+    VkRenderPass create_renderpass(VkFormat depth, VkFormat albedo, VkFormat normal, VkFormat material, VkDevice logi_device) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(depth_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        attachments.add(albedo_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        attachments.add(normal_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        attachments.add(depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        attachments.add(albedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        attachments.add(normal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        attachments.add(material, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
         color_attachment_refs.add(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // albedo
         color_attachment_refs.add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // normal
+        color_attachment_refs.add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // material
 
         const VkAttachmentReference depth_attachment_ref{ 0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
@@ -606,6 +608,7 @@ namespace { namespace gbuf {
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<false>();
         color_blend_attachment_states.add<false>();
+        color_blend_attachment_states.add<false>();
         const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
@@ -652,16 +655,19 @@ namespace { namespace gbuf {
                 fbuf_bundle.depth().format(),
                 fbuf_bundle.albedo().format(),
                 fbuf_bundle.normal().format(),
+                fbuf_bundle.material().format(),
             };
 
             clear_values_.at(0).depthStencil = { 1.0f, 0 };
             clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             clear_values_.at(2).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            clear_values_.at(3).color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
             renderpass_ = create_renderpass(
                 formats_.at(0),
                 formats_.at(1),
                 formats_.at(2),
+                formats_.at(3),
                 device.logi_device()
             );
             layout_ = create_pipeline_layout(
@@ -685,6 +691,7 @@ namespace { namespace gbuf {
                         fbuf_bundle.depth().image_view(),
                         fbuf_bundle.albedo().image_view(),
                         fbuf_bundle.normal().image_view(),
+                        fbuf_bundle.material().image_view(),
                     }
                 ));
             }
@@ -745,8 +752,8 @@ namespace { namespace gbuf {
         VkRenderPass renderpass_ = VK_NULL_HANDLE;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout layout_ = VK_NULL_HANDLE;
-        std::array<VkFormat, 3> formats_;
-        std::array<VkClearValue, 3> clear_values_;
+        std::array<VkFormat, 4> formats_;
+        std::array<VkClearValue, 4> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
 
     };
@@ -762,6 +769,7 @@ namespace { namespace composition {
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // depth
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // albedo
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // normal
+        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // material
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 

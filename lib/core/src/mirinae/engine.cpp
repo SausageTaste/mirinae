@@ -169,6 +169,7 @@ namespace {
                 builder.add_combinded_image_sampler(fbufs.depth().image_view(), texture_sampler, desc_sets_.at(i))
                     .add_combinded_image_sampler(fbufs.albedo().image_view(), texture_sampler, desc_sets_.at(i))
                     .add_combinded_image_sampler(fbufs.normal().image_view(), texture_sampler, desc_sets_.at(i))
+                    .add_combinded_image_sampler(fbufs.material().image_view(), texture_sampler, desc_sets_.at(i))
                     .apply_all(device.logi_device());
             }
         }
