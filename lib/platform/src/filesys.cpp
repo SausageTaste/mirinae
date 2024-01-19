@@ -8,6 +8,11 @@
 // FilesysStd
 namespace {
 
+    std::filesystem::path get_first_dir_of_path(const std::filesystem::path& path) {
+        auto it = path.begin();
+        return *it;
+    }
+
     std::optional<std::filesystem::path> find_asset_folder() {
         std::filesystem::path cur_path = ".";
 
@@ -28,13 +33,13 @@ namespace {
     class FilesysStd : public mirinae::IFilesys {
 
     public:
-        FilesysStd(const std::string& resources_dir)
+        FilesysStd(const mirinae::respath_t& resources_dir)
             : resources_dir_{ resources_dir }
         {
 
         }
 
-        bool read_file_to_vector(const std::string& res_path, std::vector<uint8_t>& output) override {
+        bool read_file_to_vector(const mirinae::respath_t& res_path, std::vector<uint8_t>& output) override {
             using namespace std::string_literals;
 
             const auto full_path = this->resolve_res_path(res_path);
@@ -54,8 +59,8 @@ namespace {
             return true;
         }
 
-        std::optional<std::string> resolve_res_path(const std::string& res_path) const {
-            if (res_path.rfind("asset", 0) == 0) {
+        std::optional<mirinae::respath_t> resolve_res_path(const mirinae::respath_t& res_path) const {
+            if (::get_first_dir_of_path(res_path).u8string() == "asset") {
                 std::filesystem::path path = res_path;
                 auto it = path.begin(); ++it;
                 std::filesystem::path output = ::find_asset_folder().value();
@@ -63,10 +68,10 @@ namespace {
                     output /= *it;
                     ++it;
                 }
-                return output.u8string();
+                return output;
             }
             else {
-                return (resources_dir_ / res_path).u8string();
+                return (resources_dir_ / res_path);
             }
         }
 
@@ -81,13 +86,9 @@ namespace {
 namespace mirinae {
 
     respath_t replace_file_name_ext(const respath_t& res_path, const respath_t& new_file_name_ext) {
-        const auto last_slash = res_path.find_last_of('/');
-        if (std::string::npos == last_slash) {
-            return new_file_name_ext;
-        }
-        else {
-            return res_path.substr(0, last_slash + 1) + new_file_name_ext;
-        }
+        auto output = res_path;
+        output.replace_filename(new_file_name_ext);
+        return output;
     }
 
 }
@@ -95,7 +96,7 @@ namespace mirinae {
 
 namespace mirinae {
 
-    std::unique_ptr<IFilesys> create_filesys_std(const std::string& resources_dir) {
+    std::unique_ptr<IFilesys> create_filesys_std(const respath_t& resources_dir) {
         return std::make_unique<FilesysStd>(resources_dir);
     }
 

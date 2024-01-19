@@ -9,7 +9,7 @@
 
 namespace {
 
-    std::string get_windows_documents_path(const char* app_name) {
+    std::filesystem::path get_windows_documents_path(const char* app_name) {
         if (auto pPath = getenv("USERPROFILE")) {
             auto path = std::filesystem::path(pPath) / "Documents" / app_name;
 
@@ -19,7 +19,7 @@ namespace {
                 }
             }
 
-            return path.u8string();
+            return path;
         }
 
         throw std::runtime_error("Failed to get user profile path");
