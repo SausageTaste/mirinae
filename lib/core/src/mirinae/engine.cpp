@@ -439,6 +439,65 @@ namespace {
             }
 
             {
+                auto& rp = *rp_transparent_;
+
+                VkRenderPassBeginInfo renderPassInfo{};
+                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderPassInfo.renderPass = rp.renderpass();
+                renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
+                renderPassInfo.renderArea.offset = { 0, 0 };
+                renderPassInfo.renderArea.extent = fbuf_images_.extent();
+                renderPassInfo.clearValueCount = rp.clear_value_count();
+                renderPassInfo.pClearValues = rp.clear_values();
+
+                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
+
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = static_cast<float>(fbuf_images_.width());
+                viewport.height = static_cast<float>(fbuf_images_.height());
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = fbuf_images_.extent();
+                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                for (auto& pair : draw_sheet_.ren_pairs_) {
+                    for (auto& unit : pair.model_->render_units_alpha_) {
+                        auto unit_desc = unit.get_desc_set(framesync_.get_frame_index().get());
+                        vkCmdBindDescriptorSets(
+                            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            rp.pipeline_layout(),
+                            0,
+                            1, &unit_desc,
+                            0, nullptr
+                        );
+                        unit.record_bind_vert_buf(cur_cmd_buf);
+
+                        for (auto& actor : pair.actors_) {
+                            auto actor_desc = actor->get_desc_set(framesync_.get_frame_index().get());
+                            vkCmdBindDescriptorSets(
+                                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                rp.pipeline_layout(),
+                                1,
+                                1, &actor_desc,
+                                0, nullptr
+                            );
+
+                            vkCmdDrawIndexed(cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0);
+                        }
+                    }
+                }
+
+                vkCmdEndRenderPass(cur_cmd_buf);
+            }
+
+            {
                 auto& rp = *rp_fillscreen_;
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -592,6 +651,7 @@ namespace {
 
             rp_gbuf_ = mirinae::create_gbuf(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_composition_ = mirinae::create_composition(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
+            rp_transparent_ = mirinae::create_transparent(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_fillscreen_ = mirinae::create_fillscreen(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
             rp_overlay_ = mirinae::create_overlay(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
 
@@ -607,6 +667,7 @@ namespace {
 
             rp_overlay_.reset();
             rp_fillscreen_.reset();
+            rp_transparent_.reset();
             rp_composition_.reset();
             rp_gbuf_.reset();
 
@@ -652,6 +713,7 @@ namespace {
         mirinae::FbufImageBundle fbuf_images_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
+        std::unique_ptr<mirinae::IRenderPassBundle> rp_transparent_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_fillscreen_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_overlay_;
         ::RpStatesComposition rp_states_composition_;
