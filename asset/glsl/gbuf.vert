@@ -11,14 +11,13 @@ layout(location = 2) out vec2 v_texcoord;
 
 layout(set = 1, binding = 0) uniform U_GbufModel {
     mat4 model;
-    mat4 view;
-    mat4 proj;
+    mat4 pvm;
 } u_gbuf_model;
 
 
 void main() {
     vec4 world_pos = u_gbuf_model.model * vec4(i_pos, 1);
-    gl_Position = (u_gbuf_model.proj * u_gbuf_model.view) * world_pos;
+    gl_Position = u_gbuf_model.pvm * vec4(i_pos, 1);
 
     v_normal = i_normal;
     v_world_pos = world_pos.xyz;

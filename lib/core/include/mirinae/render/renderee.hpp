@@ -112,7 +112,7 @@ namespace mirinae {
         void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
         void destroy();
 
-        void udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, VulkanMemoryAllocator mem_alloc);
+        void udpate_ubuf(uint32_t index, const U_GbufModel& data, VulkanMemoryAllocator mem_alloc);
         VkDescriptorSet get_desc_set(size_t index);
 
         TransformQuat<double> transform_;

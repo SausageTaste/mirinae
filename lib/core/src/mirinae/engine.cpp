@@ -235,6 +235,9 @@ namespace {
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
                 cmd_buf_.push_back(cmd_pool_.alloc(device_.logi_device()));
 
+            const glm::dvec3 world_shift = { 10000000000000, 1000000000000, 0 };
+            camera_view_.pos_ = world_shift;
+
             const std::vector<mirinae::respath_t> mesh_paths{
                 "sponza/sponza.dmd",
                 "artist/artist_de_subset.dmd",
@@ -260,8 +263,8 @@ namespace {
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     desclayout_
                 );
-                actor->transform_.pos_ = glm::vec3(i*3, 0, 0);
-                actor->transform_.scale_ = glm::vec3(model_scales[i]);
+                actor->transform_.pos_ = glm::dvec3(i*3, 0, 0) + world_shift;
+                actor->transform_.scale_ = glm::dvec3(model_scales[i]);
             }
 
             {
@@ -303,7 +306,11 @@ namespace {
 
                 for (auto& pair : draw_sheet_.ren_pairs_) {
                     for (auto& actor : pair.actors_) {
-                        actor->udpate_ubuf(framesync_.get_frame_index().get(), view_mat, proj_mat, device_.mem_alloc());
+                        mirinae::U_GbufModel ubuf_data;
+                        const auto model_mat = actor->transform_.make_model_mat();
+                        ubuf_data.model = model_mat;
+                        ubuf_data.pvm = proj_mat * view_mat * model_mat;
+                        actor->udpate_ubuf(framesync_.get_frame_index().get(), ubuf_data, device_.mem_alloc());
                     }
                 }
 
