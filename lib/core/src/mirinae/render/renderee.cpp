@@ -791,12 +791,9 @@ namespace mirinae {
         desc_pool_.destroy(device_.logi_device());
     }
 
-    void RenderActor::udpate_ubuf(uint32_t index, const glm::mat4& view_mat, const glm::mat4& proj_mat, VulkanMemoryAllocator mem_alloc) {
+    void RenderActor::udpate_ubuf(uint32_t index, const U_GbufModel& data, VulkanMemoryAllocator mem_alloc) {
         auto& ubuf = uniform_buf_.at(index);
-        ubuf_data_.model = transform_.make_model_mat();
-        ubuf_data_.view = view_mat;
-        ubuf_data_.proj = proj_mat;
-        ubuf.set_data(&ubuf_data_, sizeof(U_GbufModel), mem_alloc);
+        ubuf.set_data(&data, sizeof(U_GbufModel), mem_alloc);
     }
 
     VkDescriptorSet RenderActor::get_desc_set(size_t index) {
