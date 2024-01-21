@@ -82,6 +82,7 @@ namespace mirinae {
 
     public:
         std::vector<RenderUnit> render_units_;
+        std::vector<RenderUnit> render_units_alpha_;
         VulkanDevice& device_;
 
     };

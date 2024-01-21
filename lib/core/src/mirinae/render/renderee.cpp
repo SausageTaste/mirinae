@@ -597,6 +597,11 @@ namespace mirinae {
     RenderModel::~RenderModel() {
         for (auto& unit : render_units_)
             unit.destroy(device_.mem_alloc(), device_.logi_device());
+        render_units_.clear();
+
+        for (auto& unit : render_units_alpha_)
+            unit.destroy(device_.mem_alloc(), device_.logi_device());
+        render_units_alpha_.clear();
     }
 
 }
@@ -660,16 +665,30 @@ namespace mirinae {
                 if (!texture)
                     texture = tex_man.request("asset/textures/missing_texture.png");
 
-                auto& dst_unit = output->render_units_.emplace_back();
-                dst_unit.init(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    dst_vertices,
-                    texture->image_view(),
-                    texture_sampler_.get(),
-                    cmd_pool_,
-                    desclayouts,
-                    device_
-                );
+                if (src_unit.material_.transparency_) {
+                    auto& dst_unit = output->render_units_alpha_.emplace_back();
+                    dst_unit.init(
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
+                        dst_vertices,
+                        texture->image_view(),
+                        texture_sampler_.get(),
+                        cmd_pool_,
+                        desclayouts,
+                        device_
+                    );
+                }
+                else {
+                    auto& dst_unit = output->render_units_.emplace_back();
+                    dst_unit.init(
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
+                        dst_vertices,
+                        texture->image_view(),
+                        texture_sampler_.get(),
+                        cmd_pool_,
+                        desclayouts,
+                        device_
+                    );
+                }
             }
 
             for (const auto& src_unit : parsed_model.units_indexed_joint_) {
@@ -688,16 +707,30 @@ namespace mirinae {
                 if (!texture)
                     texture = tex_man.request("asset/textures/missing_texture.png");
 
-                auto& dst_unit = output->render_units_.emplace_back();
-                dst_unit.init(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    dst_vertices,
-                    texture->image_view(),
-                    texture_sampler_.get(),
-                    cmd_pool_,
-                    desclayouts,
-                    device_
-                );
+                if (src_unit.material_.transparency_) {
+                    auto& dst_unit = output->render_units_alpha_.emplace_back();
+                    dst_unit.init(
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
+                        dst_vertices,
+                        texture->image_view(),
+                        texture_sampler_.get(),
+                        cmd_pool_,
+                        desclayouts,
+                        device_
+                    );
+                }
+                else {
+                    auto& dst_unit = output->render_units_.emplace_back();
+                    dst_unit.init(
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
+                        dst_vertices,
+                        texture->image_view(),
+                        texture_sampler_.get(),
+                        cmd_pool_,
+                        desclayouts,
+                        device_
+                    );
+                }
             }
 
             models_[res_id] = output;
