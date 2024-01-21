@@ -237,12 +237,10 @@ namespace {
 
             const std::vector<mirinae::respath_t> mesh_paths{
                 "sponza/sponza.dmd",
-                "honoka sugar perfume/DOAXVV Honoka - Sugar Perfume.dmd",
                 "artist/artist_de_subset.dmd",
             };
             const std::vector<float> model_scales{
                 0.01f,
-                1,
                 1,
             };
 
@@ -270,7 +268,7 @@ namespace {
                 auto& overlay = draw_sheet_.overlays_.emplace_back(device_);
                 overlay.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    fbuf_images_.composition().image_view(),
+                    tex_man_.request("asset/textures/lorem_ipsum.png")->image_view(),
                     tex_man_.request("asset/textures/white.png")->image_view(),
                     texture_sampler_.get(),
                     desclayout_,
