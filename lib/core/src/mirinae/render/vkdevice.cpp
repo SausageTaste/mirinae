@@ -702,14 +702,6 @@ namespace mirinae {
         return pimpl_->phys_device_.graphics_family_index();
     }
 
-    bool VulkanDevice::is_anisotropic_filtering_supported() const {
-        return pimpl_->phys_device_.is_anisotropic_filtering_supported();
-    }
-
-    float VulkanDevice::max_sampler_anisotropy() const {
-        return pimpl_->phys_device_.max_sampler_anisotropy();
-    }
-
     VkFormat VulkanDevice::find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const {
         return pimpl_->phys_device_.find_supported_format(candidates, tiling, features);
     }
@@ -821,6 +813,66 @@ namespace mirinae {
             default:
                 return std::nullopt;
         }
+    }
+
+}
+
+
+// Sampler
+namespace mirinae {
+
+    Sampler::~Sampler() {
+        this->destroy();
+    }
+
+    void Sampler::reset(VkSampler sampler) {
+        this->destroy();
+        handle_ = sampler;
+    }
+
+    void Sampler::destroy() {
+        if (VK_NULL_HANDLE != handle_) {
+            vkDestroySampler(device_.logi_device(), handle_, nullptr);
+            handle_ = VK_NULL_HANDLE;
+        }
+    }
+
+}
+
+
+// SamplerBuilder
+namespace mirinae {
+
+    SamplerBuilder::SamplerBuilder()
+        : create_info_({})
+    {
+        create_info_.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        create_info_.magFilter = VK_FILTER_LINEAR;
+        create_info_.minFilter = VK_FILTER_LINEAR;
+        create_info_.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        create_info_.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        create_info_.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        create_info_.anisotropyEnable = VK_FALSE;
+        create_info_.maxAnisotropy = 0;
+        create_info_.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        create_info_.unnormalizedCoordinates = VK_FALSE;
+        create_info_.compareEnable = VK_FALSE;
+        create_info_.compareOp = VK_COMPARE_OP_ALWAYS;
+        create_info_.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        create_info_.mipLodBias = 0;
+        create_info_.minLod = 0;
+        create_info_.maxLod = VK_LOD_CLAMP_NONE;
+    }
+
+    VkSampler SamplerBuilder::build(VulkanDevice& device) {
+        create_info_.anisotropyEnable = device.pimpl_->phys_device_.is_anisotropic_filtering_supported() ? VK_TRUE : VK_FALSE;
+        create_info_.maxAnisotropy = device.pimpl_->phys_device_.max_sampler_anisotropy();
+
+        VkSampler output = VK_NULL_HANDLE;
+        if (vkCreateSampler(device.logi_device(), &create_info_, nullptr, &output) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture sampler!");
+        }
+        return output;
     }
 
 }

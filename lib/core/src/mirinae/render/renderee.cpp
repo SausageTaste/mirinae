@@ -615,18 +615,15 @@ namespace mirinae {
     public:
         Pimpl(VulkanDevice& device)
             : device_(device)
+            , texture_sampler_(device)
         {
-            texture_sampler_.init(
-                device_.is_anisotropic_filtering_supported(),
-                device_.max_sampler_anisotropy(),
-                device_.logi_device()
-            );
+            SamplerBuilder sampler_builder;
+            texture_sampler_.reset(sampler_builder.build(device_));
             cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
         }
 
         ~Pimpl() {
             cmd_pool_.destroy(device_.logi_device());
-            texture_sampler_.destroy(device_.logi_device());
         }
 
         std::shared_ptr<RenderModel> request_static(const mirinae::respath_t& res_id, DesclayoutManager& desclayouts, TextureManager& tex_man) {

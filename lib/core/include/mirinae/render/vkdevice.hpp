@@ -31,8 +31,6 @@ namespace mirinae {
 
         // Physical device
         std::optional<uint32_t> graphics_queue_family_index();
-        bool is_anisotropic_filtering_supported() const;
-        float max_sampler_anisotropy() const;
         VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
         // Misc
@@ -72,6 +70,45 @@ namespace mirinae {
         std::vector<VkImageView> views_;
         VkFormat format_;
         VkExtent2D extent_;
+
+    };
+
+
+    class Sampler {
+
+    public:
+        Sampler(VulkanDevice& device) : device_(device) {}
+        ~Sampler();
+
+        void reset(VkSampler sampler = VK_NULL_HANDLE);
+        void destroy();
+
+        VkSampler get() { return handle_; }
+
+    private:
+        VulkanDevice& device_;
+        VkSampler handle_ = VK_NULL_HANDLE;
+
+    };
+
+
+    class SamplerBuilder {
+
+    public:
+        SamplerBuilder();
+
+        SamplerBuilder& mag_filter(VkFilter filter) { create_info_.magFilter = filter; return *this; }
+        SamplerBuilder& mag_filter_nearest() { return this->mag_filter(VK_FILTER_NEAREST); }
+        SamplerBuilder& mag_filter_linear() { return this->mag_filter(VK_FILTER_LINEAR); }
+
+        SamplerBuilder& min_filter(VkFilter filter) { create_info_.minFilter = filter; return *this; }
+        SamplerBuilder& min_filter_nearest() { return this->min_filter(VK_FILTER_NEAREST); }
+        SamplerBuilder& min_filter_linear() { return this->min_filter(VK_FILTER_LINEAR); }
+
+        VkSampler build(VulkanDevice& device);
+
+    private:
+        VkSamplerCreateInfo create_info_;
 
     };
 
