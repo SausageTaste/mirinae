@@ -221,13 +221,12 @@ namespace {
             , tex_man_(device_)
             , model_man_(device_)
             , desclayout_(device_)
+            , texture_sampler_(device_)
         {
             framesync_.init(device_.logi_device());
-            texture_sampler_.init(
-                device_.is_anisotropic_filtering_supported(),
-                device_.max_sampler_anisotropy(),
-                device_.logi_device()
-            );
+
+            mirinae::SamplerBuilder sampler_builder;
+            texture_sampler_.reset(sampler_builder.build(device_));
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
@@ -283,7 +282,6 @@ namespace {
         ~EngineGlfw() {
             device_.wait_idle();
 
-            texture_sampler_.destroy(device_.logi_device());
             cmd_pool_.destroy(device_.logi_device());
             this->destroy_swapchain_and_relatives();
             framesync_.destroy(device_.logi_device());

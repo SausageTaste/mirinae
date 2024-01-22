@@ -64,18 +64,4 @@ namespace mirinae {
 
     };
 
-
-    class Sampler {
-
-    public:
-        void init(bool enable_anisotropy, float max_anisotropy, VkDevice logi_device);
-        void destroy(VkDevice logi_device);
-
-        VkSampler get() { return handle_; }
-
-    private:
-        VkSampler handle_ = VK_NULL_HANDLE;
-
-    };
-
 }
