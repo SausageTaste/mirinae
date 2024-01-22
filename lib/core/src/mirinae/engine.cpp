@@ -79,68 +79,6 @@ namespace {
     };
 
 
-    class OverlayEntity {
-
-    public:
-        OverlayEntity(mirinae::VulkanDevice& device) : device_(device) {}
-
-        ~OverlayEntity() {
-            this->destroy();
-        }
-
-        void init(
-            uint32_t max_flight_count,
-            VkImageView color_view,
-            VkImageView mask_view,
-            VkSampler sampler,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::TextureManager& tex_man
-        ) {
-            desc_pool_.init(max_flight_count * 2, device_.logi_device());
-            desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("overlay:main"), device_.logi_device());
-
-            for (uint32_t i = 0; i < max_flight_count; ++i) {
-                auto& ubuf = uniform_buf_.emplace_back();
-                ubuf.init_ubuf(sizeof(mirinae::U_OverlayMain), device_.mem_alloc());
-            }
-
-            for (size_t i = 0; i < max_flight_count; i++) {
-                mirinae::DescWriteInfoBuilder builder;
-                builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i))
-                    .add_combinded_image_sampler(color_view, sampler, desc_sets_.at(i))
-                    .add_combinded_image_sampler(mask_view, sampler, desc_sets_.at(i))
-                    .apply_all(device_.logi_device());
-            }
-        }
-
-        void destroy() {
-            for (auto& ubuf : uniform_buf_)
-                ubuf.destroy(device_.mem_alloc());
-            uniform_buf_.clear();
-
-            desc_pool_.destroy(device_.logi_device());
-        }
-
-        void udpate_ubuf(uint32_t index) {
-            auto& ubuf = uniform_buf_.at(index);
-            ubuf.set_data(&ubuf_data_, sizeof(mirinae::U_OverlayMain), device_.mem_alloc());
-        }
-
-        VkDescriptorSet get_desc_set(size_t index) {
-            return desc_sets_.at(index);
-        }
-
-        mirinae::U_OverlayMain ubuf_data_;
-
-    private:
-        mirinae::VulkanDevice& device_;
-        mirinae::DescriptorPool desc_pool_;
-        std::vector<mirinae::Buffer> uniform_buf_;
-        std::vector<VkDescriptorSet> desc_sets_;
-
-    };
-
-
     struct DrawSheet {
         struct RenderPairs {
             std::shared_ptr<mirinae::RenderModel> model_;
@@ -148,7 +86,7 @@ namespace {
         };
 
         std::vector<RenderPairs> ren_pairs_;
-        std::vector<OverlayEntity> overlays_;
+        std::vector<mirinae::OverlayRenderUnit> overlays_;
     };
 
 
