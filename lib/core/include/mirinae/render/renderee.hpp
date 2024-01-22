@@ -74,6 +74,36 @@ namespace mirinae {
     };
 
 
+    class OverlayRenderUnit {
+
+    public:
+        OverlayRenderUnit(VulkanDevice& device);
+        ~OverlayRenderUnit();
+
+        void init(
+            uint32_t max_flight_count,
+            VkImageView color_view,
+            VkImageView mask_view,
+            VkSampler sampler,
+            DesclayoutManager& desclayouts,
+            TextureManager& tex_man
+        );
+        void destroy();
+
+        void udpate_ubuf(uint32_t index);
+        VkDescriptorSet get_desc_set(size_t index);
+
+        U_OverlayMain ubuf_data_;
+
+    private:
+        VulkanDevice& device_;
+        DescriptorPool desc_pool_;
+        std::vector<Buffer> uniform_buf_;
+        std::vector<VkDescriptorSet> desc_sets_;
+
+    };
+
+
     class RenderModel {
 
     public:
