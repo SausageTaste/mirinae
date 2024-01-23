@@ -103,21 +103,30 @@ namespace {
             desc_sets_ = desc_pool_.alloc(mirinae::MAX_FRAMES_IN_FLIGHT, desclayouts.get("composition:main"), device.logi_device());
 
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& ubuf = ubufs_.emplace_back();
+                ubuf.init_ubuf(sizeof(mirinae::U_CompositionMain), device.mem_alloc());
+
                 mirinae::DescWriteInfoBuilder builder;
                 builder.add_combinded_image_sampler(fbufs.depth().image_view(), texture_sampler, desc_sets_.at(i))
                     .add_combinded_image_sampler(fbufs.albedo().image_view(), texture_sampler, desc_sets_.at(i))
                     .add_combinded_image_sampler(fbufs.normal().image_view(), texture_sampler, desc_sets_.at(i))
                     .add_combinded_image_sampler(fbufs.material().image_view(), texture_sampler, desc_sets_.at(i))
+                    .add_uniform_buffer(ubuf, desc_sets_.at(i))
                     .apply_all(device.logi_device());
             }
         }
 
-        void destroy(VkDevice logi_device) {
-            desc_pool_.destroy(logi_device);
+        void destroy(mirinae::VulkanDevice& device) {
+            desc_pool_.destroy(device.logi_device());
+
+            for (auto& ubuf : ubufs_)
+                ubuf.destroy(device.mem_alloc());
+            ubufs_.clear();
         }
 
         mirinae::DescriptorPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
+        std::vector<mirinae::Buffer> ubufs_;
 
     };
 
@@ -141,8 +150,8 @@ namespace {
             }
         }
 
-        void destroy(VkDevice logi_device) {
-            desc_pool_.destroy(logi_device);
+        void destroy(mirinae::VulkanDevice& device) {
+            desc_pool_.destroy(device.logi_device());
         }
 
         mirinae::DescriptorPool desc_pool_;
@@ -177,7 +186,7 @@ namespace {
 
             const std::vector<mirinae::respath_t> mesh_paths{
                 "sponza/sponza.dmd",
-                "artist/artist_de_subset.dmd",
+                "artist/artist_subset.dmd",
             };
             const std::vector<float> model_scales{
                 0.01f,
@@ -256,6 +265,17 @@ namespace {
                     overlay.ubuf_data_.size().x = 100.f / swapchain_.width();
                     overlay.ubuf_data_.size().y = 100.f / swapchain_.height();
                     overlay.udpate_ubuf(framesync_.get_frame_index().get());
+                }
+
+                {
+                    mirinae::U_CompositionMain ubuf_data;
+                    ubuf_data.proj_inv = glm::inverse(proj_mat);
+
+                    rp_states_composition_.ubufs_.at(framesync_.get_frame_index().get()).set_data(
+                        &ubuf_data,
+                        sizeof(ubuf_data),
+                        device_.mem_alloc()
+                    );
                 }
             }
 
@@ -603,8 +623,8 @@ namespace {
         void destroy_swapchain_and_relatives() {
             device_.wait_idle();
 
-            rp_states_fillscreen_.destroy(device_.logi_device());
-            rp_states_composition_.destroy(device_.logi_device());
+            rp_states_fillscreen_.destroy(device_);
+            rp_states_composition_.destroy(device_);
 
             rp_overlay_.reset();
             rp_fillscreen_.reset();

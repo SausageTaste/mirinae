@@ -770,6 +770,7 @@ namespace { namespace composition {
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // albedo
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // normal
         builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // material
+        builder.add_uniform_buffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompositionMain
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
@@ -1108,7 +1109,7 @@ namespace { namespace transparent {
 
         const auto viewport_state = ::create_info_viewport_state();
 
-        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
+        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_NONE, false, 0, 0, false);
 
         const auto multisampling = ::create_info_multisampling();
 
