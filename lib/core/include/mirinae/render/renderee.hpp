@@ -142,14 +142,14 @@ namespace mirinae {
         void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
         void destroy();
 
-        void udpate_ubuf(uint32_t index, const U_GbufModel& data, VulkanMemoryAllocator mem_alloc);
+        void udpate_ubuf(uint32_t index, const U_GbufActor& data, VulkanMemoryAllocator mem_alloc);
         VkDescriptorSet get_desc_set(size_t index);
 
         TransformQuat<double> transform_;
 
     private:
         DescriptorPool desc_pool_;
-        U_GbufModel ubuf_data_;
+        U_GbufActor ubuf_data_;
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;

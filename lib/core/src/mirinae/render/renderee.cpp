@@ -824,7 +824,7 @@ namespace mirinae {
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();
-            ubuf.init_ubuf(sizeof(U_GbufModel), device_.mem_alloc());
+            ubuf.init_ubuf(sizeof(U_GbufActor), device_.mem_alloc());
         }
 
         for (size_t i = 0; i < max_flight_count; i++) {
@@ -842,9 +842,9 @@ namespace mirinae {
         desc_pool_.destroy(device_.logi_device());
     }
 
-    void RenderActor::udpate_ubuf(uint32_t index, const U_GbufModel& data, VulkanMemoryAllocator mem_alloc) {
+    void RenderActor::udpate_ubuf(uint32_t index, const U_GbufActor& data, VulkanMemoryAllocator mem_alloc) {
         auto& ubuf = uniform_buf_.at(index);
-        ubuf.set_data(&data, sizeof(U_GbufModel), mem_alloc);
+        ubuf.set_data(&data, sizeof(U_GbufActor), mem_alloc);
     }
 
     VkDescriptorSet RenderActor::get_desc_set(size_t index) {

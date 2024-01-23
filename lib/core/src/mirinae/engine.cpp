@@ -251,7 +251,7 @@ namespace {
 
                 for (auto& pair : draw_sheet_.ren_pairs_) {
                     for (auto& actor : pair.actors_) {
-                        mirinae::U_GbufModel ubuf_data;
+                        mirinae::U_GbufActor ubuf_data;
                         const auto model_mat = actor->transform_.make_model_mat();
                         ubuf_data.model = model_mat;
                         ubuf_data.pvm = proj_mat * view_mat * model_mat;
