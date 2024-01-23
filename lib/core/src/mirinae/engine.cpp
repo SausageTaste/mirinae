@@ -253,7 +253,7 @@ namespace {
                     for (auto& actor : pair.actors_) {
                         mirinae::U_GbufActor ubuf_data;
                         const auto model_mat = actor->transform_.make_model_mat();
-                        ubuf_data.model = model_mat;
+                        ubuf_data.view_model = view_mat * model_mat;
                         ubuf_data.pvm = proj_mat * view_mat * model_mat;
                         actor->udpate_ubuf(framesync_.get_frame_index().get(), ubuf_data, device_.mem_alloc());
                     }
