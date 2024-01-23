@@ -500,7 +500,7 @@ namespace { namespace gbuf {
 
     VkDescriptorSetLayout create_desclayout_actor(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
         DescLayoutBuilder builder{ "gbuf:actor" };
-        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);
+        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActor
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
