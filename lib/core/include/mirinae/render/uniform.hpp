@@ -10,7 +10,7 @@
 namespace mirinae {
 
     struct U_GbufActor {
-        glm::mat4 model;
+        glm::mat4 view_model;
         glm::mat4 pvm;
     };
 
