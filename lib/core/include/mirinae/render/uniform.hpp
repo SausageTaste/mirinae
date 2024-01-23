@@ -15,6 +15,11 @@ namespace mirinae {
     };
 
 
+    struct U_CompositionMain {
+        glm::mat4 proj_inv;
+    };
+
+
     class U_OverlayMain {
 
     public:
