@@ -32,6 +32,7 @@ void main() {
 
     vec3 normal = normalize(normal_texel.xyz * 2 - 1);
     vec3 frag_pos = calc_frag_pos(depth_texel);
+    float frag_distance = length(frag_pos);
 
     vec3 light_dir = normalize(vec3(0.5, 1, 0.5));
     float light = max(dot(normal, light_dir), 0) * 0.3;
