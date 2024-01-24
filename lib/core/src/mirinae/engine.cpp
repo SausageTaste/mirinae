@@ -170,6 +170,9 @@ namespace {
             , desclayout_(device_)
             , texture_sampler_(device_)
         {
+            // This must be the first member variable right after vtable pointer
+            static_assert(offsetof(EngineGlfw, device_) == sizeof(void*));
+
             framesync_.init(device_.logi_device());
 
             mirinae::SamplerBuilder sampler_builder;
