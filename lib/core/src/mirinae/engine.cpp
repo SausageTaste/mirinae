@@ -5,6 +5,7 @@
 
 #include <daltools/util.h>
 
+#include <mirinae/render/overlay.hpp>
 #include <mirinae/render/renderpass.hpp>
 #include <mirinae/util/mamath.hpp>
 
@@ -86,7 +87,6 @@ namespace {
         };
 
         std::vector<RenderPairs> ren_pairs_;
-        std::vector<mirinae::OverlayRenderUnit> overlays_;
     };
 
 
@@ -163,12 +163,15 @@ namespace {
     class EngineGlfw : public mirinae::IEngine {
 
     public:
-        EngineGlfw(mirinae::EngineCreateInfo&& cinfo)
+        EngineGlfw(mirinae::EngineCreateInfo&& cinfo, int init_width, int init_height)
             : device_(std::move(cinfo))
             , tex_man_(device_)
             , model_man_(device_)
             , desclayout_(device_)
             , texture_sampler_(device_)
+            , overlay_man_(init_width, init_height, desclayout_, tex_man_, device_)
+            , fbuf_width_(init_width)
+            , fbuf_height_(init_height)
         {
             // This must be the first member variable right after vtable pointer
             static_assert(offsetof(EngineGlfw, device_) == sizeof(void*));
@@ -216,17 +219,7 @@ namespace {
                 actor->transform_.scale_ = glm::dvec3(model_scales[i]);
             }
 
-            {
-                auto& overlay = draw_sheet_.overlays_.emplace_back(device_);
-                overlay.init(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    tex_man_.request("asset/textures/lorem_ipsum.png")->image_view(),
-                    tex_man_.request("asset/textures/white.png")->image_view(),
-                    texture_sampler_.get(),
-                    desclayout_,
-                    tex_man_
-                );
-            }
+            overlay_man_.add_widget(texture_sampler_.get());
         }
 
         ~EngineGlfw() {
@@ -260,14 +253,6 @@ namespace {
                         ubuf_data.pvm = proj_mat * view_mat * model_mat;
                         actor->udpate_ubuf(framesync_.get_frame_index().get(), ubuf_data, device_.mem_alloc());
                     }
-                }
-
-                for (auto& overlay : draw_sheet_.overlays_) {
-                    overlay.ubuf_data_.offset().x = (swapchain_.width() - 10.f - 100.f) / swapchain_.width() * 2.f - 1.f;
-                    overlay.ubuf_data_.offset().y = (swapchain_.height() - 10.f - 100.f) / swapchain_.height() * 2.f - 1.f;
-                    overlay.ubuf_data_.size().x = 100.f / swapchain_.width();
-                    overlay.ubuf_data_.size().y = 100.f / swapchain_.height();
-                    overlay.udpate_ubuf(framesync_.get_frame_index().get());
                 }
 
                 {
@@ -531,18 +516,8 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& overlay : draw_sheet_.overlays_) {
-                    auto desc_main = overlay.get_desc_set(framesync_.get_frame_index().get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        0,
-                        1, &desc_main,
-                        0, nullptr
-                    );
-
-                    vkCmdDraw(cur_cmd_buf, 6, 1, 0, 0);
-                }
+                for (auto& widget : overlay_man_)
+                    widget->record_render(framesync_.get_frame_index().get(), cur_cmd_buf, rp.pipeline_layout());
 
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
@@ -649,6 +624,7 @@ namespace {
                     fbuf_resized_ = false;
                     this->destroy_swapchain_and_relatives();
                     this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
+                    overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
                 }
                 return std::nullopt;
             }
@@ -675,6 +651,7 @@ namespace {
         mirinae::ModelManager model_man_;
         mirinae::DesclayoutManager desclayout_;
         mirinae::FbufImageBundle fbuf_images_;
+        mirinae::OverlayManager overlay_man_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_transparent_;
@@ -705,7 +682,9 @@ namespace {
 namespace mirinae {
 
     std::unique_ptr<IEngine> create_engine(mirinae::EngineCreateInfo&& create_info) {
-        return std::make_unique<EngineGlfw>(std::move(create_info));
+        const auto init_width = create_info.init_width_;
+        const auto init_height = create_info.init_height_;
+        return std::make_unique<EngineGlfw>(std::move(create_info), init_width, init_height);
     }
 
 }
