@@ -196,13 +196,14 @@ namespace {
         {
             mirinae::EngineCreateInfo create_info;
             create_info.filesys_ = mirinae::create_filesys_std(::get_windows_documents_path("Mirinapp"));
-
             create_info.instance_extensions_ = ::get_glfw_extensions();
             create_info.surface_creator_ = [this](void* instance) -> uint64_t {
                 auto surface = this->window_.create_surface(reinterpret_cast<VkInstance>(instance));
                 return *reinterpret_cast<uint64_t*>(&surface);
             };
             create_info.enable_validation_layers_ = true;
+            create_info.init_width_ = 800;
+            create_info.init_height_ = 600;
 
             engine_ = mirinae::create_engine(std::move(create_info));
             window_.set_userdata(engine_.get());

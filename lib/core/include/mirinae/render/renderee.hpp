@@ -91,6 +91,7 @@ namespace mirinae {
         void destroy();
 
         void udpate_ubuf(uint32_t index);
+        size_t ubuf_count() const { return uniform_buf_.size(); }
         VkDescriptorSet get_desc_set(size_t index);
 
         U_OverlayMain ubuf_data_;
