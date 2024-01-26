@@ -50,13 +50,15 @@ namespace mirinae {
         using Angle = sung::TAngle<T>;
 
         glm::tmat4x4<T> make_proj_mat(T aspect_ratio) const {
-            auto m = glm::perspective(fov_.rad(), aspect_ratio, near_, far_);
+            auto m = glm::perspectiveRH_ZO(fov_.rad(), aspect_ratio, near_, far_);
             m[1][1] *= -1;
             return m;
         }
 
         glm::tmat4x4<T> make_proj_mat(T view_width, T view_height) const {
-            return this->make_proj_mat(view_width / view_height);
+            auto m = glm::perspectiveFovRH_ZO(fov_.rad(), view_width, view_height, near_, far_);
+            m[1][1] *= -1;
+            return m;
         }
 
         Angle fov_ = Angle::from_deg(80);
