@@ -187,54 +187,32 @@ namespace mirinae {
 
     ImageCreateInfo::ImageCreateInfo() {
         info_.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    }
-
-    void ImageCreateInfo::preset_rgba8_srgb(uint32_t width, uint32_t height) {
-        info_.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         info_.imageType = VK_IMAGE_TYPE_2D;
-        info_.extent.width = width;
-        info_.extent.height = height;
         info_.extent.depth = 1;
-        info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(width, height)))) + 1;
         info_.arrayLayers = 1;
-        info_.format = VK_FORMAT_R8G8B8A8_SRGB;
-        info_.tiling = VK_IMAGE_TILING_OPTIMAL;
-        info_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        info_.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        info_.samples = VK_SAMPLE_COUNT_1_BIT;
-        info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    }
-
-    void ImageCreateInfo::preset_r8(uint32_t width, uint32_t height) {
-        info_.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        info_.imageType = VK_IMAGE_TYPE_2D;
-        info_.extent.width = width;
-        info_.extent.height = height;
-        info_.extent.depth = 1;
-        info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(width, height)))) + 1;
-        info_.arrayLayers = 1;
-        info_.format = VK_FORMAT_R8_UNORM;
-        info_.tiling = VK_IMAGE_TILING_OPTIMAL;
-        info_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        info_.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        info_.samples = VK_SAMPLE_COUNT_1_BIT;
-        info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    }
-
-    void ImageCreateInfo::preset_attachment(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage_flags) {
-        info_.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        info_.imageType = VK_IMAGE_TYPE_2D;
-        info_.extent.width = width;
-        info_.extent.height = height;
-        info_.extent.depth = 1;
         info_.mipLevels = 1;
-        info_.arrayLayers = 1;
-        info_.format = format;
-        info_.tiling = VK_IMAGE_TILING_OPTIMAL;
-        info_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        info_.usage = usage_flags;
         info_.samples = VK_SAMPLE_COUNT_1_BIT;
-        info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::set_dimensions(uint32_t width, uint32_t height) {
+        info_.extent.width = width;
+        info_.extent.height = height;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::deduce_mip_levels() {
+        info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(info_.extent.width, info_.extent.height)))) + 1;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::set_format(VkFormat format) {
+        info_.format = format;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::set_usage(VkImageUsageFlags usage) {
+        info_.usage = usage;
+        return *this;
     }
 
 }
