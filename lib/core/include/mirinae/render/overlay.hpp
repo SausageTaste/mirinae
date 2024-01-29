@@ -25,27 +25,18 @@ namespace mirinae {
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
         );
+        ~OverlayManager();
 
         void add_widget_test();
 
         void on_fbuf_resize(uint32_t width, uint32_t height);
 
-        auto begin() {
-            return widgets_.begin();
-        }
-        auto end() {
-            return widgets_.end();
-        }
+        std::vector<std::unique_ptr<IWidget>>::iterator begin();
+        std::vector<std::unique_ptr<IWidget>>::iterator end();
 
     private:
-        mirinae::VulkanDevice& device_;
-        mirinae::TextureManager& tex_man_;
-        mirinae::DesclayoutManager& desclayout_;
-        mirinae::Sampler sampler_;
-        double wid_width_ = 0;
-        double wid_height_ = 0;
-
-        std::vector<std::unique_ptr<IWidget>> widgets_;
+        class Impl;
+        std::unique_ptr<Impl> pimpl_;
 
     };
 

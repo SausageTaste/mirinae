@@ -219,7 +219,7 @@ namespace {
                 actor->transform_.scale_ = glm::dvec3(model_scales[i]);
             }
 
-            overlay_man_.add_widget(texture_sampler_.get());
+            overlay_man_.add_widget_test();
         }
 
         ~EngineGlfw() {
