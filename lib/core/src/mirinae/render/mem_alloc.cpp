@@ -213,6 +213,34 @@ namespace mirinae {
         assert(allocation_ != VK_NULL_HANDLE);
     }
 
+    void Image::init_r8(uint32_t width, uint32_t height, VulkanMemoryAllocator allocator) {
+        this->destroy(allocator);
+
+        img_info_.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        img_info_.imageType = VK_IMAGE_TYPE_2D;
+        img_info_.extent.width = width;
+        img_info_.extent.height = height;
+        img_info_.extent.depth = 1;
+        img_info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(width, height)))) + 1;
+        img_info_.arrayLayers = 1;
+        img_info_.format = VK_FORMAT_R8_UNORM;
+        img_info_.tiling = VK_IMAGE_TILING_OPTIMAL;
+        img_info_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        img_info_.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        img_info_.samples = VK_SAMPLE_COUNT_1_BIT;
+        img_info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo alloc_info = {};
+        alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        if (VK_SUCCESS != vmaCreateImage(allocator->get(), &img_info_, &alloc_info, &image_, &allocation_, nullptr)) {
+            throw std::runtime_error("failed to create VMA image");
+        }
+
+        assert(image_ != VK_NULL_HANDLE);
+        assert(allocation_ != VK_NULL_HANDLE);
+    }
+
     void Image::init_attachment(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage_flags, VulkanMemoryAllocator allocator) {
         this->destroy(allocator);
 

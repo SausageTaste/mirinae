@@ -1,5 +1,8 @@
 #include "mirinae/render/overlay.hpp"
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
+
 
 namespace {
 
@@ -53,6 +56,87 @@ namespace {
 }
 
 
+namespace {
+
+    class FontLibrary {
+
+    public:
+        FontLibrary(mirinae::VulkanDevice& device) {
+            if (!device.filesys().read_file_to_vector("asset/font/SeoulNamsanM.ttf", file_data_))
+                throw std::runtime_error("failed to load font file");
+
+            stbtt_InitFont(&font_, reinterpret_cast<const unsigned char*>(file_data_.data()), 0);
+
+            std::array<uint8_t, 512 * 512> temp_bitmap;
+            stbtt_BakeFontBitmap(font_.data, 0, 32.0, temp_bitmap.data(), 512, 512, 32, 96, char_baked_.data());
+            bitmap_.init(temp_bitmap.data(), 512, 512, 1);
+
+            return;
+        }
+
+    public:
+        mirinae::TImage2D<unsigned char> bitmap_;
+
+    private:
+        stbtt_fontinfo font_;
+        std::vector<uint8_t> file_data_;
+        std::array<stbtt_bakedchar, 96> char_baked_; // ASCII 32..126 is 95 glyphs
+
+    };
+
+
+    class TextWidget : public mirinae::IWidget {
+
+    public:
+        TextWidget(VkSampler sampler, FontLibrary& fonts, mirinae::DesclayoutManager& desclayout, mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device) {
+            texture_ = tex_man.create_greyscale(fonts.bitmap_);
+
+            auto& overlay = render_units_.emplace_back(device);
+            overlay.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                texture_->image_view(),
+                tex_man.request("asset/textures/white.png")->image_view(),
+                sampler,
+                desclayout,
+                tex_man
+            );
+        }
+
+        void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) override {
+            for (auto& overlay : render_units_) {
+                auto desc_main = overlay.get_desc_set(frame_index);
+                vkCmdBindDescriptorSets(
+                    cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    pipe_layout,
+                    0,
+                    1, &desc_main,
+                    0, nullptr
+                );
+
+                vkCmdDraw(cmd_buf, 6, 1, 0, 0);
+            }
+        }
+
+        void on_parent_resize(double width, double height) override {
+            for (auto& overlay : render_units_) {
+                overlay.ubuf_data_.offset().x = (width - 10 - 512) / width * 2 - 1;
+                overlay.ubuf_data_.offset().y = (height - 10 - 512) / height * 2 - 1;
+                overlay.ubuf_data_.size().x = 512 / width;
+                overlay.ubuf_data_.size().y = 512 / height;
+
+                for (size_t i = 0; i < overlay.ubuf_count(); ++i)
+                    overlay.udpate_ubuf(i);
+            }
+        }
+
+        std::vector<mirinae::OverlayRenderUnit> render_units_;
+        std::unique_ptr<mirinae::ITexture> texture_;
+
+    };
+
+}
+
+
 namespace mirinae {
 
     class OverlayManager::Impl {
@@ -69,6 +153,7 @@ namespace mirinae {
             , tex_man_(tex_man)
             , desclayout_(desclayout)
             , sampler_(device)
+            , font_lib_(device)
             , wid_width_(win_width)
             , wid_height_(win_height)
         {
@@ -80,6 +165,7 @@ namespace mirinae {
         mirinae::TextureManager& tex_man_;
         mirinae::DesclayoutManager& desclayout_;
         mirinae::Sampler sampler_;
+        ::FontLibrary font_lib_;
         double wid_width_ = 0;
         double wid_height_ = 0;
 
@@ -111,7 +197,7 @@ namespace mirinae {
     }
 
     void OverlayManager::add_widget_test() {
-        auto widget = std::make_unique<::ImageView>(pimpl_->sampler_.get(), pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
+        auto widget = std::make_unique<::TextWidget>(pimpl_->sampler_.get(), pimpl_->font_lib_, pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
         widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
         pimpl_->widgets_.emplace_back(std::move(widget));
     }

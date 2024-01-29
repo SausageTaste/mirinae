@@ -401,6 +401,33 @@ namespace mirinae {
             texture_view_.init(texture_.image(), texture_.mip_levels(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device_.logi_device());
         }
 
+        void init_greyscale(
+            const IImage2D& greyscale_img,
+            CommandPool& cmd_pool
+        ) {
+            id_ = "<greyscale>";
+
+            Buffer staging_buffer;
+            staging_buffer.init_staging(greyscale_img.data_size(), device_.mem_alloc());
+            staging_buffer.set_data(greyscale_img.data(), greyscale_img.data_size(), device_.mem_alloc());
+
+            texture_.init_r8(greyscale_img.width(), greyscale_img.height(), device_.mem_alloc());
+            ::copy_to_img_and_transition(
+                texture_.image(),
+                texture_.width(),
+                texture_.height(),
+                texture_.mip_levels(),
+                texture_.format(),
+                staging_buffer.buffer(),
+                cmd_pool,
+                device_.graphics_queue(),
+                device_.logi_device()
+            );
+            staging_buffer.destroy(device_.mem_alloc());
+
+            texture_view_.init(texture_.image(), texture_.mip_levels(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device_.logi_device());
+        }
+
         void init_depth(uint32_t width, uint32_t height) {
             id_ = "<depth>";
 
@@ -479,6 +506,12 @@ namespace mirinae {
             return output;
         }
 
+        std::unique_ptr<ITexture> create_greyscale(const IImage2D& greyscale_img) {
+            auto output = std::make_unique<TextureData>(device_);
+            output->init_greyscale(greyscale_img, cmd_pool_);
+            return output;
+        }
+
         std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height) {
             auto output = std::make_unique<TextureData>(device_);
             output->init_depth(width, height);
@@ -528,6 +561,10 @@ namespace mirinae {
 
     std::shared_ptr<ITexture> TextureManager::request(const respath_t& res_id) {
         return pimpl_->request(res_id);
+    }
+
+    std::unique_ptr<ITexture> TextureManager::create_greyscale(const IImage2D& greyscale_img) {
+        return pimpl_->create_greyscale(greyscale_img);
     }
 
     std::unique_ptr<ITexture> TextureManager::create_depth(uint32_t width, uint32_t height) {
