@@ -384,7 +384,10 @@ namespace mirinae {
             staging_buffer.init_staging(image.data_size(), device_.mem_alloc());
             staging_buffer.set_data(image.data(), image.data_size(), device_.mem_alloc());
 
-            texture_.init_rgba8_srgb(image.width(), image.height(), device_.mem_alloc());
+            mirinae::ImageCreateInfo img_info;
+            img_info.preset_rgba8_srgb(image.width(), image.height());
+            texture_.init(img_info.get(), device_.mem_alloc());
+
             ::copy_to_img_and_transition(
                 texture_.image(),
                 texture_.width(),
@@ -411,7 +414,10 @@ namespace mirinae {
             staging_buffer.init_staging(greyscale_img.data_size(), device_.mem_alloc());
             staging_buffer.set_data(greyscale_img.data(), greyscale_img.data_size(), device_.mem_alloc());
 
-            texture_.init_r8(greyscale_img.width(), greyscale_img.height(), device_.mem_alloc());
+            mirinae::ImageCreateInfo img_info;
+            img_info.preset_r8(greyscale_img.width(), greyscale_img.height());
+            texture_.init(img_info.get(), device_.mem_alloc());
+
             ::copy_to_img_and_transition(
                 texture_.image(),
                 texture_.width(),
@@ -437,7 +443,9 @@ namespace mirinae {
                 VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
             );
 
-            texture_.init_attachment(width, height, depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, device_.mem_alloc());
+            mirinae::ImageCreateInfo img_info;
+            img_info.preset_attachment(width, height, depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+            texture_.init(img_info.get(), device_.mem_alloc());
             texture_view_.init(texture_.image(), 1, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
         }
 
@@ -445,7 +453,9 @@ namespace mirinae {
             id_ = name;
 
             const auto [usage_flag, aspect_mask, image_layout] = ::interpret_fbuf_usage(usage);
-            texture_.init_attachment(width, height, format, usage_flag, device_.mem_alloc());
+            mirinae::ImageCreateInfo img_info;
+            img_info.preset_attachment(width, height, format, usage_flag);
+            texture_.init(img_info.get(), device_.mem_alloc());
             texture_view_.init(texture_.image(), 1, format, aspect_mask, device_.logi_device());
         }
 

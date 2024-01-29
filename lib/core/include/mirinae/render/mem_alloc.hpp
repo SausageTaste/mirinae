@@ -41,13 +41,27 @@ namespace mirinae {
     };
 
 
+    class ImageCreateInfo {
+
+    public:
+        ImageCreateInfo();
+
+        void preset_rgba8_srgb(uint32_t width, uint32_t height);
+        void preset_r8(uint32_t width, uint32_t height);
+        void preset_attachment(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage_flags);
+
+        const VkImageCreateInfo& get() const { return info_; }
+
+    private:
+        VkImageCreateInfo info_ = {};
+
+    };
+
+
     class Image {
 
     public:
-        void init_rgba8_srgb(uint32_t width, uint32_t height, VulkanMemoryAllocator allocator);
-        void init_r8(uint32_t width, uint32_t height, VulkanMemoryAllocator allocator);
-        void init_attachment(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage_flags, VulkanMemoryAllocator allocator);
-
+        void init(const VkImageCreateInfo& create_info, VulkanMemoryAllocator allocator);
         void destroy(VulkanMemoryAllocator allocator);
 
         VkImage image() const { return image_; }
