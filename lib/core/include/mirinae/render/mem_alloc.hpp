@@ -45,12 +45,12 @@ namespace mirinae {
 
     public:
         ImageCreateInfo();
-
-        void preset_rgba8_srgb(uint32_t width, uint32_t height);
-        void preset_r8(uint32_t width, uint32_t height);
-        void preset_attachment(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage_flags);
-
         const VkImageCreateInfo& get() const { return info_; }
+
+        ImageCreateInfo& set_dimensions(uint32_t width, uint32_t height);
+        ImageCreateInfo& deduce_mip_levels();
+        ImageCreateInfo& set_format(VkFormat format);
+        ImageCreateInfo& set_usage(VkImageUsageFlags usage);
 
     private:
         VkImageCreateInfo info_ = {};

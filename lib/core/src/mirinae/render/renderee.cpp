@@ -385,7 +385,10 @@ namespace mirinae {
             staging_buffer.set_data(image.data(), image.data_size(), device_.mem_alloc());
 
             mirinae::ImageCreateInfo img_info;
-            img_info.preset_rgba8_srgb(image.width(), image.height());
+            img_info.set_dimensions(image.width(), image.height())
+                .deduce_mip_levels()
+                .set_format(VK_FORMAT_R8G8B8A8_SRGB)
+                .set_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
             texture_.init(img_info.get(), device_.mem_alloc());
 
             ::copy_to_img_and_transition(
@@ -415,7 +418,10 @@ namespace mirinae {
             staging_buffer.set_data(greyscale_img.data(), greyscale_img.data_size(), device_.mem_alloc());
 
             mirinae::ImageCreateInfo img_info;
-            img_info.preset_r8(greyscale_img.width(), greyscale_img.height());
+            img_info.set_dimensions(greyscale_img.width(), greyscale_img.height())
+                .deduce_mip_levels()
+                .set_format(VK_FORMAT_R8_UNORM)
+                .set_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
             texture_.init(img_info.get(), device_.mem_alloc());
 
             ::copy_to_img_and_transition(
@@ -444,7 +450,9 @@ namespace mirinae {
             );
 
             mirinae::ImageCreateInfo img_info;
-            img_info.preset_attachment(width, height, depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+            img_info.set_dimensions(width, height)
+                .set_format(depth_format)
+                .set_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
             texture_.init(img_info.get(), device_.mem_alloc());
             texture_view_.init(texture_.image(), 1, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
         }
@@ -454,7 +462,9 @@ namespace mirinae {
 
             const auto [usage_flag, aspect_mask, image_layout] = ::interpret_fbuf_usage(usage);
             mirinae::ImageCreateInfo img_info;
-            img_info.preset_attachment(width, height, format, usage_flag);
+            img_info.set_dimensions(width, height)
+                .set_format(format)
+                .set_usage(usage_flag);
             texture_.init(img_info.get(), device_.mem_alloc());
             texture_view_.init(texture_.image(), 1, format, aspect_mask, device_.logi_device());
         }
