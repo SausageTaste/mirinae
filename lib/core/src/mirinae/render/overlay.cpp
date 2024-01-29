@@ -65,10 +65,12 @@ namespace mirinae {
         : device_(device)
         , tex_man_(tex_man)
         , desclayout_(desclayout)
+        , sampler_(device)
         , wid_width_(win_width)
         , wid_height_(win_height)
     {
-
+        SamplerBuilder sampler_builder;
+        sampler_.reset(sampler_builder.build(device_));
     }
 
     void OverlayManager::on_fbuf_resize(uint32_t width, uint32_t height) {
@@ -79,8 +81,8 @@ namespace mirinae {
             widget->on_parent_resize(wid_width_, wid_height_);
     }
 
-    void OverlayManager::add_widget(VkSampler sampler) {
-        auto widget = std::make_unique<::ImageView>(sampler, desclayout_, tex_man_, device_);
+    void OverlayManager::add_widget_test() {
+        auto widget = std::make_unique<::ImageView>(sampler_.get(), desclayout_, tex_man_, device_);
         widget->on_parent_resize(wid_width_, wid_height_);
         widgets_.emplace_back(std::move(widget));
     }

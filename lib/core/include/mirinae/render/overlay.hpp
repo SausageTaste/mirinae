@@ -26,7 +26,7 @@ namespace mirinae {
             mirinae::VulkanDevice& device
         );
 
-        void add_widget(VkSampler sampler);
+        void add_widget_test();
 
         void on_fbuf_resize(uint32_t width, uint32_t height);
 
@@ -41,6 +41,7 @@ namespace mirinae {
         mirinae::VulkanDevice& device_;
         mirinae::TextureManager& tex_man_;
         mirinae::DesclayoutManager& desclayout_;
+        mirinae::Sampler sampler_;
         double wid_width_ = 0;
         double wid_height_ = 0;
 
