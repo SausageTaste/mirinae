@@ -11,6 +11,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/render/vkmajorplayers.cpp
     ./src/mirinae/util/image.cpp
     ./src/mirinae/util/mamath.cpp
+    ./src/mirinae/util/script.cpp
     ./src/mirinae/engine.cpp
 )
 add_library(mirinae::core ALIAS mirinae_core)
@@ -20,6 +21,7 @@ target_link_libraries(mirinae_core
     PUBLIC
         Vulkan::Vulkan
         spdlog
+        lua::lua
         mirinae::platform
     PRIVATE
         VulkanMemoryAllocator

@@ -8,6 +8,7 @@
 #include <mirinae/render/overlay.hpp>
 #include <mirinae/render/renderpass.hpp>
 #include <mirinae/util/mamath.hpp>
+#include "mirinae/util/script.hpp"
 
 
 namespace {
@@ -673,6 +674,8 @@ namespace {
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;
         bool fbuf_resized_ = false;
+
+        mirinae::ScriptEngine script_;
 
     };
 

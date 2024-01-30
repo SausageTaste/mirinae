@@ -33,15 +33,31 @@ FetchContent_Declare(
     BUILD_COMMAND     ""
 )
 
+FetchContent_Declare(
+    fetch_lua
+    GIT_REPOSITORY    https://github.com/lua/lua
+    GIT_TAG           v5.4.6
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND     ""
+)
+
 FetchContent_MakeAvailable(
     fetch_spdlog
     fetch_daltools
     fetch_sungtools
     fetch_vma
     fetch_stb
+    fetch_lua
 )
 
 find_package(Vulkan REQUIRED)
+
+# Make Lua library target
+file(GLOB lua_source_files ${fetch_lua_SOURCE_DIR}/*.c)
+list(FILTER lua_source_files EXCLUDE REGEX "lua.c$")
+add_library(liblua STATIC ${lua_source_files})
+add_library(lua::lua ALIAS liblua)
+target_include_directories(liblua PUBLIC ${fetch_lua_SOURCE_DIR})
 
 # define global macro
 add_compile_definitions(_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
