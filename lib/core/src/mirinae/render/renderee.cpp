@@ -373,9 +373,10 @@ namespace mirinae {
             this->destroy();
         }
 
-        void init(
+        void init_iimage2d(
             const std::string& id,
             const IImage2D& image,
+            bool srgb,
             CommandPool& cmd_pool
         ) {
             id_ = id;
@@ -385,42 +386,8 @@ namespace mirinae {
             staging_buffer.set_data(image.data(), image.data_size(), device_.mem_alloc());
 
             mirinae::ImageCreateInfo img_info;
-            img_info.set_dimensions(image.width(), image.height())
+            img_info.fetch_from_image(image, srgb)
                 .deduce_mip_levels()
-                .set_format(VK_FORMAT_R8G8B8A8_SRGB)
-                .set_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-            texture_.init(img_info.get(), device_.mem_alloc());
-
-            ::copy_to_img_and_transition(
-                texture_.image(),
-                texture_.width(),
-                texture_.height(),
-                texture_.mip_levels(),
-                texture_.format(),
-                staging_buffer.buffer(),
-                cmd_pool,
-                device_.graphics_queue(),
-                device_.logi_device()
-            );
-            staging_buffer.destroy(device_.mem_alloc());
-
-            texture_view_.init(texture_.image(), texture_.mip_levels(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device_.logi_device());
-        }
-
-        void init_greyscale(
-            const IImage2D& greyscale_img,
-            CommandPool& cmd_pool
-        ) {
-            id_ = "<greyscale>";
-
-            Buffer staging_buffer;
-            staging_buffer.init_staging(greyscale_img.data_size(), device_.mem_alloc());
-            staging_buffer.set_data(greyscale_img.data(), greyscale_img.data_size(), device_.mem_alloc());
-
-            mirinae::ImageCreateInfo img_info;
-            img_info.set_dimensions(greyscale_img.width(), greyscale_img.height())
-                .deduce_mip_levels()
-                .set_format(VK_FORMAT_R8_UNORM)
                 .set_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
             texture_.init(img_info.get(), device_.mem_alloc());
 
@@ -520,15 +487,15 @@ namespace mirinae {
                 return nullptr;
             }
 
-            const auto image = mirinae::parse_image(img_data->data(), img_data->size());
+            const auto image = mirinae::parse_image(img_data->data(), img_data->size(), true);
             auto& output = textures_.emplace_back(new TextureData{ device_ });
-            output->init(res_id.u8string(), *image, cmd_pool_);
+            output->init_iimage2d(res_id.u8string(), *image, true, cmd_pool_);
             return output;
         }
 
-        std::unique_ptr<ITexture> create_greyscale(const IImage2D& greyscale_img) {
+        std::unique_ptr<ITexture> create_image(const std::string& id, const IImage2D& image, bool srgb) {
             auto output = std::make_unique<TextureData>(device_);
-            output->init_greyscale(greyscale_img, cmd_pool_);
+            output->init_iimage2d(id, image, srgb, cmd_pool_);
             return output;
         }
 
@@ -583,8 +550,8 @@ namespace mirinae {
         return pimpl_->request(res_id);
     }
 
-    std::unique_ptr<ITexture> TextureManager::create_greyscale(const IImage2D& greyscale_img) {
-        return pimpl_->create_greyscale(greyscale_img);
+    std::unique_ptr<ITexture> TextureManager::create_image(const std::string& id, const IImage2D& image, bool srgb) {
+        return pimpl_->create_image(id, image, srgb);
     }
 
     std::unique_ptr<ITexture> TextureManager::create_depth(uint32_t width, uint32_t height) {

@@ -38,7 +38,7 @@ namespace mirinae {
         ~TextureManager();
 
         std::shared_ptr<ITexture> request(const respath_t& res_id);
-        std::unique_ptr<ITexture> create_greyscale(const IImage2D& greyscale_img);
+        std::unique_ptr<ITexture> create_image(const std::string& id, const IImage2D& image, bool srgb);
         std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height);
         std::unique_ptr<ITexture> create_attachment(uint32_t width, uint32_t height, VkFormat, FbufUsage, const char* name);
 

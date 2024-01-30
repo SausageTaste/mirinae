@@ -6,6 +6,7 @@
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include <vk_mem_alloc.h>
+#include <fmt/format.h>
 
 
 // VulkanMemoryAllocator_T
@@ -200,11 +201,6 @@ namespace mirinae {
         return *this;
     }
 
-    ImageCreateInfo& ImageCreateInfo::deduce_mip_levels() {
-        info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(info_.extent.width, info_.extent.height)))) + 1;
-        return *this;
-    }
-
     ImageCreateInfo& ImageCreateInfo::set_format(VkFormat format) {
         info_.format = format;
         return *this;
@@ -212,6 +208,40 @@ namespace mirinae {
 
     ImageCreateInfo& ImageCreateInfo::set_usage(VkImageUsageFlags usage) {
         info_.usage = usage;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::deduce_mip_levels() {
+        info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(info_.extent.width, info_.extent.height)))) + 1;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::fetch_from_image(const IImage2D& img, bool srgb) {
+        info_.extent.width = img.width();
+        info_.extent.height = img.height();
+
+        if (img.channels() == 4 && img.value_type_size() == sizeof(uint8_t) && srgb)
+            info_.format = VK_FORMAT_R8G8B8A8_SRGB;
+        else if (img.channels() == 4 && img.value_type_size() == sizeof(uint8_t) && !srgb)
+            info_.format = VK_FORMAT_R8G8B8A8_UNORM;
+        else if (img.channels() == 3 && img.value_type_size() == sizeof(uint8_t) && srgb)
+            info_.format = VK_FORMAT_R8G8B8_SRGB;
+        else if (img.channels() == 3 && img.value_type_size() == sizeof(uint8_t) && !srgb)
+            info_.format = VK_FORMAT_R8G8B8_UNORM;
+        else if (img.channels() == 1 && img.value_type_size() == sizeof(uint8_t))
+            info_.format = VK_FORMAT_R8_UNORM;
+        else if (img.channels() == 4 && img.value_type_size() == sizeof(float))
+            info_.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        else if (img.channels() == 3 && img.value_type_size() == sizeof(float))
+            info_.format = VK_FORMAT_R32G32B32_SFLOAT;
+        else if (img.channels() == 1 && img.value_type_size() == sizeof(float))
+            info_.format = VK_FORMAT_R32_SFLOAT;
+        else {
+            const auto msg = fmt::format("Cannot determine image format for IImage2D{{ channel={}, value_type_size={}, sRGB={} }}",
+                img.channels(), img.value_type_size(), srgb);
+            throw std::runtime_error(msg);
+        }
+
         return *this;
     }
 
