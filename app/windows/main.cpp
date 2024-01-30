@@ -6,6 +6,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "dump.hpp"
+
 
 namespace {
 
@@ -232,12 +234,22 @@ namespace {
 
     };
 
+
+    int start() {
+        CombinedEngine engine;
+        while (engine.is_ongoing())
+            engine.do_frame();
+        return 0;
+    }
+
 }
 
 
 int main() {
-    CombinedEngine engine;
-    while (engine.is_ongoing())
-        engine.do_frame();
-    return 0;
+    __try {
+        return ::start();
+    }
+    __except (mirinae::windows::create_minidump(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER) {
+        std::abort();
+    }
 }

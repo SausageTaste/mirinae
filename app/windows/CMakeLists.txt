@@ -1,7 +1,9 @@
 add_executable(mirinapp
+    dump.cpp
     main.cpp
 )
 target_link_libraries(mirinapp
+    dbghelp.lib
     glfw
     mirinae::core
 )
