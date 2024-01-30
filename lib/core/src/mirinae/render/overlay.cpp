@@ -111,6 +111,20 @@ namespace {
                     0, nullptr
                 );
 
+                mirinae::U_OverlayPushConst push_const;
+                push_const.pos_offset = overlay.ubuf_data_.offset();
+                push_const.pos_scale = overlay.ubuf_data_.size();
+                push_const.uv_offset = glm::vec2(0, 0);
+                push_const.uv_scale = glm::vec2(2, 2);
+                vkCmdPushConstants(
+                    cmd_buf,
+                    pipe_layout,
+                    VK_SHADER_STAGE_VERTEX_BIT,
+                    0,
+                    sizeof(push_const),
+                    &push_const
+                );
+
                 vkCmdDraw(cmd_buf, 6, 1, 0, 0);
             }
         }
