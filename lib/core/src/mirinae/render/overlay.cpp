@@ -61,7 +61,7 @@ namespace {
     class FontLibrary {
 
     public:
-        FontLibrary(mirinae::VulkanDevice& device) {
+        FontLibrary(mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device) {
             if (!device.filesys().read_file_to_vector("asset/font/SeoulNamsanM.ttf", file_data_))
                 throw std::runtime_error("failed to load font file");
 
@@ -70,17 +70,17 @@ namespace {
             std::array<uint8_t, 512 * 512> temp_bitmap;
             stbtt_BakeFontBitmap(font_.data, 0, 32.0, temp_bitmap.data(), 512, 512, 32, 96, char_baked_.data());
             bitmap_.init(temp_bitmap.data(), 512, 512, 1);
-
-            return;
+            texture_ = tex_man.create_image("glyphs_ascii", bitmap_, false);
         }
 
-    public:
-        mirinae::TImage2D<unsigned char> bitmap_;
+        auto& ascii_texture() const { return *texture_; }
 
     private:
         stbtt_fontinfo font_;
         std::vector<uint8_t> file_data_;
         std::array<stbtt_bakedchar, 96> char_baked_; // ASCII 32..126 is 95 glyphs
+        mirinae::TImage2D<unsigned char> bitmap_;
+        std::unique_ptr<mirinae::ITexture> texture_;
 
     };
 
@@ -89,13 +89,11 @@ namespace {
 
     public:
         TextWidget(VkSampler sampler, FontLibrary& fonts, mirinae::DesclayoutManager& desclayout, mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device) {
-            texture_ = tex_man.create_greyscale(fonts.bitmap_);
-
             auto& overlay = render_units_.emplace_back(device);
             overlay.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                texture_->image_view(),
                 tex_man.request("asset/textures/white.png")->image_view(),
+                fonts.ascii_texture().image_view(),
                 sampler,
                 desclayout,
                 tex_man
@@ -130,7 +128,6 @@ namespace {
         }
 
         std::vector<mirinae::OverlayRenderUnit> render_units_;
-        std::unique_ptr<mirinae::ITexture> texture_;
 
     };
 
@@ -153,7 +150,7 @@ namespace mirinae {
             , tex_man_(tex_man)
             , desclayout_(desclayout)
             , sampler_(device)
-            , font_lib_(device)
+            , font_lib_(tex_man, device)
             , wid_width_(win_width)
             , wid_height_(win_height)
         {

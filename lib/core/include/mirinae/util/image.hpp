@@ -22,6 +22,7 @@ namespace mirinae {
         virtual uint32_t width() const = 0;
         virtual uint32_t height() const = 0;
         virtual uint32_t channels() const = 0;
+        virtual uint32_t value_type_size() const = 0;
 
     };
 
@@ -30,7 +31,7 @@ namespace mirinae {
     class TImage2D : public IImage2D {
 
     public:
-        bool init(const T* data, unsigned width, unsigned height, unsigned channels) {
+        bool init(const T* data, uint32_t width, uint32_t height, uint32_t channels) {
             if (nullptr == data)
                 return false;
 
@@ -63,14 +64,17 @@ namespace mirinae {
             return static_cast<uint32_t>(data_.size() * sizeof(T));
         }
 
-        unsigned width() const override {
+        uint32_t width() const override {
             return width_;
         }
-        unsigned height() const override {
+        uint32_t height() const override {
             return height_;
         }
-        unsigned channels() const override {
+        uint32_t channels() const override {
             return channels_;
+        }
+        uint32_t value_type_size() const override {
+            return sizeof(T);
         }
 
         const T* get_texel_at_clamp(int x, int y) const {
@@ -82,13 +86,13 @@ namespace mirinae {
 
     private:
         std::vector<T> data_;
-        unsigned width_ = 0;
-        unsigned height_ = 0;
-        unsigned channels_ = 0;
+        uint32_t width_ = 0;
+        uint32_t height_ = 0;
+        uint32_t channels_ = 0;
 
     };
 
 
-    std::unique_ptr<IImage2D> parse_image(const uint8_t* data, size_t data_size);
+    std::unique_ptr<IImage2D> parse_image(const uint8_t* data, size_t data_size, bool force_rgba);
 
 }

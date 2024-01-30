@@ -4,6 +4,8 @@
 
 #include <vk_mem_alloc.h>
 
+#include "mirinae/util/image.hpp"
+
 
 #define MIRINAE_DEFINE_OPAQUE_HANDLE(name) class name##_T; using name = name##_T*;
 
@@ -48,9 +50,11 @@ namespace mirinae {
         const VkImageCreateInfo& get() const { return info_; }
 
         ImageCreateInfo& set_dimensions(uint32_t width, uint32_t height);
-        ImageCreateInfo& deduce_mip_levels();
         ImageCreateInfo& set_format(VkFormat format);
         ImageCreateInfo& set_usage(VkImageUsageFlags usage);
+
+        ImageCreateInfo& deduce_mip_levels();
+        ImageCreateInfo& fetch_from_image(const IImage2D& img, bool srgb);
 
     private:
         VkImageCreateInfo info_ = {};
