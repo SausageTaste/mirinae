@@ -1561,13 +1561,20 @@ namespace { namespace overlay {
             desclayout_main,
         };
 
+        VkPushConstantRange push_constant;
+        {
+            push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            push_constant.offset = 0;
+            push_constant.size = sizeof(mirinae::U_OverlayPushConst);
+        }
+
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         {
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
             pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desclayouts.size());
             pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 0;
-            pipelineLayoutInfo.pPushConstantRanges = nullptr;
+            pipelineLayoutInfo.pushConstantRangeCount = 1;
+            pipelineLayoutInfo.pPushConstantRanges = &push_constant;
         }
 
         VkPipelineLayout pipelineLayout;
