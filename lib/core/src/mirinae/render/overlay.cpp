@@ -129,9 +129,8 @@ namespace {
 
             constexpr int w = 256;
             constexpr int h = 256;
-            constexpr int char_count = 127-32;
             std::array<uint8_t, w * h> temp_bitmap;
-            stbtt_BakeFontBitmap(font_.data, 0, 32.0, temp_bitmap.data(), w, h, 32, char_count, char_baked_.data());
+            stbtt_BakeFontBitmap(font_.data, 0, text_height_, temp_bitmap.data(), w, h, START_CHAR, END_CHAR - START_CHAR, char_baked_.data());
             bitmap_.init(temp_bitmap.data(), w, h, 1);
             texture_ = tex_man.create_image("glyphs_ascii", bitmap_, false);
         }
@@ -139,15 +138,21 @@ namespace {
         auto& ascii_texture() const { return *texture_; }
 
         const stbtt_bakedchar& get_char_info(char c) const {
-            return char_baked_.at(c - 32);
+            return char_baked_.at(c - START_CHAR);
         }
 
+        double text_height() const { return text_height_; }
+
     private:
+        constexpr static int START_CHAR = 32;
+        constexpr static int END_CHAR = 127;
+
         stbtt_fontinfo font_;
         std::vector<uint8_t> file_data_;
-        std::array<stbtt_bakedchar, 127-32> char_baked_;
+        std::array<stbtt_bakedchar, END_CHAR - START_CHAR> char_baked_;
         mirinae::TImage2D<unsigned char> bitmap_;
         std::unique_ptr<mirinae::ITexture> texture_;
+        double text_height_ = 32;
 
     };
 
