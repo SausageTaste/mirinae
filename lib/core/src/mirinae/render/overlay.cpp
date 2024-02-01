@@ -129,9 +129,9 @@ namespace {
             stbtt_InitFont(&font_, reinterpret_cast<const unsigned char*>(file_data_.data()), 0);
 
             constexpr int w = 256;
-            constexpr int h = 256;
+            constexpr int h = 128;
             std::array<uint8_t, w * h> temp_bitmap;
-            stbtt_BakeFontBitmap(font_.data, 0, text_height_, temp_bitmap.data(), w, h, START_CHAR, END_CHAR - START_CHAR, char_baked_.data());
+            stbtt_BakeFontBitmap(font_.data, 0, TEXT_HEIGHT, temp_bitmap.data(), w, h, START_CHAR, END_CHAR - START_CHAR, char_baked_.data());
             bitmap_.init(temp_bitmap.data(), w, h, 1);
             texture_ = tex_man.create_image("glyphs_ascii", bitmap_, false);
         }
@@ -142,18 +142,18 @@ namespace {
             return char_baked_.at(c - START_CHAR);
         }
 
-        double text_height() const { return text_height_; }
+        double text_height() const { return TEXT_HEIGHT; }
 
     private:
         constexpr static int START_CHAR = 32;
         constexpr static int END_CHAR = 127;
+        constexpr static int TEXT_HEIGHT = 22;
 
         stbtt_fontinfo font_;
         std::vector<uint8_t> file_data_;
         std::array<stbtt_bakedchar, END_CHAR - START_CHAR> char_baked_;
         mirinae::TImage2D<unsigned char> bitmap_;
         std::unique_ptr<mirinae::ITexture> texture_;
-        double text_height_ = 32;
 
     };
 
@@ -390,11 +390,13 @@ namespace {
                     if (pos0.y_ >= bound1.y_)
                         return;
 
+                    glm::vec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
+
                     mirinae::U_OverlayPushConst push_const;
                     push_const.pos_offset = pos0.convert(screen_width_, screen_height_);
                     push_const.pos_scale = offset.convert(screen_width_, screen_height_);
-                    push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / 256.0f;
-                    push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / 256.0f;
+                    push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim;
+                    push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / texture_dim;
                     vkCmdPushConstants(
                         cmd_buf,
                         pipe_layout,
@@ -424,7 +426,7 @@ namespace {
         TextBlocks texts_;
         double screen_width_;
         double screen_height_;
-        double line_spacing_ = 1.5;
+        double line_spacing_ = 1.2;
         bool word_wrap_ = true;
 
     };
@@ -496,7 +498,7 @@ namespace mirinae {
         widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
 
         for (int i = 0; i < 100; ++i) {
-            widget->add_text("Hello, World! This is Sungmin Woo. Nice to meet you!\n");
+            widget->add_text("Hello, World! This is Sungmin Woo. Nice to meet you! I wish you a good day.\n");
         }
 
         pimpl_->widgets_.emplace_back(std::move(widget));
