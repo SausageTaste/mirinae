@@ -1,5 +1,7 @@
 #include "mirinae/render/overlay.hpp"
 
+#include <sstream>
+
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
@@ -236,6 +238,106 @@ namespace {
 
     };
 
+
+    class TextBox : public mirinae::IWidget {
+
+    public:
+        TextBox(VkSampler sampler, FontLibrary& fonts, mirinae::DesclayoutManager& desclayout, mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device)
+            : glyphs_(fonts)
+            , render_unit_(device)
+        {
+            render_unit_.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                tex_man.request("asset/textures/white.png")->image_view(),
+                fonts.ascii_texture().image_view(),
+                sampler,
+                desclayout,
+                tex_man
+            );
+        }
+
+        void add_text(const std::string& str) {
+            std::stringstream buffer;
+
+            for (auto c : str) {
+                if (c != '\n')
+                    buffer << c;
+                else {
+                    lines_.emplace_back(TextLine{ buffer.str() });
+                    buffer.str(std::string());
+                }
+            }
+
+            const auto remaining = buffer.str();
+            if (!remaining.empty())
+                lines_.emplace_back(TextLine{ remaining });
+        }
+
+        void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) override {
+            auto desc_main = render_unit_.get_desc_set(frame_index);
+            vkCmdBindDescriptorSets(
+                cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipe_layout,
+                0,
+                1, &desc_main,
+                0, nullptr
+            );
+
+            float x_offset = 5;
+            float y_offset = 32;
+
+            for (auto& line : lines_) {
+                for (auto& c : line.str_) {
+                    const auto char_info = glyphs_.get_char_info(c);
+
+                    ScreenPos<float> pos0(x_offset + char_info.xoff, y_offset + char_info.yoff);
+                    ScreenPos<float> pos1(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
+                    auto offset = pos1 - pos0;
+
+                    mirinae::U_OverlayPushConst push_const;
+                    push_const.pos_offset = pos0.convert(screen_width_, screen_height_);
+                    push_const.pos_scale = offset.convert(screen_width_, screen_height_);
+                    push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / 256.0f;
+                    push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / 256.0f;
+                    vkCmdPushConstants(
+                        cmd_buf,
+                        pipe_layout,
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(push_const),
+                        &push_const
+                    );
+
+                    vkCmdDraw(cmd_buf, 6, 1, 0, 0);
+                    x_offset += char_info.xadvance;
+                }
+
+                x_offset = 5;
+                y_offset += 32;
+            }
+        }
+
+        void on_parent_resize(double width, double height) override {
+            screen_width_ = static_cast<float>(width);
+            screen_height_ = static_cast<float>(height);
+        }
+
+    private:
+        class TextLine {
+
+        public:
+            std::string str_;
+
+        };
+
+        ::FontLibrary& glyphs_;
+        mirinae::OverlayRenderUnit render_unit_;
+        std::vector<TextLine> lines_;
+        float screen_width_;
+        float screen_height_;
+
+    };
+
 }
 
 
@@ -299,8 +401,14 @@ namespace mirinae {
     }
 
     void OverlayManager::add_widget_test() {
-        auto widget = std::make_unique<::TextWidget>(pimpl_->sampler_.get(), pimpl_->font_lib_, pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
+        auto widget = std::make_unique<::TextBox>(pimpl_->sampler_.get(), pimpl_->font_lib_, pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
         widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
+
+        for (int i = 0; i < 10; ++i) {
+            widget->add_text("Hello, World!");
+            widget->add_text("This is Sungmin Woo.");
+        }
+
         pimpl_->widgets_.emplace_back(std::move(widget));
     }
 
