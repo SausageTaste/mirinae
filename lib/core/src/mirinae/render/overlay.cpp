@@ -6,6 +6,64 @@
 
 namespace {
 
+    template <typename T>
+    class ScreenOffset {
+
+    public:
+        ScreenOffset(T x, T y)
+            : x_(x)
+            , y_(y)
+        {}
+
+        ScreenOffset operator+(const ScreenOffset& rhs) const {
+            return ScreenOffset(x_ + rhs.x_, y_ + rhs.y_);
+        }
+        ScreenOffset operator-(const ScreenOffset& rhs) const {
+            return ScreenOffset(x_ - rhs.x_, y_ - rhs.y_);
+        }
+
+        glm::tvec2<T> convert(T screen_width, T screen_height) const {
+            return glm::tvec2<T>(x_ / screen_width * 2, y_ / screen_height * 2);
+        }
+
+    public:
+        T x_ = 0;
+        T y_ = 0;
+
+    };
+
+
+    template <typename T>
+    class ScreenPos {
+
+    public:
+        ScreenPos(T x, T y)
+            : x_(x)
+            , y_(y)
+        {}
+
+        ScreenPos operator+(const ScreenOffset<T>& rhs) const {
+            return ScreenPos(x_ + rhs.x_, y_ + rhs.y_);
+        }
+        ScreenOffset<T> operator-(const ScreenPos& rhs) const {
+            return ScreenOffset(x_ - rhs.x_, y_ - rhs.y_);
+        }
+
+        glm::tvec2<T> convert(T screen_width, T screen_height) const {
+            return glm::tvec2<T>(x_ / screen_width * 2 - 1, y_ / screen_height * 2 - 1);
+        }
+
+    public:
+        T x_ = 0;
+        T y_ = 0;
+
+    };
+
+}
+
+
+namespace {
+
     class ImageView : public mirinae::IWidget {
 
     public:
@@ -120,14 +178,25 @@ namespace {
                     0, nullptr
                 );
 
-                std::string str = "Hello, World!";
-                float x_offset = 0;
+                std::string str = "Hello, World!\nThis is Sungmin Woo.";
+                float x_offset = 5;
+                float y_offset = 32;
                 for (auto& c : str) {
+                    if ('\n' == c) {
+                        x_offset = 5;
+                        y_offset += 32;
+                        continue;
+                    }
+
                     const auto char_info = glyphs_.get_char_info(c);
 
+                    ScreenPos<float> pos0(x_offset + char_info.xoff, y_offset + char_info.yoff);
+                    ScreenPos<float> pos1(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
+                    auto offset = pos1 - pos0;
+
                     mirinae::U_OverlayPushConst push_const;
-                    push_const.pos_offset = glm::vec2(x_offset + char_info.xoff / width_, char_info.yoff / height_);
-                    push_const.pos_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / glm::vec2(width_, height_);
+                    push_const.pos_offset = pos0.convert(width_, height_);
+                    push_const.pos_scale = offset.convert(width_, height_);
                     push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / 256.0f;
                     push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / 256.0f;
                     vkCmdPushConstants(
@@ -140,14 +209,14 @@ namespace {
                     );
 
                     vkCmdDraw(cmd_buf, 6, 1, 0, 0);
-                    x_offset += char_info.xadvance / width_;
+                    x_offset += char_info.xadvance;
                 }
             }
         }
 
         void on_parent_resize(double width, double height) override {
-            width_ = width;
-            height_ = height;
+            width_ = static_cast<float>(width);
+            height_ = static_cast<float>(height);
 
             for (auto& overlay : render_units_) {
                 overlay.ubuf_data_.offset().x = (width - 10.0 - 512.0) / width * 2.0 - 1.0;
@@ -162,8 +231,8 @@ namespace {
 
         std::vector<mirinae::OverlayRenderUnit> render_units_;
         ::FontLibrary& glyphs_;
-        double width_;
-        double height_;
+        float width_;
+        float height_;
 
     };
 
