@@ -5,6 +5,7 @@
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
+#include <sung/general/aabb.hpp>
 
 
 namespace {
@@ -425,6 +426,26 @@ namespace {
             screen_height_ = static_cast<float>(height);
         }
 
+        bool on_mouse_event(const mirinae::mouse::Event& e) override {
+            if (e.action_ == mirinae::mouse::ActionType::down) {
+                const sung::AABB2<double> bounding(pos_.x_, pos_.x_ + size_.x_, pos_.y_, pos_.y_ + size_.y_);
+                if (bounding.is_contacting(e.xpos_, e.ypos_)) {
+                    owning_mouse_ = true;
+                    last_mouse_pos_ = { e.xpos_, e.ypos_ };
+                }
+            }
+            else if (e.action_ == mirinae::mouse::ActionType::up) {
+                owning_mouse_ = false;
+            }
+            else if (e.action_ == mirinae::mouse::ActionType::move && owning_mouse_) {
+                scroll_.x_ += e.xpos_ - last_mouse_pos_.x;
+                scroll_.y_ += e.ypos_ - last_mouse_pos_.y;
+                last_mouse_pos_ = { e.xpos_, e.ypos_ };
+            }
+
+            return true;
+        }
+
         ::ScreenPos<double> pos_{ 10, 10 };
         ::ScreenOffset<double> size_{ 512, 512 };
         ::ScreenOffset<double> scroll_{ 0, 0 };
@@ -433,10 +454,12 @@ namespace {
         ::FontLibrary& glyphs_;
         mirinae::OverlayRenderUnit render_unit_;
         TextBlocks texts_;
+        glm::dvec2 last_mouse_pos_;
         double screen_width_;
         double screen_height_;
         double line_spacing_ = 1.2;
         bool word_wrap_ = true;
+        bool owning_mouse_ = false;
 
     };
 
