@@ -67,18 +67,25 @@ namespace {
 
             stbtt_InitFont(&font_, reinterpret_cast<const unsigned char*>(file_data_.data()), 0);
 
-            std::array<uint8_t, 512 * 512> temp_bitmap;
-            stbtt_BakeFontBitmap(font_.data, 0, 32.0, temp_bitmap.data(), 512, 512, 32, 96, char_baked_.data());
-            bitmap_.init(temp_bitmap.data(), 512, 512, 1);
+            constexpr int w = 256;
+            constexpr int h = 256;
+            constexpr int char_count = 127-32;
+            std::array<uint8_t, w * h> temp_bitmap;
+            stbtt_BakeFontBitmap(font_.data, 0, 32.0, temp_bitmap.data(), w, h, 32, char_count, char_baked_.data());
+            bitmap_.init(temp_bitmap.data(), w, h, 1);
             texture_ = tex_man.create_image("glyphs_ascii", bitmap_, false);
         }
 
         auto& ascii_texture() const { return *texture_; }
 
+        const stbtt_bakedchar& get_char_info(char c) const {
+            return char_baked_.at(c - 32);
+        }
+
     private:
         stbtt_fontinfo font_;
         std::vector<uint8_t> file_data_;
-        std::array<stbtt_bakedchar, 96> char_baked_; // ASCII 32..126 is 95 glyphs
+        std::array<stbtt_bakedchar, 127-32> char_baked_;
         mirinae::TImage2D<unsigned char> bitmap_;
         std::unique_ptr<mirinae::ITexture> texture_;
 
@@ -88,7 +95,9 @@ namespace {
     class TextWidget : public mirinae::IWidget {
 
     public:
-        TextWidget(VkSampler sampler, FontLibrary& fonts, mirinae::DesclayoutManager& desclayout, mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device) {
+        TextWidget(VkSampler sampler, FontLibrary& fonts, mirinae::DesclayoutManager& desclayout, mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device)
+            : glyphs_(fonts)
+        {
             auto& overlay = render_units_.emplace_back(device);
             overlay.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -111,30 +120,40 @@ namespace {
                     0, nullptr
                 );
 
-                mirinae::U_OverlayPushConst push_const;
-                push_const.pos_offset = overlay.ubuf_data_.offset();
-                push_const.pos_scale = overlay.ubuf_data_.size();
-                push_const.uv_offset = glm::vec2(0, 0);
-                push_const.uv_scale = glm::vec2(2, 2);
-                vkCmdPushConstants(
-                    cmd_buf,
-                    pipe_layout,
-                    VK_SHADER_STAGE_VERTEX_BIT,
-                    0,
-                    sizeof(push_const),
-                    &push_const
-                );
+                std::string str = "Hello, World!";
+                float x_offset = 0;
+                for (auto& c : str) {
+                    const auto char_info = glyphs_.get_char_info(c);
 
-                vkCmdDraw(cmd_buf, 6, 1, 0, 0);
+                    mirinae::U_OverlayPushConst push_const;
+                    push_const.pos_offset = glm::vec2(x_offset + char_info.xoff / width_, char_info.yoff / height_);
+                    push_const.pos_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / glm::vec2(width_, height_);
+                    push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / 256.0f;
+                    push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / 256.0f;
+                    vkCmdPushConstants(
+                        cmd_buf,
+                        pipe_layout,
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(push_const),
+                        &push_const
+                    );
+
+                    vkCmdDraw(cmd_buf, 6, 1, 0, 0);
+                    x_offset += char_info.xadvance / width_;
+                }
             }
         }
 
         void on_parent_resize(double width, double height) override {
+            width_ = width;
+            height_ = height;
+
             for (auto& overlay : render_units_) {
-                overlay.ubuf_data_.offset().x = (width - 10 - 512) / width * 2 - 1;
-                overlay.ubuf_data_.offset().y = (height - 10 - 512) / height * 2 - 1;
-                overlay.ubuf_data_.size().x = 512 / width;
-                overlay.ubuf_data_.size().y = 512 / height;
+                overlay.ubuf_data_.offset().x = (width - 10.0 - 512.0) / width * 2.0 - 1.0;
+                overlay.ubuf_data_.offset().y = (height - 10.0 - 512.0) / height * 2.0 - 1.0;
+                overlay.ubuf_data_.size().x = 512.0 / width;
+                overlay.ubuf_data_.size().y = 512.0 / height;
 
                 for (size_t i = 0; i < overlay.ubuf_count(); ++i)
                     overlay.udpate_ubuf(i);
@@ -142,6 +161,9 @@ namespace {
         }
 
         std::vector<mirinae::OverlayRenderUnit> render_units_;
+        ::FontLibrary& glyphs_;
+        double width_;
+        double height_;
 
     };
 
