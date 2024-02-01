@@ -99,4 +99,19 @@ namespace mirinae::mouse {
         double ypos_ = 0;
     };
 
+
+    class EventAnalyzer {
+
+    public:
+        void notify(const Event& e) {
+            this->last_event_ = this->this_event_;
+            this->this_event_ = e;
+        }
+
+    private:
+        Event this_event_;
+        Event last_event_;
+
+    };
+
 }
