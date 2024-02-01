@@ -4,7 +4,7 @@
 #include <string_view>
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_truetype.h"
+#include <stb_truetype.h>
 
 
 namespace {
@@ -381,10 +381,18 @@ namespace {
                     }
 
                     const auto& char_info = glyphs_.get_char_info(c);
-                    ScreenPos<double> pos0(x_offset + char_info.xoff, y_offset + char_info.yoff);
-                    ScreenPos<double> pos1(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
-                    auto offset = pos1 - pos0;
+                    const auto pos0 = ScreenPos<double>(x_offset + char_info.xoff, y_offset + char_info.yoff) + scroll_;
+                    const auto pos1 = ScreenPos<double>(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
+                    auto dimensions = pos1 - pos0;
 
+                    if (pos1.x_ <= bound0.x_) {
+                        x_offset += char_info.xadvance;
+                        continue;
+                    }
+                    if (pos1.y_ <= bound0.y_) {
+                        x_offset += char_info.xadvance;
+                        continue;
+                    }
                     if (pos0.x_ >= bound1.x_)
                         continue;
                     if (pos0.y_ >= bound1.y_)
@@ -394,7 +402,7 @@ namespace {
 
                     mirinae::U_OverlayPushConst push_const;
                     push_const.pos_offset = pos0.convert(screen_width_, screen_height_);
-                    push_const.pos_scale = offset.convert(screen_width_, screen_height_);
+                    push_const.pos_scale = dimensions.convert(screen_width_, screen_height_);
                     push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim;
                     push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / texture_dim;
                     vkCmdPushConstants(
@@ -419,6 +427,7 @@ namespace {
 
         ::ScreenPos<double> pos_{ 10, 10 };
         ::ScreenOffset<double> size_{ 512, 512 };
+        ::ScreenOffset<double> scroll_{ 0, 0 };
 
     private:
         ::FontLibrary& glyphs_;
