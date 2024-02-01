@@ -493,6 +493,24 @@ namespace mirinae {
             widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
     }
 
+    bool OverlayManager::on_key_event(const mirinae::key::Event& e) {
+        for (auto& widget : pimpl_->widgets_) {
+            if (widget->on_key_event(e))
+                return true;
+        }
+
+        return false;
+    }
+
+    bool OverlayManager::on_mouse_event(const mouse::Event& e) {
+        for (auto& widget : pimpl_->widgets_) {
+            if (widget->on_mouse_event(e))
+                return true;
+        }
+
+        return false;
+    }
+
     void OverlayManager::add_widget_test() {
         auto widget = std::make_unique<::TextBox>(pimpl_->sampler_.get(), pimpl_->font_lib_, pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
         widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);

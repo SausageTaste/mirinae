@@ -22,6 +22,7 @@ namespace mirinae {
 
         virtual void notify_window_resize(uint32_t width, uint32_t height) = 0;
         virtual void notify_key_event(const key::Event& e) = 0;
+        virtual void notify_mouse_event(const mouse::Event& e) = 0;
 
     };
 

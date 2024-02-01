@@ -11,6 +11,8 @@ namespace mirinae {
         virtual ~IWidget() = default;
         virtual void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) = 0;
         virtual void on_parent_resize(double width, double height) = 0;
+        virtual bool on_key_event(const mirinae::key::Event& e) { return false; }
+        virtual bool on_mouse_event(const mouse::Event& e) { return false; }
 
     };
 
@@ -30,6 +32,8 @@ namespace mirinae {
         void add_widget_test();
 
         void on_fbuf_resize(uint32_t width, uint32_t height);
+        bool on_key_event(const mirinae::key::Event& e);
+        bool on_mouse_event(const mouse::Event& e);
 
         std::vector<std::unique_ptr<IWidget>>::iterator begin();
         std::vector<std::unique_ptr<IWidget>>::iterator end();

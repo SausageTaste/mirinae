@@ -60,6 +60,8 @@ namespace {
 
             glfwSetFramebufferSizeCallback(window_, GlfwWindow::callback_fbuf_size);
             glfwSetKeyCallback(window_, GlfwWindow::callback_key);
+            glfwSetMouseButtonCallback(window_, GlfwWindow::callback_mouse);
+            glfwSetCursorPosCallback(window_, GlfwWindow::callback_cursor_pos);
         }
 
         ~GlfwWindow() {
@@ -132,6 +134,57 @@ namespace {
 
             e.key = map_key_code(key);
             engine->notify_key_event(e);
+        }
+
+        static void callback_mouse(GLFWwindow* window, int button, int action, int mods) {
+            auto ptr = glfwGetWindowUserPointer(window);
+            if (nullptr == ptr)
+                return;
+            auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
+
+            mirinae::mouse::Event e;
+            switch (action) {
+            case GLFW_RELEASE:
+                e.action_ = mirinae::mouse::ActionType::up;
+                break;
+            case GLFW_PRESS:
+            default:
+                e.action_ = mirinae::mouse::ActionType::down;
+                break;
+            }
+
+            switch (button) {
+            case GLFW_MOUSE_BUTTON_LEFT:
+                e.button_ = mirinae::mouse::ButtonCode::left;
+                break;
+            case GLFW_MOUSE_BUTTON_RIGHT:
+                e.button_ = mirinae::mouse::ButtonCode::right;
+                break;
+            case GLFW_MOUSE_BUTTON_MIDDLE:
+                e.button_ = mirinae::mouse::ButtonCode::middle;
+                break;
+            default:
+                spdlog::warn("Unknown mouse button type: {}", button);
+                e.button_ = mirinae::mouse::ButtonCode::eoe;
+                break;
+            }
+
+            glfwGetCursorPos(window, &e.xpos_, &e.ypos_);
+            engine->notify_mouse_event(e);
+        }
+
+        static void callback_cursor_pos(GLFWwindow* window, double xpos, double ypos) {
+            auto ptr = glfwGetWindowUserPointer(window);
+            if (nullptr == ptr)
+                return;
+            auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
+
+            mirinae::mouse::Event e;
+            e.action_ = mirinae::mouse::ActionType::move;
+            e.xpos_ = xpos;
+            e.ypos_ = ypos;
+
+            engine->notify_mouse_event(e);
         }
 
         static mirinae::key::KeyCode map_key_code(const int glfw_key) {

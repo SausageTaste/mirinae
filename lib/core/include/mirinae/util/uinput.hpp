@@ -78,3 +78,25 @@ namespace mirinae::key {
     };
 
 }
+
+
+namespace mirinae::mouse {
+
+    enum class ActionType { move, down, up };
+
+    enum class ButtonCode {
+        left, right, middle,
+        /* End Of Enum, just for calculating number of elements of Enum class */
+        eoe
+    };
+
+
+    struct Event {
+        std::chrono::steady_clock::time_point timepoint_ = std::chrono::steady_clock::now();
+        ActionType action_ = ActionType::down;
+        ButtonCode button_ = ButtonCode::eoe;
+        double xpos_ = 0;
+        double ypos_ = 0;
+    };
+
+}
