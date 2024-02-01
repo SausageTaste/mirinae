@@ -1,6 +1,7 @@
 #include "mirinae/render/overlay.hpp"
 
 #include <sstream>
+#include <string_view>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
@@ -244,6 +245,96 @@ namespace {
     };
 
 
+    class StaticVector {
+
+    public:
+        uint32_t& operator[](size_t index) { return data_[index]; }
+        const uint32_t& operator[](size_t index) const { return data_[index]; }
+
+        bool push_back(uint32_t value) {
+            if (fill_size_ >= CAPACITY)
+                return false;
+
+            data_[fill_size_++] = value;
+            return true;
+        }
+        void clear() {
+            fill_size_ = 0;
+        }
+
+        size_t size() const { return fill_size_; }
+        size_t capacity() const { return CAPACITY; }
+        size_t remaining() const { return CAPACITY - fill_size_; }
+
+        bool is_full() const { return fill_size_ >= CAPACITY; }
+        bool is_empty() const { return fill_size_ == 0; }
+
+        auto begin() const { return data_; }
+        auto end() const { return data_ + fill_size_; }
+
+    private:
+        constexpr static size_t CAPACITY = 1024;
+        uint32_t data_[CAPACITY];
+        size_t fill_size_ = 0;
+
+    };
+
+
+    class TextBlocks {
+
+    public:
+        void append(const std::string_view str) {
+            size_t start_index = 0;
+
+            for (auto c : str) {
+                this->last_valid_block().append(static_cast<uint32_t>(c));
+            }
+        }
+
+        auto begin() const { return blocks_.begin(); }
+        auto end() const { return blocks_.end(); }
+
+    private:
+        class Block {
+
+        public:
+            bool append(uint32_t value) {
+                return data_.push_back(value);
+            }
+            size_t append(const std::string_view str) {
+                size_t added_count = 0;
+                for (auto c : str) {
+                    if (data_.push_back(static_cast<uint32_t>(c)))
+                        ++added_count;
+                    else
+                        return added_count;
+                }
+            }
+
+            bool is_full() const { return data_.is_full(); }
+
+            auto begin() const { return data_.begin(); }
+            auto end() const { return data_.end(); }
+
+        private:
+            StaticVector data_;
+
+        };
+
+        Block& last_valid_block() {
+            if (blocks_.empty())
+                blocks_.emplace_back();
+            if (blocks_.back().is_full())
+                blocks_.emplace_back();
+
+            return blocks_.back();
+        }
+
+        std::vector<Block> blocks_;
+
+    };
+
+
     class TextBox : public mirinae::IWidget {
 
     public:
@@ -261,21 +352,8 @@ namespace {
             );
         }
 
-        void add_text(const std::string& str) {
-            std::stringstream buffer;
-
-            for (auto c : str) {
-                if (c != '\n')
-                    buffer << c;
-                else {
-                    lines_.emplace_back(TextLine{ buffer.str() });
-                    buffer.str(std::string());
-                }
-            }
-
-            const auto remaining = buffer.str();
-            if (!remaining.empty())
-                lines_.emplace_back(TextLine{ remaining });
+        void add_text(const std::string_view str) {
+            texts_.append(str);
         }
 
         void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) override {
@@ -288,16 +366,29 @@ namespace {
                 0, nullptr
             );
 
-            float x_offset = 5;
-            float y_offset = 32;
+            const auto bound0 = pos_;
+            const auto bound1 = pos_ + size_;
 
-            for (auto& line : lines_) {
-                for (auto& c : line.str_) {
-                    const auto char_info = glyphs_.get_char_info(c);
+            auto x_offset = pos_.x_;
+            auto y_offset = pos_.y_ + glyphs_.text_height();
 
-                    ScreenPos<float> pos0(x_offset + char_info.xoff, y_offset + char_info.yoff);
-                    ScreenPos<float> pos1(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
+            for (auto& block : texts_) {
+                for (auto c : block) {
+                    if ('\n' == c) {
+                        x_offset = pos_.x_;
+                        y_offset += glyphs_.text_height() * line_spacing_;
+                        continue;
+                    }
+
+                    const auto& char_info = glyphs_.get_char_info(c);
+                    ScreenPos<double> pos0(x_offset + char_info.xoff, y_offset + char_info.yoff);
+                    ScreenPos<double> pos1(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
                     auto offset = pos1 - pos0;
+
+                    if (pos0.x_ >= bound1.x_)
+                        continue;
+                    if (pos0.y_ >= bound1.y_)
+                        return;
 
                     mirinae::U_OverlayPushConst push_const;
                     push_const.pos_offset = pos0.convert(screen_width_, screen_height_);
@@ -316,9 +407,6 @@ namespace {
                     vkCmdDraw(cmd_buf, 6, 1, 0, 0);
                     x_offset += char_info.xadvance;
                 }
-
-                x_offset = 5;
-                y_offset += 32;
             }
         }
 
@@ -327,19 +415,17 @@ namespace {
             screen_height_ = static_cast<float>(height);
         }
 
+        ::ScreenPos<double> pos_{ 10, 10 };
+        ::ScreenOffset<double> size_{ 512, 512 };
+
     private:
-        class TextLine {
-
-        public:
-            std::string str_;
-
-        };
-
         ::FontLibrary& glyphs_;
         mirinae::OverlayRenderUnit render_unit_;
-        std::vector<TextLine> lines_;
-        float screen_width_;
-        float screen_height_;
+        TextBlocks texts_;
+        double screen_width_;
+        double screen_height_;
+        double line_spacing_ = 1.5;
+        bool word_wrap_ = true;
 
     };
 
@@ -409,9 +495,8 @@ namespace mirinae {
         auto widget = std::make_unique<::TextBox>(pimpl_->sampler_.get(), pimpl_->font_lib_, pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
         widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
 
-        for (int i = 0; i < 10; ++i) {
-            widget->add_text("Hello, World!");
-            widget->add_text("This is Sungmin Woo.");
+        for (int i = 0; i < 100; ++i) {
+            widget->add_text("Hello, World! This is Sungmin Woo. Nice to meet you!\n");
         }
 
         pimpl_->widgets_.emplace_back(std::move(widget));
