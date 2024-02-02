@@ -21,12 +21,12 @@ namespace mirinae {
 
 
     struct U_OverlayPushConst {
+        glm::vec4 color{ 1, 1, 1, 1 };
         glm::vec2 pos_offset;
         glm::vec2 pos_scale;
         glm::vec2 uv_offset;
         glm::vec2 uv_scale;
     };
-    static_assert(sizeof(float) * 8 == sizeof(U_OverlayPushConst));
 
 
     class U_OverlayMain {
