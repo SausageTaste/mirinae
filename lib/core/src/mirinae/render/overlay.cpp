@@ -211,7 +211,7 @@ namespace {
                     vkCmdPushConstants(
                         cmd_buf,
                         pipe_layout,
-                        VK_SHADER_STAGE_VERTEX_BIT,
+                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                         0,
                         sizeof(push_const),
                         &push_const
@@ -402,6 +402,7 @@ namespace {
                     glm::vec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
 
                     mirinae::U_OverlayPushConst push_const;
+                    push_const.color = { 1, 0, 0, 0.3 };
                     push_const.pos_offset = pos0.convert(screen_width_, screen_height_);
                     push_const.pos_scale = dimensions.convert(screen_width_, screen_height_);
                     push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim;
@@ -409,7 +410,7 @@ namespace {
                     vkCmdPushConstants(
                         cmd_buf,
                         pipe_layout,
-                        VK_SHADER_STAGE_VERTEX_BIT,
+                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                         0,
                         sizeof(push_const),
                         &push_const

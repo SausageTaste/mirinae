@@ -9,6 +9,7 @@ layout(set = 0, binding = 0) uniform U_OverlayMain {
 } u_overlay_main;
 
 layout(push_constant) uniform U_OverlayPushConst {
+    vec4 color;
     vec2 pos_offset;
     vec2 pos_scale;
     vec2 uv_offset;
