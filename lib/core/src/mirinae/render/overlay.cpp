@@ -20,60 +20,6 @@ namespace {
         return glm::tvec2<T>(x / width * 2, y / height * 2);
     }
 
-
-    template <typename T>
-    class ScreenOffset {
-
-    public:
-        ScreenOffset(T x, T y)
-            : x_(x)
-            , y_(y)
-        {}
-
-        ScreenOffset operator+(const ScreenOffset& rhs) const {
-            return ScreenOffset(x_ + rhs.x_, y_ + rhs.y_);
-        }
-        ScreenOffset operator-(const ScreenOffset& rhs) const {
-            return ScreenOffset(x_ - rhs.x_, y_ - rhs.y_);
-        }
-
-        glm::tvec2<T> convert(T screen_width, T screen_height) const {
-            return glm::tvec2<T>(x_ / screen_width * 2, y_ / screen_height * 2);
-        }
-
-    public:
-        T x_ = 0;
-        T y_ = 0;
-
-    };
-
-
-    template <typename T>
-    class ScreenPos {
-
-    public:
-        ScreenPos(T x, T y)
-            : x_(x)
-            , y_(y)
-        {}
-
-        ScreenPos operator+(const ScreenOffset<T>& rhs) const {
-            return ScreenPos(x_ + rhs.x_, y_ + rhs.y_);
-        }
-        ScreenOffset<T> operator-(const ScreenPos& rhs) const {
-            return ScreenOffset(x_ - rhs.x_, y_ - rhs.y_);
-        }
-
-        glm::tvec2<T> convert(T screen_width, T screen_height) const {
-            return glm::tvec2<T>(x_ / screen_width * 2 - 1, y_ / screen_height * 2 - 1);
-        }
-
-    public:
-        T x_ = 0;
-        T y_ = 0;
-
-    };
-
 }
 
 
@@ -166,93 +112,6 @@ namespace {
         std::array<stbtt_bakedchar, END_CHAR - START_CHAR> char_baked_;
         mirinae::TImage2D<unsigned char> bitmap_;
         std::unique_ptr<mirinae::ITexture> texture_;
-
-    };
-
-
-    class TextWidget : public mirinae::IWidget {
-
-    public:
-        TextWidget(VkSampler sampler, FontLibrary& fonts, mirinae::DesclayoutManager& desclayout, mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device)
-            : glyphs_(fonts)
-        {
-            auto& overlay = render_units_.emplace_back(device);
-            overlay.init(
-                mirinae::MAX_FRAMES_IN_FLIGHT,
-                tex_man.request("asset/textures/white.png")->image_view(),
-                fonts.ascii_texture().image_view(),
-                sampler,
-                desclayout,
-                tex_man
-            );
-        }
-
-        void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) override {
-            for (auto& overlay : render_units_) {
-                auto desc_main = overlay.get_desc_set(frame_index);
-                vkCmdBindDescriptorSets(
-                    cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pipe_layout,
-                    0,
-                    1, &desc_main,
-                    0, nullptr
-                );
-
-                std::string str = "Hello, World!\nThis is Sungmin Woo.";
-                float x_offset = 5;
-                float y_offset = 32;
-                for (auto& c : str) {
-                    if ('\n' == c) {
-                        x_offset = 5;
-                        y_offset += 32;
-                        continue;
-                    }
-
-                    const auto char_info = glyphs_.get_char_info(c);
-
-                    ScreenPos<float> pos0(x_offset + char_info.xoff, y_offset + char_info.yoff);
-                    ScreenPos<float> pos1(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
-                    auto offset = pos1 - pos0;
-
-                    mirinae::U_OverlayPushConst push_const;
-                    push_const.pos_offset = pos0.convert(width_, height_);
-                    push_const.pos_scale = offset.convert(width_, height_);
-                    push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / 256.0f;
-                    push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / 256.0f;
-                    vkCmdPushConstants(
-                        cmd_buf,
-                        pipe_layout,
-                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                        0,
-                        sizeof(push_const),
-                        &push_const
-                    );
-
-                    vkCmdDraw(cmd_buf, 6, 1, 0, 0);
-                    x_offset += char_info.xadvance;
-                }
-            }
-        }
-
-        void on_parent_resize(double width, double height) override {
-            width_ = static_cast<float>(width);
-            height_ = static_cast<float>(height);
-
-            for (auto& overlay : render_units_) {
-                overlay.ubuf_data_.offset().x = (width - 10.0 - 512.0) / width * 2.0 - 1.0;
-                overlay.ubuf_data_.offset().y = (height - 10.0 - 512.0) / height * 2.0 - 1.0;
-                overlay.ubuf_data_.size().x = 512.0 / width;
-                overlay.ubuf_data_.size().y = 512.0 / height;
-
-                for (size_t i = 0; i < overlay.ubuf_count(); ++i)
-                    overlay.udpate_ubuf(i);
-            }
-        }
-
-        std::vector<mirinae::OverlayRenderUnit> render_units_;
-        ::FontLibrary& glyphs_;
-        float width_;
-        float height_;
 
     };
 
@@ -378,14 +237,14 @@ namespace {
                 0, nullptr
             );
 
-            const sung::AABB2<double> widget_box(pos_.x_, pos_.x_ + size_.x_, pos_.y_, pos_.y_ + size_.y_);
-            auto x_offset = pos_.x_;
-            auto y_offset = pos_.y_ + glyphs_.text_height();
+            const sung::AABB2<double> widget_box(pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y);
+            auto x_offset = pos_.x;
+            auto y_offset = pos_.y + glyphs_.text_height();
 
             for (auto& block : texts_) {
                 for (auto c : block) {
                     if ('\n' == c) {
-                        x_offset = pos_.x_;
+                        x_offset = pos_.x;
                         y_offset += glyphs_.text_height() * line_spacing_;
                         continue;
                     }
@@ -393,10 +252,10 @@ namespace {
 
                     const auto& char_info = glyphs_.get_char_info(c);
                     const sung::AABB2<double> glyph_box(
-                        x_offset + char_info.xoff + scroll_.x_,
-                        x_offset + char_info.xoff + scroll_.x_ + char_info.x1 - char_info.x0,
-                        y_offset + char_info.yoff + scroll_.y_,
-                        y_offset + char_info.yoff + scroll_.y_ + char_info.y1 - char_info.y0
+                        x_offset + char_info.xoff + scroll_.x,
+                        x_offset + char_info.xoff + scroll_.x + char_info.x1 - char_info.x0,
+                        y_offset + char_info.yoff + scroll_.y,
+                        y_offset + char_info.yoff + scroll_.y + char_info.y1 - char_info.y0
                     );
                     const glm::vec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
 
@@ -455,7 +314,7 @@ namespace {
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
             if (e.action_ == mirinae::mouse::ActionType::down) {
-                const sung::AABB2<double> bounding(pos_.x_, pos_.x_ + size_.x_, pos_.y_, pos_.y_ + size_.y_);
+                const sung::AABB2<double> bounding(pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y);
                 if (bounding.is_contacting(e.xpos_, e.ypos_)) {
                     owning_mouse_ = true;
                     last_mouse_pos_ = { e.xpos_, e.ypos_ };
@@ -465,17 +324,17 @@ namespace {
                 owning_mouse_ = false;
             }
             else if (e.action_ == mirinae::mouse::ActionType::move && owning_mouse_) {
-                scroll_.x_ += e.xpos_ - last_mouse_pos_.x;
-                scroll_.y_ += e.ypos_ - last_mouse_pos_.y;
+                scroll_.x += e.xpos_ - last_mouse_pos_.x;
+                scroll_.y += e.ypos_ - last_mouse_pos_.y;
                 last_mouse_pos_ = { e.xpos_, e.ypos_ };
             }
 
             return true;
         }
 
-        ::ScreenPos<double> pos_{ 10, 10 };
-        ::ScreenOffset<double> size_{ 512, 512 };
-        ::ScreenOffset<double> scroll_{ 0, 0 };
+        glm::dvec2 pos_{ 10, 10 };
+        glm::dvec2 size_{ 512, 512 };
+        glm::dvec2 scroll_{ 0, 0 };
 
     private:
         ::FontLibrary& glyphs_;
