@@ -367,9 +367,7 @@ namespace {
                 0, nullptr
             );
 
-            const auto bound0 = pos_;
-            const auto bound1 = pos_ + size_;
-
+            const sung::AABB2<double> widget_box(pos_.x_, pos_.x_ + size_.x_, pos_.y_, pos_.y_ + size_.y_);
             auto x_offset = pos_.x_;
             auto y_offset = pos_.y_ + glyphs_.text_height();
 
@@ -380,29 +378,28 @@ namespace {
                         y_offset += glyphs_.text_height() * line_spacing_;
                         continue;
                     }
+                    mirinae::U_OverlayPushConst push_const;
 
                     const auto& char_info = glyphs_.get_char_info(c);
                     const auto pos0 = ScreenPos<double>(x_offset + char_info.xoff, y_offset + char_info.yoff) + scroll_;
                     const auto pos1 = ScreenPos<double>(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
                     auto dimensions = pos1 - pos0;
+                    const sung::AABB2<double> glyph_box(pos0.x_, pos1.x_, pos0.y_, pos1.y_);
 
-                    if (pos1.x_ <= bound0.x_) {
+                    const auto glyph_area = widget_box.sharing_area(glyph_box);
+                    if (glyph_area <= 0.0) {
                         x_offset += char_info.xadvance;
                         continue;
                     }
-                    if (pos1.y_ <= bound0.y_) {
-                        x_offset += char_info.xadvance;
-                        continue;
+                    else if (glyph_area < glyph_box.area()) {
+                        push_const.color = { 1, 0, 0, 0.3 };
                     }
-                    if (pos0.x_ >= bound1.x_)
-                        continue;
-                    if (pos0.y_ >= bound1.y_)
-                        return;
+                    else {
+                        push_const.color = { 1, 1, 1, 1 };
+                    }
 
                     glm::vec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
 
-                    mirinae::U_OverlayPushConst push_const;
-                    push_const.color = { 1, 0, 0, 0.3 };
                     push_const.pos_offset = pos0.convert(screen_width_, screen_height_);
                     push_const.pos_scale = dimensions.convert(screen_width_, screen_height_);
                     push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim;
