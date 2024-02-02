@@ -20,6 +20,17 @@ namespace {
         return glm::tvec2<T>(x / width * 2, y / height * 2);
     }
 
+
+    template <typename T>
+    glm::tvec2<T> get_aabb_min(const sung::AABB2<T>& aabb) {
+        return glm::tvec2<T>(aabb.x_min(), aabb.y_min());
+    }
+
+    template <typename T>
+    glm::tvec2<T> get_aabb_dim(const sung::AABB2<T>& aabb) {
+        return glm::tvec2<T>(aabb.width(), aabb.height());
+    };
+
 }
 
 
@@ -251,13 +262,17 @@ namespace {
                     mirinae::U_OverlayPushConst push_const;
 
                     const auto& char_info = glyphs_.get_char_info(c);
+                    const sung::AABB2<double> char_info_box(char_info.x0, char_info.x1, char_info.y0, char_info.y1);
+                    const auto char_info_min = ::get_aabb_min(char_info_box);
+                    const auto char_info_dim = ::get_aabb_dim(char_info_box);
+                    const glm::dvec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
+
                     const sung::AABB2<double> glyph_box(
                         x_offset + char_info.xoff + scroll_.x,
-                        x_offset + char_info.xoff + scroll_.x + char_info.x1 - char_info.x0,
+                        x_offset + char_info.xoff + scroll_.x + char_info_dim.x,
                         y_offset + char_info.yoff + scroll_.y,
-                        y_offset + char_info.yoff + scroll_.y + char_info.y1 - char_info.y0
+                        y_offset + char_info.yoff + scroll_.y + char_info_dim.y
                     );
-                    const glm::vec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
 
                     sung::AABB2<double> clipped_glyph_box;
                     if (widget_box.make_intersection(glyph_box, clipped_glyph_box)) {
@@ -269,20 +284,16 @@ namespace {
                         else if (clipped_glyph_area < glyph_box.area()) {
                             push_const.pos_offset = ::convert_screen_pos(clipped_glyph_box.x_min(), clipped_glyph_box.y_min(), screen_width_, screen_height_);
                             push_const.pos_scale = ::convert_screen_offset(clipped_glyph_box.width(), clipped_glyph_box.height(), screen_width_, screen_height_);
-                            push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) * glm::vec2(clipped_glyph_box.width() / glyph_box.width(), clipped_glyph_box.height() / glyph_box.height()) / texture_dim;
-
-                            const glm::vec2 offset{
-                                (clipped_glyph_box.x_min() - glyph_box.x_min()) / glyph_box.width(),
-                                (clipped_glyph_box.y_min() - glyph_box.y_min()) / glyph_box.height()
-                            };
-                            push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim + (offset * glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / texture_dim);
+                            push_const.uv_scale = char_info_dim * ::get_aabb_dim(clipped_glyph_box) / (::get_aabb_dim(glyph_box) * texture_dim);
+                            const auto texture_space_offset = (::get_aabb_min(clipped_glyph_box) - ::get_aabb_min(glyph_box)) * char_info_dim / ::get_aabb_dim(glyph_box);
+                            push_const.uv_offset = (char_info_min + texture_space_offset) / texture_dim;
 
                         }
                         else {
                             push_const.pos_offset = ::convert_screen_pos(glyph_box.x_min(), glyph_box.y_min(), screen_width_, screen_height_);
                             push_const.pos_scale = ::convert_screen_offset(glyph_box.width(), glyph_box.height(), screen_width_, screen_height_);
-                            push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim;
-                            push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0)  / texture_dim;
+                            push_const.uv_offset = char_info_min / texture_dim;
+                            push_const.uv_scale = char_info_dim / texture_dim;
                         }
                     }
                     else {
