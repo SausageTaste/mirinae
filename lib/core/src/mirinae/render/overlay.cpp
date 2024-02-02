@@ -11,6 +11,17 @@
 namespace {
 
     template <typename T>
+    glm::tvec2<T> convert_screen_pos(T x, T y, T width, T height) {
+        return glm::tvec2<T>(x / width * 2 - 1, y / height * 2 - 1);
+    }
+
+    template <typename T>
+    glm::tvec2<T> convert_screen_offset(T x, T y, T width, T height) {
+        return glm::tvec2<T>(x / width * 2, y / height * 2);
+    }
+
+
+    template <typename T>
     class ScreenOffset {
 
     public:
@@ -381,29 +392,47 @@ namespace {
                     mirinae::U_OverlayPushConst push_const;
 
                     const auto& char_info = glyphs_.get_char_info(c);
-                    const auto pos0 = ScreenPos<double>(x_offset + char_info.xoff, y_offset + char_info.yoff) + scroll_;
-                    const auto pos1 = ScreenPos<double>(pos0.x_ + char_info.x1 - char_info.x0, pos0.y_ + char_info.y1 - char_info.y0);
-                    auto dimensions = pos1 - pos0;
-                    const sung::AABB2<double> glyph_box(pos0.x_, pos1.x_, pos0.y_, pos1.y_);
+                    const sung::AABB2<double> glyph_box(
+                        x_offset + char_info.xoff + scroll_.x_,
+                        x_offset + char_info.xoff + scroll_.x_ + char_info.x1 - char_info.x0,
+                        y_offset + char_info.yoff + scroll_.y_,
+                        y_offset + char_info.yoff + scroll_.y_ + char_info.y1 - char_info.y0
+                    );
+                    const glm::vec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
 
-                    const auto glyph_area = widget_box.sharing_area(glyph_box);
-                    if (glyph_area <= 0.0) {
+                    sung::AABB2<double> clipped_glyph_box;
+                    if (widget_box.make_intersection(glyph_box, clipped_glyph_box)) {
+                        const auto clipped_glyph_area = clipped_glyph_box.area();
+                        if (clipped_glyph_area <= 0.0) {
+                            x_offset += char_info.xadvance;
+                            continue;
+                        }
+                        else if (clipped_glyph_area < glyph_box.area()) {
+                            push_const.pos_offset = ::convert_screen_pos(clipped_glyph_box.x_min(), clipped_glyph_box.y_min(), screen_width_, screen_height_);
+                            push_const.pos_scale = ::convert_screen_offset(clipped_glyph_box.width(), clipped_glyph_box.height(), screen_width_, screen_height_);
+                            push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) * glm::vec2(clipped_glyph_box.width() / glyph_box.width(), clipped_glyph_box.height() / glyph_box.height()) / texture_dim;
+
+                            const glm::vec2 offset{
+                                (clipped_glyph_box.x_min() - glyph_box.x_min()) / glyph_box.width(),
+                                (clipped_glyph_box.y_min() - glyph_box.y_min()) / glyph_box.height()
+                            };
+                            push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim + (offset * glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / texture_dim);
+
+                        }
+                        else {
+                            push_const.pos_offset = ::convert_screen_pos(glyph_box.x_min(), glyph_box.y_min(), screen_width_, screen_height_);
+                            push_const.pos_scale = ::convert_screen_offset(glyph_box.width(), glyph_box.height(), screen_width_, screen_height_);
+                            push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim;
+                            push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0)  / texture_dim;
+                        }
+                    }
+                    else {
                         x_offset += char_info.xadvance;
                         continue;
                     }
-                    else if (glyph_area < glyph_box.area()) {
-                        push_const.color = { 1, 0, 0, 0.3 };
-                    }
-                    else {
-                        push_const.color = { 1, 1, 1, 1 };
-                    }
 
-                    glm::vec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
+                    push_const.color = { 1, 1, 1, 1 };
 
-                    push_const.pos_offset = pos0.convert(screen_width_, screen_height_);
-                    push_const.pos_scale = dimensions.convert(screen_width_, screen_height_);
-                    push_const.uv_offset = glm::vec2(char_info.x0, char_info.y0) / texture_dim;
-                    push_const.uv_scale = glm::vec2(char_info.x1 - char_info.x0, char_info.y1 - char_info.y0) / texture_dim;
                     vkCmdPushConstants(
                         cmd_buf,
                         pipe_layout,
