@@ -181,16 +181,10 @@ namespace {
 
         public:
             bool append(uint32_t value) {
+                if ('\n' == value)
+                    ++new_line_count_;
+
                 return data_.push_back(value);
-            }
-            size_t append(const std::string_view str) {
-                size_t added_count = 0;
-                for (auto c : str) {
-                    if (data_.push_back(static_cast<uint32_t>(c)))
-                        ++added_count;
-                    else
-                        return added_count;
-                }
             }
 
             bool is_full() const { return data_.is_full(); }
@@ -200,6 +194,7 @@ namespace {
 
         private:
             StaticVector data_;
+            size_t new_line_count_ = 0;
 
         };
 
