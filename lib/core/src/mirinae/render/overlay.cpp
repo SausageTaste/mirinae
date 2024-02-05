@@ -91,38 +91,20 @@ namespace {
     class FontLibrary {
 
     public:
-        FontLibrary(mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device) {
-            if (!device.filesys().read_file_to_vector("asset/font/SeoulNamsanM.ttf", file_data_))
+        FontLibrary(mirinae::IFilesys& filesys) {
+            if (!filesys.read_file_to_vector("asset/font/SeoulNamsanM.ttf", file_data_))
                 throw std::runtime_error("failed to load font file");
 
             stbtt_InitFont(&font_, reinterpret_cast<const unsigned char*>(file_data_.data()), 0);
-
-            constexpr int w = 256;
-            constexpr int h = 128;
-            std::array<uint8_t, w * h> temp_bitmap;
-            stbtt_BakeFontBitmap(font_.data, 0, TEXT_HEIGHT, temp_bitmap.data(), w, h, START_CHAR, END_CHAR - START_CHAR, char_baked_.data());
-            bitmap_.init(temp_bitmap.data(), w, h, 1);
-            texture_ = tex_man.create_image("glyphs_ascii", bitmap_, false);
         }
 
-        auto& ascii_texture() const { return *texture_; }
-
-        const stbtt_bakedchar& get_char_info(char c) const {
-            return char_baked_.at(c - START_CHAR);
+        const unsigned char* data() const {
+            return font_.data;
         }
-
-        double text_height() const { return TEXT_HEIGHT; }
 
     private:
-        constexpr static int START_CHAR = 32;
-        constexpr static int END_CHAR = 127;
-        constexpr static int TEXT_HEIGHT = 22;
-
         stbtt_fontinfo font_;
         std::vector<uint8_t> file_data_;
-        std::array<stbtt_bakedchar, END_CHAR - START_CHAR> char_baked_;
-        mirinae::TImage2D<unsigned char> bitmap_;
-        std::unique_ptr<mirinae::ITexture> texture_;
 
     };
 
@@ -212,21 +194,76 @@ namespace {
     };
 
 
-    class TextBox : public mirinae::IWidget {
+    class TextRenderData {
 
     public:
-        TextBox(VkSampler sampler, FontLibrary& fonts, mirinae::DesclayoutManager& desclayout, mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device)
-            : glyphs_(fonts)
-            , render_unit_(device)
+        TextRenderData(mirinae::VulkanDevice& device)
+            : render_unit_(device)
         {
+
+        }
+
+        void init_ascii(
+            VkSampler sampler,
+            FontLibrary& fonts,
+            mirinae::DesclayoutManager& desclayout,
+            mirinae::TextureManager& tex_man,
+            mirinae::VulkanDevice& device
+        ) {
+            constexpr int w = 256;
+            constexpr int h = 128;
+            std::array<uint8_t, w * h> temp_bitmap;
+
+            stbtt_BakeFontBitmap(fonts.data(), 0, TEXT_HEIGHT, temp_bitmap.data(), w, h, START_CHAR, END_CHAR - START_CHAR, char_baked_.data());
+            bitmap_.init(temp_bitmap.data(), w, h, 1);
+            texture_ = tex_man.create_image("glyphs_ascii", bitmap_, false);
+
             render_unit_.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
                 tex_man.request("asset/textures/white.png")->image_view(),
-                fonts.ascii_texture().image_view(),
+                texture_->image_view(),
                 sampler,
                 desclayout,
                 tex_man
             );
+        }
+
+        bool is_ready() const {
+            return texture_ != nullptr;
+        }
+
+        VkDescriptorSet get_desc_set(size_t frame_index) {
+            return render_unit_.get_desc_set(frame_index);
+        }
+
+        auto& get_char_info(size_t index) {
+            return char_baked_.at(index - START_CHAR);
+        }
+
+        auto text_height() const { return TEXT_HEIGHT; }
+        auto atlas_width() const { return texture_->width(); }
+        auto atlas_height() const { return texture_->height(); }
+
+    private:
+        constexpr static int START_CHAR = 32;
+        constexpr static int END_CHAR = 127;
+        constexpr static int TEXT_HEIGHT = 22;
+
+        std::array<stbtt_bakedchar, END_CHAR - START_CHAR> char_baked_;
+        std::unique_ptr<mirinae::ITexture> texture_;
+        mirinae::TImage2D<unsigned char> bitmap_;
+        mirinae::OverlayRenderUnit render_unit_;
+
+    };
+
+
+    class TextBox : public mirinae::IWidget {
+
+    public:
+        TextBox(::TextRenderData& text_render_data)
+            : text_render_data_(text_render_data)
+        {
+
         }
 
         void add_text(const std::string_view str) {
@@ -234,7 +271,7 @@ namespace {
         }
 
         void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) override {
-            auto desc_main = render_unit_.get_desc_set(frame_index);
+            auto desc_main = text_render_data_.get_desc_set(frame_index);
             vkCmdBindDescriptorSets(
                 cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                 pipe_layout,
@@ -245,22 +282,22 @@ namespace {
 
             const sung::AABB2<double> widget_box(pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y);
             auto x_offset = pos_.x;
-            auto y_offset = pos_.y + glyphs_.text_height();
+            auto y_offset = pos_.y + text_render_data_.text_height();
 
             for (auto& block : texts_) {
                 for (auto c : block) {
                     if ('\n' == c) {
                         x_offset = pos_.x;
-                        y_offset += glyphs_.text_height() * line_spacing_;
+                        y_offset += text_render_data_.text_height() * line_spacing_;
                         continue;
                     }
                     mirinae::U_OverlayPushConst push_const;
 
-                    const auto& char_info = glyphs_.get_char_info(c);
+                    const auto& char_info = text_render_data_.get_char_info(c);
                     const sung::AABB2<double> char_info_box(char_info.x0, char_info.x1, char_info.y0, char_info.y1);
                     const auto char_info_min = ::get_aabb_min(char_info_box);
                     const auto char_info_dim = ::get_aabb_dim(char_info_box);
-                    const glm::dvec2 texture_dim(glyphs_.ascii_texture().width(), glyphs_.ascii_texture().height());
+                    const glm::dvec2 texture_dim(text_render_data_.atlas_width(), text_render_data_.atlas_height());
 
                     const sung::AABB2<double> glyph_box(
                         x_offset + char_info.xoff + scroll_.x,
@@ -343,8 +380,7 @@ namespace {
         glm::dvec2 scroll_{ 0, 0 };
 
     private:
-        ::FontLibrary& glyphs_;
-        mirinae::OverlayRenderUnit render_unit_;
+        ::TextRenderData& text_render_data_;
         TextBlocks texts_;
         glm::dvec2 last_mouse_pos_;
         double screen_width_;
@@ -374,7 +410,8 @@ namespace mirinae {
             , tex_man_(tex_man)
             , desclayout_(desclayout)
             , sampler_(device)
-            , font_lib_(tex_man, device)
+            , font_lib_(device.filesys())
+            , text_render_data_(device)
             , wid_width_(win_width)
             , wid_height_(win_height)
         {
@@ -387,6 +424,7 @@ namespace mirinae {
         mirinae::DesclayoutManager& desclayout_;
         mirinae::Sampler sampler_;
         ::FontLibrary font_lib_;
+        ::TextRenderData text_render_data_;
         double wid_width_ = 0;
         double wid_height_ = 0;
 
@@ -436,7 +474,10 @@ namespace mirinae {
     }
 
     void OverlayManager::add_widget_test() {
-        auto widget = std::make_unique<::TextBox>(pimpl_->sampler_.get(), pimpl_->font_lib_, pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
+        if (!pimpl_->text_render_data_.is_ready())
+            pimpl_->text_render_data_.init_ascii(pimpl_->sampler_.get(), pimpl_->font_lib_, pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
+
+        auto widget = std::make_unique<::TextBox>(pimpl_->text_render_data_);
         widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
 
         for (int i = 0; i < 100; ++i) {
