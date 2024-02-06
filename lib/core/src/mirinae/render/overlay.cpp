@@ -51,18 +51,18 @@ namespace {
             );
         }
 
-        void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) override {
+        void record_render(const mirinae::WidgetRenderUniformData& udata) override {
             for (auto& overlay : render_units_) {
-                auto desc_main = overlay.get_desc_set(frame_index);
+                auto desc_main = overlay.get_desc_set(udata.frame_index_);
                 vkCmdBindDescriptorSets(
-                    cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pipe_layout,
+                    udata.cmd_buf_, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    udata.pipe_layout_,
                     0,
                     1, &desc_main,
                     0, nullptr
                 );
 
-                vkCmdDraw(cmd_buf, 6, 1, 0, 0);
+                vkCmdDraw(udata.cmd_buf_, 6, 1, 0, 0);
             }
         }
 
@@ -270,11 +270,11 @@ namespace {
             texts_.append(str);
         }
 
-        void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) override {
-            auto desc_main = text_render_data_.get_desc_set(frame_index);
+        void record_render(const mirinae::WidgetRenderUniformData& udata) override {
+            auto desc_main = text_render_data_.get_desc_set(udata.frame_index_);
             vkCmdBindDescriptorSets(
-                cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                pipe_layout,
+                udata.cmd_buf_, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                udata.pipe_layout_,
                 0,
                 1, &desc_main,
                 0, nullptr
@@ -314,16 +314,16 @@ namespace {
                             continue;
                         }
                         else if (clipped_glyph_area < glyph_box.area()) {
-                            push_const.pos_offset = ::convert_screen_pos(clipped_glyph_box.x_min(), clipped_glyph_box.y_min(), screen_width_, screen_height_);
-                            push_const.pos_scale = ::convert_screen_offset(clipped_glyph_box.width(), clipped_glyph_box.height(), screen_width_, screen_height_);
+                            push_const.pos_offset = ::convert_screen_pos(clipped_glyph_box.x_min(), clipped_glyph_box.y_min(), udata.width(), udata.height());
+                            push_const.pos_scale = ::convert_screen_offset(clipped_glyph_box.width(), clipped_glyph_box.height(), udata.width(), udata.height());
                             push_const.uv_scale = char_info_dim * ::get_aabb_dim(clipped_glyph_box) / (::get_aabb_dim(glyph_box) * texture_dim);
                             const auto texture_space_offset = (::get_aabb_min(clipped_glyph_box) - ::get_aabb_min(glyph_box)) * char_info_dim / ::get_aabb_dim(glyph_box);
                             push_const.uv_offset = (char_info_min + texture_space_offset) / texture_dim;
 
                         }
                         else {
-                            push_const.pos_offset = ::convert_screen_pos(glyph_box.x_min(), glyph_box.y_min(), screen_width_, screen_height_);
-                            push_const.pos_scale = ::convert_screen_offset(glyph_box.width(), glyph_box.height(), screen_width_, screen_height_);
+                            push_const.pos_offset = ::convert_screen_pos(glyph_box.x_min(), glyph_box.y_min(), udata.width(), udata.height());
+                            push_const.pos_scale = ::convert_screen_offset(glyph_box.width(), glyph_box.height(), udata.width(), udata.height());
                             push_const.uv_offset = char_info_min / texture_dim;
                             push_const.uv_scale = char_info_dim / texture_dim;
                         }
@@ -336,23 +336,18 @@ namespace {
                     push_const.color = { 1, 1, 1, 1 };
 
                     vkCmdPushConstants(
-                        cmd_buf,
-                        pipe_layout,
+                        udata.cmd_buf_,
+                        udata.pipe_layout_,
                         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                         0,
                         sizeof(push_const),
                         &push_const
                     );
 
-                    vkCmdDraw(cmd_buf, 6, 1, 0, 0);
+                    vkCmdDraw(udata.cmd_buf_, 6, 1, 0, 0);
                     x_offset += char_info.xadvance;
                 }
             }
-        }
-
-        void on_parent_resize(double width, double height) override {
-            screen_width_ = static_cast<float>(width);
-            screen_height_ = static_cast<float>(height);
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
@@ -383,11 +378,28 @@ namespace {
         ::TextRenderData& text_render_data_;
         TextBlocks texts_;
         glm::dvec2 last_mouse_pos_;
-        double screen_width_;
-        double screen_height_;
         double line_spacing_ = 1.2;
         bool word_wrap_ = true;
         bool owning_mouse_ = false;
+
+    };
+
+
+    class DevConsole : public mirinae::IWidget {
+
+    public:
+        DevConsole(::TextRenderData& text_render_data)
+            : text_box_(text_render_data)
+        {
+
+        }
+
+        void record_render(const mirinae::WidgetRenderUniformData& uniform_data) override {
+            text_box_.record_render(uniform_data);
+        }
+
+    private:
+        TextBox text_box_;
 
     };
 
@@ -417,11 +429,14 @@ namespace mirinae {
         {
             SamplerBuilder sampler_builder;
             sampler_.reset(sampler_builder.build(device_));
+
+            widgets_.push_back(std::make_unique<::DevConsole>(text_render_data_));
         }
 
         mirinae::VulkanDevice& device_;
         mirinae::TextureManager& tex_man_;
         mirinae::DesclayoutManager& desclayout_;
+
         mirinae::Sampler sampler_;
         ::FontLibrary font_lib_;
         ::TextRenderData text_render_data_;
@@ -446,6 +461,17 @@ namespace mirinae {
     }
 
     OverlayManager::~OverlayManager() = default;
+
+    void OverlayManager::record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) {
+        WidgetRenderUniformData udata;
+        udata.screen_size_ = { pimpl_->wid_width_, pimpl_->wid_height_ };
+        udata.frame_index_ = frame_index;
+        udata.cmd_buf_ = cmd_buf;
+        udata.pipe_layout_ = pipe_layout;
+
+        for (auto& widget : pimpl_->widgets_)
+            widget->record_render(udata);
+    }
 
     void OverlayManager::on_fbuf_resize(uint32_t width, uint32_t height) {
         pimpl_->wid_width_ = width;
