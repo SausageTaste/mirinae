@@ -517,9 +517,7 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& widget : overlay_man_)
-                    widget->record_render(framesync_.get_frame_index().get(), cur_cmd_buf, rp.pipeline_layout());
-
+                overlay_man_.record_render(framesync_.get_frame_index().get(), cur_cmd_buf, rp.pipeline_layout());
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
