@@ -243,6 +243,23 @@ namespace {
             ss << "    per stage descriptor samplers         " << properties_.limits.maxPerStageDescriptorSamplers << '\n';
             ss << "    per stage descriptor uniform buffers  " << properties_.limits.maxPerStageDescriptorUniformBuffers << '\n';
 
+            ss << "ASTC LDR supported                        " << features_.textureCompressionASTC_LDR << '\n';
+            ss << "  * ASTC 4x4 UNorm                        " << this->is_texture_format_supported(VK_FORMAT_ASTC_4x4_UNORM_BLOCK) << '\n';
+            ss << "  * ASTC 4x4 UNorm sRGB                   " << this->is_texture_format_supported(VK_FORMAT_ASTC_4x4_SRGB_BLOCK) << '\n';
+
+            ss << "ASTC HDR\n";
+            ss << "  * ASTC 4x4 SFloat                       " << this->is_texture_format_supported(VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK) << '\n';
+
+            ss << "BC supported                              " << features_.textureCompressionBC << '\n';
+            ss << "  * BC1 RGB                               " << this->is_texture_format_supported(VK_FORMAT_BC1_RGB_UNORM_BLOCK) << '\n';
+            ss << "  * BC1 RGB sRGB                          " << this->is_texture_format_supported(VK_FORMAT_BC1_RGB_SRGB_BLOCK) << '\n';
+            ss << "  * BC1 RGBA                              " << this->is_texture_format_supported(VK_FORMAT_BC1_RGBA_UNORM_BLOCK) << '\n';
+            ss << "  * BC1 RGBA sRGB                         " << this->is_texture_format_supported(VK_FORMAT_BC1_RGBA_SRGB_BLOCK) << '\n';
+            ss << "  * BC3 RGBA                              " << this->is_texture_format_supported(VK_FORMAT_BC3_UNORM_BLOCK) << '\n';
+            ss << "  * BC3 RGBA sRGB                         " << this->is_texture_format_supported(VK_FORMAT_BC3_SRGB_BLOCK) << '\n';
+
+            ss << "ETC2 supported                            " << features_.textureCompressionETC2 << '\n';
+
             ss << "==================================";
             return ss.str();
         }
@@ -311,6 +328,16 @@ namespace {
             }
 
             throw std::runtime_error("Failed to find supported format!");
+        }
+
+        bool is_texture_format_supported(VkFormat format) const {
+            constexpr auto common_texture_ops = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
+                                            | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT
+                                            | VK_FORMAT_FEATURE_TRANSFER_SRC_BIT
+                                            | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+
+            ::FormatProperties props(handle_, format);
+            return props.does_optimal_tiling_support_feature(common_texture_ops);
         }
 
     private:
