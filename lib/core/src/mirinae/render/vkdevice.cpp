@@ -400,7 +400,9 @@ namespace {
             std::vector<VkPhysicalDevice> devices(count);
             vkEnumeratePhysicalDevices(instance_, &count, devices.data());
 
-            VkPhysicalDevice output = VK_NULL_HANDLE;
+            VkPhysicalDevice selected = VK_NULL_HANDLE;
+            double best_score = -1;
+
             for (auto handle : devices) {
                 PhysDevice phys_device;
                 phys_device.set(handle, surface);
@@ -408,10 +410,17 @@ namespace {
                 if (!phys_device.graphics_family_index().has_value())
                     continue;
 
-                output = handle;
+                double this_score = 0;
+                if (phys_device.is_descrete_gpu())
+                    this_score += 1000;
+
+                if (this_score > best_score) {
+                    best_score = this_score;
+                    selected = handle;
+                }
             }
 
-            return output;
+            return selected;
         }
 
     private:
