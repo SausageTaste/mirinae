@@ -31,7 +31,7 @@ namespace mirinae {
 
         // Physical device
         std::optional<uint32_t> graphics_queue_family_index();
-        VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+        VkFormat select_first_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
         // Misc
         VulkanMemoryAllocator mem_alloc();

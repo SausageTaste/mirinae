@@ -153,6 +153,26 @@ namespace {
     };
 
 
+    class FormatProperties {
+
+    public:
+        FormatProperties(VkPhysicalDevice phys_device, VkFormat format) {
+            vkGetPhysicalDeviceFormatProperties(phys_device, format, &props_);
+        }
+
+        bool does_linear_tiling_support_feature(VkFormatFeatureFlags feature) const {
+            return (props_.linearTilingFeatures & feature) == feature;
+        }
+        bool does_optimal_tiling_support_feature(VkFormatFeatureFlags feature) const {
+            return (props_.optimalTilingFeatures & feature) == feature;
+        }
+
+    private:
+        VkFormatProperties props_{};
+
+    };
+
+
     class PhysDevice {
 
     public:
@@ -278,15 +298,14 @@ namespace {
             return required_extensions.size();
         }
 
-        VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const {
+        VkFormat select_first_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const {
             for (VkFormat format : candidates) {
-                VkFormatProperties props;
-                vkGetPhysicalDeviceFormatProperties(handle_, format, &props);
+                ::FormatProperties props(handle_, format);
 
-                if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+                if (tiling == VK_IMAGE_TILING_LINEAR && props.does_linear_tiling_support_feature(features)) {
                     return format;
                 }
-                else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+                else if (tiling == VK_IMAGE_TILING_OPTIMAL && props.does_optimal_tiling_support_feature(features)) {
                     return format;
                 }
             }
@@ -711,8 +730,8 @@ namespace mirinae {
         return pimpl_->phys_device_.graphics_family_index();
     }
 
-    VkFormat VulkanDevice::find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const {
-        return pimpl_->phys_device_.find_supported_format(candidates, tiling, features);
+    VkFormat VulkanDevice::select_first_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const {
+        return pimpl_->phys_device_.select_first_supported_format(candidates, tiling, features);
     }
 
     VulkanMemoryAllocator VulkanDevice::mem_alloc() {
