@@ -192,7 +192,7 @@ namespace {
             camera_view_.pos_ = world_shift;
 
             const std::vector<mirinae::respath_t> mesh_paths{
-                "sponza/sponza.dmd",
+                "asset/models/sponza/sponza.dmd",
                 "artist/artist_subset.dmd",
             };
             const std::vector<float> model_scales{
