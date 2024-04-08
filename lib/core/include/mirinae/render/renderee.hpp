@@ -10,7 +10,7 @@
 
 namespace mirinae {
 
-    enum class FbufUsage{
+    enum class FbufUsage {
         color_attachment,
         depth_attachment,
         depth_stencil_attachment,
@@ -27,7 +27,6 @@ namespace mirinae {
 
         virtual uint32_t width() const = 0;
         virtual uint32_t height() const = 0;
-
     };
 
 
@@ -38,14 +37,21 @@ namespace mirinae {
         ~TextureManager();
 
         std::shared_ptr<ITexture> request(const respath_t& res_id);
-        std::unique_ptr<ITexture> create_image(const std::string& id, const IImage2D& image, bool srgb);
+        std::unique_ptr<ITexture> create_image(
+            const std::string& id, const IImage2D& image, bool srgb
+        );
         std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height);
-        std::unique_ptr<ITexture> create_attachment(uint32_t width, uint32_t height, VkFormat, FbufUsage, const char* name);
+        std::unique_ptr<ITexture> create_attachment(
+            uint32_t width,
+            uint32_t height,
+            VkFormat,
+            FbufUsage,
+            const char* name
+        );
 
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> pimpl_;
-
     };
 
 
@@ -71,7 +77,6 @@ namespace mirinae {
         DescriptorPool desc_pool_;
         VertexIndexPair vert_index_pair_;
         std::vector<VkDescriptorSet> desc_sets_;
-
     };
 
 
@@ -102,7 +107,6 @@ namespace mirinae {
         DescriptorPool desc_pool_;
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
-
     };
 
 
@@ -116,7 +120,6 @@ namespace mirinae {
         std::vector<RenderUnit> render_units_;
         std::vector<RenderUnit> render_units_alpha_;
         VulkanDevice& device_;
-
     };
 
 
@@ -126,12 +129,15 @@ namespace mirinae {
         ModelManager(VulkanDevice& device);
         ~ModelManager();
 
-        std::shared_ptr<RenderModel> request_static(const mirinae::respath_t& res_id, DesclayoutManager& desclayouts, TextureManager& tex_man);
+        std::shared_ptr<RenderModel> request_static(
+            const mirinae::respath_t& res_id,
+            DesclayoutManager& desclayouts,
+            TextureManager& tex_man
+        );
 
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> pimpl_;
-
     };
 
 
@@ -144,7 +150,11 @@ namespace mirinae {
         void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
         void destroy();
 
-        void udpate_ubuf(uint32_t index, const U_GbufActor& data, VulkanMemoryAllocator mem_alloc);
+        void udpate_ubuf(
+            uint32_t index,
+            const U_GbufActor& data,
+            VulkanMemoryAllocator mem_alloc
+        );
         VkDescriptorSet get_desc_set(size_t index);
 
         TransformQuat<double> transform_;
@@ -155,7 +165,6 @@ namespace mirinae {
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;
-
     };
 
-}
+}  // namespace mirinae

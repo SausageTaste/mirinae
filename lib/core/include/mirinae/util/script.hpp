@@ -14,7 +14,6 @@ namespace mirinae {
     private:
         class Impl;
         std::unique_ptr<Impl> pimpl_;
-
     };
 
-}
+}  // namespace mirinae

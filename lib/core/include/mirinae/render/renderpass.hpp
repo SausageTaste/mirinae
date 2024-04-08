@@ -8,12 +8,38 @@ namespace mirinae {
     class FbufImageBundle {
 
     public:
-        void init(uint32_t width, uint32_t height, mirinae::TextureManager& tex_man) {
+        void init(
+            uint32_t width, uint32_t height, mirinae::TextureManager& tex_man
+        ) {
             depth_ = tex_man.create_depth(width, height);
-            albedo_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "albedo");
-            normal_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "normal");
-            material_ = tex_man.create_attachment(width, height, VK_FORMAT_R8G8B8A8_UNORM, mirinae::FbufUsage::color_attachment, "material");
-            composition_ = tex_man.create_attachment(width, height, VK_FORMAT_B10G11R11_UFLOAT_PACK32, mirinae::FbufUsage::color_attachment, "composition");
+            albedo_ = tex_man.create_attachment(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "albedo"
+            );
+            normal_ = tex_man.create_attachment(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "normal"
+            );
+            material_ = tex_man.create_attachment(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "material"
+            );
+            composition_ = tex_man.create_attachment(
+                width,
+                height,
+                VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+                mirinae::FbufUsage::color_attachment,
+                "composition"
+            );
         }
 
         uint32_t width() const { return depth_->width(); }
@@ -32,7 +58,6 @@ namespace mirinae {
         std::unique_ptr<mirinae::ITexture> normal_;
         std::unique_ptr<mirinae::ITexture> material_;
         std::unique_ptr<mirinae::ITexture> composition_;
-
     };
 
 
@@ -49,7 +74,6 @@ namespace mirinae {
 
         virtual const VkClearValue* clear_values() const = 0;
         virtual uint32_t clear_value_count() const = 0;
-
     };
 
 
@@ -98,4 +122,4 @@ namespace mirinae {
         VulkanDevice& device
     );
 
-}
+}  // namespace mirinae

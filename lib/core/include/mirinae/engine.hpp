@@ -23,10 +23,11 @@ namespace mirinae {
         virtual void notify_window_resize(uint32_t width, uint32_t height) = 0;
         virtual void notify_key_event(const key::Event& e) = 0;
         virtual void notify_mouse_event(const mouse::Event& e) = 0;
-
     };
 
 
-    std::unique_ptr<IEngine> create_engine(mirinae::EngineCreateInfo&& create_info);
+    std::unique_ptr<IEngine> create_engine(
+        mirinae::EngineCreateInfo&& create_info
+    );
 
-}
+}  // namespace mirinae

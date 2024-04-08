@@ -1,9 +1,9 @@
 #pragma once
 
 #include <array>
-#include <vector>
-#include <string>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 
@@ -26,7 +26,6 @@ namespace mirinae {
 
     private:
         VkSemaphore handle_ = VK_NULL_HANDLE;
-
     };
 
 
@@ -43,7 +42,6 @@ namespace mirinae {
 
     private:
         VkFence handle_ = VK_NULL_HANDLE;
-
     };
 
 
@@ -57,11 +55,12 @@ namespace mirinae {
         void free(VkCommandBuffer cmdbuf, VkDevice logi_device);
 
         VkCommandBuffer begin_single_time(VkDevice logi_device);
-        void end_single_time(VkCommandBuffer cmdbuf, VkQueue graphics_q, VkDevice logi_device);
+        void end_single_time(
+            VkCommandBuffer cmdbuf, VkQueue graphics_q, VkDevice logi_device
+        );
 
     private:
         VkCommandPool handle_ = VK_NULL_HANDLE;
-
     };
 
-}
+}  // namespace mirinae

@@ -7,14 +7,18 @@
 #include "mirinae/util/image.hpp"
 
 
-#define MIRINAE_DEFINE_OPAQUE_HANDLE(name) class name##_T; using name = name##_T*;
+#define MIRINAE_DEFINE_OPAQUE_HANDLE(name) \
+    class name##_T;                        \
+    using name = name##_T*;
 
 
 namespace mirinae {
 
     MIRINAE_DEFINE_OPAQUE_HANDLE(VulkanMemoryAllocator);
 
-    VulkanMemoryAllocator create_vma_allocator(VkInstance instance, VkPhysicalDevice phys_device, VkDevice logi_device);
+    VulkanMemoryAllocator create_vma_allocator(
+        VkInstance instance, VkPhysicalDevice phys_device, VkDevice logi_device
+    );
     void destroy_vma_allocator(VulkanMemoryAllocator allocator);
 
 
@@ -32,14 +36,17 @@ namespace mirinae {
         VkBuffer buffer() const { return buffer_; }
         VkDeviceSize size() const;
 
-        void set_data(const void* data, size_t size, VulkanMemoryAllocator allocator);
-        void record_copy_cmd(const Buffer& src, VkCommandBuffer cmdbuf, VkDevice logi_device);
+        void set_data(
+            const void* data, size_t size, VulkanMemoryAllocator allocator
+        );
+        void record_copy_cmd(
+            const Buffer& src, VkCommandBuffer cmdbuf, VkDevice logi_device
+        );
 
     private:
         VkBuffer buffer_ = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;
         VkDeviceSize data_size_ = 0;
-
     };
 
 
@@ -58,14 +65,16 @@ namespace mirinae {
 
     private:
         VkImageCreateInfo info_ = {};
-
     };
 
 
     class Image {
 
     public:
-        void init(const VkImageCreateInfo& create_info, VulkanMemoryAllocator allocator);
+        void init(
+            const VkImageCreateInfo& create_info,
+            VulkanMemoryAllocator allocator
+        );
         void destroy(VulkanMemoryAllocator allocator);
 
         VkImage image() const { return image_; }
@@ -78,7 +87,6 @@ namespace mirinae {
         VkImageCreateInfo img_info_ = {};
         VkImage image_ = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;
-
     };
 
-}
+}  // namespace mirinae
