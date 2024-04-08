@@ -1,7 +1,7 @@
 #include "mirinae/engine.hpp"
 
-#include <vulkan/vulkan.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan.h>
 
 #include <daltools/util.h>
 
@@ -40,21 +40,15 @@ namespace {
         void init(VkDevice logi_device) {
             this->destroy(logi_device);
 
-            for (auto& x : img_available_semaphores_)
-                x.init(logi_device);
-            for (auto& x : render_finished_semaphores_)
-                x.init(logi_device);
-            for (auto& x : in_flight_fences_)
-                x.init(true, logi_device);
+            for (auto& x : img_available_semaphores_) x.init(logi_device);
+            for (auto& x : render_finished_semaphores_) x.init(logi_device);
+            for (auto& x : in_flight_fences_) x.init(true, logi_device);
         }
 
         void destroy(VkDevice logi_device) {
-            for (auto& x : img_available_semaphores_)
-                x.destroy(logi_device);
-            for (auto& x : render_finished_semaphores_)
-                x.destroy(logi_device);
-            for (auto& x : in_flight_fences_)
-                x.destroy(logi_device);
+            for (auto& x : img_available_semaphores_) x.destroy(logi_device);
+            for (auto& x : render_finished_semaphores_) x.destroy(logi_device);
+            for (auto& x : in_flight_fences_) x.destroy(logi_device);
         }
 
         mirinae::Semaphore& get_cur_img_ava_semaph() {
@@ -73,11 +67,13 @@ namespace {
         }
 
     private:
-        std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT> img_available_semaphores_;
-        std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT> render_finished_semaphores_;
-        std::array<mirinae::Fence, mirinae::MAX_FRAMES_IN_FLIGHT> in_flight_fences_;
+        std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT>
+            img_available_semaphores_;
+        std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT>
+            render_finished_semaphores_;
+        std::array<mirinae::Fence, mirinae::MAX_FRAMES_IN_FLIGHT>
+            in_flight_fences_;
         FrameIndex cur_frame_{ 0 };
-
     };
 
 
@@ -101,17 +97,40 @@ namespace {
             mirinae::VulkanDevice& device
         ) {
             desc_pool_.init(10, device.logi_device());
-            desc_sets_ = desc_pool_.alloc(mirinae::MAX_FRAMES_IN_FLIGHT, desclayouts.get("composition:main"), device.logi_device());
+            desc_sets_ = desc_pool_.alloc(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                desclayouts.get("composition:main"),
+                device.logi_device()
+            );
 
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& ubuf = ubufs_.emplace_back();
-                ubuf.init_ubuf(sizeof(mirinae::U_CompositionMain), device.mem_alloc());
+                ubuf.init_ubuf(
+                    sizeof(mirinae::U_CompositionMain), device.mem_alloc()
+                );
 
                 mirinae::DescWriteInfoBuilder builder;
-                builder.add_combinded_image_sampler(fbufs.depth().image_view(), texture_sampler, desc_sets_.at(i))
-                    .add_combinded_image_sampler(fbufs.albedo().image_view(), texture_sampler, desc_sets_.at(i))
-                    .add_combinded_image_sampler(fbufs.normal().image_view(), texture_sampler, desc_sets_.at(i))
-                    .add_combinded_image_sampler(fbufs.material().image_view(), texture_sampler, desc_sets_.at(i))
+                builder
+                    .add_combinded_image_sampler(
+                        fbufs.depth().image_view(),
+                        texture_sampler,
+                        desc_sets_.at(i)
+                    )
+                    .add_combinded_image_sampler(
+                        fbufs.albedo().image_view(),
+                        texture_sampler,
+                        desc_sets_.at(i)
+                    )
+                    .add_combinded_image_sampler(
+                        fbufs.normal().image_view(),
+                        texture_sampler,
+                        desc_sets_.at(i)
+                    )
+                    .add_combinded_image_sampler(
+                        fbufs.material().image_view(),
+                        texture_sampler,
+                        desc_sets_.at(i)
+                    )
                     .add_uniform_buffer(ubuf, desc_sets_.at(i))
                     .apply_all(device.logi_device());
             }
@@ -120,15 +139,13 @@ namespace {
         void destroy(mirinae::VulkanDevice& device) {
             desc_pool_.destroy(device.logi_device());
 
-            for (auto& ubuf : ubufs_)
-                ubuf.destroy(device.mem_alloc());
+            for (auto& ubuf : ubufs_) ubuf.destroy(device.mem_alloc());
             ubufs_.clear();
         }
 
         mirinae::DescriptorPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
         std::vector<mirinae::Buffer> ubufs_;
-
     };
 
 
@@ -142,11 +159,20 @@ namespace {
             mirinae::VulkanDevice& device
         ) {
             desc_pool_.init(10, device.logi_device());
-            desc_sets_ = desc_pool_.alloc(mirinae::MAX_FRAMES_IN_FLIGHT, desclayouts.get("fillscreen:main"), device.logi_device());
+            desc_sets_ = desc_pool_.alloc(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                desclayouts.get("fillscreen:main"),
+                device.logi_device()
+            );
 
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 mirinae::DescWriteInfoBuilder builder;
-                builder.add_combinded_image_sampler(fbufs.composition().image_view(), texture_sampler, desc_sets_.at(i))
+                builder
+                    .add_combinded_image_sampler(
+                        fbufs.composition().image_view(),
+                        texture_sampler,
+                        desc_sets_.at(i)
+                    )
                     .apply_all(device.logi_device());
             }
         }
@@ -157,23 +183,25 @@ namespace {
 
         mirinae::DescriptorPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
-
     };
 
 
     class EngineGlfw : public mirinae::IEngine {
 
     public:
-        EngineGlfw(mirinae::EngineCreateInfo&& cinfo, int init_width, int init_height)
+        EngineGlfw(
+            mirinae::EngineCreateInfo&& cinfo, int init_width, int init_height
+        )
             : device_(std::move(cinfo))
             , tex_man_(device_)
             , model_man_(device_)
             , desclayout_(device_)
             , texture_sampler_(device_)
-            , overlay_man_(init_width, init_height, desclayout_, tex_man_, device_)
+            , overlay_man_(
+                  init_width, init_height, desclayout_, tex_man_, device_
+              )
             , fbuf_width_(init_width)
-            , fbuf_height_(init_height)
-        {
+            , fbuf_height_(init_height) {
             // This must be the first member variable right after vtable pointer
             static_assert(offsetof(EngineGlfw, device_) == sizeof(void*));
 
@@ -184,7 +212,10 @@ namespace {
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
-            cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
+            cmd_pool_.init(
+                device_.graphics_queue_family_index().value(),
+                device_.logi_device()
+            );
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
                 cmd_buf_.push_back(cmd_pool_.alloc(device_.logi_device()));
 
@@ -202,21 +233,24 @@ namespace {
 
             for (size_t i = 0; i < mesh_paths.size(); ++i) {
                 const auto& model_path = mesh_paths.at(i);
-                auto model = model_man_.request_static(model_path, desclayout_, tex_man_);
+                auto model = model_man_.request_static(
+                    model_path, desclayout_, tex_man_
+                );
                 if (!model) {
-                    spdlog::warn("Failed to load model: {}", model_path.u8string());
+                    spdlog::warn(
+                        "Failed to load model: {}", model_path.u8string()
+                    );
                     continue;
                 }
 
                 auto& ren_pair = draw_sheet_.ren_pairs_.emplace_back();
                 ren_pair.model_ = model;
 
-                auto& actor = ren_pair.actors_.emplace_back(std::make_shared<mirinae::RenderActor>(device_));
-                actor->init(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    desclayout_
+                auto& actor = ren_pair.actors_.emplace_back(
+                    std::make_shared<mirinae::RenderActor>(device_)
                 );
-                actor->transform_.pos_ = glm::dvec3(i*3, 0, 0) + world_shift;
+                actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                actor->transform_.pos_ = glm::dvec3(i * 3, 0, 0) + world_shift;
                 actor->transform_.scale_ = glm::dvec3(model_scales[i]);
             }
 
@@ -233,7 +267,9 @@ namespace {
 
         void do_frame() override {
             const auto delta_time = fps_timer_.check_get_elapsed();
-            camera_controller_.apply(camera_view_, static_cast<float>(delta_time));
+            camera_controller_.apply(
+                camera_view_, static_cast<float>(delta_time)
+            );
 
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
@@ -243,16 +279,23 @@ namespace {
 
             // Update uniform
             {
-                const auto proj_mat = camera_proj_.make_proj_mat(swapchain_.width(), swapchain_.height());
+                const auto proj_mat = camera_proj_.make_proj_mat(
+                    swapchain_.width(), swapchain_.height()
+                );
                 const auto view_mat = camera_view_.make_view_mat();
 
                 for (auto& pair : draw_sheet_.ren_pairs_) {
                     for (auto& actor : pair.actors_) {
                         mirinae::U_GbufActor ubuf_data;
-                        const auto model_mat = actor->transform_.make_model_mat();
+                        const auto model_mat = actor->transform_.make_model_mat(
+                        );
                         ubuf_data.view_model = view_mat * model_mat;
                         ubuf_data.pvm = proj_mat * view_mat * model_mat;
-                        actor->udpate_ubuf(framesync_.get_frame_index().get(), ubuf_data, device_.mem_alloc());
+                        actor->udpate_ubuf(
+                            framesync_.get_frame_index().get(),
+                            ubuf_data,
+                            device_.mem_alloc()
+                        );
                     }
                 }
 
@@ -260,11 +303,11 @@ namespace {
                     mirinae::U_CompositionMain ubuf_data;
                     ubuf_data.proj_inv = glm::inverse(proj_mat);
 
-                    rp_states_composition_.ubufs_.at(framesync_.get_frame_index().get()).set_data(
-                        &ubuf_data,
-                        sizeof(ubuf_data),
-                        device_.mem_alloc()
-                    );
+                    rp_states_composition_.ubufs_
+                        .at(framesync_.get_frame_index().get())
+                        .set_data(
+                            &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
+                        );
                 }
             }
 
@@ -277,8 +320,11 @@ namespace {
                 beginInfo.flags = 0;
                 beginInfo.pInheritanceInfo = nullptr;
 
-                if (vkBeginCommandBuffer(cur_cmd_buf, &beginInfo) != VK_SUCCESS) {
-                    throw std::runtime_error("failed to begin recording command buffer!");
+                if (vkBeginCommandBuffer(cur_cmd_buf, &beginInfo) !=
+                    VK_SUCCESS) {
+                    throw std::runtime_error(
+                        "failed to begin recording command buffer!"
+                    );
                 }
 
                 std::array<VkClearValue, 3> clear_values;
@@ -299,8 +345,12 @@ namespace {
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
 
                 VkViewport viewport{};
                 viewport.x = 0.0f;
@@ -318,27 +368,39 @@ namespace {
 
                 for (auto& pair : draw_sheet_.ren_pairs_) {
                     for (auto& unit : pair.model_->render_units_) {
-                        auto unit_desc = unit.get_desc_set(framesync_.get_frame_index().get());
+                        auto unit_desc = unit.get_desc_set(
+                            framesync_.get_frame_index().get()
+                        );
                         vkCmdBindDescriptorSets(
-                            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            cur_cmd_buf,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
                             rp.pipeline_layout(),
                             0,
-                            1, &unit_desc,
-                            0, nullptr
+                            1,
+                            &unit_desc,
+                            0,
+                            nullptr
                         );
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor->get_desc_set(framesync_.get_frame_index().get());
+                            auto actor_desc = actor->get_desc_set(
+                                framesync_.get_frame_index().get()
+                            );
                             vkCmdBindDescriptorSets(
-                                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                cur_cmd_buf,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 rp.pipeline_layout(),
                                 1,
-                                1, &actor_desc,
-                                0, nullptr
+                                1,
+                                &actor_desc,
+                                0,
+                                nullptr
                             );
 
-                            vkCmdDrawIndexed(cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0);
+                            vkCmdDrawIndexed(
+                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                            );
                         }
                     }
                 }
@@ -357,8 +419,12 @@ namespace {
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
 
                 VkViewport viewport{};
                 viewport.x = 0.0f;
@@ -374,13 +440,18 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                auto desc_main = rp_states_composition_.desc_sets_.at(framesync_.get_frame_index().get());
+                auto desc_main = rp_states_composition_.desc_sets_.at(
+                    framesync_.get_frame_index().get()
+                );
                 vkCmdBindDescriptorSets(
-                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    cur_cmd_buf,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
                     rp.pipeline_layout(),
                     0,
-                    1, &desc_main,
-                    0, nullptr
+                    1,
+                    &desc_main,
+                    0,
+                    nullptr
                 );
 
                 vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
@@ -400,8 +471,12 @@ namespace {
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
 
                 VkViewport viewport{};
                 viewport.x = 0.0f;
@@ -419,27 +494,39 @@ namespace {
 
                 for (auto& pair : draw_sheet_.ren_pairs_) {
                     for (auto& unit : pair.model_->render_units_alpha_) {
-                        auto unit_desc = unit.get_desc_set(framesync_.get_frame_index().get());
+                        auto unit_desc = unit.get_desc_set(
+                            framesync_.get_frame_index().get()
+                        );
                         vkCmdBindDescriptorSets(
-                            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            cur_cmd_buf,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
                             rp.pipeline_layout(),
                             0,
-                            1, &unit_desc,
-                            0, nullptr
+                            1,
+                            &unit_desc,
+                            0,
+                            nullptr
                         );
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor->get_desc_set(framesync_.get_frame_index().get());
+                            auto actor_desc = actor->get_desc_set(
+                                framesync_.get_frame_index().get()
+                            );
                             vkCmdBindDescriptorSets(
-                                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                cur_cmd_buf,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 rp.pipeline_layout(),
                                 1,
-                                1, &actor_desc,
-                                0, nullptr
+                                1,
+                                &actor_desc,
+                                0,
+                                nullptr
                             );
 
-                            vkCmdDrawIndexed(cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0);
+                            vkCmdDrawIndexed(
+                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                            );
                         }
                     }
                 }
@@ -458,8 +545,12 @@ namespace {
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
 
                 VkViewport viewport{};
                 viewport.x = 0.0f;
@@ -475,13 +566,18 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                auto desc_main = rp_states_fillscreen_.desc_sets_.at(framesync_.get_frame_index().get());
+                auto desc_main = rp_states_fillscreen_.desc_sets_.at(
+                    framesync_.get_frame_index().get()
+                );
                 vkCmdBindDescriptorSets(
-                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    cur_cmd_buf,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
                     rp.pipeline_layout(),
                     0,
-                    1, &desc_main,
-                    0, nullptr
+                    1,
+                    &desc_main,
+                    0,
+                    nullptr
                 );
 
                 vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
@@ -500,8 +596,12 @@ namespace {
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-                vkCmdBindPipeline(cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline());
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
 
                 VkViewport viewport{};
                 viewport.x = 0.0f;
@@ -517,13 +617,19 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                overlay_man_.record_render(framesync_.get_frame_index().get(), cur_cmd_buf, rp.pipeline_layout());
+                overlay_man_.record_render(
+                    framesync_.get_frame_index().get(),
+                    cur_cmd_buf,
+                    rp.pipeline_layout()
+                );
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
             {
                 if (vkEndCommandBuffer(cur_cmd_buf) != VK_SUCCESS) {
-                    throw std::runtime_error("failed to record command buffer!");
+                    throw std::runtime_error(
+                        "failed to record a command buffer!"
+                    );
                 }
             }
 
@@ -531,20 +637,34 @@ namespace {
                 VkSubmitInfo submitInfo{};
                 submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-                VkSemaphore waitSemaphores[] = { framesync_.get_cur_img_ava_semaph().get() };
-                VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+                VkSemaphore waitSemaphores[] = {
+                    framesync_.get_cur_img_ava_semaph().get(),
+                };
+                VkPipelineStageFlags waitStages[] = {
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                };
                 submitInfo.waitSemaphoreCount = 1;
                 submitInfo.pWaitSemaphores = waitSemaphores;
                 submitInfo.pWaitDstStageMask = waitStages;
                 submitInfo.commandBufferCount = 1;
                 submitInfo.pCommandBuffers = &cur_cmd_buf;
 
-                VkSemaphore signalSemaphores[] = { framesync_.get_cur_render_fin_semaph().get() };
+                VkSemaphore signalSemaphores[] = {
+                    framesync_.get_cur_render_fin_semaph().get(),
+                };
                 submitInfo.signalSemaphoreCount = 1;
                 submitInfo.pSignalSemaphores = signalSemaphores;
 
-                if (vkQueueSubmit(device_.graphics_queue(), 1, &submitInfo, framesync_.get_cur_in_flight_fence().get()) != VK_SUCCESS) {
-                    throw std::runtime_error("failed to submit draw command buffer!");
+                const auto result = vkQueueSubmit(
+                    device_.graphics_queue(),
+                    1,
+                    &submitInfo,
+                    framesync_.get_cur_in_flight_fence().get()
+                );
+                if (VK_SUCCESS != result) {
+                    throw std::runtime_error(
+                        "failed to submit draw command buffer!"
+                    );
                 }
 
                 std::array<uint32_t, 1> swapchain_indices{ image_index.get() };
@@ -554,7 +674,9 @@ namespace {
                 presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
                 presentInfo.waitSemaphoreCount = 1;
                 presentInfo.pWaitSemaphores = signalSemaphores;
-                presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());
+                presentInfo.swapchainCount = static_cast<uint32_t>(
+                    swapchains.size()
+                );
                 presentInfo.pSwapchains = swapchains.data();
                 presentInfo.pImageIndices = swapchain_indices.data();
                 presentInfo.pResults = nullptr;
@@ -565,12 +687,10 @@ namespace {
             framesync_.increase_frame_index();
         }
 
-        bool is_ongoing() override {
-            return true;
-        }
+        bool is_ongoing() override { return true; }
 
         void notify_window_resize(uint32_t width, uint32_t height) override {
-            fbuf_width_ = width;;
+            fbuf_width_ = width;
             fbuf_height_ = height;
             fbuf_resized_ = true;
         }
@@ -587,21 +707,64 @@ namespace {
         }
 
     private:
-        void create_swapchain_and_relatives(uint32_t fbuf_width, uint32_t fbuf_height) {
+        void create_swapchain_and_relatives(
+            uint32_t fbuf_width, uint32_t fbuf_height
+        ) {
             device_.wait_idle();
             swapchain_.init(fbuf_width, fbuf_height, device_);
 
-            const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(swapchain_.width(), swapchain_.height(), 2);
+            const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
+                swapchain_.width(), swapchain_.height(), 2
+            );
             fbuf_images_.init(gbuf_width, gbuf_height, tex_man_);
 
-            rp_gbuf_ = mirinae::create_gbuf(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
-            rp_composition_ = mirinae::create_composition(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
-            rp_transparent_ = mirinae::create_transparent(fbuf_images_.width(), fbuf_images_.height(), fbuf_images_, desclayout_, swapchain_, device_);
-            rp_fillscreen_ = mirinae::create_fillscreen(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
-            rp_overlay_ = mirinae::create_overlay(swapchain_.width(), swapchain_.height(), fbuf_images_, desclayout_, swapchain_, device_);
+            rp_gbuf_ = mirinae::create_gbuf(
+                fbuf_images_.width(),
+                fbuf_images_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
+            rp_composition_ = mirinae::create_composition(
+                fbuf_images_.width(),
+                fbuf_images_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
+            rp_transparent_ = mirinae::create_transparent(
+                fbuf_images_.width(),
+                fbuf_images_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
+            rp_fillscreen_ = mirinae::create_fillscreen(
+                swapchain_.width(),
+                swapchain_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
+            rp_overlay_ = mirinae::create_overlay(
+                swapchain_.width(),
+                swapchain_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
 
-            rp_states_composition_.init(desclayout_, fbuf_images_, texture_sampler_.get(), device_);
-            rp_states_fillscreen_.init(desclayout_, fbuf_images_, texture_sampler_.get(), device_);
+            rp_states_composition_.init(
+                desclayout_, fbuf_images_, texture_sampler_.get(), device_
+            );
+            rp_states_fillscreen_.init(
+                desclayout_, fbuf_images_, texture_sampler_.get(), device_
+            );
         }
 
         void destroy_swapchain_and_relatives() {
@@ -625,25 +788,29 @@ namespace {
             if (fbuf_resized_) {
                 if (::is_fbuf_too_small(fbuf_width_, fbuf_height_)) {
                     fbuf_resized_ = true;
-                }
-                else {
+                } else {
                     fbuf_resized_ = false;
                     this->destroy_swapchain_and_relatives();
-                    this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
+                    this->create_swapchain_and_relatives(
+                        fbuf_width_, fbuf_height_
+                    );
                     overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
                 }
                 return std::nullopt;
             }
 
-            const auto image_index_opt = swapchain_.acquire_next_image(framesync_.get_cur_img_ava_semaph().get(), device_.logi_device());
+            const auto image_index_opt = swapchain_.acquire_next_image(
+                framesync_.get_cur_img_ava_semaph().get(), device_.logi_device()
+            );
             if (!image_index_opt) {
                 if (::is_fbuf_too_small(fbuf_width_, fbuf_height_)) {
                     fbuf_resized_ = true;
-                }
-                else {
+                } else {
                     fbuf_resized_ = false;
                     this->destroy_swapchain_and_relatives();
-                    this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
+                    this->create_swapchain_and_relatives(
+                        fbuf_width_, fbuf_height_
+                    );
                 }
                 return std::nullopt;
             }
@@ -652,7 +819,9 @@ namespace {
             return image_index_opt.value();
         }
 
-        mirinae::VulkanDevice device_;  // This must be the first member variable
+        // This must be the first member variable
+        mirinae::VulkanDevice device_;
+
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DesclayoutManager desclayout_;
@@ -681,18 +850,21 @@ namespace {
         bool fbuf_resized_ = false;
 
         mirinae::ScriptEngine script_;
-
     };
 
-}
+}  // namespace
 
 
 namespace mirinae {
 
-    std::unique_ptr<IEngine> create_engine(mirinae::EngineCreateInfo&& create_info) {
+    std::unique_ptr<IEngine> create_engine(
+        mirinae::EngineCreateInfo&& create_info
+    ) {
         const auto init_width = create_info.init_width_;
         const auto init_height = create_info.init_height_;
-        return std::make_unique<EngineGlfw>(std::move(create_info), init_width, init_height);
+        return std::make_unique<EngineGlfw>(
+            std::move(create_info), init_width, init_height
+        );
     }
 
-}
+}  // namespace mirinae
