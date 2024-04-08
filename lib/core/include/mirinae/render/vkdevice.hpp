@@ -14,7 +14,13 @@ namespace mirinae {
     constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
 
 
-    VkImageView create_image_view(VkImage image, uint32_t mip_levels, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice device);
+    VkImageView create_image_view(
+        VkImage image,
+        uint32_t mip_levels,
+        VkFormat format,
+        VkImageAspectFlags aspect_flags,
+        VkDevice device
+    );
 
 
     class VulkanDevice {
@@ -31,7 +37,11 @@ namespace mirinae {
 
         // Physical device
         std::optional<uint32_t> graphics_queue_family_index();
-        VkFormat select_first_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+        VkFormat select_first_supported_format(
+            const std::vector<VkFormat>& candidates,
+            VkImageTiling tiling,
+            VkFormatFeatureFlags features
+        ) const;
 
         // Misc
         VulkanMemoryAllocator mem_alloc();
@@ -39,18 +49,22 @@ namespace mirinae {
 
         class Pimpl;
         std::unique_ptr<Pimpl> pimpl_;
-
     };
 
 
     // It stands for Swapchain Image Index
-    using ShainImageIndex = mirinae::StrongType<uint32_t, struct SwapchainImageIndexStrongTypeTag>;
+    using ShainImageIndex =
+        mirinae::StrongType<uint32_t, struct SwapchainImageIndexStrongTypeTag>;
 
 
     class Swapchain {
 
     public:
-        void init(uint32_t fbuf_width, uint32_t fbuf_height, VulkanDevice& vulkan_device);
+        void init(
+            uint32_t fbuf_width,
+            uint32_t fbuf_height,
+            VulkanDevice& vulkan_device
+        );
         void destroy(VkDevice logi_device);
 
         auto get() { return swapchain_; }
@@ -59,7 +73,9 @@ namespace mirinae {
         auto height() const { return extent_.height; }
         auto& extent() const { return extent_; }
 
-        std::optional<ShainImageIndex> acquire_next_image(VkSemaphore img_avaiable_semaphore, VkDevice logi_device);
+        std::optional<ShainImageIndex> acquire_next_image(
+            VkSemaphore img_avaiable_semaphore, VkDevice logi_device
+        );
 
         VkImageView view_at(size_t index) { return views_.at(index); }
         size_t views_count() const { return views_.size(); }
@@ -70,7 +86,6 @@ namespace mirinae {
         std::vector<VkImageView> views_;
         VkFormat format_;
         VkExtent2D extent_;
-
     };
 
 
@@ -88,7 +103,6 @@ namespace mirinae {
     private:
         VulkanDevice& device_;
         VkSampler handle_ = VK_NULL_HANDLE;
-
     };
 
 
@@ -97,19 +111,32 @@ namespace mirinae {
     public:
         SamplerBuilder();
 
-        SamplerBuilder& mag_filter(VkFilter filter) { create_info_.magFilter = filter; return *this; }
-        SamplerBuilder& mag_filter_nearest() { return this->mag_filter(VK_FILTER_NEAREST); }
-        SamplerBuilder& mag_filter_linear() { return this->mag_filter(VK_FILTER_LINEAR); }
+        SamplerBuilder& mag_filter(VkFilter filter) {
+            create_info_.magFilter = filter;
+            return *this;
+        }
+        SamplerBuilder& mag_filter_nearest() {
+            return this->mag_filter(VK_FILTER_NEAREST);
+        }
+        SamplerBuilder& mag_filter_linear() {
+            return this->mag_filter(VK_FILTER_LINEAR);
+        }
 
-        SamplerBuilder& min_filter(VkFilter filter) { create_info_.minFilter = filter; return *this; }
-        SamplerBuilder& min_filter_nearest() { return this->min_filter(VK_FILTER_NEAREST); }
-        SamplerBuilder& min_filter_linear() { return this->min_filter(VK_FILTER_LINEAR); }
+        SamplerBuilder& min_filter(VkFilter filter) {
+            create_info_.minFilter = filter;
+            return *this;
+        }
+        SamplerBuilder& min_filter_nearest() {
+            return this->min_filter(VK_FILTER_NEAREST);
+        }
+        SamplerBuilder& min_filter_linear() {
+            return this->min_filter(VK_FILTER_LINEAR);
+        }
 
         VkSampler build(VulkanDevice& device);
 
     private:
         VkSamplerCreateInfo create_info_;
-
     };
 
-}
+}  // namespace mirinae

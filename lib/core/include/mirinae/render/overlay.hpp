@@ -20,11 +20,13 @@ namespace mirinae {
 
     public:
         virtual ~IWidget() = default;
-        virtual void record_render(const WidgetRenderUniformData& uniform_data) {}
+        virtual void record_render(const WidgetRenderUniformData& uniform_data
+        ) {}
         virtual void on_parent_resize(double width, double height) {}
-        virtual bool on_key_event(const mirinae::key::Event& e) { return false; }
+        virtual bool on_key_event(const mirinae::key::Event& e) {
+            return false;
+        }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
-
     };
 
 
@@ -42,7 +44,11 @@ namespace mirinae {
 
         void add_widget_test();
 
-        void record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout);
+        void record_render(
+            size_t frame_index,
+            VkCommandBuffer cmd_buf,
+            VkPipelineLayout pipe_layout
+        );
         void on_fbuf_resize(uint32_t width, uint32_t height);
         bool on_key_event(const mirinae::key::Event& e);
         bool on_mouse_event(const mouse::Event& e);
@@ -53,7 +59,6 @@ namespace mirinae {
     private:
         class Impl;
         std::unique_ptr<Impl> pimpl_;
-
     };
 
-}
+}  // namespace mirinae

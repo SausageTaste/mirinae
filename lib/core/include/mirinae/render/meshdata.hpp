@@ -13,13 +13,12 @@ namespace mirinae {
 
     struct VertexStatic {
         VertexStatic() = default;
-        VertexStatic(const glm::vec3& pos, const glm::vec2& texcoord, const glm::vec3& normal)
-            : pos_(pos)
-            , normal_(normal)
-            , texcoord_(texcoord)
-        {
-
-        }
+        VertexStatic(
+            const glm::vec3& pos,
+            const glm::vec2& texcoord,
+            const glm::vec3& normal
+        )
+            : pos_(pos), normal_(normal), texcoord_(texcoord) {}
 
         glm::vec3 pos_;
         glm::vec3 normal_;
@@ -34,10 +33,11 @@ namespace mirinae {
 
         std::vector<VertexStatic> vertices_;
         std::vector<VertIndexType_t> indices_;
-
     };
 
 
-    std::optional<VerticesStaticPair> parse_dmd_static(const uint8_t* const file_content, const size_t content_size);
+    std::optional<VerticesStaticPair> parse_dmd_static(
+        const uint8_t* const file_content, const size_t content_size
+    );
 
-}
+}  // namespace mirinae

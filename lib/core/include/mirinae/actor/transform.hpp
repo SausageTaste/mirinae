@@ -4,7 +4,6 @@
 #include "mirinae/util/uinput.hpp"
 
 
-
 namespace mirinae::cpnt {
 
     using Transform = TransformQuat<double>;
@@ -23,7 +22,6 @@ namespace mirinae::syst {
 
     private:
         key::EventAnalyzer key_states_;
-
     };
 
-}
+}  // namespace mirinae::syst

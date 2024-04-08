@@ -41,7 +41,6 @@ namespace mirinae {
         mirinae::Buffer vertex_buf_;
         mirinae::Buffer index_buf_;
         size_t vertex_count_ = 0;
-
     };
 
-}
+}  // namespace mirinae

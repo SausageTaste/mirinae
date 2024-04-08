@@ -11,10 +11,10 @@
 namespace mirinae {
 
     struct EngineCreateInfo {
-        using surface_creator_t = std::function<uint64_t(void*)>; // VkInstance -> VkSurfaceKHR
+        // VkInstance -> VkSurfaceKHR
+        using surface_creator_t = std::function<uint64_t(void*)>;
 
         std::unique_ptr<IFilesys> filesys_;
-
         std::vector<std::string> instance_extensions_;
         surface_creator_t surface_creator_;
         int init_width_ = 0;
@@ -22,4 +22,4 @@ namespace mirinae {
         bool enable_validation_layers_ = false;
     };
 
-}
+}  // namespace mirinae

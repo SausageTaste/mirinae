@@ -32,17 +32,12 @@ namespace mirinae {
     class U_OverlayMain {
 
     public:
-        glm::vec2& size() {
-            return size_;
-        }
-        glm::vec2& offset() {
-            return offset_;
-        }
+        glm::vec2& size() { return size_; }
+        glm::vec2& offset() { return offset_; }
 
     private:
         glm::vec2 size_;
         glm::vec2 offset_;
-
     };
     static_assert(sizeof(U_OverlayMain) == 16);
 
@@ -60,16 +55,21 @@ namespace mirinae {
         class Item;
         std::vector<Item> data_;
         VulkanDevice& device_;
-
     };
 
 
     class DescWriteInfoBuilder {
 
     public:
-        DescWriteInfoBuilder& add_uniform_buffer(const mirinae::Buffer& buffer, VkDescriptorSet descset);
-        DescWriteInfoBuilder& add_combinded_image_sampler(VkImageView image_view, VkSampler sampler, VkDescriptorSet descset);
-        DescWriteInfoBuilder& add_input_attachment(VkImageView image_view, VkDescriptorSet descset);
+        DescWriteInfoBuilder& add_uniform_buffer(
+            const mirinae::Buffer& buffer, VkDescriptorSet descset
+        );
+        DescWriteInfoBuilder& add_combinded_image_sampler(
+            VkImageView image_view, VkSampler sampler, VkDescriptorSet descset
+        );
+        DescWriteInfoBuilder& add_input_attachment(
+            VkImageView image_view, VkDescriptorSet descset
+        );
 
         void apply_all(VkDevice logi_device);
 
@@ -77,7 +77,6 @@ namespace mirinae {
         std::vector<VkWriteDescriptorSet> data_;
         std::list<VkDescriptorBufferInfo> buffer_info_;
         std::list<VkDescriptorImageInfo> image_info_;
-
     };
 
 
@@ -87,11 +86,14 @@ namespace mirinae {
         void init(uint32_t pool_size, VkDevice logi_device);
         void destroy(VkDevice logi_device);
 
-         std::vector<VkDescriptorSet> alloc(uint32_t count, VkDescriptorSetLayout desclayout, VkDevice logi_device);
+        std::vector<VkDescriptorSet> alloc(
+            uint32_t count,
+            VkDescriptorSetLayout desclayout,
+            VkDevice logi_device
+        );
 
     private:
         VkDescriptorPool handle_ = VK_NULL_HANDLE;
-
     };
 
-}
+}  // namespace mirinae

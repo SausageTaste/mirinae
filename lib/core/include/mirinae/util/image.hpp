@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include "include_glm.hpp"
 
@@ -23,7 +23,6 @@ namespace mirinae {
         virtual uint32_t height() const = 0;
         virtual uint32_t channels() const = 0;
         virtual uint32_t value_type_size() const = 0;
-
     };
 
 
@@ -31,7 +30,9 @@ namespace mirinae {
     class TImage2D : public IImage2D {
 
     public:
-        bool init(const T* data, uint32_t width, uint32_t height, uint32_t channels) {
+        bool init(
+            const T* data, uint32_t width, uint32_t height, uint32_t channels
+        ) {
             if (nullptr == data)
                 return false;
 
@@ -44,9 +45,7 @@ namespace mirinae {
             return true;
         }
 
-        void destroy() override {
-            data_.clear();
-        }
+        void destroy() override { data_.clear(); }
 
         bool is_ready() const override {
             if (data_.empty())
@@ -64,18 +63,10 @@ namespace mirinae {
             return static_cast<uint32_t>(data_.size() * sizeof(T));
         }
 
-        uint32_t width() const override {
-            return width_;
-        }
-        uint32_t height() const override {
-            return height_;
-        }
-        uint32_t channels() const override {
-            return channels_;
-        }
-        uint32_t value_type_size() const override {
-            return sizeof(T);
-        }
+        uint32_t width() const override { return width_; }
+        uint32_t height() const override { return height_; }
+        uint32_t channels() const override { return channels_; }
+        uint32_t value_type_size() const override { return sizeof(T); }
 
         const T* get_texel_at_clamp(int x, int y) const {
             x = glm::clamp<int>(x, 0, width_ - 1);
@@ -89,10 +80,11 @@ namespace mirinae {
         uint32_t width_ = 0;
         uint32_t height_ = 0;
         uint32_t channels_ = 0;
-
     };
 
 
-    std::unique_ptr<IImage2D> parse_image(const uint8_t* data, size_t data_size, bool force_rgba);
+    std::unique_ptr<IImage2D> parse_image(
+        const uint8_t* data, size_t data_size, bool force_rgba
+    );
 
-}
+}  // namespace mirinae
