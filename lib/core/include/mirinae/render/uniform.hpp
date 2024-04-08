@@ -32,8 +32,13 @@ namespace mirinae {
     class U_OverlayMain {
 
     public:
-        glm::vec2& size() { return size_; }
-        glm::vec2& offset() { return offset_; }
+        template <typename T>
+        void set(T x_offset, T y_offset, T x_size, T y_size) {
+            offset_.x = static_cast<float>(x_offset);
+            offset_.y = static_cast<float>(y_offset);
+            size_.x = static_cast<float>(x_size);
+            size_.y = static_cast<float>(y_size);
+        }
 
     private:
         glm::vec2 size_;
