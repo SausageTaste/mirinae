@@ -5,7 +5,7 @@
 
 namespace mirinae {
 
-    struct WidgetRenderUniformData {
+    struct WidgetRenderUniData {
         double width() const { return screen_size_.x; }
         double height() const { return screen_size_.y; }
 
@@ -20,12 +20,9 @@ namespace mirinae {
 
     public:
         virtual ~IWidget() = default;
-        virtual void record_render(const WidgetRenderUniformData& uniform_data
-        ) {}
+        virtual void record_render(const WidgetRenderUniData& uniform_data) {}
         virtual void on_parent_resize(double width, double height) {}
-        virtual bool on_key_event(const mirinae::key::Event& e) {
-            return false;
-        }
+        virtual bool on_key_event(const key::Event& e) { return false; }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
     };
 

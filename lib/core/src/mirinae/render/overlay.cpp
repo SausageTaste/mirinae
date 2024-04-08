@@ -31,7 +31,7 @@ namespace {
         return glm::tvec2<T>(aabb.width(), aabb.height());
     };
 
-}
+}  // namespace
 
 
 namespace {
@@ -39,7 +39,12 @@ namespace {
     class ImageView : public mirinae::IWidget {
 
     public:
-        ImageView(VkSampler sampler, mirinae::DesclayoutManager& desclayout, mirinae::TextureManager& tex_man, mirinae::VulkanDevice& device) {
+        ImageView(
+            VkSampler sampler,
+            mirinae::DesclayoutManager& desclayout,
+            mirinae::TextureManager& tex_man,
+            mirinae::VulkanDevice& device
+        ) {
             auto& overlay = render_units_.emplace_back(device);
             overlay.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -51,15 +56,18 @@ namespace {
             );
         }
 
-        void record_render(const mirinae::WidgetRenderUniformData& udata) override {
+        void record_render(const mirinae::WidgetRenderUniData& udata) override {
             for (auto& overlay : render_units_) {
                 auto desc_main = overlay.get_desc_set(udata.frame_index_);
                 vkCmdBindDescriptorSets(
-                    udata.cmd_buf_, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    udata.cmd_buf_,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
                     udata.pipe_layout_,
                     0,
-                    1, &desc_main,
-                    0, nullptr
+                    1,
+                    &desc_main,
+                    0,
+                    nullptr
                 );
 
                 vkCmdDraw(udata.cmd_buf_, 6, 1, 0, 0);
@@ -68,10 +76,12 @@ namespace {
 
         void on_parent_resize(double width, double height) override {
             for (auto& overlay : render_units_) {
-                overlay.ubuf_data_.offset().x = (width - 10 - 100) / width * 2 - 1;
-                overlay.ubuf_data_.offset().y = (height - 10 - 100) / height * 2 - 1;
-                overlay.ubuf_data_.size().x = 100 / width;
-                overlay.ubuf_data_.size().y = 100 / height;
+                overlay.ubuf_data_.set(
+                    (width - 10 - 100) / width * 2 - 1,
+                    (height - 10 - 100) / height * 2 - 1,
+                    100 / width,
+                    100 / height
+                );
 
                 for (size_t i = 0; i < overlay.ubuf_count(); ++i)
                     overlay.udpate_ubuf(i);
@@ -80,10 +90,9 @@ namespace {
 
     private:
         std::vector<mirinae::OverlayRenderUnit> render_units_;
-
     };
 
-}
+}  // namespace
 
 
 namespace {
@@ -92,20 +101,22 @@ namespace {
 
     public:
         FontLibrary(mirinae::IFilesys& filesys) {
-            if (!filesys.read_file_to_vector("asset/font/SeoulNamsanM.ttf", file_data_))
+            const auto font_path = "asset/font/SeoulNamsanM.ttf";
+            if (!filesys.read_file_to_vector(font_path, file_data_))
                 throw std::runtime_error("failed to load font file");
 
-            stbtt_InitFont(&font_, reinterpret_cast<const unsigned char*>(file_data_.data()), 0);
+            stbtt_InitFont(
+                &font_,
+                reinterpret_cast<const unsigned char*>(file_data_.data()),
+                0
+            );
         }
 
-        const unsigned char* data() const {
-            return font_.data;
-        }
+        const unsigned char* data() const { return font_.data; }
 
     private:
         stbtt_fontinfo font_;
         std::vector<uint8_t> file_data_;
-
     };
 
 
@@ -122,9 +133,7 @@ namespace {
             data_[fill_size_++] = value;
             return true;
         }
-        void clear() {
-            fill_size_ = 0;
-        }
+        void clear() { fill_size_ = 0; }
 
         size_t size() const { return fill_size_; }
         size_t capacity() const { return CAPACITY; }
@@ -140,7 +149,6 @@ namespace {
         constexpr static size_t CAPACITY = 1024;
         uint32_t data_[CAPACITY];
         size_t fill_size_ = 0;
-
     };
 
 
@@ -177,7 +185,6 @@ namespace {
         private:
             StaticVector data_;
             size_t new_line_count_ = 0;
-
         };
 
         Block& last_valid_block() {
@@ -190,18 +197,13 @@ namespace {
         }
 
         std::vector<Block> blocks_;
-
     };
 
 
     class TextRenderData {
 
     public:
-        TextRenderData(mirinae::VulkanDevice& device)
-            : render_unit_(device)
-        {
-
-        }
+        TextRenderData(mirinae::VulkanDevice& device) : render_unit_(device) {}
 
         void init_ascii(
             VkSampler sampler,
@@ -214,7 +216,17 @@ namespace {
             constexpr int h = 128;
             std::array<uint8_t, w * h> temp_bitmap;
 
-            stbtt_BakeFontBitmap(fonts.data(), 0, TEXT_HEIGHT, temp_bitmap.data(), w, h, START_CHAR, END_CHAR - START_CHAR, char_baked_.data());
+            stbtt_BakeFontBitmap(
+                fonts.data(),
+                0,
+                TEXT_HEIGHT,
+                temp_bitmap.data(),
+                w,
+                h,
+                START_CHAR,
+                END_CHAR - START_CHAR,
+                char_baked_.data()
+            );
             bitmap_.init(temp_bitmap.data(), w, h, 1);
             texture_ = tex_man.create_image("glyphs_ascii", bitmap_, false);
 
@@ -228,9 +240,7 @@ namespace {
             );
         }
 
-        bool is_ready() const {
-            return texture_ != nullptr;
-        }
+        bool is_ready() const { return texture_ != nullptr; }
 
         VkDescriptorSet get_desc_set(size_t frame_index) {
             return render_unit_.get_desc_set(frame_index);
@@ -253,7 +263,6 @@ namespace {
         std::unique_ptr<mirinae::ITexture> texture_;
         mirinae::TImage2D<unsigned char> bitmap_;
         mirinae::OverlayRenderUnit render_unit_;
-
     };
 
 
@@ -261,26 +270,26 @@ namespace {
 
     public:
         TextBox(::TextRenderData& text_render_data)
-            : text_render_data_(text_render_data)
-        {
+            : text_render_data_(text_render_data) {}
 
-        }
+        void add_text(const std::string_view str) { texts_.append(str); }
 
-        void add_text(const std::string_view str) {
-            texts_.append(str);
-        }
-
-        void record_render(const mirinae::WidgetRenderUniformData& udata) override {
+        void record_render(const mirinae::WidgetRenderUniData& udata) override {
             auto desc_main = text_render_data_.get_desc_set(udata.frame_index_);
             vkCmdBindDescriptorSets(
-                udata.cmd_buf_, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                udata.cmd_buf_,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
                 udata.pipe_layout_,
                 0,
-                1, &desc_main,
-                0, nullptr
+                1,
+                &desc_main,
+                0,
+                nullptr
             );
 
-            const sung::AABB2<double> widget_box(pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y);
+            const sung::AABB2<double> widget_box(
+                pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y
+            );
             auto x_offset = pos_.x;
             auto y_offset = pos_.y + text_render_data_.text_height();
 
@@ -288,16 +297,21 @@ namespace {
                 for (auto c : block) {
                     if ('\n' == c) {
                         x_offset = pos_.x;
-                        y_offset += text_render_data_.text_height() * line_spacing_;
+                        y_offset += text_render_data_.text_height() *
+                                    line_spacing_;
                         continue;
                     }
-                    mirinae::U_OverlayPushConst push_const;
 
                     const auto& char_info = text_render_data_.get_char_info(c);
-                    const sung::AABB2<double> char_info_box(char_info.x0, char_info.x1, char_info.y0, char_info.y1);
+                    const sung::AABB2<double> char_info_box(
+                        char_info.x0, char_info.x1, char_info.y0, char_info.y1
+                    );
                     const auto char_info_min = ::get_aabb_min(char_info_box);
                     const auto char_info_dim = ::get_aabb_dim(char_info_box);
-                    const glm::dvec2 texture_dim(text_render_data_.atlas_width(), text_render_data_.atlas_height());
+                    const glm::dvec2 texture_dim(
+                        text_render_data_.atlas_width(),
+                        text_render_data_.atlas_height()
+                    );
 
                     const sung::AABB2<double> glyph_box(
                         x_offset + char_info.xoff + scroll_.x,
@@ -306,29 +320,58 @@ namespace {
                         y_offset + char_info.yoff + scroll_.y + char_info_dim.y
                     );
 
+                    mirinae::U_OverlayPushConst push_const;
                     sung::AABB2<double> clipped_glyph_box;
-                    if (widget_box.make_intersection(glyph_box, clipped_glyph_box)) {
-                        const auto clipped_glyph_area = clipped_glyph_box.area();
+                    if (widget_box.make_intersection(
+                            glyph_box, clipped_glyph_box
+                        )) {
+                        const auto clipped_glyph_area = clipped_glyph_box.area(
+                        );
                         if (clipped_glyph_area <= 0.0) {
                             x_offset += char_info.xadvance;
                             continue;
-                        }
-                        else if (clipped_glyph_area < glyph_box.area()) {
-                            push_const.pos_offset = ::convert_screen_pos(clipped_glyph_box.x_min(), clipped_glyph_box.y_min(), udata.width(), udata.height());
-                            push_const.pos_scale = ::convert_screen_offset(clipped_glyph_box.width(), clipped_glyph_box.height(), udata.width(), udata.height());
-                            push_const.uv_scale = char_info_dim * ::get_aabb_dim(clipped_glyph_box) / (::get_aabb_dim(glyph_box) * texture_dim);
-                            const auto texture_space_offset = (::get_aabb_min(clipped_glyph_box) - ::get_aabb_min(glyph_box)) * char_info_dim / ::get_aabb_dim(glyph_box);
-                            push_const.uv_offset = (char_info_min + texture_space_offset) / texture_dim;
+                        } else if (clipped_glyph_area < glyph_box.area()) {
+                            push_const.pos_offset = ::convert_screen_pos(
+                                clipped_glyph_box.x_min(),
+                                clipped_glyph_box.y_min(),
+                                udata.width(),
+                                udata.height()
+                            );
+                            push_const.pos_scale = ::convert_screen_offset(
+                                clipped_glyph_box.width(),
+                                clipped_glyph_box.height(),
+                                udata.width(),
+                                udata.height()
+                            );
+                            push_const.uv_scale =
+                                char_info_dim *
+                                ::get_aabb_dim(clipped_glyph_box) /
+                                (::get_aabb_dim(glyph_box) * texture_dim);
+                            const auto texture_space_offset =
+                                (::get_aabb_min(clipped_glyph_box) -
+                                 ::get_aabb_min(glyph_box)) *
+                                char_info_dim / ::get_aabb_dim(glyph_box);
+                            push_const.uv_offset = (char_info_min +
+                                                    texture_space_offset) /
+                                                   texture_dim;
 
-                        }
-                        else {
-                            push_const.pos_offset = ::convert_screen_pos(glyph_box.x_min(), glyph_box.y_min(), udata.width(), udata.height());
-                            push_const.pos_scale = ::convert_screen_offset(glyph_box.width(), glyph_box.height(), udata.width(), udata.height());
+                        } else {
+                            push_const.pos_offset = ::convert_screen_pos(
+                                glyph_box.x_min(),
+                                glyph_box.y_min(),
+                                udata.width(),
+                                udata.height()
+                            );
+                            push_const.pos_scale = ::convert_screen_offset(
+                                glyph_box.width(),
+                                glyph_box.height(),
+                                udata.width(),
+                                udata.height()
+                            );
                             push_const.uv_offset = char_info_min / texture_dim;
                             push_const.uv_scale = char_info_dim / texture_dim;
                         }
-                    }
-                    else {
+                    } else {
                         x_offset += char_info.xadvance;
                         continue;
                     }
@@ -338,7 +381,8 @@ namespace {
                     vkCmdPushConstants(
                         udata.cmd_buf_,
                         udata.pipe_layout_,
-                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                        VK_SHADER_STAGE_VERTEX_BIT |
+                            VK_SHADER_STAGE_FRAGMENT_BIT,
                         0,
                         sizeof(push_const),
                         &push_const
@@ -352,16 +396,17 @@ namespace {
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
             if (e.action_ == mirinae::mouse::ActionType::down) {
-                const sung::AABB2<double> bounding(pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y);
+                const sung::AABB2<double> bounding(
+                    pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y
+                );
                 if (bounding.is_contacting(e.xpos_, e.ypos_)) {
                     owning_mouse_ = true;
                     last_mouse_pos_ = { e.xpos_, e.ypos_ };
                 }
-            }
-            else if (e.action_ == mirinae::mouse::ActionType::up) {
+            } else if (e.action_ == mirinae::mouse::ActionType::up) {
                 owning_mouse_ = false;
-            }
-            else if (e.action_ == mirinae::mouse::ActionType::move && owning_mouse_) {
+            } else if (e.action_ == mirinae::mouse::ActionType::move &&
+                       owning_mouse_) {
                 scroll_.x += e.xpos_ - last_mouse_pos_.x;
                 scroll_.y += e.ypos_ - last_mouse_pos_.y;
                 last_mouse_pos_ = { e.xpos_, e.ypos_ };
@@ -381,7 +426,6 @@ namespace {
         double line_spacing_ = 1.2;
         bool word_wrap_ = true;
         bool owning_mouse_ = false;
-
     };
 
 
@@ -389,21 +433,18 @@ namespace {
 
     public:
         DevConsole(::TextRenderData& text_render_data)
-            : text_box_(text_render_data)
-        {
+            : text_box_(text_render_data) {}
 
-        }
-
-        void record_render(const mirinae::WidgetRenderUniformData& uniform_data) override {
+        void record_render(const mirinae::WidgetRenderUniData& uniform_data
+        ) override {
             text_box_.record_render(uniform_data);
         }
 
     private:
         TextBox text_box_;
-
     };
 
-}
+}  // namespace
 
 
 namespace mirinae {
@@ -425,12 +466,10 @@ namespace mirinae {
             , font_lib_(device.filesys())
             , text_render_data_(device)
             , wid_width_(win_width)
-            , wid_height_(win_height)
-        {
+            , wid_height_(win_height) {
             SamplerBuilder sampler_builder;
             sampler_.reset(sampler_builder.build(device_));
-
-            widgets_.push_back(std::make_unique<::DevConsole>(text_render_data_));
+            widgets_.push_back(std::make_unique<DevConsole>(text_render_data_));
         }
 
         mirinae::VulkanDevice& device_;
@@ -444,7 +483,6 @@ namespace mirinae {
         double wid_height_ = 0;
 
         std::vector<std::unique_ptr<IWidget>> widgets_;
-
     };
 
 
@@ -455,22 +493,24 @@ namespace mirinae {
         mirinae::TextureManager& tex_man,
         mirinae::VulkanDevice& device
     )
-        : pimpl_(std::make_unique<Impl>(win_width, win_height, desclayout, tex_man, device))
-    {
-
-    }
+        : pimpl_(std::make_unique<Impl>(
+              win_width, win_height, desclayout, tex_man, device
+          )) {}
 
     OverlayManager::~OverlayManager() = default;
 
-    void OverlayManager::record_render(size_t frame_index, VkCommandBuffer cmd_buf, VkPipelineLayout pipe_layout) {
-        WidgetRenderUniformData udata;
+    void OverlayManager::record_render(
+        size_t frame_index,
+        VkCommandBuffer cmd_buf,
+        VkPipelineLayout pipe_layout
+    ) {
+        WidgetRenderUniData udata;
         udata.screen_size_ = { pimpl_->wid_width_, pimpl_->wid_height_ };
         udata.frame_index_ = frame_index;
         udata.cmd_buf_ = cmd_buf;
         udata.pipe_layout_ = pipe_layout;
 
-        for (auto& widget : pimpl_->widgets_)
-            widget->record_render(udata);
+        for (auto& widget : pimpl_->widgets_) widget->record_render(udata);
     }
 
     void OverlayManager::on_fbuf_resize(uint32_t width, uint32_t height) {
@@ -501,13 +541,22 @@ namespace mirinae {
 
     void OverlayManager::add_widget_test() {
         if (!pimpl_->text_render_data_.is_ready())
-            pimpl_->text_render_data_.init_ascii(pimpl_->sampler_.get(), pimpl_->font_lib_, pimpl_->desclayout_, pimpl_->tex_man_, pimpl_->device_);
+            pimpl_->text_render_data_.init_ascii(
+                pimpl_->sampler_.get(),
+                pimpl_->font_lib_,
+                pimpl_->desclayout_,
+                pimpl_->tex_man_,
+                pimpl_->device_
+            );
 
         auto widget = std::make_unique<::TextBox>(pimpl_->text_render_data_);
         widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
 
         for (int i = 0; i < 100; ++i) {
-            widget->add_text("Hello, World! This is Sungmin Woo. Nice to meet you! I wish you a good day.\n");
+            widget->add_text(
+                "Hello, World! This is Sungmin Woo. Nice to meet you! I wish "
+                "you a good day.\n"
+            );
         }
 
         pimpl_->widgets_.emplace_back(std::move(widget));
@@ -521,4 +570,4 @@ namespace mirinae {
         return pimpl_->widgets_.end();
     }
 
-}
+}  // namespace mirinae
