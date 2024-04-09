@@ -2,9 +2,9 @@
 
 #include <filesystem>
 
-#include <spdlog/spdlog.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <spdlog/spdlog.h>
 
 #include "dump.hpp"
 
@@ -31,7 +31,8 @@ namespace {
         uint32_t glfwExtensionCount = 0;
         const char** glfwExtensions;
         glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-        return std::vector<std::string>{ glfwExtensions, glfwExtensions + glfwExtensionCount };
+        return std::vector<std::string>{ glfwExtensions,
+                                         glfwExtensions + glfwExtensionCount };
     }
 
 
@@ -43,9 +44,7 @@ namespace {
             spdlog::set_level(spdlog::level::level_enum::trace);
         }
 
-        ~GlfwRaii() {
-            glfwTerminate();
-        }
+        ~GlfwRaii() { glfwTerminate(); }
 
     } g_glfw_raii;
 
@@ -58,10 +57,10 @@ namespace {
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
             window_ = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
-            glfwSetFramebufferSizeCallback(window_, GlfwWindow::callback_fbuf_size);
-            glfwSetKeyCallback(window_, GlfwWindow::callback_key);
-            glfwSetMouseButtonCallback(window_, GlfwWindow::callback_mouse);
-            glfwSetCursorPosCallback(window_, GlfwWindow::callback_cursor_pos);
+            glfwSetFramebufferSizeCallback(window_, callback_fbuf_size);
+            glfwSetKeyCallback(window_, callback_key);
+            glfwSetMouseButtonCallback(window_, callback_mouse);
+            glfwSetCursorPosCallback(window_, callback_cursor_pos);
         }
 
         ~GlfwWindow() {
@@ -71,17 +70,17 @@ namespace {
             }
         }
 
-        void swap_buffer() {
-            glfwSwapBuffers(window_);
-        }
+        void swap_buffer() { glfwSwapBuffers(window_); }
 
-        bool is_ongoing() const {
-            return !glfwWindowShouldClose(window_);
-        }
+        bool is_ongoing() const { return !glfwWindowShouldClose(window_); }
 
         VkSurfaceKHR create_surface(const VkInstance instance) {
             VkSurfaceKHR surface = VK_NULL_HANDLE;
-            if (VK_SUCCESS != glfwCreateWindowSurface(instance, window_, nullptr, &surface)) {
+            const auto result = glfwCreateWindowSurface(
+                instance, window_, nullptr, &surface
+            );
+
+            if (VK_SUCCESS != result) {
                 spdlog::error("Failed to create window surface");
                 return VK_NULL_HANDLE;
             }
@@ -97,16 +96,14 @@ namespace {
             return output;
         }
 
-        void notify_should_close() {
-            glfwSetWindowShouldClose(window_, true);
-        }
+        void notify_should_close() { glfwSetWindowShouldClose(window_, true); }
 
-        void set_userdata(void* ptr) {
-            glfwSetWindowUserPointer(window_, ptr);
-        }
+        void set_userdata(void* ptr) { glfwSetWindowUserPointer(window_, ptr); }
 
     private:
-        static void callback_fbuf_size(GLFWwindow* window, int width, int height) {
+        static void callback_fbuf_size(
+            GLFWwindow* window, int width, int height
+        ) {
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -114,7 +111,9 @@ namespace {
             engine->notify_window_resize(width, height);
         }
 
-        static void callback_key(GLFWwindow* window, int key, int scancode, int action, int mods) {
+        static void callback_key(
+            GLFWwindow* window, int key, int scancode, int action, int mods
+        ) {
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -136,7 +135,9 @@ namespace {
             engine->notify_key_event(e);
         }
 
-        static void callback_mouse(GLFWwindow* window, int button, int action, int mods) {
+        static void callback_mouse(
+            GLFWwindow* window, int button, int action, int mods
+        ) {
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -144,36 +145,38 @@ namespace {
 
             mirinae::mouse::Event e;
             switch (action) {
-            case GLFW_RELEASE:
-                e.action_ = mirinae::mouse::ActionType::up;
-                break;
-            case GLFW_PRESS:
-            default:
-                e.action_ = mirinae::mouse::ActionType::down;
-                break;
+                case GLFW_RELEASE:
+                    e.action_ = mirinae::mouse::ActionType::up;
+                    break;
+                case GLFW_PRESS:
+                default:
+                    e.action_ = mirinae::mouse::ActionType::down;
+                    break;
             }
 
             switch (button) {
-            case GLFW_MOUSE_BUTTON_LEFT:
-                e.button_ = mirinae::mouse::ButtonCode::left;
-                break;
-            case GLFW_MOUSE_BUTTON_RIGHT:
-                e.button_ = mirinae::mouse::ButtonCode::right;
-                break;
-            case GLFW_MOUSE_BUTTON_MIDDLE:
-                e.button_ = mirinae::mouse::ButtonCode::middle;
-                break;
-            default:
-                spdlog::warn("Unknown mouse button type: {}", button);
-                e.button_ = mirinae::mouse::ButtonCode::eoe;
-                break;
+                case GLFW_MOUSE_BUTTON_LEFT:
+                    e.button_ = mirinae::mouse::ButtonCode::left;
+                    break;
+                case GLFW_MOUSE_BUTTON_RIGHT:
+                    e.button_ = mirinae::mouse::ButtonCode::right;
+                    break;
+                case GLFW_MOUSE_BUTTON_MIDDLE:
+                    e.button_ = mirinae::mouse::ButtonCode::middle;
+                    break;
+                default:
+                    spdlog::warn("Unknown mouse button type: {}", button);
+                    e.button_ = mirinae::mouse::ButtonCode::eoe;
+                    break;
             }
 
             glfwGetCursorPos(window, &e.xpos_, &e.ypos_);
             engine->notify_mouse_event(e);
         }
 
-        static void callback_cursor_pos(GLFWwindow* window, double xpos, double ypos) {
+        static void callback_cursor_pos(
+            GLFWwindow* window, double xpos, double ypos
+        ) {
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -188,72 +191,71 @@ namespace {
         }
 
         static mirinae::key::KeyCode map_key_code(const int glfw_key) {
+            using mirinae::key::KeyCode;
+
             if (GLFW_KEY_A <= glfw_key && glfw_key <= GLFW_KEY_Z) {
-                auto index = glfw_key - GLFW_KEY_A + int(mirinae::key::KeyCode::a);
-                return mirinae::key::KeyCode(index);
-            }
-            else if (GLFW_KEY_0 <= glfw_key && glfw_key <= GLFW_KEY_9) {
-                auto index = glfw_key - GLFW_KEY_0 + int(mirinae::key::KeyCode::n0);
-                return mirinae::key::KeyCode(index);
-            }
-            else {
-                static const std::unordered_map<uint32_t, mirinae::key::KeyCode> map{
-                    {GLFW_KEY_GRAVE_ACCENT, mirinae::key::KeyCode::backquote},
-                    {GLFW_KEY_MINUS, mirinae::key::KeyCode::minus},
-                    {GLFW_KEY_EQUAL, mirinae::key::KeyCode::equal},
-                    {GLFW_KEY_LEFT_BRACKET, mirinae::key::KeyCode::lbracket},
-                    {GLFW_KEY_RIGHT_BRACKET, mirinae::key::KeyCode::rbracket},
-                    {GLFW_KEY_BACKSLASH, mirinae::key::KeyCode::backslash},
-                    {GLFW_KEY_SEMICOLON, mirinae::key::KeyCode::semicolon},
-                    {GLFW_KEY_APOSTROPHE, mirinae::key::KeyCode::quote},
-                    {GLFW_KEY_COMMA, mirinae::key::KeyCode::comma},
-                    {GLFW_KEY_PERIOD, mirinae::key::KeyCode::period},
-                    {GLFW_KEY_SLASH, mirinae::key::KeyCode::slash},
+                auto index = glfw_key - GLFW_KEY_A + int(KeyCode::a);
+                return KeyCode(index);
+            } else if (GLFW_KEY_0 <= glfw_key && glfw_key <= GLFW_KEY_9) {
+                auto index = glfw_key - GLFW_KEY_0 + int(KeyCode::n0);
+                return KeyCode(index);
+            } else {
+                static const std::unordered_map<uint32_t, KeyCode> map{
+                    { GLFW_KEY_GRAVE_ACCENT, KeyCode::backquote },
+                    { GLFW_KEY_MINUS, KeyCode::minus },
+                    { GLFW_KEY_EQUAL, KeyCode::equal },
+                    { GLFW_KEY_LEFT_BRACKET, KeyCode::lbracket },
+                    { GLFW_KEY_RIGHT_BRACKET, KeyCode::rbracket },
+                    { GLFW_KEY_BACKSLASH, KeyCode::backslash },
+                    { GLFW_KEY_SEMICOLON, KeyCode::semicolon },
+                    { GLFW_KEY_APOSTROPHE, KeyCode::quote },
+                    { GLFW_KEY_COMMA, KeyCode::comma },
+                    { GLFW_KEY_PERIOD, KeyCode::period },
+                    { GLFW_KEY_SLASH, KeyCode::slash },
 
-                    {GLFW_KEY_SPACE, mirinae::key::KeyCode::space},
-                    {GLFW_KEY_ENTER, mirinae::key::KeyCode::enter},
-                    {GLFW_KEY_BACKSPACE, mirinae::key::KeyCode::backspace},
-                    {GLFW_KEY_TAB, mirinae::key::KeyCode::tab},
+                    { GLFW_KEY_SPACE, KeyCode::space },
+                    { GLFW_KEY_ENTER, KeyCode::enter },
+                    { GLFW_KEY_BACKSPACE, KeyCode::backspace },
+                    { GLFW_KEY_TAB, KeyCode::tab },
 
-                    {GLFW_KEY_ESCAPE, mirinae::key::KeyCode::escape},
-                    {GLFW_KEY_LEFT_SHIFT, mirinae::key::KeyCode::lshfit},
-                    {GLFW_KEY_RIGHT_SHIFT, mirinae::key::KeyCode::rshfit},
-                    {GLFW_KEY_LEFT_CONTROL, mirinae::key::KeyCode::lctrl},
-                    {GLFW_KEY_RIGHT_CONTROL, mirinae::key::KeyCode::rctrl},
-                    {GLFW_KEY_LEFT_ALT, mirinae::key::KeyCode::lalt},
-                    {GLFW_KEY_RIGHT_ALT, mirinae::key::KeyCode::ralt},
-                    {GLFW_KEY_UP, mirinae::key::KeyCode::up},
-                    {GLFW_KEY_DOWN, mirinae::key::KeyCode::down},
-                    {GLFW_KEY_LEFT, mirinae::key::KeyCode::left},
-                    {GLFW_KEY_RIGHT, mirinae::key::KeyCode::right},
+                    { GLFW_KEY_ESCAPE, KeyCode::escape },
+                    { GLFW_KEY_LEFT_SHIFT, KeyCode::lshfit },
+                    { GLFW_KEY_RIGHT_SHIFT, KeyCode::rshfit },
+                    { GLFW_KEY_LEFT_CONTROL, KeyCode::lctrl },
+                    { GLFW_KEY_RIGHT_CONTROL, KeyCode::rctrl },
+                    { GLFW_KEY_LEFT_ALT, KeyCode::lalt },
+                    { GLFW_KEY_RIGHT_ALT, KeyCode::ralt },
+                    { GLFW_KEY_UP, KeyCode::up },
+                    { GLFW_KEY_DOWN, KeyCode::down },
+                    { GLFW_KEY_LEFT, KeyCode::left },
+                    { GLFW_KEY_RIGHT, KeyCode::right },
                 };
 
                 auto res = map.find(glfw_key);
-                if (res == map.end()) {
-                    return mirinae::key::KeyCode::eoe;
-                }
-                else {
+                if (res == map.end())
+                    return KeyCode::eoe;
+                else
                     return res->second;
-                }
             }
         }
 
         GLFWwindow* window_ = nullptr;
-
     };
 
 
     class CombinedEngine {
 
     public:
-        CombinedEngine()
-            : window_(800, 600, "Mirinapp")
-        {
+        CombinedEngine() : window_(800, 600, "Mirinapp") {
             mirinae::EngineCreateInfo create_info;
-            create_info.filesys_ = mirinae::create_filesys_std(::get_windows_documents_path("Mirinapp"));
+            create_info.filesys_ = mirinae::create_filesys_std(
+                ::get_windows_documents_path("Mirinapp")
+            );
             create_info.instance_extensions_ = ::get_glfw_extensions();
             create_info.surface_creator_ = [this](void* instance) -> uint64_t {
-                auto surface = this->window_.create_surface(reinterpret_cast<VkInstance>(instance));
+                auto surface = this->window_.create_surface(
+                    reinterpret_cast<VkInstance>(instance)
+                );
                 return *reinterpret_cast<uint64_t*>(&surface);
             };
             create_info.enable_validation_layers_ = true;
@@ -284,25 +286,25 @@ namespace {
     private:
         GlfwWindow window_;
         std::unique_ptr<mirinae::IEngine> engine_;
-
     };
 
 
     int start() {
         CombinedEngine engine;
-        while (engine.is_ongoing())
-            engine.do_frame();
+        while (engine.is_ongoing()) engine.do_frame();
         return 0;
     }
 
-}
+}  // namespace
 
 
 int main() {
     __try {
         return ::start();
-    }
-    __except (mirinae::windows::create_minidump(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER) {
+    } __except (
+        mirinae::windows::create_minidump(GetExceptionInformation()),
+        EXCEPTION_EXECUTE_HANDLER
+    ) {
         std::abort();
     }
 }
