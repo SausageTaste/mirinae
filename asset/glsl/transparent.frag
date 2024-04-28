@@ -16,8 +16,9 @@ void main() {
     float frag_distance = length(v_frag_pos);
 
     vec3 light_dir = normalize(vec3(0.5, 1, 0.5));
-    float light = max(dot(normal, light_dir), 0) * 0.3;
-    light += 2 / (frag_distance * frag_distance);
+    float light = max(dot(normal, light_dir), 0) * 0.9;
+    light += 0.1;
+    //light += 2 / (frag_distance * frag_distance);
 
     out_composition.rgb = albedo_texel.rgb * light;
     out_composition.a = albedo_texel.a;
