@@ -225,10 +225,12 @@ namespace {
             const std::vector<mirinae::respath_t> mesh_paths{
                 "asset/models/sponza/sponza.dmd",
                 "artist/artist_subset.dmd",
+                "ThinMatrix/Character Running.dmd",
             };
             const std::vector<float> model_scales{
                 0.01f,
-                1,
+                1.4f / 1.01229f,
+                1.8f / 8.6787f,
             };
 
             for (size_t i = 0; i < mesh_paths.size(); ++i) {
