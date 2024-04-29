@@ -83,7 +83,13 @@ namespace {
             std::vector<std::shared_ptr<mirinae::RenderActor>> actors_;
         };
 
+        struct SkinnedRenderPairs {
+            std::shared_ptr<mirinae::RenderModelSkinned> model_;
+            std::vector<std::shared_ptr<mirinae::RenderActor>> actors_;
+        };
+
         std::vector<RenderPairs> ren_pairs_;
+        std::vector<SkinnedRenderPairs> skinned_pairs_;
     };
 
 
@@ -222,38 +228,72 @@ namespace {
             const glm::dvec3 world_shift = { 10000000000000, 1000000000000, 0 };
             camera_view_.pos_ = world_shift;
 
-            const std::vector<mirinae::respath_t> mesh_paths{
-                "asset/models/sponza/sponza.dmd",
-                "artist/artist_subset.dmd",
-                "ThinMatrix/Character Running.dmd",
-            };
-            const std::vector<float> model_scales{
-                0.01f,
-                1.4f / 1.01229f,
-                1.8f / 8.6787f,
-            };
+            {
+                const std::vector<mirinae::respath_t> mesh_paths{
+                    "asset/models/sponza/sponza.dmd",
+                };
+                const std::vector<float> model_scales{
+                    0.01f,
+                };
 
-            for (size_t i = 0; i < mesh_paths.size(); ++i) {
-                const auto& model_path = mesh_paths.at(i);
-                auto model = model_man_.request_static(
-                    model_path, desclayout_, tex_man_
-                );
-                if (!model) {
-                    spdlog::warn(
-                        "Failed to load model: {}", model_path.u8string()
+                for (size_t i = 0; i < mesh_paths.size(); ++i) {
+                    const auto& model_path = mesh_paths.at(i);
+                    auto model = model_man_.request_static(
+                        model_path, desclayout_, tex_man_
                     );
-                    continue;
+                    if (!model) {
+                        spdlog::warn(
+                            "Failed to load model: {}", model_path.u8string()
+                        );
+                        continue;
+                    }
+
+                    auto& ren_pair = draw_sheet_.ren_pairs_.emplace_back();
+                    ren_pair.model_ = model;
+
+                    auto& actor = ren_pair.actors_.emplace_back(
+                        std::make_shared<mirinae::RenderActor>(device_)
+                    );
+                    actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                    actor->transform_.pos_ = glm::dvec3(i * 3, 0, 0) +
+                                             world_shift;
+                    actor->transform_.scale_ = glm::dvec3(model_scales[i]);
                 }
+            }
 
-                auto& ren_pair = draw_sheet_.ren_pairs_.emplace_back();
-                ren_pair.model_ = model;
+            {
+                const std::vector<mirinae::respath_t> mesh_paths{
+                    "Sung/artist/artist_subset.dmd",
+                    "ThinMatrix/Character Running.dmd",
+                };
+                const std::vector<float> model_scales{
+                    1.4f / 1.01229f,
+                    1.8f / 8.6787f,
+                };
 
-                auto& actor = ren_pair.actors_.emplace_back(
-                    std::make_shared<mirinae::RenderActor>(device_)
-                );
-                actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                actor->transform_.pos_ = glm::dvec3(i * 3, 0, 0) + world_shift;
-                actor->transform_.scale_ = glm::dvec3(model_scales[i]);
+                for (size_t i = 0; i < mesh_paths.size(); ++i) {
+                    const auto& model_path = mesh_paths.at(i);
+                    auto model = model_man_.request_skinned(
+                        model_path, desclayout_, tex_man_
+                    );
+                    if (!model) {
+                        spdlog::warn(
+                            "Failed to load model: {}", model_path.u8string()
+                        );
+                        continue;
+                    }
+
+                    auto& ren_pair = draw_sheet_.skinned_pairs_.emplace_back();
+                    ren_pair.model_ = model;
+
+                    auto& actor = ren_pair.actors_.emplace_back(
+                        std::make_shared<mirinae::RenderActor>(device_)
+                    );
+                    actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                    actor->transform_.pos_ = glm::dvec3(i * 3, 0, 0) +
+                                             world_shift;
+                    actor->transform_.scale_ = glm::dvec3(model_scales[i]);
+                }
             }
 
             overlay_man_.add_widget_test();

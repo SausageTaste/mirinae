@@ -732,6 +732,65 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// RenderUnitSkinned
+namespace mirinae {
+
+    void RenderUnitSkinned::init(
+        uint32_t max_flight_count,
+        const VerticesSkinnedPair& vertices,
+        VkImageView image_view,
+        VkSampler texture_sampler,
+        CommandPool& cmd_pool,
+        DesclayoutManager& desclayouts,
+        VulkanDevice& vulkan_device
+    ) {
+        desc_pool_.init(max_flight_count, vulkan_device.logi_device());
+        desc_sets_ = desc_pool_.alloc(
+            max_flight_count,
+            desclayouts.get("gbuf:model"),
+            vulkan_device.logi_device()
+        );
+
+        for (size_t i = 0; i < max_flight_count; i++) {
+            DescWriteInfoBuilder builder;
+            builder
+                .add_combinded_image_sampler(
+                    image_view, texture_sampler, desc_sets_.at(i)
+                )
+                .apply_all(vulkan_device.logi_device());
+        }
+
+        vert_index_pair_.init(
+            vertices,
+            cmd_pool,
+            vulkan_device.mem_alloc(),
+            vulkan_device.graphics_queue(),
+            vulkan_device.logi_device()
+        );
+    }
+
+    void RenderUnitSkinned::destroy(
+        VulkanMemoryAllocator mem_alloc, VkDevice logi_device
+    ) {
+        vert_index_pair_.destroy(mem_alloc);
+        desc_pool_.destroy(logi_device);
+    }
+
+    VkDescriptorSet RenderUnitSkinned::get_desc_set(size_t index) {
+        return desc_sets_.at(index);
+    }
+
+    void RenderUnitSkinned::record_bind_vert_buf(VkCommandBuffer cmdbuf) {
+        vert_index_pair_.record_bind(cmdbuf);
+    }
+
+    uint32_t RenderUnitSkinned::vertex_count() const {
+        return vert_index_pair_.vertex_count();
+    }
+
+}  // namespace mirinae
+
+
 // OverlayRenderUnit
 namespace mirinae {
 
@@ -803,6 +862,22 @@ namespace mirinae {
         for (auto& unit : render_units_alpha_)
             unit.destroy(device_.mem_alloc(), device_.logi_device());
         render_units_alpha_.clear();
+    }
+
+}  // namespace mirinae
+
+
+// RenderModelSkinned
+namespace mirinae {
+
+    RenderModelSkinned::~RenderModelSkinned() {
+        for (auto& unit : runits_)
+            unit.destroy(device_.mem_alloc(), device_.logi_device());
+        runits_.clear();
+
+        for (auto& unit : runits_alpha_)
+            unit.destroy(device_.mem_alloc(), device_.logi_device());
+        runits_alpha_.clear();
     }
 
 }  // namespace mirinae
@@ -955,12 +1030,142 @@ namespace mirinae {
             return output;
         }
 
+        std::shared_ptr<RenderModelSkinned> request_skinned(
+            const mirinae::respath_t& res_id,
+            DesclayoutManager& desclayouts,
+            TextureManager& tex_man
+        ) {
+            auto found = skin_models_.find(res_id);
+            if (skin_models_.end() != found)
+                return found->second;
+
+            const auto content = device_.filesys().read_file_to_vector(res_id);
+            if (!content.has_value()) {
+                spdlog::warn("Failed to read dmd file: {}", res_id.u8string());
+                return nullptr;
+            }
+
+            dal::parser::Model parsed_model;
+            const auto parse_result = dal::parser::parse_dmd(
+                parsed_model, content->data(), content->size()
+            );
+            if (dal::parser::ModelParseResult::success != parse_result) {
+                spdlog::warn(
+                    "Failed to parse dmd file: {}",
+                    static_cast<int>(parse_result)
+                );
+                return nullptr;
+            }
+
+            auto output = std::make_shared<RenderModelSkinned>(device_);
+
+            for (const auto& src_unit : parsed_model.units_indexed_) {
+                VerticesSkinnedPair dst_vertices;
+                dst_vertices.indices_.assign(
+                    src_unit.mesh_.indices_.begin(),
+                    src_unit.mesh_.indices_.end()
+                );
+
+                for (auto& src_vertex : src_unit.mesh_.vertices_) {
+                    auto& dst_vertex = dst_vertices.vertices_.emplace_back();
+                    dst_vertex.pos_ = src_vertex.pos_;
+                    dst_vertex.normal_ = src_vertex.normal_;
+                    dst_vertex.texcoord_ = src_vertex.uv_;
+                }
+
+                const auto new_texture_path = replace_file_name_ext(
+                    res_id, src_unit.material_.albedo_map_
+                );
+                auto texture = tex_man.request(new_texture_path);
+                if (!texture)
+                    texture = tex_man.request(
+                        "asset/textures/missing_texture.png"
+                    );
+
+                if (src_unit.material_.transparency_) {
+                    auto& dst_unit = output->runits_alpha_.emplace_back();
+                    dst_unit.init(
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
+                        dst_vertices,
+                        texture->image_view(),
+                        texture_sampler_.get(),
+                        cmd_pool_,
+                        desclayouts,
+                        device_
+                    );
+                } else {
+                    auto& dst_unit = output->runits_.emplace_back();
+                    dst_unit.init(
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
+                        dst_vertices,
+                        texture->image_view(),
+                        texture_sampler_.get(),
+                        cmd_pool_,
+                        desclayouts,
+                        device_
+                    );
+                }
+            }
+
+            for (const auto& src_unit : parsed_model.units_indexed_joint_) {
+                VerticesSkinnedPair dst_vertices;
+                dst_vertices.indices_.assign(
+                    src_unit.mesh_.indices_.begin(),
+                    src_unit.mesh_.indices_.end()
+                );
+
+                for (auto& src_vertex : src_unit.mesh_.vertices_) {
+                    auto& dst_vertex = dst_vertices.vertices_.emplace_back();
+                    dst_vertex.pos_ = src_vertex.pos_;
+                    dst_vertex.normal_ = src_vertex.normal_;
+                    dst_vertex.texcoord_ = src_vertex.uv_;
+                }
+
+                const auto new_texture_path = replace_file_name_ext(
+                    res_id, src_unit.material_.albedo_map_
+                );
+                auto texture = tex_man.request(new_texture_path);
+                if (!texture)
+                    texture = tex_man.request(
+                        "asset/textures/missing_texture.png"
+                    );
+
+                if (src_unit.material_.transparency_) {
+                    auto& dst_unit = output->runits_alpha_.emplace_back();
+                    dst_unit.init(
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
+                        dst_vertices,
+                        texture->image_view(),
+                        texture_sampler_.get(),
+                        cmd_pool_,
+                        desclayouts,
+                        device_
+                    );
+                } else {
+                    auto& dst_unit = output->runits_.emplace_back();
+                    dst_unit.init(
+                        mirinae::MAX_FRAMES_IN_FLIGHT,
+                        dst_vertices,
+                        texture->image_view(),
+                        texture_sampler_.get(),
+                        cmd_pool_,
+                        desclayouts,
+                        device_
+                    );
+                }
+            }
+
+            skin_models_[res_id] = output;
+            return output;
+        }
+
     private:
         VulkanDevice& device_;
         Sampler texture_sampler_;
         CommandPool cmd_pool_;
 
         std::map<respath_t, std::shared_ptr<RenderModel>> models_;
+        std::map<respath_t, std::shared_ptr<RenderModelSkinned>> skin_models_;
     };
 
 
@@ -975,6 +1180,14 @@ namespace mirinae {
         TextureManager& tex_man
     ) {
         return pimpl_->request_static(res_id, desclayouts, tex_man);
+    }
+
+    std::shared_ptr<RenderModelSkinned> ModelManager::request_skinned(
+        const mirinae::respath_t& res_id,
+        DesclayoutManager& desclayouts,
+        TextureManager& tex_man
+    ) {
+        return pimpl_->request_skinned(res_id, desclayouts, tex_man);
     }
 
 }  // namespace mirinae

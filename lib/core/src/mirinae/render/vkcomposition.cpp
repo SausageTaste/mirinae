@@ -72,6 +72,42 @@ namespace mirinae {
         vertex_count_ = vertices.indices_.size();
     }
 
+    void VertexIndexPair::init(
+        const VerticesSkinnedPair& vertices,
+        CommandPool& cmdpool,
+        VulkanMemoryAllocator allocator,
+        VkQueue graphics_q,
+        VkDevice logi_device
+    ) {
+        // Vertices data size
+        const auto v_s = sizeof(VertexStatic) * vertices.vertices_.size();
+        vertex_buf_.init_vertices(v_s, allocator);
+        ::set_buffer_data(
+            vertex_buf_,
+            vertices.vertices_.data(),
+            v_s,
+            cmdpool,
+            allocator,
+            graphics_q,
+            logi_device
+        );
+
+        // Indices data size
+        const auto i_s = sizeof(uint16_t) * vertices.indices_.size();
+        index_buf_.init_indices(i_s, allocator);
+        ::set_buffer_data(
+            index_buf_,
+            vertices.indices_.data(),
+            i_s,
+            cmdpool,
+            allocator,
+            graphics_q,
+            logi_device
+        );
+
+        vertex_count_ = vertices.indices_.size();
+    }
+
     void VertexIndexPair::destroy(VulkanMemoryAllocator allocator) {
         vertex_buf_.destroy(allocator);
         index_buf_.destroy(allocator);

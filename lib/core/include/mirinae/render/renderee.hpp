@@ -80,6 +80,31 @@ namespace mirinae {
     };
 
 
+    class RenderUnitSkinned {
+
+    public:
+        void init(
+            uint32_t max_flight_count,
+            const VerticesSkinnedPair& vertices,
+            VkImageView image_view,
+            VkSampler texture_sampler,
+            CommandPool& cmd_pool,
+            DesclayoutManager& desclayouts,
+            VulkanDevice& vulkan_device
+        );
+        void destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
+
+        VkDescriptorSet get_desc_set(size_t index);
+        void record_bind_vert_buf(VkCommandBuffer cmdbuf);
+        uint32_t vertex_count() const;
+
+    private:
+        DescriptorPool desc_pool_;
+        VertexIndexPair vert_index_pair_;
+        std::vector<VkDescriptorSet> desc_sets_;
+    };
+
+
     class OverlayRenderUnit {
 
     public:
@@ -123,6 +148,19 @@ namespace mirinae {
     };
 
 
+    class RenderModelSkinned {
+
+    public:
+        RenderModelSkinned(VulkanDevice& vulkan_device) : device_(vulkan_device) {}
+        ~RenderModelSkinned();
+
+    public:
+        std::vector<RenderUnitSkinned> runits_;
+        std::vector<RenderUnitSkinned> runits_alpha_;
+        VulkanDevice& device_;
+    };
+
+
     class ModelManager {
 
     public:
@@ -130,6 +168,12 @@ namespace mirinae {
         ~ModelManager();
 
         std::shared_ptr<RenderModel> request_static(
+            const mirinae::respath_t& res_id,
+            DesclayoutManager& desclayouts,
+            TextureManager& tex_man
+        );
+
+        std::shared_ptr<RenderModelSkinned> request_skinned(
             const mirinae::respath_t& res_id,
             DesclayoutManager& desclayouts,
             TextureManager& tex_man
