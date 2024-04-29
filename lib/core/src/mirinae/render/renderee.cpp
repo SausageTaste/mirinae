@@ -16,42 +16,62 @@ namespace {
             case mirinae::FbufUsage::color_attachment:
                 aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
                 image_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                flag = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+                flag = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                       VK_IMAGE_USAGE_SAMPLED_BIT |
+                       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
                 break;
 
             case mirinae::FbufUsage::depth_map:
                 aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
                 image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                flag =  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+                flag = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                       VK_IMAGE_USAGE_SAMPLED_BIT |
+                       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
                 break;
 
             case mirinae::FbufUsage::depth_stencil_attachment:
-                aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+                aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT |
+                              VK_IMAGE_ASPECT_STENCIL_BIT;
                 image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                flag = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+                flag = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                       VK_IMAGE_USAGE_SAMPLED_BIT |
+                       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
                 break;
 
             case mirinae::FbufUsage::depth_attachment:
                 aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
                 image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                flag = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+                flag = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                       VK_IMAGE_USAGE_SAMPLED_BIT |
+                       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
                 break;
 
             default:
-                throw std::runtime_error(fmt::format("unsupported framebuffer usage: {}", (int)usage));
+                throw std::runtime_error(
+                    fmt::format("unsupported framebuffer usage: {}", (int)usage)
+                );
         }
 
         return std::make_tuple(flag, aspect_mask, image_layout);
     }
 
-    uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice phys_device) {
+    uint32_t find_memory_type(
+        uint32_t typeFilter,
+        VkMemoryPropertyFlags properties,
+        VkPhysicalDevice phys_device
+    ) {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(phys_device, &memProperties);
 
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-                return i;
-            }
+            if (0 == typeFilter & (1 << i))
+                continue;
+
+            const auto& mem_type = memProperties.memoryTypes[i];
+            if ((mem_type.propertyFlags & properties) != properties)
+                continue;
+
+            return i;
         }
 
         throw std::runtime_error("failed to find suitable memory type!");
@@ -84,7 +104,8 @@ namespace {
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateImage(logi_device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+        if (vkCreateImage(logi_device, &imageInfo, nullptr, &image) !=
+            VK_SUCCESS) {
             return false;
         }
 
@@ -94,9 +115,12 @@ namespace {
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = ::find_memory_type(memRequirements.memoryTypeBits, properties, phys_device);
+        allocInfo.memoryTypeIndex = ::find_memory_type(
+            memRequirements.memoryTypeBits, properties, phys_device
+        );
 
-        if (vkAllocateMemory(logi_device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+        if (vkAllocateMemory(logi_device, &allocInfo, nullptr, &imageMemory) !=
+            VK_SUCCESS) {
             return false;
         }
 
@@ -123,8 +147,8 @@ namespace {
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.image = image;
-        barrier.srcAccessMask = 0; // TODO
-        barrier.dstAccessMask = 0; // TODO
+        barrier.srcAccessMask = 0;  // TODO
+        barrier.dstAccessMask = 0;  // TODO
         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         barrier.subresourceRange.baseMipLevel = 0;
         barrier.subresourceRange.levelCount = mip_levels;
@@ -133,21 +157,21 @@ namespace {
 
         VkPipelineStageFlags src_stage;
         VkPipelineStageFlags dst_stage;
-        if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED &&
+            new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
             barrier.srcAccessMask = 0;
             barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
             src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
             dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        }
-        else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        } else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+                   new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
             barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
             src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
             dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        }
-        else {
+        } else {
             spdlog::error("unsupported layout transition!");
         }
 
@@ -156,9 +180,12 @@ namespace {
             src_stage,
             dst_stage,
             0,
-            0, nullptr,
-            0, nullptr,
-            1, &barrier
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &barrier
         );
 
         cmd_pool.end_single_time(cmd_buf, graphics_queue, logi_device);
@@ -231,11 +258,17 @@ namespace {
             barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
-            vkCmdPipelineBarrier(cmd_buf,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-                0, nullptr,
-                0, nullptr,
-                1, &barrier
+            vkCmdPipelineBarrier(
+                cmd_buf,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                0,
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &barrier
             );
 
             VkImageBlit blit{};
@@ -246,16 +279,22 @@ namespace {
             blit.srcSubresource.baseArrayLayer = 0;
             blit.srcSubresource.layerCount = 1;
             blit.dstOffsets[0] = { 0, 0, 0 };
-            blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+            blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1,
+                                   mipHeight > 1 ? mipHeight / 2 : 1,
+                                   1 };
             blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             blit.dstSubresource.mipLevel = i;
             blit.dstSubresource.baseArrayLayer = 0;
             blit.dstSubresource.layerCount = 1;
 
-            vkCmdBlitImage(cmd_buf,
-                image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                1, &blit,
+            vkCmdBlitImage(
+                cmd_buf,
+                image,
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                image,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1,
+                &blit,
                 VK_FILTER_LINEAR
             );
 
@@ -264,15 +303,23 @@ namespace {
             barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
             barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-            vkCmdPipelineBarrier(cmd_buf,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                0, nullptr,
-                0, nullptr,
-                1, &barrier
+            vkCmdPipelineBarrier(
+                cmd_buf,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                0,
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &barrier
             );
 
-            if (mipWidth > 1) mipWidth /= 2;
-            if (mipHeight > 1) mipHeight /= 2;
+            if (mipWidth > 1)
+                mipWidth /= 2;
+            if (mipHeight > 1)
+                mipHeight /= 2;
         }
 
         barrier.subresourceRange.baseMipLevel = mip_levels - 1;
@@ -281,11 +328,17 @@ namespace {
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-        vkCmdPipelineBarrier(cmd_buf,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-            0, nullptr,
-            0, nullptr,
-            1, &barrier
+        vkCmdPipelineBarrier(
+            cmd_buf,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &barrier
         );
 
         cmd_pool.end_single_time(cmd_buf, graphics_queue, logi_device);
@@ -339,9 +392,17 @@ namespace {
     class ImageView {
 
     public:
-        void init(VkImage image, uint32_t mip_levels, VkFormat format, VkImageAspectFlags aspect_flags, VkDevice logi_device) {
+        void init(
+            VkImage image,
+            uint32_t mip_levels,
+            VkFormat format,
+            VkImageAspectFlags aspect_flags,
+            VkDevice logi_device
+        ) {
             this->destroy(logi_device);
-            this->handle_ = mirinae::create_image_view(image, mip_levels, format, aspect_flags, logi_device);
+            this->handle_ = mirinae::create_image_view(
+                image, mip_levels, format, aspect_flags, logi_device
+            );
         }
 
         void destroy(VkDevice logi_device) {
@@ -355,10 +416,9 @@ namespace {
 
     private:
         VkImageView handle_ = VK_NULL_HANDLE;
-
     };
 
-}
+}  // namespace
 
 
 // TextureManager
@@ -369,9 +429,7 @@ namespace mirinae {
     public:
         TextureData(VulkanDevice& device) : device_(device) {}
 
-        ~TextureData() {
-            this->destroy();
-        }
+        ~TextureData() { this->destroy(); }
 
         void init_iimage2d(
             const std::string& id,
@@ -383,12 +441,17 @@ namespace mirinae {
 
             Buffer staging_buffer;
             staging_buffer.init_staging(image.data_size(), device_.mem_alloc());
-            staging_buffer.set_data(image.data(), image.data_size(), device_.mem_alloc());
+            staging_buffer.set_data(
+                image.data(), image.data_size(), device_.mem_alloc()
+            );
 
             mirinae::ImageCreateInfo img_info;
             img_info.fetch_from_image(image, srgb)
                 .deduce_mip_levels()
-                .set_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+                .set_usage(
+                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
+                );
             texture_.init(img_info.get(), device_.mem_alloc());
 
             ::copy_to_img_and_transition(
@@ -404,14 +467,22 @@ namespace mirinae {
             );
             staging_buffer.destroy(device_.mem_alloc());
 
-            texture_view_.init(texture_.image(), texture_.mip_levels(), texture_.format(), VK_IMAGE_ASPECT_COLOR_BIT, device_.logi_device());
+            texture_view_.init(
+                texture_.image(),
+                texture_.mip_levels(),
+                texture_.format(),
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                device_.logi_device()
+            );
         }
 
         void init_depth(uint32_t width, uint32_t height) {
             id_ = "<depth>";
 
             const auto depth_format = device_.select_first_supported_format(
-                { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+                { VK_FORMAT_D32_SFLOAT,
+                  VK_FORMAT_D32_SFLOAT_S8_UINT,
+                  VK_FORMAT_D24_UNORM_S8_UINT },
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
             );
@@ -419,21 +490,39 @@ namespace mirinae {
             mirinae::ImageCreateInfo img_info;
             img_info.set_dimensions(width, height)
                 .set_format(depth_format)
-                .set_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+                .set_usage(
+                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                    VK_IMAGE_USAGE_SAMPLED_BIT
+                );
             texture_.init(img_info.get(), device_.mem_alloc());
-            texture_view_.init(texture_.image(), 1, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, device_.logi_device());
+            texture_view_.init(
+                texture_.image(),
+                1,
+                depth_format,
+                VK_IMAGE_ASPECT_DEPTH_BIT,
+                device_.logi_device()
+            );
         }
 
-        void init_attachment(uint32_t width, uint32_t height, VkFormat format, FbufUsage usage, const char* name) {
+        void init_attachment(
+            uint32_t width,
+            uint32_t height,
+            VkFormat format,
+            FbufUsage usage,
+            const char* name
+        ) {
             id_ = name;
 
-            const auto [usage_flag, aspect_mask, image_layout] = ::interpret_fbuf_usage(usage);
+            const auto [usage_flag, aspect_mask, image_layout] =
+                ::interpret_fbuf_usage(usage);
             mirinae::ImageCreateInfo img_info;
             img_info.set_dimensions(width, height)
                 .set_format(format)
                 .set_usage(usage_flag);
             texture_.init(img_info.get(), device_.mem_alloc());
-            texture_view_.init(texture_.image(), 1, format, aspect_mask, device_.logi_device());
+            texture_view_.init(
+                texture_.image(), 1, format, aspect_mask, device_.logi_device()
+            );
         }
 
         void destroy() {
@@ -441,13 +530,9 @@ namespace mirinae {
             texture_.destroy(device_.mem_alloc());
         }
 
-        VkFormat format() const override {
-            return texture_.format();
-        }
+        VkFormat format() const override { return texture_.format(); }
 
-        VkImageView image_view() override {
-            return texture_view_.get();
-        }
+        VkImageView image_view() override { return texture_view_.get(); }
 
         uint32_t width() const override { return texture_.width(); }
         uint32_t height() const override { return texture_.height(); }
@@ -459,17 +544,17 @@ namespace mirinae {
         Image texture_;
         ::ImageView texture_view_;
         std::string id_;
-
     };
 
 
     class TextureManager::Pimpl {
 
     public:
-        Pimpl(VulkanDevice& device)
-            : device_(device)
-        {
-            cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
+        Pimpl(VulkanDevice& device) : device_(device) {
+            cmd_pool_.init(
+                device_.graphics_queue_family_index().value(),
+                device_.logi_device()
+            );
         }
 
         ~Pimpl() {
@@ -481,31 +566,47 @@ namespace mirinae {
             if (auto index = this->find_index(res_id))
                 return textures_.at(index.value());
 
-            const auto img_data = device_.filesys().read_file_to_vector(res_id.c_str());
+            const auto img_data = device_.filesys().read_file_to_vector(
+                res_id.c_str()
+            );
             if (!img_data.has_value()) {
-                spdlog::warn("Failed to read image file: {}", res_id.u8string());
+                spdlog::warn(
+                    "Failed to read image file: {}", res_id.u8string()
+                );
                 return nullptr;
             }
 
-            const auto image = mirinae::parse_image(img_data->data(), img_data->size(), true);
+            const auto image = mirinae::parse_image(
+                img_data->data(), img_data->size(), true
+            );
             auto& output = textures_.emplace_back(new TextureData{ device_ });
             output->init_iimage2d(res_id.u8string(), *image, true, cmd_pool_);
             return output;
         }
 
-        std::unique_ptr<ITexture> create_image(const std::string& id, const IImage2D& image, bool srgb) {
+        std::unique_ptr<ITexture> create_image(
+            const std::string& id, const IImage2D& image, bool srgb
+        ) {
             auto output = std::make_unique<TextureData>(device_);
             output->init_iimage2d(id, image, srgb, cmd_pool_);
             return output;
         }
 
-        std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height) {
+        std::unique_ptr<ITexture> create_depth(
+            uint32_t width, uint32_t height
+        ) {
             auto output = std::make_unique<TextureData>(device_);
             output->init_depth(width, height);
             return output;
         }
 
-        std::unique_ptr<ITexture> create_attachment(uint32_t width, uint32_t height, VkFormat format, FbufUsage usage, const char* name) {
+        std::unique_ptr<ITexture> create_attachment(
+            uint32_t width,
+            uint32_t height,
+            VkFormat format,
+            FbufUsage usage,
+            const char* name
+        ) {
             auto output = std::make_unique<TextureData>(device_);
             output->init_attachment(width, height, format, usage, name);
             return output;
@@ -523,7 +624,10 @@ namespace mirinae {
         void destroy_all() {
             for (auto& tex : textures_) {
                 if (tex.use_count() > 1)
-                    spdlog::warn("Want to destroy texture '{}' is still in use", tex->id());
+                    spdlog::warn(
+                        "Want to destroy texture '{}' is still in use",
+                        tex->id()
+                    );
                 tex->destroy();
             }
             textures_.clear();
@@ -532,37 +636,41 @@ namespace mirinae {
         VulkanDevice& device_;
         CommandPool cmd_pool_;
         std::vector<std::shared_ptr<TextureData>> textures_;
-
     };
 
 
     TextureManager::TextureManager(VulkanDevice& device)
-        : pimpl_(std::make_unique<Pimpl>(device))
-    {
+        : pimpl_(std::make_unique<Pimpl>(device)) {}
 
-    }
-
-    TextureManager::~TextureManager() {
-
-    }
+    TextureManager::~TextureManager() {}
 
     std::shared_ptr<ITexture> TextureManager::request(const respath_t& res_id) {
         return pimpl_->request(res_id);
     }
 
-    std::unique_ptr<ITexture> TextureManager::create_image(const std::string& id, const IImage2D& image, bool srgb) {
+    std::unique_ptr<ITexture> TextureManager::create_image(
+        const std::string& id, const IImage2D& image, bool srgb
+    ) {
         return pimpl_->create_image(id, image, srgb);
     }
 
-    std::unique_ptr<ITexture> TextureManager::create_depth(uint32_t width, uint32_t height) {
+    std::unique_ptr<ITexture> TextureManager::create_depth(
+        uint32_t width, uint32_t height
+    ) {
         return pimpl_->create_depth(width, height);
     }
 
-    std::unique_ptr<ITexture> TextureManager::create_attachment(uint32_t width, uint32_t height, VkFormat format, FbufUsage usage, const char* name) {
+    std::unique_ptr<ITexture> TextureManager::create_attachment(
+        uint32_t width,
+        uint32_t height,
+        VkFormat format,
+        FbufUsage usage,
+        const char* name
+    ) {
         return pimpl_->create_attachment(width, height, format, usage, name);
     }
 
-}
+}  // namespace mirinae
 
 
 // RenderUnit
@@ -578,11 +686,18 @@ namespace mirinae {
         VulkanDevice& vulkan_device
     ) {
         desc_pool_.init(max_flight_count, vulkan_device.logi_device());
-        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("gbuf:model"), vulkan_device.logi_device());
+        desc_sets_ = desc_pool_.alloc(
+            max_flight_count,
+            desclayouts.get("gbuf:model"),
+            vulkan_device.logi_device()
+        );
 
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
-            builder.add_combinded_image_sampler(image_view, texture_sampler, desc_sets_.at(i))
+            builder
+                .add_combinded_image_sampler(
+                    image_view, texture_sampler, desc_sets_.at(i)
+                )
                 .apply_all(vulkan_device.logi_device());
         }
 
@@ -595,7 +710,9 @@ namespace mirinae {
         );
     }
 
-    void RenderUnit::destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device) {
+    void RenderUnit::destroy(
+        VulkanMemoryAllocator mem_alloc, VkDevice logi_device
+    ) {
         vert_index_pair_.destroy(mem_alloc);
         desc_pool_.destroy(logi_device);
     }
@@ -612,17 +729,16 @@ namespace mirinae {
         return vert_index_pair_.vertex_count();
     }
 
-}
+}  // namespace mirinae
 
 
 // OverlayRenderUnit
 namespace mirinae {
 
-    OverlayRenderUnit::OverlayRenderUnit(VulkanDevice& device) : device_(device) {}
+    OverlayRenderUnit::OverlayRenderUnit(VulkanDevice& device)
+        : device_(device) {}
 
-    OverlayRenderUnit::~OverlayRenderUnit() {
-        this->destroy();
-    }
+    OverlayRenderUnit::~OverlayRenderUnit() { this->destroy(); }
 
     void OverlayRenderUnit::init(
         uint32_t max_flight_count,
@@ -633,7 +749,11 @@ namespace mirinae {
         TextureManager& tex_man
     ) {
         desc_pool_.init(max_flight_count * 2, device_.logi_device());
-        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("overlay:main"), device_.logi_device());
+        desc_sets_ = desc_pool_.alloc(
+            max_flight_count,
+            desclayouts.get("overlay:main"),
+            device_.logi_device()
+        );
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();
@@ -643,15 +763,18 @@ namespace mirinae {
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
             builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i))
-                .add_combinded_image_sampler(color_view, sampler, desc_sets_.at(i))
-                .add_combinded_image_sampler(mask_view, sampler, desc_sets_.at(i))
+                .add_combinded_image_sampler(
+                    color_view, sampler, desc_sets_.at(i)
+                )
+                .add_combinded_image_sampler(
+                    mask_view, sampler, desc_sets_.at(i)
+                )
                 .apply_all(device_.logi_device());
         }
     }
 
     void OverlayRenderUnit::destroy() {
-        for (auto& ubuf : uniform_buf_)
-            ubuf.destroy(device_.mem_alloc());
+        for (auto& ubuf : uniform_buf_) ubuf.destroy(device_.mem_alloc());
         uniform_buf_.clear();
 
         desc_pool_.destroy(device_.logi_device());
@@ -666,7 +789,7 @@ namespace mirinae {
         return desc_sets_.at(index);
     }
 
-}
+}  // namespace mirinae
 
 
 // RenderModel
@@ -682,7 +805,7 @@ namespace mirinae {
         render_units_alpha_.clear();
     }
 
-}
+}  // namespace mirinae
 
 
 // ModelManager
@@ -692,19 +815,22 @@ namespace mirinae {
 
     public:
         Pimpl(VulkanDevice& device)
-            : device_(device)
-            , texture_sampler_(device)
-        {
+            : device_(device), texture_sampler_(device) {
             SamplerBuilder sampler_builder;
             texture_sampler_.reset(sampler_builder.build(device_));
-            cmd_pool_.init(device_.graphics_queue_family_index().value(), device_.logi_device());
+            cmd_pool_.init(
+                device_.graphics_queue_family_index().value(),
+                device_.logi_device()
+            );
         }
 
-        ~Pimpl() {
-            cmd_pool_.destroy(device_.logi_device());
-        }
+        ~Pimpl() { cmd_pool_.destroy(device_.logi_device()); }
 
-        std::shared_ptr<RenderModel> request_static(const mirinae::respath_t& res_id, DesclayoutManager& desclayouts, TextureManager& tex_man) {
+        std::shared_ptr<RenderModel> request_static(
+            const mirinae::respath_t& res_id,
+            DesclayoutManager& desclayouts,
+            TextureManager& tex_man
+        ) {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return found->second;
@@ -716,17 +842,25 @@ namespace mirinae {
             }
 
             dal::parser::Model parsed_model;
-            const auto parse_result = dal::parser::parse_dmd(parsed_model, content->data(), content->size());
+            const auto parse_result = dal::parser::parse_dmd(
+                parsed_model, content->data(), content->size()
+            );
             if (dal::parser::ModelParseResult::success != parse_result) {
-                spdlog::warn("Failed to parse dmd file: {}", static_cast<int>(parse_result));
+                spdlog::warn(
+                    "Failed to parse dmd file: {}",
+                    static_cast<int>(parse_result)
+                );
                 return nullptr;
             }
 
-            std::shared_ptr<RenderModel> output = std::make_shared<RenderModel>(device_);
+            auto output = std::make_shared<RenderModel>(device_);
 
             for (const auto& src_unit : parsed_model.units_indexed_) {
                 VerticesStaticPair dst_vertices;
-                dst_vertices.indices_.assign(src_unit.mesh_.indices_.begin(), src_unit.mesh_.indices_.end());
+                dst_vertices.indices_.assign(
+                    src_unit.mesh_.indices_.begin(),
+                    src_unit.mesh_.indices_.end()
+                );
 
                 for (auto& src_vertex : src_unit.mesh_.vertices_) {
                     auto& dst_vertex = dst_vertices.vertices_.emplace_back();
@@ -735,10 +869,14 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
-                const auto new_texture_path = replace_file_name_ext(res_id, src_unit.material_.albedo_map_);
+                const auto new_texture_path = replace_file_name_ext(
+                    res_id, src_unit.material_.albedo_map_
+                );
                 auto texture = tex_man.request(new_texture_path);
                 if (!texture)
-                    texture = tex_man.request("asset/textures/missing_texture.png");
+                    texture = tex_man.request(
+                        "asset/textures/missing_texture.png"
+                    );
 
                 if (src_unit.material_.transparency_) {
                     auto& dst_unit = output->render_units_alpha_.emplace_back();
@@ -751,8 +889,7 @@ namespace mirinae {
                         desclayouts,
                         device_
                     );
-                }
-                else {
+                } else {
                     auto& dst_unit = output->render_units_.emplace_back();
                     dst_unit.init(
                         mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -768,7 +905,10 @@ namespace mirinae {
 
             for (const auto& src_unit : parsed_model.units_indexed_joint_) {
                 VerticesStaticPair dst_vertices;
-                dst_vertices.indices_.assign(src_unit.mesh_.indices_.begin(), src_unit.mesh_.indices_.end());
+                dst_vertices.indices_.assign(
+                    src_unit.mesh_.indices_.begin(),
+                    src_unit.mesh_.indices_.end()
+                );
 
                 for (auto& src_vertex : src_unit.mesh_.vertices_) {
                     auto& dst_vertex = dst_vertices.vertices_.emplace_back();
@@ -777,10 +917,14 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
-                const auto new_texture_path = replace_file_name_ext(res_id, src_unit.material_.albedo_map_);
+                const auto new_texture_path = replace_file_name_ext(
+                    res_id, src_unit.material_.albedo_map_
+                );
                 auto texture = tex_man.request(new_texture_path);
                 if (!texture)
-                    texture = tex_man.request("asset/textures/missing_texture.png");
+                    texture = tex_man.request(
+                        "asset/textures/missing_texture.png"
+                    );
 
                 if (src_unit.material_.transparency_) {
                     auto& dst_unit = output->render_units_alpha_.emplace_back();
@@ -793,8 +937,7 @@ namespace mirinae {
                         desclayouts,
                         device_
                     );
-                }
-                else {
+                } else {
                     auto& dst_unit = output->render_units_.emplace_back();
                     dst_unit.init(
                         mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -818,33 +961,37 @@ namespace mirinae {
         CommandPool cmd_pool_;
 
         std::map<respath_t, std::shared_ptr<RenderModel>> models_;
-
     };
 
 
     ModelManager::ModelManager(VulkanDevice& device)
-        : pimpl_(std::make_unique<Pimpl>(device))
-    {
+        : pimpl_(std::make_unique<Pimpl>(device)) {}
 
-    }
+    ModelManager::~ModelManager() {}
 
-    ModelManager::~ModelManager() {
-
-    }
-
-    std::shared_ptr<RenderModel> ModelManager::request_static(const mirinae::respath_t& res_id, DesclayoutManager& desclayouts, TextureManager& tex_man) {
+    std::shared_ptr<RenderModel> ModelManager::request_static(
+        const mirinae::respath_t& res_id,
+        DesclayoutManager& desclayouts,
+        TextureManager& tex_man
+    ) {
         return pimpl_->request_static(res_id, desclayouts, tex_man);
     }
 
-}
+}  // namespace mirinae
 
 
 // RenderActor
 namespace mirinae {
 
-    void RenderActor::init(uint32_t max_flight_count, DesclayoutManager& desclayouts) {
+    void RenderActor::init(
+        uint32_t max_flight_count, DesclayoutManager& desclayouts
+    ) {
         desc_pool_.init(max_flight_count, device_.logi_device());
-        desc_sets_ = desc_pool_.alloc(max_flight_count, desclayouts.get("gbuf:actor"), device_.logi_device());
+        desc_sets_ = desc_pool_.alloc(
+            max_flight_count,
+            desclayouts.get("gbuf:actor"),
+            device_.logi_device()
+        );
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();
@@ -859,14 +1006,15 @@ namespace mirinae {
     }
 
     void RenderActor::destroy() {
-        for (auto& ubuf : uniform_buf_)
-            ubuf.destroy(device_.mem_alloc());
+        for (auto& ubuf : uniform_buf_) ubuf.destroy(device_.mem_alloc());
         uniform_buf_.clear();
 
         desc_pool_.destroy(device_.logi_device());
     }
 
-    void RenderActor::udpate_ubuf(uint32_t index, const U_GbufActor& data, VulkanMemoryAllocator mem_alloc) {
+    void RenderActor::udpate_ubuf(
+        uint32_t index, const U_GbufActor& data, VulkanMemoryAllocator mem_alloc
+    ) {
         auto& ubuf = uniform_buf_.at(index);
         ubuf.set_data(&data, sizeof(U_GbufActor), mem_alloc);
     }
@@ -875,4 +1023,4 @@ namespace mirinae {
         return desc_sets_.at(index);
     }
 
-}
+}  // namespace mirinae
