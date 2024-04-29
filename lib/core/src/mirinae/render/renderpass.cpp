@@ -18,7 +18,7 @@ namespace {
         return bindingDescription;
     }
 
-    std::vector<VkVertexInputAttributeDescription> make_vertex_static_attribute_descriptions() {
+    auto make_vertex_static_attribute_descriptions() {
         std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
 
         {
@@ -58,14 +58,18 @@ namespace {
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = renderpass;
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        framebufferInfo.attachmentCount = static_cast<uint32_t>(
+            attachments.size()
+        );
         framebufferInfo.pAttachments = attachments.data();
         framebufferInfo.width = width;
         framebufferInfo.height = height;
         framebufferInfo.layers = 1;
 
         VkFramebuffer output = VK_NULL_HANDLE;
-        if (vkCreateFramebuffer(logi_device, &framebufferInfo, nullptr, &output) != VK_SUCCESS) {
+        if (vkCreateFramebuffer(
+                logi_device, &framebufferInfo, nullptr, &output
+            ) != VK_SUCCESS) {
             throw std::runtime_error("failed to create framebuffer!");
         }
 
@@ -78,7 +82,10 @@ namespace {
     public:
         DescLayoutBuilder(const char* name) : name_{ name } {}
 
-        void add_uniform_buffer(VkShaderStageFlagBits stage_flags, uint32_t count) {
+        // Add uniform buffer
+        DescLayoutBuilder& add_ubuf(
+            VkShaderStageFlagBits stage_flags, uint32_t count
+        ) {
             auto& binding = bindings_.emplace_back();
             binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -87,9 +94,13 @@ namespace {
             binding.pImmutableSamplers = nullptr;
 
             ++uniform_buffer_count_;
+            return *this;
         }
 
-        void add_combined_image_sampler(VkShaderStageFlagBits stage_flags, uint32_t count) {
+        // Add combined image sampler
+        DescLayoutBuilder& add_img(
+            VkShaderStageFlagBits stage_flags, uint32_t count
+        ) {
             auto& binding = bindings_.emplace_back();
             binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
             binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -98,9 +109,13 @@ namespace {
             binding.pImmutableSamplers = nullptr;
 
             ++combined_image_sampler_count_;
+            return *this;
         }
 
-        void add_input_attachment(VkShaderStageFlagBits stage_flags, uint32_t count) {
+        // Add input attachment
+        DescLayoutBuilder& add_input_att(
+            VkShaderStageFlagBits stage_flags, uint32_t count
+        ) {
             auto& binding = bindings_.emplace_back();
             binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
             binding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
@@ -109,22 +124,31 @@ namespace {
             binding.pImmutableSamplers = nullptr;
 
             ++input_attachment_count_;
+            return *this;
         }
 
         VkDescriptorSetLayout build(VkDevice logi_device) const {
             VkDescriptorSetLayoutCreateInfo create_info = {};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            create_info.sType =
+                VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
             create_info.bindingCount = static_cast<uint32_t>(bindings_.size());
             create_info.pBindings = bindings_.data();
 
             VkDescriptorSetLayout handle;
-            if (VK_SUCCESS != vkCreateDescriptorSetLayout(logi_device, &create_info, nullptr, &handle))
-                throw std::runtime_error{ fmt::format("Failed to create descriptor set layout: {}", name_) };
+            if (vkCreateDescriptorSetLayout(
+                    logi_device, &create_info, nullptr, &handle
+                ) != VK_SUCCESS) {
+                throw std::runtime_error{ fmt::format(
+                    "Failed to create descriptor set layout: {}", name_
+                ) };
+            }
 
             return handle;
         }
 
-        VkDescriptorSetLayout build_in_place(mirinae::DesclayoutManager& desclayouts, VkDevice logi_device) {
+        VkDescriptorSetLayout build_in_place(
+            mirinae::DesclayoutManager& desclayouts, VkDevice logi_device
+        ) {
             auto handle = this->build(logi_device);
             desclayouts.add(name_, handle);
             return handle;
@@ -140,7 +164,6 @@ namespace {
         size_t uniform_buffer_count_ = 0;
         size_t combined_image_sampler_count_ = 0;
         size_t input_attachment_count_ = 0;
-
     };
 
 
@@ -196,7 +219,6 @@ namespace {
 
         private:
             VkAttachmentDescription& desc_;
-
         };
 
         const VkAttachmentDescription* data() const {
@@ -213,8 +235,10 @@ namespace {
             const VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED,
             const VkAttachmentLoadOp load_op = VK_ATTACHMENT_LOAD_OP_CLEAR,
             const VkAttachmentStoreOp store_op = VK_ATTACHMENT_STORE_OP_STORE,
-            const VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-            const VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            const VkAttachmentLoadOp stencil_load_op =
+                VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            const VkAttachmentStoreOp stencil_store_op =
+                VK_ATTACHMENT_STORE_OP_DONT_CARE,
             const VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT
         ) {
             auto& added = attachments_.emplace_back();
@@ -234,7 +258,6 @@ namespace {
 
     private:
         std::vector<VkAttachmentDescription> attachments_;
-
     };
 
 
@@ -249,36 +272,43 @@ namespace {
             return static_cast<uint32_t>(attachments_.size());
         }
 
-        void add(uint32_t index, VkImageLayout layout) {
+        AttachmentRefBuilder& add(uint32_t index, VkImageLayout layout) {
             auto& added = attachments_.emplace_back();
             added = {};
 
             added.attachment = index;
             added.layout = layout;
+
+            return *this;
         }
 
     private:
         std::vector<VkAttachmentReference> attachments_;
-
     };
 
 
     class ShaderModule {
 
     public:
-        ShaderModule(const mirinae::respath_t& spv_path, mirinae::VulkanDevice& device)
-            : device_{ device }
-        {
+        ShaderModule(
+            const mirinae::respath_t& spv_path, mirinae::VulkanDevice& device
+        )
+            : device_{ device } {
             if (auto spv = device.filesys().read_file_to_vector(spv_path)) {
-                if (auto shader = this->create_shader_module(spv.value(), device.logi_device())) {
+                if (auto shader = this->create_shader_module(
+                        *spv, device.logi_device()
+                    )) {
                     handle_ = shader.value();
+                } else {
+                    throw std::runtime_error{ fmt::format(
+                        "Failed to create shader module with given data: {}",
+                        spv_path.u8string()
+                    ) };
                 }
-                else {
-                    throw std::runtime_error{ fmt::format("Failed to create shader module with given data: {}", spv_path.u8string()) };
-                }
-            }
-            else {
-                throw std::runtime_error{ fmt::format("Failed to read a shader file: {}", spv_path.u8string()) };
+            } else {
+                throw std::runtime_error{ fmt::format(
+                    "Failed to read a shader file: {}", spv_path.u8string()
+                ) };
             }
         }
 
@@ -289,30 +319,32 @@ namespace {
             }
         }
 
-        VkShaderModule get() const {
-            return handle_;
-        }
+        VkShaderModule get() const { return handle_; }
 
     private:
-        static std::optional<VkShaderModule> create_shader_module(const std::vector<uint8_t>& spv, VkDevice logi_device) {
+        static std::optional<VkShaderModule> create_shader_module(
+            const std::vector<uint8_t>& spv, VkDevice logi_device
+        ) {
             VkShaderModuleCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
             createInfo.codeSize = spv.size();
             createInfo.pCode = reinterpret_cast<const uint32_t*>(spv.data());
 
             VkShaderModule shaderModule;
-            if (VK_SUCCESS != vkCreateShaderModule(logi_device, &createInfo, nullptr, &shaderModule))
+            if (vkCreateShaderModule(
+                    logi_device, &createInfo, nullptr, &shaderModule
+                ) != VK_SUCCESS) {
                 return std::nullopt;
+            }
 
             return shaderModule;
         }
 
         mirinae::VulkanDevice& device_;
         VkShaderModule handle_ = VK_NULL_HANDLE;
-
     };
 
-}
+}  // namespace
 
 
 // Pipeline builders
@@ -325,14 +357,15 @@ namespace {
             return data_.data();
         }
 
-        uint32_t size() const {
-            return static_cast<uint32_t>(data_.size());
-        }
+        uint32_t size() const { return static_cast<uint32_t>(data_.size()); }
 
         template <bool TBlendingEnabled>
         void add() {
             auto& added = data_.emplace_back();
-            added.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            added.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                   VK_COLOR_COMPONENT_G_BIT |
+                                   VK_COLOR_COMPONENT_B_BIT |
+                                   VK_COLOR_COMPONENT_A_BIT;
             added.colorBlendOp = VK_BLEND_OP_ADD;
             added.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
             added.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
@@ -342,8 +375,7 @@ namespace {
                 added.blendEnable = VK_TRUE;
                 added.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
                 added.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-            }
-            else {
+            } else {
                 added.blendEnable = VK_FALSE;
                 added.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
                 added.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
@@ -352,22 +384,25 @@ namespace {
 
     private:
         std::vector<VkPipelineColorBlendAttachmentState> data_;
-
     };
 
 
-    auto create_info_shader_stages_pair(const ShaderModule& vertex, const ShaderModule& fragment) {
+    auto create_info_shader_stages_pair(
+        const ShaderModule& vertex, const ShaderModule& fragment
+    ) {
         std::array<VkPipelineShaderStageCreateInfo, 2> output{};
         {
             auto& shader_info = output[0];
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_info.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
             shader_info.module = vertex.get();
             shader_info.pName = "main";
         }
         {
             auto& shader_info = output[1];
-            shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_info.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
             shader_info.module = fragment.get();
             shader_info.pName = "main";
@@ -384,11 +419,14 @@ namespace {
     }
 
     auto create_info_vertex_input_states(
-        const   VkVertexInputBindingDescription* binding_descriptions = nullptr, size_t binding_count = 0,
-        const VkVertexInputAttributeDescription* attrib_descriptions  = nullptr,  size_t attrib_count = 0
+        const VkVertexInputBindingDescription* binding_descriptions = nullptr,
+        size_t binding_count = 0,
+        const VkVertexInputAttributeDescription* attrib_descriptions = nullptr,
+        size_t attrib_count = 0
     ) {
         VkPipelineVertexInputStateCreateInfo output{};
-        output.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        output.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         output.vertexBindingDescriptionCount = binding_count;
         output.pVertexBindingDescriptions = binding_descriptions;
         output.vertexAttributeDescriptionCount = attrib_count;
@@ -398,7 +436,8 @@ namespace {
 
     auto create_info_input_assembly() {
         VkPipelineInputAssemblyStateCreateInfo output{};
-        output.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        output.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         output.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         output.primitiveRestartEnable = VK_FALSE;
         return output;
@@ -422,16 +461,23 @@ namespace {
         const bool enable_depth_clamp = false
     ) {
         VkPipelineRasterizationStateCreateInfo output{};
-        output.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        output.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 
-        output.depthClampEnable = VK_FALSE;  // vulkan-tutorial.com said this requires GPU feature enabled.
+        // vulkan-tutorial.com said this requires GPU feature enabled.
+        output.depthClampEnable = VK_FALSE;
 
-        // Discards all fragents. But why would you ever want it? Well, check the link below.
-        // https://stackoverflow.com/questions/42470669/when-does-it-make-sense-to-turn-off-the-rasterization-step
+        // Discards all fragents. But why would you ever want it? Well, check
+        // the link below. https://stackoverflow.com/questions/42470669/
+        // when-does-it-make-sense-to-turn-off-the-rasterization-step
         output.rasterizerDiscardEnable = VK_FALSE;
 
-        output.polygonMode = VK_POLYGON_MODE_FILL;  // Any mode other than FILL requires GPU feature enabled.
-        output.lineWidth = 1;  // GPU feature, `wideLines` required for lines thicker than 1.
+        // Any mode other than FILL requires GPU feature enabled.
+        output.polygonMode = VK_POLYGON_MODE_FILL;
+
+        // GPU feature, `wideLines` required for lines thicker than 1.
+        output.lineWidth = 1;
+
         output.cullMode = cull_mode;
         output.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         output.depthBiasEnable = enable_bias ? VK_TRUE : VK_FALSE;
@@ -457,7 +503,8 @@ namespace {
 
     auto create_info_depth_stencil(bool depth_test, bool depth_write) {
         VkPipelineDepthStencilStateCreateInfo output{};
-        output.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        output.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         output.depthTestEnable = depth_test ? VK_TRUE : VK_FALSE;
         output.depthWriteEnable = depth_write ? VK_TRUE : VK_FALSE;
         output.depthCompareOp = VK_COMPARE_OP_LESS;
@@ -486,25 +533,35 @@ namespace {
         return output;
     }
 
-}
+}  // namespace
 
 
 // gbuf
 namespace { namespace gbuf {
 
-    VkDescriptorSetLayout create_desclayout_model(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+    VkDescriptorSetLayout create_desclayout_model(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
         DescLayoutBuilder builder{ "gbuf:model" };
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
-    VkDescriptorSetLayout create_desclayout_actor(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+    VkDescriptorSetLayout create_desclayout_actor(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
         DescLayoutBuilder builder{ "gbuf:actor" };
-        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActor
+        builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActor
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
-    VkRenderPass create_renderpass(VkFormat depth, VkFormat albedo, VkFormat normal, VkFormat material, VkDevice logi_device) {
+    VkRenderPass create_renderpass(
+        VkFormat depth,
+        VkFormat albedo,
+        VkFormat normal,
+        VkFormat material,
+        VkDevice logi_device
+    ) {
         ::AttachmentDescBuilder attachments;
         attachments.add(depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         attachments.add(albedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -512,11 +569,15 @@ namespace { namespace gbuf {
         attachments.add(material, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
-        color_attachment_refs.add(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // albedo
-        color_attachment_refs.add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // normal
-        color_attachment_refs.add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // material
+        // albedo
+        color_attachment_refs
+            .add(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)   // albedo
+            .add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)   // normal
+            .add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // material
 
-        const VkAttachmentReference depth_attachment_ref{ 0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+        const VkAttachmentReference depth_attachment_ref{
+            0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        };
 
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -527,10 +588,15 @@ namespace { namespace gbuf {
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.srcStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependency.dstStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -542,7 +608,8 @@ namespace { namespace gbuf {
         create_info.pDependencies = &dependency;
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS != vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
+        if (VK_SUCCESS !=
+            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
             throw std::runtime_error("failed to create render pass!");
         }
 
@@ -561,15 +628,23 @@ namespace { namespace gbuf {
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         {
-            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desclayouts.size());
+            pipelineLayoutInfo.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
+                desclayouts.size()
+            );
             pipelineLayoutInfo.pSetLayouts = desclayouts.data();
             pipelineLayoutInfo.pushConstantRangeCount = 0;
             pipelineLayoutInfo.pPushConstantRanges = nullptr;
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(
+                device.logi_device(),
+                &pipelineLayoutInfo,
+                nullptr,
+                &pipelineLayout
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create pipeline layout");
         }
 
@@ -583,23 +658,31 @@ namespace { namespace gbuf {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/gbuf_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/gbuf_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
+        const auto shader_stages = ::create_info_shader_stages_pair(
+            vert_shader, frag_shader
+        );
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
-        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
+        const auto dynamic_state_info = ::create_info_dynamic_states(
+            dynamic_states.data(), dynamic_states.size()
+        );
 
         auto binding_desc = ::make_vertex_static_binding_description();
         auto attrib_desc = ::make_vertex_static_attribute_descriptions();
-        const auto vertex_input_info = ::create_info_vertex_input_states(&binding_desc, 1, attrib_desc.data(), attrib_desc.size());
+        const auto vertex_input_info = ::create_info_vertex_input_states(
+            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
+        );
 
         const auto input_assembly = ::create_info_input_assembly();
 
         const auto viewport_state = ::create_info_viewport_state();
 
-        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
+        const auto rasterizer = ::create_info_rasterizer(
+            VK_CULL_MODE_BACK_BIT, false, 0, 0, false
+        );
 
         const auto multisampling = ::create_info_multisampling();
 
@@ -609,7 +692,9 @@ namespace { namespace gbuf {
         color_blend_attachment_states.add<false>();
         color_blend_attachment_states.add<false>();
         color_blend_attachment_states.add<false>();
-        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
+        const auto color_blending = ::create_info_color_blend(
+            color_blend_attachment_states
+        );
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -630,7 +715,14 @@ namespace { namespace gbuf {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(device.logi_device(), VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) {
+        if (vkCreateGraphicsPipelines(
+                device.logi_device(),
+                VK_NULL_HANDLE,
+                1,
+                &pipeline_info,
+                nullptr,
+                &graphics_pipeline
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create graphics pipeline");
         }
 
@@ -649,8 +741,7 @@ namespace { namespace gbuf {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device)
-        {
+            : device_(device) {
             formats_ = {
                 fbuf_bundle.depth().format(),
                 fbuf_bundle.albedo().format(),
@@ -675,11 +766,7 @@ namespace { namespace gbuf {
                 create_desclayout_actor(desclayouts, device),
                 device
             );
-            pipeline_ = create_pipeline(
-                renderpass_,
-                layout_,
-                device
-            );
+            pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
@@ -697,9 +784,7 @@ namespace { namespace gbuf {
             }
         }
 
-        ~RenderPassBundle() override {
-            this->destroy();
-        }
+        ~RenderPassBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -708,12 +793,16 @@ namespace { namespace gbuf {
             }
 
             if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(device_.logi_device(), layout_, nullptr);
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), layout_, nullptr
+                );
                 layout_ = VK_NULL_HANDLE;
             }
 
             if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(device_.logi_device(), renderpass_, nullptr);
+                vkDestroyRenderPass(
+                    device_.logi_device(), renderpass_, nullptr
+                );
                 renderpass_ = VK_NULL_HANDLE;
             }
 
@@ -723,17 +812,11 @@ namespace { namespace gbuf {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override {
-            return renderpass_;
-        }
+        VkRenderPass renderpass() override { return renderpass_; }
 
-        VkPipeline pipeline() override {
-            return pipeline_;
-        }
+        VkPipeline pipeline() override { return pipeline_; }
 
-        VkPipelineLayout pipeline_layout() override {
-            return layout_;
-        }
+        VkPipelineLayout pipeline_layout() override { return layout_; }
 
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
@@ -755,31 +838,39 @@ namespace { namespace gbuf {
         std::array<VkFormat, 4> formats_;
         std::array<VkClearValue, 4> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
-
     };
 
-}}
+}}  // namespace ::gbuf
 
 
 // composition
 namespace { namespace composition {
 
-    VkDescriptorSetLayout create_desclayout_main(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+    VkDescriptorSetLayout create_desclayout_main(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
         DescLayoutBuilder builder{ "composition:main" };
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // depth
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // albedo
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // normal
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // material
-        builder.add_uniform_buffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompositionMain
+        builder
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // depth
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // albedo
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // normal
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // material
+            .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompositionMain
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
-    VkRenderPass create_renderpass(VkFormat composition_format, VkDevice logi_device) {
+    VkRenderPass create_renderpass(
+        VkFormat composition_format, VkDevice logi_device
+    ) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(composition_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        attachments.add(
+            composition_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        );
 
         ::AttachmentRefBuilder color_attachment_refs;
-        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // composition
+        color_attachment_refs.add(
+            0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        );  // composition
 
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -790,10 +881,15 @@ namespace { namespace composition {
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.srcStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependency.dstStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -805,7 +901,8 @@ namespace { namespace composition {
         create_info.pDependencies = &dependency;
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS != vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
+        if (VK_SUCCESS !=
+            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
             throw std::runtime_error("failed to create render pass!");
         }
 
@@ -813,8 +910,7 @@ namespace { namespace composition {
     }
 
     VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_main,
-        mirinae::VulkanDevice& device
+        VkDescriptorSetLayout desclayout_main, mirinae::VulkanDevice& device
     ) {
         const std::vector<VkDescriptorSetLayout> desclayouts{
             desclayout_main,
@@ -822,15 +918,23 @@ namespace { namespace composition {
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         {
-            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desclayouts.size());
+            pipelineLayoutInfo.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
+                desclayouts.size()
+            );
             pipelineLayoutInfo.pSetLayouts = desclayouts.data();
             pipelineLayoutInfo.pushConstantRangeCount = 0;
             pipelineLayoutInfo.pPushConstantRanges = nullptr;
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(
+                device.logi_device(),
+                &pipelineLayoutInfo,
+                nullptr,
+                &pipelineLayout
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create pipeline layout");
         }
 
@@ -844,13 +948,17 @@ namespace { namespace composition {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/composition_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/composition_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
+        const auto shader_stages = ::create_info_shader_stages_pair(
+            vert_shader, frag_shader
+        );
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
-        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
+        const auto dynamic_state_info = ::create_info_dynamic_states(
+            dynamic_states.data(), dynamic_states.size()
+        );
 
         const auto vertex_input_info = ::create_info_vertex_input_states();
 
@@ -858,7 +966,9 @@ namespace { namespace composition {
 
         const auto viewport_state = ::create_info_viewport_state();
 
-        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
+        const auto rasterizer = ::create_info_rasterizer(
+            VK_CULL_MODE_BACK_BIT, false, 0, 0, false
+        );
 
         const auto multisampling = ::create_info_multisampling();
 
@@ -866,7 +976,9 @@ namespace { namespace composition {
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<false>();
-        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
+        const auto color_blending = ::create_info_color_blend(
+            color_blend_attachment_states
+        );
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -887,7 +999,14 @@ namespace { namespace composition {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(device.logi_device(), VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) {
+        if (vkCreateGraphicsPipelines(
+                device.logi_device(),
+                VK_NULL_HANDLE,
+                1,
+                &pipeline_info,
+                nullptr,
+                &graphics_pipeline
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create graphics pipeline");
         }
 
@@ -906,8 +1025,7 @@ namespace { namespace composition {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device)
-        {
+            : device_(device) {
             formats_ = {
                 fbuf_bundle.composition().format(),
             };
@@ -915,18 +1033,12 @@ namespace { namespace composition {
             clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
             renderpass_ = create_renderpass(
-                formats_.at(0),
-                device.logi_device()
+                formats_.at(0), device.logi_device()
             );
             layout_ = create_pipeline_layout(
-                create_desclayout_main(desclayouts, device),
-                device
+                create_desclayout_main(desclayouts, device), device
             );
-            pipeline_ = create_pipeline(
-                renderpass_,
-                layout_,
-                device
-            );
+            pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
@@ -941,9 +1053,7 @@ namespace { namespace composition {
             }
         }
 
-        ~RenderPassBundle() override {
-            this->destroy();
-        }
+        ~RenderPassBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -952,12 +1062,16 @@ namespace { namespace composition {
             }
 
             if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(device_.logi_device(), layout_, nullptr);
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), layout_, nullptr
+                );
                 layout_ = VK_NULL_HANDLE;
             }
 
             if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(device_.logi_device(), renderpass_, nullptr);
+                vkDestroyRenderPass(
+                    device_.logi_device(), renderpass_, nullptr
+                );
                 renderpass_ = VK_NULL_HANDLE;
             }
 
@@ -967,17 +1081,11 @@ namespace { namespace composition {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override {
-            return renderpass_;
-        }
+        VkRenderPass renderpass() override { return renderpass_; }
 
-        VkPipeline pipeline() override {
-            return pipeline_;
-        }
+        VkPipeline pipeline() override { return pipeline_; }
 
-        VkPipelineLayout pipeline_layout() override {
-            return layout_;
-        }
+        VkPipelineLayout pipeline_layout() override { return layout_; }
 
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
@@ -999,34 +1107,53 @@ namespace { namespace composition {
         std::array<VkFormat, 1> formats_;
         std::array<VkClearValue, 1> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
-
     };
 
-}}
+}}  // namespace ::composition
 
 
 // transparent
 namespace { namespace transparent {
 
-    VkDescriptorSetLayout create_desclayout_model(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+    VkDescriptorSetLayout create_desclayout_model(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
         return desclayouts.get("gbuf:model");
     }
 
-    VkDescriptorSetLayout create_desclayout_actor(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+    VkDescriptorSetLayout create_desclayout_actor(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
         return desclayouts.get("gbuf:actor");
     }
 
-    VkRenderPass create_renderpass(VkFormat composition_format, VkFormat depth_format, VkDevice logi_device) {
+    VkRenderPass create_renderpass(
+        VkFormat composition_format, VkFormat depth_format, VkDevice logi_device
+    ) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(composition_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        attachments
+            .add(
+                composition_format,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            )
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
-        attachments.add(depth_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+        attachments
+            .add(
+                depth_format,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            )
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
 
         ::AttachmentRefBuilder color_attachment_refs;
-        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // composition
+        color_attachment_refs.add(
+            0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        );  // composition
 
-        VkAttachmentReference depth_attachment_ref{ 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+        VkAttachmentReference depth_attachment_ref{
+            1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        };
 
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -1037,10 +1164,15 @@ namespace { namespace transparent {
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.srcStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependency.dstStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1052,7 +1184,8 @@ namespace { namespace transparent {
         create_info.pDependencies = &dependency;
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS != vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
+        if (VK_SUCCESS !=
+            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
             throw std::runtime_error("failed to create render pass!");
         }
 
@@ -1071,15 +1204,23 @@ namespace { namespace transparent {
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         {
-            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desclayouts.size());
+            pipelineLayoutInfo.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
+                desclayouts.size()
+            );
             pipelineLayoutInfo.pSetLayouts = desclayouts.data();
             pipelineLayoutInfo.pushConstantRangeCount = 0;
             pipelineLayoutInfo.pPushConstantRanges = nullptr;
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(
+                device.logi_device(),
+                &pipelineLayoutInfo,
+                nullptr,
+                &pipelineLayout
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create pipeline layout");
         }
 
@@ -1093,23 +1234,31 @@ namespace { namespace transparent {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/transparent_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/transparent_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
+        const auto shader_stages = ::create_info_shader_stages_pair(
+            vert_shader, frag_shader
+        );
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
-        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
+        const auto dynamic_state_info = ::create_info_dynamic_states(
+            dynamic_states.data(), dynamic_states.size()
+        );
 
         auto binding_desc = ::make_vertex_static_binding_description();
         auto attrib_desc = ::make_vertex_static_attribute_descriptions();
-        const auto vertex_input_info = ::create_info_vertex_input_states(&binding_desc, 1, attrib_desc.data(), attrib_desc.size());
+        const auto vertex_input_info = ::create_info_vertex_input_states(
+            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
+        );
 
         const auto input_assembly = ::create_info_input_assembly();
 
         const auto viewport_state = ::create_info_viewport_state();
 
-        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_NONE, false, 0, 0, false);
+        const auto rasterizer = ::create_info_rasterizer(
+            VK_CULL_MODE_NONE, false, 0, 0, false
+        );
 
         const auto multisampling = ::create_info_multisampling();
 
@@ -1117,7 +1266,9 @@ namespace { namespace transparent {
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<true>();
-        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
+        const auto color_blending = ::create_info_color_blend(
+            color_blend_attachment_states
+        );
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1138,7 +1289,14 @@ namespace { namespace transparent {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(device.logi_device(), VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) {
+        if (vkCreateGraphicsPipelines(
+                device.logi_device(),
+                VK_NULL_HANDLE,
+                1,
+                &pipeline_info,
+                nullptr,
+                &graphics_pipeline
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create graphics pipeline");
         }
 
@@ -1157,8 +1315,7 @@ namespace { namespace transparent {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device)
-        {
+            : device_(device) {
             formats_ = {
                 fbuf_bundle.composition().format(),
                 fbuf_bundle.depth().format(),
@@ -1167,20 +1324,14 @@ namespace { namespace transparent {
             clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
             renderpass_ = create_renderpass(
-                formats_.at(0),
-                formats_.at(1),
-                device.logi_device()
+                formats_.at(0), formats_.at(1), device.logi_device()
             );
             layout_ = create_pipeline_layout(
                 create_desclayout_model(desclayouts, device),
                 create_desclayout_actor(desclayouts, device),
                 device
             );
-            pipeline_ = create_pipeline(
-                renderpass_,
-                layout_,
-                device
-            );
+            pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
@@ -1196,9 +1347,7 @@ namespace { namespace transparent {
             }
         }
 
-        ~RenderPassBundle() override {
-            this->destroy();
-        }
+        ~RenderPassBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -1207,12 +1356,16 @@ namespace { namespace transparent {
             }
 
             if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(device_.logi_device(), layout_, nullptr);
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), layout_, nullptr
+                );
                 layout_ = VK_NULL_HANDLE;
             }
 
             if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(device_.logi_device(), renderpass_, nullptr);
+                vkDestroyRenderPass(
+                    device_.logi_device(), renderpass_, nullptr
+                );
                 renderpass_ = VK_NULL_HANDLE;
             }
 
@@ -1222,17 +1375,11 @@ namespace { namespace transparent {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override {
-            return renderpass_;
-        }
+        VkRenderPass renderpass() override { return renderpass_; }
 
-        VkPipeline pipeline() override {
-            return pipeline_;
-        }
+        VkPipeline pipeline() override { return pipeline_; }
 
-        VkPipelineLayout pipeline_layout() override {
-            return layout_;
-        }
+        VkPipelineLayout pipeline_layout() override { return layout_; }
 
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
@@ -1254,18 +1401,19 @@ namespace { namespace transparent {
         std::array<VkFormat, 2> formats_;
         std::array<VkClearValue, 2> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
-
     };
 
-}}
+}}  // namespace ::transparent
 
 
 // fillscreen
 namespace { namespace fillscreen {
 
-    VkDescriptorSetLayout create_desclayout_main(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+    VkDescriptorSetLayout create_desclayout_main(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
         DescLayoutBuilder builder{ "fillscreen:main" };
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // composition
+        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // composition
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
@@ -1285,10 +1433,15 @@ namespace { namespace fillscreen {
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.srcStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependency.dstStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1300,7 +1453,8 @@ namespace { namespace fillscreen {
         create_info.pDependencies = &dependency;
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS != vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
+        if (VK_SUCCESS !=
+            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
             throw std::runtime_error("failed to create render pass!");
         }
 
@@ -1308,8 +1462,7 @@ namespace { namespace fillscreen {
     }
 
     VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_main,
-        mirinae::VulkanDevice& device
+        VkDescriptorSetLayout desclayout_main, mirinae::VulkanDevice& device
     ) {
         std::vector<VkDescriptorSetLayout> desclayouts{
             desclayout_main,
@@ -1317,15 +1470,23 @@ namespace { namespace fillscreen {
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         {
-            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desclayouts.size());
+            pipelineLayoutInfo.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
+                desclayouts.size()
+            );
             pipelineLayoutInfo.pSetLayouts = desclayouts.data();
             pipelineLayoutInfo.pushConstantRangeCount = 0;
             pipelineLayoutInfo.pPushConstantRanges = nullptr;
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(
+                device.logi_device(),
+                &pipelineLayoutInfo,
+                nullptr,
+                &pipelineLayout
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create pipeline layout");
         }
 
@@ -1339,13 +1500,17 @@ namespace { namespace fillscreen {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/fill_screen_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/fill_screen_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
+        const auto shader_stages = ::create_info_shader_stages_pair(
+            vert_shader, frag_shader
+        );
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
-        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
+        const auto dynamic_state_info = ::create_info_dynamic_states(
+            dynamic_states.data(), dynamic_states.size()
+        );
 
         const auto vertex_input_info = ::create_info_vertex_input_states();
 
@@ -1353,7 +1518,9 @@ namespace { namespace fillscreen {
 
         const auto viewport_state = ::create_info_viewport_state();
 
-        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
+        const auto rasterizer = ::create_info_rasterizer(
+            VK_CULL_MODE_BACK_BIT, false, 0, 0, false
+        );
 
         const auto multisampling = ::create_info_multisampling();
 
@@ -1361,7 +1528,9 @@ namespace { namespace fillscreen {
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<false>();
-        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
+        const auto color_blending = ::create_info_color_blend(
+            color_blend_attachment_states
+        );
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1382,7 +1551,14 @@ namespace { namespace fillscreen {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(device.logi_device(), VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) {
+        if (vkCreateGraphicsPipelines(
+                device.logi_device(),
+                VK_NULL_HANDLE,
+                1,
+                &pipeline_info,
+                nullptr,
+                &graphics_pipeline
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create graphics pipeline");
         }
 
@@ -1401,8 +1577,7 @@ namespace { namespace fillscreen {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device)
-        {
+            : device_(device) {
             formats_ = {
                 swapchain.format(),
             };
@@ -1410,18 +1585,12 @@ namespace { namespace fillscreen {
             clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
             renderpass_ = create_renderpass(
-                formats_.at(0),
-                device.logi_device()
+                formats_.at(0), device.logi_device()
             );
             layout_ = create_pipeline_layout(
-                create_desclayout_main(desclayouts, device),
-                device
+                create_desclayout_main(desclayouts, device), device
             );
-            pipeline_ = create_pipeline(
-                renderpass_,
-                layout_,
-                device
-            );
+            pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
@@ -1436,9 +1605,7 @@ namespace { namespace fillscreen {
             }
         }
 
-        ~RenderPassBundle() override {
-            this->destroy();
-        }
+        ~RenderPassBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -1447,12 +1614,16 @@ namespace { namespace fillscreen {
             }
 
             if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(device_.logi_device(), layout_, nullptr);
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), layout_, nullptr
+                );
                 layout_ = VK_NULL_HANDLE;
             }
 
             if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(device_.logi_device(), renderpass_, nullptr);
+                vkDestroyRenderPass(
+                    device_.logi_device(), renderpass_, nullptr
+                );
                 renderpass_ = VK_NULL_HANDLE;
             }
 
@@ -1462,17 +1633,11 @@ namespace { namespace fillscreen {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override {
-            return renderpass_;
-        }
+        VkRenderPass renderpass() override { return renderpass_; }
 
-        VkPipeline pipeline() override {
-            return pipeline_;
-        }
+        VkPipeline pipeline() override { return pipeline_; }
 
-        VkPipelineLayout pipeline_layout() override {
-            return layout_;
-        }
+        VkPipelineLayout pipeline_layout() override { return layout_; }
 
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
@@ -1494,26 +1659,29 @@ namespace { namespace fillscreen {
         std::array<VkFormat, 1> formats_;
         std::array<VkClearValue, 1> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
-
     };
 
-}}
+}}  // namespace ::fillscreen
 
 
 // overlay
 namespace { namespace overlay {
 
-    VkDescriptorSetLayout create_desclayout_main(mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device) {
+    VkDescriptorSetLayout create_desclayout_main(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
         DescLayoutBuilder builder{ "overlay:main" };
-        builder.add_uniform_buffer(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_OverlayMain
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // color
-        builder.add_combined_image_sampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // mask
+        builder
+            .add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1)    // U_OverlayMain
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // color
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // mask
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
     VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(surface,
+        attachments.add(
+            surface,
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_ATTACHMENT_LOAD_OP_LOAD
@@ -1531,10 +1699,15 @@ namespace { namespace overlay {
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.srcStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependency.dstStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1546,7 +1719,8 @@ namespace { namespace overlay {
         create_info.pDependencies = &dependency;
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS != vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
+        if (VK_SUCCESS !=
+            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
             throw std::runtime_error("failed to create render pass!");
         }
 
@@ -1554,8 +1728,7 @@ namespace { namespace overlay {
     }
 
     VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_main,
-        mirinae::VulkanDevice& device
+        VkDescriptorSetLayout desclayout_main, mirinae::VulkanDevice& device
     ) {
         std::vector<VkDescriptorSetLayout> desclayouts{
             desclayout_main,
@@ -1563,22 +1736,31 @@ namespace { namespace overlay {
 
         VkPushConstantRange push_constant;
         {
-            push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+            push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT |
+                                       VK_SHADER_STAGE_FRAGMENT_BIT;
             push_constant.offset = 0;
             push_constant.size = sizeof(mirinae::U_OverlayPushConst);
         }
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         {
-            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desclayouts.size());
+            pipelineLayoutInfo.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
+                desclayouts.size()
+            );
             pipelineLayoutInfo.pSetLayouts = desclayouts.data();
             pipelineLayoutInfo.pushConstantRangeCount = 1;
             pipelineLayoutInfo.pPushConstantRanges = &push_constant;
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(
+                device.logi_device(),
+                &pipelineLayoutInfo,
+                nullptr,
+                &pipelineLayout
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create pipeline layout");
         }
 
@@ -1592,13 +1774,17 @@ namespace { namespace overlay {
     ) {
         ::ShaderModule vert_shader{ "asset/spv/overlay_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/overlay_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(vert_shader, frag_shader);
+        const auto shader_stages = ::create_info_shader_stages_pair(
+            vert_shader, frag_shader
+        );
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
-        const auto dynamic_state_info = ::create_info_dynamic_states(dynamic_states.data(), dynamic_states.size());
+        const auto dynamic_state_info = ::create_info_dynamic_states(
+            dynamic_states.data(), dynamic_states.size()
+        );
 
         const auto vertex_input_info = ::create_info_vertex_input_states();
 
@@ -1606,7 +1792,9 @@ namespace { namespace overlay {
 
         const auto viewport_state = ::create_info_viewport_state();
 
-        const auto rasterizer = ::create_info_rasterizer(VK_CULL_MODE_BACK_BIT, false, 0, 0, false);
+        const auto rasterizer = ::create_info_rasterizer(
+            VK_CULL_MODE_BACK_BIT, false, 0, 0, false
+        );
 
         const auto multisampling = ::create_info_multisampling();
 
@@ -1614,7 +1802,9 @@ namespace { namespace overlay {
 
         ColorBlendAttachmentStateBuilder color_blend_attachment_states;
         color_blend_attachment_states.add<true>();
-        const auto color_blending = ::create_info_color_blend(color_blend_attachment_states);
+        const auto color_blending = ::create_info_color_blend(
+            color_blend_attachment_states
+        );
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1635,7 +1825,14 @@ namespace { namespace overlay {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(device.logi_device(), VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) {
+        if (vkCreateGraphicsPipelines(
+                device.logi_device(),
+                VK_NULL_HANDLE,
+                1,
+                &pipeline_info,
+                nullptr,
+                &graphics_pipeline
+            ) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create graphics pipeline");
         }
 
@@ -1654,8 +1851,7 @@ namespace { namespace overlay {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device)
-        {
+            : device_(device) {
             formats_ = {
                 swapchain.format(),
             };
@@ -1663,18 +1859,12 @@ namespace { namespace overlay {
             clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
             renderpass_ = create_renderpass(
-                formats_.at(0),
-                device.logi_device()
+                formats_.at(0), device.logi_device()
             );
             layout_ = create_pipeline_layout(
-                create_desclayout_main(desclayouts, device),
-                device
+                create_desclayout_main(desclayouts, device), device
             );
-            pipeline_ = create_pipeline(
-                renderpass_,
-                layout_,
-                device
-            );
+            pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
@@ -1689,9 +1879,7 @@ namespace { namespace overlay {
             }
         }
 
-        ~RenderPassBundle() override {
-            this->destroy();
-        }
+        ~RenderPassBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -1700,12 +1888,16 @@ namespace { namespace overlay {
             }
 
             if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(device_.logi_device(), layout_, nullptr);
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), layout_, nullptr
+                );
                 layout_ = VK_NULL_HANDLE;
             }
 
             if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(device_.logi_device(), renderpass_, nullptr);
+                vkDestroyRenderPass(
+                    device_.logi_device(), renderpass_, nullptr
+                );
                 renderpass_ = VK_NULL_HANDLE;
             }
 
@@ -1715,17 +1907,11 @@ namespace { namespace overlay {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override {
-            return renderpass_;
-        }
+        VkRenderPass renderpass() override { return renderpass_; }
 
-        VkPipeline pipeline() override {
-            return pipeline_;
-        }
+        VkPipeline pipeline() override { return pipeline_; }
 
-        VkPipelineLayout pipeline_layout() override {
-            return layout_;
-        }
+        VkPipelineLayout pipeline_layout() override { return layout_; }
 
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
@@ -1747,10 +1933,9 @@ namespace { namespace overlay {
         std::array<VkFormat, 1> formats_;
         std::array<VkClearValue, 1> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
-
     };
 
-}}
+}}  // namespace ::overlay
 
 
 namespace mirinae {
@@ -1763,7 +1948,9 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        return std::make_unique<::gbuf::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
+        return std::make_unique<::gbuf::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
     }
 
     std::unique_ptr<IRenderPassBundle> create_composition(
@@ -1774,7 +1961,9 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        return std::make_unique<::composition::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
+        return std::make_unique<::composition::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
     }
 
     std::unique_ptr<IRenderPassBundle> create_transparent(
@@ -1785,7 +1974,9 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        return std::make_unique<::transparent::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
+        return std::make_unique<::transparent::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
     }
 
     std::unique_ptr<IRenderPassBundle> create_fillscreen(
@@ -1796,7 +1987,9 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        return std::make_unique<::fillscreen::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
+        return std::make_unique<::fillscreen::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
     }
 
     std::unique_ptr<IRenderPassBundle> create_overlay(
@@ -1807,7 +2000,9 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        return std::make_unique<::overlay::RenderPassBundle>(width, height, fbuf_bundle, desclayouts, swapchain, device);
+        return std::make_unique<::overlay::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
     }
 
-}
+}  // namespace mirinae
