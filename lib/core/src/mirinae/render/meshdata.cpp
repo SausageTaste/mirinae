@@ -17,25 +17,47 @@ namespace mirinae {
         vertices_.push_back(vertex);
     }
 
-}
+    void VerticesSkinnedPair::append_vertex(const VertexSkinned& vertex) {
+        const auto cur_index = vertices_.size();
+        if ((std::numeric_limits<VertIndexType_t>::max)() < cur_index)
+            spdlog::warn("Index overflow: {}", cur_index);
+
+        indices_.push_back(static_cast<uint16_t>(vertices_.size()));
+        vertices_.push_back(vertex);
+    }
+
+}  // namespace mirinae
 
 
 namespace mirinae {
 
-    std::optional<VerticesStaticPair> parse_dmd_static(const uint8_t* const file_content, const size_t content_size) {
+    std::optional<VerticesStaticPair> parse_dmd_static(
+        const uint8_t* const file_content, const size_t content_size
+    ) {
         dal::parser::Model parsed_model;
-        const auto parse_result = dal::parser::parse_dmd(parsed_model, file_content, content_size);
+        const auto parse_result = dal::parser::parse_dmd(
+            parsed_model, file_content, content_size
+        );
         if (dal::parser::ModelParseResult::success != parse_result) {
-            spdlog::error("Failed to parse dmd file: {}", static_cast<int>(parse_result));
+            spdlog::error(
+                "Failed to parse dmd file: {}", static_cast<int>(parse_result)
+            );
             return std::nullopt;
         }
 
         if (!parsed_model.units_straight_joint_.empty())
-            spdlog::warn("Parsing static DMD model but skinned straight mesh found");
+            spdlog::warn(
+                "Parsing static DMD model but skinned straight mesh found"
+            );
         if (!parsed_model.units_indexed_joint_.empty())
-            spdlog::warn("Parsing static DMD model but skinned indexed mesh found");
+            spdlog::warn(
+                "Parsing static DMD model but skinned indexed mesh found"
+            );
         if (!parsed_model.units_straight_.empty())
-            spdlog::warn("Parsing static DMD model that has straight mesh, which will cause performance issue");
+            spdlog::warn(
+                "Parsing static DMD model that has straight mesh, which will "
+                "cause performance issue"
+            );
 
         VerticesStaticPair output;
 
@@ -64,11 +86,13 @@ namespace mirinae {
             }
 
             for (const auto& vert : unit.mesh_.vertices_) {
-                output.vertices_.emplace_back(vert.pos_, vert.uv_, vert.normal_);
+                output.vertices_.emplace_back(
+                    vert.pos_, vert.uv_, vert.normal_
+                );
             }
         }
 
         return output;
     }
 
-}
+}  // namespace mirinae

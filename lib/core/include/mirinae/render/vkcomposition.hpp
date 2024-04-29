@@ -16,6 +16,14 @@ namespace mirinae {
             VkDevice logi_device
         );
 
+        void init(
+            const VerticesSkinnedPair& vertices,
+            CommandPool& cmdpool,
+            VulkanMemoryAllocator allocator,
+            VkQueue graphics_q,
+            VkDevice logi_device
+        );
+
         void destroy(VulkanMemoryAllocator allocator);
 
         void record_bind(VkCommandBuffer cmdbuf);
