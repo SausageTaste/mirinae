@@ -1,6 +1,38 @@
 #include "mirinae/render/vkcomposition.hpp"
 
 
+namespace {
+
+    void set_buffer_data(
+        mirinae::Buffer& dst,
+        const void* src,
+        size_t src_size,
+        mirinae::CommandPool& cmdpool,
+        mirinae::VulkanMemoryAllocator allocator,
+        VkQueue graphics_q,
+        VkDevice logi_device
+    ) {
+        mirinae::Buffer staging_buffer;
+        staging_buffer.init_staging(src_size, allocator);
+        staging_buffer.set_data(src, src_size, allocator);
+
+        auto cmdbuf = cmdpool.alloc(logi_device);
+        dst.record_copy_cmd(staging_buffer, cmdbuf, logi_device);
+
+        VkSubmitInfo submit_info{};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &cmdbuf;
+        vkQueueSubmit(graphics_q, 1, &submit_info, VK_NULL_HANDLE);
+
+        vkQueueWaitIdle(graphics_q);
+        cmdpool.free(cmdbuf, logi_device);
+        staging_buffer.destroy(allocator);
+    }
+
+}  // namespace
+
+
 // VertexIndexPair
 namespace mirinae {
 
@@ -11,8 +43,32 @@ namespace mirinae {
         VkQueue graphics_q,
         VkDevice logi_device
     ) {
-        this->init_vertices(vertices.vertices_, cmdpool, allocator, graphics_q, logi_device);
-        this->init_indices(vertices.indices_, cmdpool, allocator, graphics_q, logi_device);
+        // Vertices data size
+        const auto v_s = sizeof(VertexStatic) * vertices.vertices_.size();
+        vertex_buf_.init_vertices(v_s, allocator);
+        ::set_buffer_data(
+            vertex_buf_,
+            vertices.vertices_.data(),
+            v_s,
+            cmdpool,
+            allocator,
+            graphics_q,
+            logi_device
+        );
+
+        // Indices data size
+        const auto i_s = sizeof(uint16_t) * vertices.indices_.size();
+        index_buf_.init_indices(i_s, allocator);
+        ::set_buffer_data(
+            index_buf_,
+            vertices.indices_.data(),
+            i_s,
+            cmdpool,
+            allocator,
+            graphics_q,
+            logi_device
+        );
+
         vertex_count_ = vertices.indices_.size();
     }
 
@@ -26,65 +82,13 @@ namespace mirinae {
         VkBuffer vertex_buffers[] = { vertex_buf_.buffer() };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(cmdbuf, 0, 1, vertex_buffers, offsets);
-        vkCmdBindIndexBuffer(cmdbuf, index_buf_.buffer(), 0, VK_INDEX_TYPE_UINT16);
+        vkCmdBindIndexBuffer(
+            cmdbuf, index_buf_.buffer(), 0, VK_INDEX_TYPE_UINT16
+        );
     }
 
     uint32_t VertexIndexPair::vertex_count() const {
         return static_cast<uint32_t>(vertex_count_);
     }
 
-    void VertexIndexPair::init_vertices(
-        const std::vector<mirinae::VertexStatic>& vertices,
-        CommandPool& cmdpool,
-        VulkanMemoryAllocator allocator,
-        VkQueue graphics_q,
-        VkDevice logi_device
-    ) {
-        const auto data_size = sizeof(mirinae::VertexStatic) * vertices.size();
-
-        mirinae::Buffer staging_buffer;
-        staging_buffer.init_staging(data_size, allocator);
-        staging_buffer.set_data(vertices.data(), data_size, allocator);
-
-        vertex_buf_.init_vertices(data_size, allocator);
-
-        auto cmdbuf = cmdpool.alloc(logi_device);
-        vertex_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device);
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdbuf;
-        vkQueueSubmit(graphics_q, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphics_q);
-        cmdpool.free(cmdbuf, logi_device);
-        staging_buffer.destroy(allocator);
-    }
-
-    void VertexIndexPair::init_indices(
-        const std::vector<uint16_t>& indices,
-        CommandPool& cmdpool,
-        VulkanMemoryAllocator allocator,
-        VkQueue graphics_q,
-        VkDevice logi_device
-    ) {
-        const auto data_size = sizeof(uint16_t) * indices.size();
-
-        mirinae::Buffer staging_buffer;
-        staging_buffer.init_staging(data_size, allocator);
-        staging_buffer.set_data(indices.data(), data_size, allocator);
-
-        index_buf_.init_indices(data_size, allocator);
-
-        auto cmdbuf = cmdpool.alloc(logi_device);
-        index_buf_.record_copy_cmd(staging_buffer, cmdbuf, logi_device);
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdbuf;
-        vkQueueSubmit(graphics_q, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphics_q);
-        cmdpool.free(cmdbuf, logi_device);
-        staging_buffer.destroy(allocator);
-    }
-
-}
+}  // namespace mirinae
