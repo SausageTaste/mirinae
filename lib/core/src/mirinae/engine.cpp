@@ -385,7 +385,7 @@ namespace {
                     ubuf_data.set_dlight_dir(
                         view_mat * glm::dvec4{ 0.5, 1, 0.5, 0 }
                     );
-                    ubuf_data.set_dlight_color(1, 1, 1);
+                    ubuf_data.set_dlight_color(5, 5, 5);
 
                     rp_states_composition_.ubufs_
                         .at(framesync_.get_frame_index().get())
@@ -949,7 +949,7 @@ namespace {
             swapchain_.init(fbuf_width, fbuf_height, device_);
 
             const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
-                swapchain_.width(), swapchain_.height(), 2
+                swapchain_.width(), swapchain_.height(), 1
             );
             fbuf_images_.init(gbuf_width, gbuf_height, tex_man_);
 
