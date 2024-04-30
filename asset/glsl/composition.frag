@@ -1,5 +1,7 @@
 #version 450
 
+#include "utils/lighting.glsl"
+
 
 layout(location = 0) in vec2 v_uv_coord;
 
@@ -32,17 +34,31 @@ void main() {
     vec4 normal_texel = texture(u_normal_map, v_uv_coord);
     vec4 material_texel = texture(u_material_map, v_uv_coord);
 
-    vec3 normal = normalize(normal_texel.xyz * 2 - 1);
-    vec3 frag_pos = calc_frag_pos(depth_texel);
-    float frag_distance = length(frag_pos);
+    const vec3 albedo = albedo_texel.rgb;
+    const vec3 normal = normalize(normal_texel.xyz * 2 - 1);
+    const float roughness = material_texel.x;
+    const float metallic = material_texel.y;
+    const vec3 frag_pos = calc_frag_pos(depth_texel);
+    const vec3 view_direc = normalize(frag_pos);
+    const vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    const float frag_distance = length(frag_pos);
 
-    vec3 light = vec3(0.1);
+    vec3 light = albedo_texel.rgb * 0.2;
 
     // Directional light
     {
-        float cos_theta = max(dot(normal, u_comp_main.dlight_dir.xyz), 0);
-        light += cos_theta * u_comp_main.dlight_color.rgb;
+        light += calc_pbr_illumination(
+            roughness,
+            metallic,
+            albedo,
+            normal,
+            F0,
+            -view_direc,
+            u_comp_main.dlight_dir.xyz,
+            1,
+            u_comp_main.dlight_color.rgb
+        );
     }
 
-    f_color = vec4(albedo_texel.rgb * light, 1);
+    f_color = vec4(light, 1);
 }
