@@ -604,8 +604,10 @@ namespace { namespace gbuf {
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
         DescLayoutBuilder builder{ "gbuf:model" };
-        builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_GbufModel
-        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+        builder
+            .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_GbufModel
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // Albedo map
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Normal map
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
