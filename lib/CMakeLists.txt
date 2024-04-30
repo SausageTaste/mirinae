@@ -8,12 +8,6 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
-    fetch_daltools
-    GIT_REPOSITORY https://github.com/SausageTaste/DalbaragiTools
-    GIT_TAG        edc9d2fa242afda277c5331185cdb58dc603c61b
-)
-
-FetchContent_Declare(
     fetch_sungtools
     GIT_REPOSITORY https://github.com/SausageTaste/SungToolsCpp
     GIT_TAG        8f516182776b028a3e268db89402f0bd6d4d6ec7
@@ -43,7 +37,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(
     fetch_spdlog
-    fetch_daltools
     fetch_sungtools
     fetch_vma
     fetch_stb
@@ -62,6 +55,7 @@ target_include_directories(liblua PUBLIC ${fetch_lua_SOURCE_DIR})
 # define global macro
 add_compile_definitions(_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
 
+add_subdirectory(../extern/DalbaragiTools  ${PROJECT_BINARY_DIR}/DalbaragiTools)
 
 add_subdirectory(platform)
 add_subdirectory(core)
