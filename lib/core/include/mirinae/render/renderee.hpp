@@ -61,6 +61,7 @@ namespace mirinae {
         void init(
             uint32_t max_flight_count,
             const VerticesStaticPair& vertices,
+            const U_GbufModel& ubuf_data,
             VkImageView image_view,
             VkSampler texture_sampler,
             CommandPool& cmd_pool,
@@ -76,6 +77,7 @@ namespace mirinae {
     private:
         DescriptorPool desc_pool_;
         VertexIndexPair vert_index_pair_;
+        Buffer uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
     };
 
@@ -86,6 +88,7 @@ namespace mirinae {
         void init(
             uint32_t max_flight_count,
             const VerticesSkinnedPair& vertices,
+            const U_GbufModel& ubuf_data,
             VkImageView image_view,
             VkSampler texture_sampler,
             CommandPool& cmd_pool,
@@ -101,6 +104,7 @@ namespace mirinae {
     private:
         DescriptorPool desc_pool_;
         VertexIndexPair vert_index_pair_;
+        Buffer uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
     };
 

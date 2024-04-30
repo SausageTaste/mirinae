@@ -9,6 +9,12 @@
 
 namespace mirinae {
 
+    struct U_GbufModel {
+        float roughness;
+        float metallic;
+    };
+
+
     struct U_GbufActor {
         glm::mat4 view_model;
         glm::mat4 pvm;
