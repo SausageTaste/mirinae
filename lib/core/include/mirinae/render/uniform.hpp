@@ -26,8 +26,37 @@ namespace mirinae {
     static_assert(sizeof(U_GbufActorSkinned) < 65536);
 
 
-    struct U_CompositionMain {
-        glm::mat4 proj_inv;
+    class U_CompositionMain {
+
+    public:
+        void set_proj_inv(const glm::mat4& proj_inv) {
+            proj_inv_ = proj_inv;
+        }
+
+        // It automatically normalize the input vector.
+        void set_dlight_dir(const glm::vec4& dlight_dir) {
+            const auto d = glm::normalize(glm::dvec3(dlight_dir));
+            dlight_dir_.x = d.x;
+            dlight_dir_.y = d.y;
+            dlight_dir_.z = d.z;
+        }
+
+        void set_dlight_color(float r, float g, float b) {
+            dlight_color_.x = r;
+            dlight_color_.y = g;
+            dlight_color_.z = b;
+        }
+
+        void set_dlight_color(const glm::vec3& dlight_color) {
+            dlight_color_.x = dlight_color.r;
+            dlight_color_.y = dlight_color.g;
+            dlight_color_.z = dlight_color.b;
+        }
+
+    private:
+        glm::mat4 proj_inv_;
+        glm::vec4 dlight_dir_;
+        glm::vec4 dlight_color_;
     };
 
 

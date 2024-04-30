@@ -379,7 +379,11 @@ namespace {
 
                 {
                     mirinae::U_CompositionMain ubuf_data;
-                    ubuf_data.proj_inv = glm::inverse(proj_mat);
+                    ubuf_data.set_proj_inv(glm::inverse(proj_mat));
+                    ubuf_data.set_dlight_dir(
+                        view_mat * glm::dvec4{ 0.5, 1, 0.5, 0 }
+                    );
+                    ubuf_data.set_dlight_color(1, 1, 1);
 
                     rp_states_composition_.ubufs_
                         .at(framesync_.get_frame_index().get())
