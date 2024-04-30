@@ -399,7 +399,7 @@ namespace {
                 const sung::AABB2<double> bounding(
                     pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y
                 );
-                if (bounding.is_contacting(e.xpos_, e.ypos_)) {
+                if (bounding.is_inside_cl(e.xpos_, e.ypos_)) {
                     owning_mouse_ = true;
                     last_mouse_pos_ = { e.xpos_, e.ypos_ };
                 }
