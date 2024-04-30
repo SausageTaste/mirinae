@@ -412,7 +412,7 @@ namespace {
                 last_mouse_pos_ = { e.xpos_, e.ypos_ };
             }
 
-            return true;
+            return owning_mouse_;
         }
 
         glm::dvec2 pos_{ 10, 10 };
