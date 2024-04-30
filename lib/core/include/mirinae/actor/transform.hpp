@@ -19,7 +19,7 @@ namespace mirinae::syst {
         bool on_key_event(const key::Event& e);
         bool on_mouse_event(const mirinae::mouse::Event& e);
 
-        void apply(cpnt::Transform& transform, float delta_time);
+        void apply(cpnt::Transform& transform, double delta_time);
 
     private:
         key::EventAnalyzer key_states_;

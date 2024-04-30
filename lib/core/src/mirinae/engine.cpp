@@ -318,9 +318,7 @@ namespace {
 
         void do_frame() override {
             const auto delta_time = fps_timer_.check_get_elapsed();
-            camera_controller_.apply(
-                camera_view_, static_cast<float>(delta_time)
-            );
+            camera_controller_.apply(camera_view_, delta_time);
 
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
