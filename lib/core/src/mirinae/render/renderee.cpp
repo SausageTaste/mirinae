@@ -1059,56 +1059,16 @@ namespace mirinae {
 
             auto output = std::make_shared<RenderModelSkinned>(device_);
 
-            for (const auto& src_unit : parsed_model.units_indexed_) {
-                VerticesSkinnedPair dst_vertices;
-                dst_vertices.indices_.assign(
-                    src_unit.mesh_.indices_.begin(),
-                    src_unit.mesh_.indices_.end()
+            if (!parsed_model.units_indexed_.empty()) {
+                spdlog::warn(
+                    "Skinned model '{}' has static units, which are ignored",
+                    res_id.u8string()
                 );
-
-                for (auto& src_vertex : src_unit.mesh_.vertices_) {
-                    auto& dst_vertex = dst_vertices.vertices_.emplace_back();
-                    dst_vertex.pos_ = src_vertex.pos_;
-                    dst_vertex.normal_ = src_vertex.normal_;
-                    dst_vertex.texcoord_ = src_vertex.uv_;
-                }
-
-                const auto new_texture_path = replace_file_name_ext(
-                    res_id, src_unit.material_.albedo_map_
-                );
-                auto texture = tex_man.request(new_texture_path);
-                if (!texture)
-                    texture = tex_man.request(
-                        "asset/textures/missing_texture.png"
-                    );
-
-                if (src_unit.material_.transparency_) {
-                    auto& dst_unit = output->runits_alpha_.emplace_back();
-                    dst_unit.init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        dst_vertices,
-                        texture->image_view(),
-                        texture_sampler_.get(),
-                        cmd_pool_,
-                        desclayouts,
-                        device_
-                    );
-                } else {
-                    auto& dst_unit = output->runits_.emplace_back();
-                    dst_unit.init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        dst_vertices,
-                        texture->image_view(),
-                        texture_sampler_.get(),
-                        cmd_pool_,
-                        desclayouts,
-                        device_
-                    );
-                }
             }
 
             for (const auto& src_unit : parsed_model.units_indexed_joint_) {
                 VerticesSkinnedPair dst_vertices;
+
                 dst_vertices.indices_.assign(
                     src_unit.mesh_.indices_.begin(),
                     src_unit.mesh_.indices_.end()
@@ -1116,9 +1076,7 @@ namespace mirinae {
 
                 for (auto& src_vertex : src_unit.mesh_.vertices_) {
                     auto& dst_vertex = dst_vertices.vertices_.emplace_back();
-                    dst_vertex.pos_ = src_vertex.pos_;
-                    dst_vertex.normal_ = src_vertex.normal_;
-                    dst_vertex.texcoord_ = src_vertex.uv_;
+                    dst_vertex.set(src_vertex);
                 }
 
                 const auto new_texture_path = replace_file_name_ext(

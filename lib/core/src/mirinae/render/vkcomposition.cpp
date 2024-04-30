@@ -80,7 +80,7 @@ namespace mirinae {
         VkDevice logi_device
     ) {
         // Vertices data size
-        const auto v_s = sizeof(VertexStatic) * vertices.vertices_.size();
+        const auto v_s = sizeof(VertexSkinned) * vertices.vertices_.size();
         vertex_buf_.init_vertices(v_s, allocator);
         ::set_buffer_data(
             vertex_buf_,

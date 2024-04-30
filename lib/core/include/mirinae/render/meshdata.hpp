@@ -3,6 +3,8 @@
 #include <optional>
 #include <vector>
 
+#include <daltools/struct.h>
+
 #include "mirinae/util/include_glm.hpp"
 
 
@@ -26,26 +28,10 @@ namespace mirinae {
     };
 
 
-    struct VertexSkinned {
-        VertexSkinned() = default;
-        VertexSkinned(
-            const glm::vec3& pos,
-            const glm::vec2& texcoord,
-            const glm::vec3& normal,
-            const glm::ivec4& j_ids,
-            const glm::vec4& j_weights
-        )
-            : pos_(pos)
-            , normal_(normal)
-            , texcoord_(texcoord)
-            , j_ids_(j_ids)
-            , j_weights_(j_weights) {}
-
-        glm::ivec4 j_ids_;
-        glm::vec4 j_weights_;
-        glm::vec3 pos_;
-        glm::vec3 normal_;
-        glm::vec2 texcoord_;
+    struct VertexSkinned : public dal::parser::VertexJoint {
+        void set(const dal::parser::VertexJoint& rhs) {
+            dal::parser::VertexJoint::operator=(rhs);
+        }
     };
 
 

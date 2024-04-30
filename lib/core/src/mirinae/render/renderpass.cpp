@@ -48,6 +48,66 @@ namespace {
         return attributeDescriptions;
     }
 
+
+    VkVertexInputBindingDescription make_vertex_skinned_binding_description() {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(mirinae::VertexSkinned);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return bindingDescription;
+    }
+
+    auto make_vertex_skinned_attribute_descriptions() {
+        std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 0;
+            description.format = VK_FORMAT_R32G32B32_SFLOAT;
+            description.offset = offsetof(mirinae::VertexSkinned, pos_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 1;
+            description.format = VK_FORMAT_R32G32B32_SFLOAT;
+            description.offset = offsetof(mirinae::VertexSkinned, normal_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 2;
+            description.format = VK_FORMAT_R32G32_SFLOAT;
+            description.offset = offsetof(mirinae::VertexSkinned, uv_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 3;
+            description.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            description.offset = offsetof(
+                mirinae::VertexSkinned, joint_weights_
+            );
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 4;
+            description.format = VK_FORMAT_R32G32B32A32_SINT;
+            description.offset = offsetof(
+                mirinae::VertexSkinned, joint_indices_
+            );
+        }
+
+        return attributeDescriptions;
+    }
+
+
     VkFramebuffer create_framebuffer(
         uint32_t width,
         uint32_t height,
@@ -562,11 +622,11 @@ namespace { namespace gbuf {
         VkFormat material,
         VkDevice logi_device
     ) {
-        ::AttachmentDescBuilder attachments;
-        attachments.add(depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        attachments.add(albedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        attachments.add(normal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        attachments.add(material, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        ::AttachmentDescBuilder attach;
+        attach.add(depth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        attach.add(albedo, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        attach.add(normal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        attach.add(material, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
         // albedo
@@ -600,8 +660,8 @@ namespace { namespace gbuf {
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        create_info.attachmentCount = attachments.size();
-        create_info.pAttachments = attachments.data();
+        create_info.attachmentCount = attach.size();
+        create_info.pAttachments = attach.data();
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
         create_info.dependencyCount = 1;
@@ -841,6 +901,324 @@ namespace { namespace gbuf {
     };
 
 }}  // namespace ::gbuf
+
+
+// gbuf skin
+namespace { namespace gbuf_skin {
+
+    VkDescriptorSetLayout create_desclayout_model(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
+        DescLayoutBuilder builder{ "gbuf:model" };
+        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+        return builder.build_in_place(desclayouts, device.logi_device());
+    }
+
+    VkDescriptorSetLayout create_desclayout_actor(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
+        DescLayoutBuilder builder{ "gbuf:actor" };
+        builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActor
+        return builder.build_in_place(desclayouts, device.logi_device());
+    }
+
+    VkRenderPass create_renderpass(
+        VkFormat depth,
+        VkFormat albedo,
+        VkFormat normal,
+        VkFormat material,
+        VkDevice logi_device
+    ) {
+        ::AttachmentDescBuilder attach;
+        attach.add(depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .initial_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
+            .store_op(VK_ATTACHMENT_STORE_OP_STORE);
+        attach.add(albedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .initial_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
+            .store_op(VK_ATTACHMENT_STORE_OP_STORE);
+        attach.add(normal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .initial_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
+            .store_op(VK_ATTACHMENT_STORE_OP_STORE);
+        attach.add(material, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .initial_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
+            .store_op(VK_ATTACHMENT_STORE_OP_STORE);
+
+        ::AttachmentRefBuilder color_attachment_refs;
+        // albedo
+        color_attachment_refs
+            .add(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)   // albedo
+            .add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)   // normal
+            .add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // material
+
+        const VkAttachmentReference depth_attachment_ref{
+            0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        };
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = color_attachment_refs.size();
+        subpass.pColorAttachments = color_attachment_refs.data();
+        subpass.pDepthStencilAttachment = &depth_attachment_ref;
+
+        VkSubpassDependency dependency{};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        VkRenderPassCreateInfo create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        create_info.attachmentCount = attach.size();
+        create_info.pAttachments = attach.data();
+        create_info.subpassCount = 1;
+        create_info.pSubpasses = &subpass;
+        create_info.dependencyCount = 1;
+        create_info.pDependencies = &dependency;
+
+        VkRenderPass output = VK_NULL_HANDLE;
+        if (VK_SUCCESS !=
+            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
+            throw std::runtime_error("failed to create render pass!");
+        }
+
+        return output;
+    }
+
+    VkPipelineLayout create_pipeline_layout(
+        VkDescriptorSetLayout desclayout_model,
+        VkDescriptorSetLayout desclayout_actor,
+        mirinae::VulkanDevice& device
+    ) {
+        std::vector<VkDescriptorSetLayout> desclayouts{
+            desclayout_model,
+            desclayout_actor,
+        };
+
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        {
+            pipelineLayoutInfo.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
+                desclayouts.size()
+            );
+            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
+            pipelineLayoutInfo.pushConstantRangeCount = 0;
+            pipelineLayoutInfo.pPushConstantRanges = nullptr;
+        }
+
+        VkPipelineLayout pipelineLayout;
+        const auto result = vkCreatePipelineLayout(
+            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
+        );
+        if (VK_SUCCESS != result) {
+            throw std::runtime_error("Failed to create pipeline layout");
+        }
+
+        return pipelineLayout;
+    }
+
+    VkPipeline create_pipeline(
+        VkRenderPass renderpass,
+        VkPipelineLayout pipelineLayout,
+        mirinae::VulkanDevice& device
+    ) {
+        ::ShaderModule vert_shader{ "asset/spv/gbuf_skin_vert.spv", device };
+        ::ShaderModule frag_shader{ "asset/spv/gbuf_frag.spv", device };
+        const auto shader_stages = ::create_info_shader_stages_pair(
+            vert_shader, frag_shader
+        );
+
+        std::array<VkDynamicState, 2> dynamic_states{
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
+        };
+        const auto dynamic_state_info = ::create_info_dynamic_states(
+            dynamic_states.data(), dynamic_states.size()
+        );
+
+        auto binding_desc = ::make_vertex_skinned_binding_description();
+        auto attrib_desc = ::make_vertex_skinned_attribute_descriptions();
+        const auto vertex_input_info = ::create_info_vertex_input_states(
+            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
+        );
+
+        const auto input_assembly = ::create_info_input_assembly();
+
+        const auto viewport_state = ::create_info_viewport_state();
+
+        const auto rasterizer = ::create_info_rasterizer(
+            VK_CULL_MODE_BACK_BIT, false, 0, 0, false
+        );
+
+        const auto multisampling = ::create_info_multisampling();
+
+        const auto depth_stencil = ::create_info_depth_stencil(true, true);
+
+        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
+        color_blend_attachment_states.add<false>();
+        color_blend_attachment_states.add<false>();
+        color_blend_attachment_states.add<false>();
+        const auto color_blending = ::create_info_color_blend(
+            color_blend_attachment_states
+        );
+
+        VkGraphicsPipelineCreateInfo pipeline_info{};
+        pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipeline_info.stageCount = static_cast<uint32_t>(shader_stages.size());
+        pipeline_info.pStages = shader_stages.data();
+        pipeline_info.pVertexInputState = &vertex_input_info;
+        pipeline_info.pInputAssemblyState = &input_assembly;
+        pipeline_info.pViewportState = &viewport_state;
+        pipeline_info.pRasterizationState = &rasterizer;
+        pipeline_info.pMultisampleState = &multisampling;
+        pipeline_info.pDepthStencilState = &depth_stencil;
+        pipeline_info.pColorBlendState = &color_blending;
+        pipeline_info.pDynamicState = &dynamic_state_info;
+        pipeline_info.layout = pipelineLayout;
+        pipeline_info.renderPass = renderpass;
+        pipeline_info.subpass = 0;
+        pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+        pipeline_info.basePipelineIndex = -1;
+
+        VkPipeline graphics_pipeline;
+        const auto result = vkCreateGraphicsPipelines(
+            device.logi_device(),
+            VK_NULL_HANDLE,
+            1,
+            &pipeline_info,
+            nullptr,
+            &graphics_pipeline
+        );
+        if (VK_SUCCESS != result) {
+            throw std::runtime_error("Failed to create graphics pipeline");
+        }
+
+        return graphics_pipeline;
+    }
+
+
+    class RenderPassBundle : public mirinae::IRenderPassBundle {
+
+    public:
+        RenderPassBundle(
+            uint32_t width,
+            uint32_t height,
+            mirinae::FbufImageBundle& fbuf_bundle,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::Swapchain& swapchain,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device) {
+            formats_ = {
+                fbuf_bundle.depth().format(),
+                fbuf_bundle.albedo().format(),
+                fbuf_bundle.normal().format(),
+                fbuf_bundle.material().format(),
+            };
+
+            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            clear_values_.at(2).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            clear_values_.at(3).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+            renderpass_ = create_renderpass(
+                formats_.at(0),
+                formats_.at(1),
+                formats_.at(2),
+                formats_.at(3),
+                device.logi_device()
+            );
+            layout_ = create_pipeline_layout(
+                create_desclayout_model(desclayouts, device),
+                create_desclayout_actor(desclayouts, device),
+                device
+            );
+            pipeline_ = create_pipeline(renderpass_, layout_, device);
+
+            for (int i = 0; i < swapchain.views_count(); ++i) {
+                fbufs_.push_back(::create_framebuffer(
+                    width,
+                    height,
+                    renderpass_,
+                    device.logi_device(),
+                    {
+                        fbuf_bundle.depth().image_view(),
+                        fbuf_bundle.albedo().image_view(),
+                        fbuf_bundle.normal().image_view(),
+                        fbuf_bundle.material().image_view(),
+                    }
+                ));
+            }
+        }
+
+        ~RenderPassBundle() override { this->destroy(); }
+
+        void destroy() override {
+            if (VK_NULL_HANDLE != pipeline_) {
+                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
+                pipeline_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != layout_) {
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), layout_, nullptr
+                );
+                layout_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != renderpass_) {
+                vkDestroyRenderPass(
+                    device_.logi_device(), renderpass_, nullptr
+                );
+                renderpass_ = VK_NULL_HANDLE;
+            }
+
+            for (auto& handle : fbufs_) {
+                vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
+            }
+            fbufs_.clear();
+        }
+
+        VkRenderPass renderpass() override { return renderpass_; }
+
+        VkPipeline pipeline() override { return pipeline_; }
+
+        VkPipelineLayout pipeline_layout() override { return layout_; }
+
+        VkFramebuffer fbuf_at(uint32_t index) override {
+            return fbufs_.at(index);
+        }
+
+        const VkClearValue* clear_values() const override {
+            return clear_values_.data();
+        }
+
+        uint32_t clear_value_count() const override {
+            return static_cast<uint32_t>(clear_values_.size());
+        }
+
+    private:
+        mirinae::VulkanDevice& device_;
+        VkRenderPass renderpass_ = VK_NULL_HANDLE;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout layout_ = VK_NULL_HANDLE;
+        std::array<VkFormat, 4> formats_;
+        std::array<VkClearValue, 4> clear_values_;
+        std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
+    };
+
+}}  // namespace ::gbuf_skin
 
 
 // composition
@@ -1949,6 +2327,19 @@ namespace mirinae {
         VulkanDevice& device
     ) {
         return std::make_unique<::gbuf::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+    }
+
+    std::unique_ptr<IRenderPassBundle> create_gbuf_skin(
+        uint32_t width,
+        uint32_t height,
+        FbufImageBundle& fbuf_bundle,
+        DesclayoutManager& desclayouts,
+        Swapchain& swapchain,
+        VulkanDevice& device
+    ) {
+        return std::make_unique<::gbuf_skin::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
     }
