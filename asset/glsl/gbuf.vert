@@ -16,6 +16,6 @@ layout(set = 1, binding = 0) uniform U_GbufActor {
 
 void main() {
     gl_Position = u_gbuf_model.pvm * vec4(i_pos, 1);
-    v_normal = i_normal;
+    v_normal = (u_gbuf_model.view_model * vec4(i_normal, 0)).xyz;
     v_texcoord = i_texcoord;
 }
