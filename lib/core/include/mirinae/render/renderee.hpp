@@ -158,6 +158,8 @@ namespace mirinae {
     public:
         std::vector<RenderUnitSkinned> runits_;
         std::vector<RenderUnitSkinned> runits_alpha_;
+        std::vector<dal::parser::Animation> animations_;
+        dal::parser::Skeleton skeleton_;
         VulkanDevice& device_;
     };
 
