@@ -934,6 +934,7 @@ namespace {
         void notify_mouse_event(const mirinae::mouse::Event& e) override {
             if (overlay_man_.on_mouse_event(e))
                 return;
+            camera_controller_.on_mouse_event(e);
         }
 
     private:
