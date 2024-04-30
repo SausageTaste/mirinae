@@ -15,6 +15,15 @@ namespace mirinae {
     };
 
 
+    struct U_GbufActorSkinned {
+        glm::mat4 joint_transforms_[128];
+        glm::mat4 view_model;
+        glm::mat4 pvm;
+    };
+
+    static_assert(sizeof(U_GbufActorSkinned) < 65536);
+
+
     struct U_CompositionMain {
         glm::mat4 proj_inv;
     };

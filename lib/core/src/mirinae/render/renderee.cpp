@@ -1195,3 +1195,51 @@ namespace mirinae {
     }
 
 }  // namespace mirinae
+
+
+// RenderActorSkinned
+namespace mirinae {
+
+    void RenderActorSkinned::init(
+        uint32_t max_flight_count, DesclayoutManager& desclayouts
+    ) {
+        desc_pool_.init(max_flight_count, device_.logi_device());
+        desc_sets_ = desc_pool_.alloc(
+            max_flight_count,
+            desclayouts.get("gbuf:actor_skinned"),
+            device_.logi_device()
+        );
+
+        for (uint32_t i = 0; i < max_flight_count; ++i) {
+            auto& ubuf = uniform_buf_.emplace_back();
+            ubuf.init_ubuf(sizeof(U_GbufActorSkinned), device_.mem_alloc());
+        }
+
+        for (size_t i = 0; i < max_flight_count; i++) {
+            DescWriteInfoBuilder builder;
+            builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i))
+                .apply_all(device_.logi_device());
+        }
+    }
+
+    void RenderActorSkinned::destroy() {
+        for (auto& ubuf : uniform_buf_) ubuf.destroy(device_.mem_alloc());
+        uniform_buf_.clear();
+
+        desc_pool_.destroy(device_.logi_device());
+    }
+
+    void RenderActorSkinned::udpate_ubuf(
+        uint32_t index,
+        const U_GbufActorSkinned& data,
+        VulkanMemoryAllocator mem_alloc
+    ) {
+        auto& ubuf = uniform_buf_.at(index);
+        ubuf.set_data(&data, sizeof(U_GbufActorSkinned), mem_alloc);
+    }
+
+    VkDescriptorSet RenderActorSkinned::get_desc_set(size_t index) {
+        return desc_sets_.at(index);
+    }
+
+}  // namespace mirinae

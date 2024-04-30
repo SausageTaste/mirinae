@@ -918,8 +918,8 @@ namespace { namespace gbuf_skin {
     VkDescriptorSetLayout create_desclayout_actor(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "gbuf:actor" };
-        builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActor
+        DescLayoutBuilder builder{ "gbuf:actor_skinned" };
+        builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActorSkinned
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
@@ -1791,7 +1791,7 @@ namespace { namespace transparent_skin {
     VkDescriptorSetLayout create_desclayout_actor(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:actor");
+        return desclayouts.get("gbuf:actor_skinned");
     }
 
     VkRenderPass create_renderpass(

@@ -151,7 +151,8 @@ namespace mirinae {
     class RenderModelSkinned {
 
     public:
-        RenderModelSkinned(VulkanDevice& vulkan_device) : device_(vulkan_device) {}
+        RenderModelSkinned(VulkanDevice& vulkan_device)
+            : device_(vulkan_device) {}
         ~RenderModelSkinned();
 
     public:
@@ -206,6 +207,34 @@ namespace mirinae {
     private:
         DescriptorPool desc_pool_;
         U_GbufActor ubuf_data_;
+        std::vector<Buffer> uniform_buf_;
+        std::vector<VkDescriptorSet> desc_sets_;
+        VulkanDevice& device_;
+    };
+
+
+    class RenderActorSkinned {
+
+    public:
+        RenderActorSkinned(VulkanDevice& vulkan_device)
+            : device_(vulkan_device) {}
+        ~RenderActorSkinned() { this->destroy(); }
+
+        void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
+        void destroy();
+
+        void udpate_ubuf(
+            uint32_t index,
+            const U_GbufActorSkinned& data,
+            VulkanMemoryAllocator mem_alloc
+        );
+        VkDescriptorSet get_desc_set(size_t index);
+
+        TransformQuat<double> transform_;
+
+    private:
+        DescriptorPool desc_pool_;
+        U_GbufActorSkinned ubuf_data_;
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;

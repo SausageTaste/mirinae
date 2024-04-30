@@ -85,7 +85,7 @@ namespace {
 
         struct SkinnedRenderPairs {
             std::shared_ptr<mirinae::RenderModelSkinned> model_;
-            std::vector<std::shared_ptr<mirinae::RenderActor>> actors_;
+            std::vector<std::shared_ptr<mirinae::RenderActorSkinned>> actors_;
         };
 
         std::vector<RenderPairs> ren_pairs_;
@@ -287,7 +287,7 @@ namespace {
                     ren_pair.model_ = model;
 
                     auto& actor = ren_pair.actors_.emplace_back(
-                        std::make_shared<mirinae::RenderActor>(device_)
+                        std::make_shared<mirinae::RenderActorSkinned>(device_)
                     );
                     actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
                     actor->transform_.pos_ = glm::dvec3(i * 3, 0, 0) +
@@ -343,10 +343,17 @@ namespace {
 
                 for (auto& pair : draw_sheet_.skinned_pairs_) {
                     for (auto& actor : pair.actors_) {
-                        mirinae::U_GbufActor ubuf_data;
+                        mirinae::U_GbufActorSkinned ubuf_data;
                         const auto model_m = actor->transform_.make_model_mat();
                         ubuf_data.view_model = view_mat * model_m;
                         ubuf_data.pvm = proj_mat * view_mat * model_m;
+
+                        for (auto& x : ubuf_data.joint_transforms_) {
+                            x = glm::translate(
+                                glm::mat4(1), glm::vec3(0, 10, 0)
+                            );
+                        }
+
                         actor->udpate_ubuf(
                             framesync_.get_frame_index().get(),
                             ubuf_data,
