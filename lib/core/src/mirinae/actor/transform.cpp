@@ -35,9 +35,11 @@ namespace mirinae::syst {
         return owning_mouse_;
     }
 
-    void NoclipController::apply(cpnt::Transform& transform, float delta_time) {
+    void NoclipController::apply(
+        cpnt::Transform& transform, double delta_time
+    ) {
         {
-            glm::vec3 move_dir{ 0, 0, 0 };
+            glm::dvec3 move_dir{ 0, 0, 0 };
             if (key_states_.is_pressed(key::KeyCode::w))
                 move_dir.z -= 1;
             if (key_states_.is_pressed(key::KeyCode::s))
@@ -49,12 +51,12 @@ namespace mirinae::syst {
 
             if (glm::length(move_dir) > 0) {
                 move_dir = glm::mat3_cast(transform.rot_) * move_dir;
-                transform.pos_ += move_dir * float(delta_time * move_speed_);
+                transform.pos_ += move_dir * (delta_time * move_speed_);
             }
         }
 
         {
-            float vertical = 0;
+            double vertical = 0;
             if (key_states_.is_pressed(key::KeyCode::lctrl))
                 vertical -= 1;
             if (key_states_.is_pressed(key::KeyCode::space))
@@ -65,33 +67,27 @@ namespace mirinae::syst {
         }
 
         {
-            float rot = 0;
+            auto rot = cpnt::Transform::Angle::from_zero();
             if (key_states_.is_pressed(key::KeyCode::left))
-                rot += 1;
+                rot = rot.add_rad(1);
             if (key_states_.is_pressed(key::KeyCode::right))
-                rot -= 1;
+                rot = rot.add_rad(-1);
 
-            if (0 != rot)
-                transform.rotate(
-                    cpnt::Transform::Angle::from_rad(rot * delta_time * 2.f),
-                    glm::vec3{ 0, 1, 0 }
-                );
+            if (0 != rot.rad())
+                transform.rotate(rot * (delta_time * 2), glm::vec3{ 0, 1, 0 });
         }
 
         {
-            float rot = 0;
+            auto rot = cpnt::Transform::Angle::from_zero();
             if (key_states_.is_pressed(key::KeyCode::up))
-                rot += 1;
+                rot = rot.add_rad(1);
             if (key_states_.is_pressed(key::KeyCode::down))
-                rot -= 1;
+                rot = rot.add_rad(-1);
 
-            if (0 != rot) {
+            if (0 != rot.rad()) {
                 const auto right = glm::mat3_cast(transform.rot_) *
                                    glm::vec3{ 1, 0, 0 };
-                transform.rotate(
-                    cpnt::Transform::Angle::from_rad(rot * delta_time * 2.f),
-                    right
-                );
+                transform.rotate(rot * (delta_time * 2), right);
             }
         }
 
