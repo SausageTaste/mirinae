@@ -306,6 +306,8 @@ namespace {
             camera_view_.rot_ = {
                 0.8120552484612948, 0, -0.5835805629443673, 0
             };
+
+            fps_timer_.set_fps_cap(120);
         }
 
         ~EngineGlfw() {
@@ -317,7 +319,7 @@ namespace {
         }
 
         void do_frame() override {
-            const auto delta_time = fps_timer_.check_get_elapsed();
+            const auto delta_time = fps_timer_.check_get_elapsed_cap_fps();
             camera_controller_.apply(camera_view_, delta_time);
 
             const auto image_index_opt = this->try_acquire_image();
@@ -1096,7 +1098,7 @@ namespace {
         mirinae::cpnt::Transform camera_view_;
         mirinae::PerspectiveCamera<double> camera_proj_;
         mirinae::syst::NoclipController camera_controller_;
-        dal::Timer fps_timer_;
+        dal::TimerThatCaps fps_timer_;
 
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;
