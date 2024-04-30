@@ -12,6 +12,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/util/image.cpp
     ./src/mirinae/util/mamath.cpp
     ./src/mirinae/util/script.cpp
+    ./src/mirinae/util/skin_anim.cpp
     ./src/mirinae/engine.cpp
 )
 add_library(mirinae::core ALIAS mirinae_core)

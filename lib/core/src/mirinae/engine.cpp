@@ -4,11 +4,13 @@
 #include <vulkan/vulkan.h>
 
 #include <daltools/util.h>
+#include <sung/general/time.hpp>
 
 #include <mirinae/render/overlay.hpp>
 #include <mirinae/render/renderpass.hpp>
 #include <mirinae/util/mamath.hpp>
 #include "mirinae/util/script.hpp"
+#include "mirinae/util/skin_anim.hpp"
 
 
 namespace {
@@ -292,7 +294,7 @@ namespace {
                     actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
                     actor->transform_.pos_ = glm::dvec3(i * 3, 0, 0) +
                                              world_shift;
-                    actor->transform_.scale_ = glm::dvec3(model_scales[i]);
+                    actor->transform_.scale_ = glm::dvec3(1.f);
                 }
             }
 
@@ -348,10 +350,18 @@ namespace {
                         ubuf_data.view_model = view_mat * model_m;
                         ubuf_data.pvm = proj_mat * view_mat * model_m;
 
-                        for (auto& x : ubuf_data.joint_transforms_) {
-                            x = glm::translate(
-                                glm::mat4(1), glm::vec3(0, 10, 0)
-                            );
+                        const auto& anim = pair.model_->animations_.front();
+                        const auto anim_tick =
+                            (sung::CalenderTime::from_now().to_total_seconds() *
+                             anim.ticks_per_sec_);
+                        const auto skin_mats = mirinae::make_skinning_matrix(
+                            anim_tick, pair.model_->skeleton_, anim
+                        );
+                        const auto skin_mat_size = std::min<int>(
+                            skin_mats.size(), mirinae::MAX_JOINTS
+                        );
+                        for (int i = 0; i < skin_mat_size; ++i) {
+                            ubuf_data.joint_transforms_[i] = skin_mats[i];
                         }
 
                         actor->udpate_ubuf(
