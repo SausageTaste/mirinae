@@ -14,6 +14,7 @@ layout(set = 0, binding = 0) uniform U_GbufModel {
 } u_model;
 
 layout(set = 0, binding = 1) uniform sampler2D u_albedo_map;
+layout(set = 0, binding = 2) uniform sampler2D u_normal_map;
 
 
 void main() {

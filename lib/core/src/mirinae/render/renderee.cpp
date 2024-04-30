@@ -680,13 +680,14 @@ namespace mirinae {
         uint32_t max_flight_count,
         const VerticesStaticPair& vertices,
         const U_GbufModel& ubuf_data,
-        VkImageView image_view,
+        VkImageView albedo_map,
+        VkImageView normal_map,
         VkSampler texture_sampler,
         CommandPool& cmd_pool,
         DesclayoutManager& desclayouts,
         VulkanDevice& vulkan_device
     ) {
-        desc_pool_.init(max_flight_count, vulkan_device.logi_device());
+        desc_pool_.init(max_flight_count * 4, vulkan_device.logi_device());
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("gbuf:model"),
@@ -702,7 +703,10 @@ namespace mirinae {
             DescWriteInfoBuilder builder;
             builder.add_uniform_buffer(uniform_buf_, desc_sets_.at(i))
                 .add_combinded_image_sampler(
-                    image_view, texture_sampler, desc_sets_.at(i)
+                    albedo_map, texture_sampler, desc_sets_.at(i)
+                )
+                .add_combinded_image_sampler(
+                    normal_map, texture_sampler, desc_sets_.at(i)
                 )
                 .apply_all(vulkan_device.logi_device());
         }
@@ -746,13 +750,14 @@ namespace mirinae {
         uint32_t max_flight_count,
         const VerticesSkinnedPair& vertices,
         const U_GbufModel& ubuf_data,
-        VkImageView image_view,
+        VkImageView albedo_map,
+        VkImageView normal_map,
         VkSampler texture_sampler,
         CommandPool& cmd_pool,
         DesclayoutManager& desclayouts,
         VulkanDevice& vulkan_device
     ) {
-        desc_pool_.init(max_flight_count, vulkan_device.logi_device());
+        desc_pool_.init(max_flight_count * 4, vulkan_device.logi_device());
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("gbuf:model"),
@@ -768,7 +773,10 @@ namespace mirinae {
             DescWriteInfoBuilder builder;
             builder.add_uniform_buffer(uniform_buf_, desc_sets_.at(i))
                 .add_combinded_image_sampler(
-                    image_view, texture_sampler, desc_sets_.at(i)
+                    albedo_map, texture_sampler, desc_sets_.at(i)
+                )
+                .add_combinded_image_sampler(
+                    normal_map, texture_sampler, desc_sets_.at(i)
                 )
                 .apply_all(vulkan_device.logi_device());
         }
@@ -958,13 +966,20 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
-                const auto new_texture_path = replace_file_name_ext(
+                auto albedo_map = tex_man.request(replace_file_name_ext(
                     res_id, src_unit.material_.albedo_map_
-                );
-                auto texture = tex_man.request(new_texture_path);
-                if (!texture)
-                    texture = tex_man.request(
+                ));
+                if (!albedo_map)
+                    albedo_map = tex_man.request(
                         "asset/textures/missing_texture.png"
+                    );
+
+                auto normal_map = tex_man.request(replace_file_name_ext(
+                    res_id, src_unit.material_.normal_map_
+                ));
+                if (!normal_map)
+                    normal_map = tex_man.request(
+                        "asset/textures/null_normal_map.png"
                     );
 
                 U_GbufModel model_ubuf;
@@ -979,7 +994,8 @@ namespace mirinae {
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     dst_vertices,
                     model_ubuf,
-                    texture->image_view(),
+                    albedo_map->image_view(),
+                    normal_map->image_view(),
                     texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
@@ -1001,13 +1017,20 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
-                const auto new_texture_path = replace_file_name_ext(
+                auto albedo_map = tex_man.request(replace_file_name_ext(
                     res_id, src_unit.material_.albedo_map_
-                );
-                auto texture = tex_man.request(new_texture_path);
-                if (!texture)
-                    texture = tex_man.request(
+                ));
+                if (!albedo_map)
+                    albedo_map = tex_man.request(
                         "asset/textures/missing_texture.png"
+                    );
+
+                auto normal_map = tex_man.request(replace_file_name_ext(
+                    res_id, src_unit.material_.normal_map_
+                ));
+                if (!normal_map)
+                    normal_map = tex_man.request(
+                        "asset/textures/null_normal_map.png"
                     );
 
                 U_GbufModel model_ubuf;
@@ -1022,7 +1045,8 @@ namespace mirinae {
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     dst_vertices,
                     model_ubuf,
-                    texture->image_view(),
+                    albedo_map->image_view(),
+                    normal_map->image_view(),
                     texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
@@ -1083,13 +1107,20 @@ namespace mirinae {
                     dst_vertex.set(src_vertex);
                 }
 
-                const auto new_texture_path = replace_file_name_ext(
+                auto albedo_map = tex_man.request(replace_file_name_ext(
                     res_id, src_unit.material_.albedo_map_
-                );
-                auto texture = tex_man.request(new_texture_path);
-                if (!texture)
-                    texture = tex_man.request(
+                ));
+                if (!albedo_map)
+                    albedo_map = tex_man.request(
                         "asset/textures/missing_texture.png"
+                    );
+
+                auto normal_map = tex_man.request(replace_file_name_ext(
+                    res_id, src_unit.material_.normal_map_
+                ));
+                if (!normal_map)
+                    normal_map = tex_man.request(
+                        "asset/textures/null_normal_map.png"
                     );
 
                 U_GbufModel model_ubuf;
@@ -1103,7 +1134,8 @@ namespace mirinae {
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     dst_vertices,
                     model_ubuf,
-                    texture->image_view(),
+                    albedo_map->image_view(),
+                    normal_map->image_view(),
                     texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
