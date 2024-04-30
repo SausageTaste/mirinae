@@ -7,7 +7,12 @@ layout(location = 2) in vec2 v_texcoord;
 layout(location = 0) out vec4 out_composition;
 
 
-layout(set = 0, binding = 0) uniform sampler2D u_albedo_map;
+layout(set = 0, binding = 0) uniform U_GbufModel {
+    float roughness;
+    float metallic;
+} u_model;
+
+layout(set = 0, binding = 1) uniform sampler2D u_albedo_map;
 
 
 void main() {

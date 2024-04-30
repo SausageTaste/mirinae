@@ -679,6 +679,7 @@ namespace mirinae {
     void RenderUnit::init(
         uint32_t max_flight_count,
         const VerticesStaticPair& vertices,
+        const U_GbufModel& ubuf_data,
         VkImageView image_view,
         VkSampler texture_sampler,
         CommandPool& cmd_pool,
@@ -692,9 +693,14 @@ namespace mirinae {
             vulkan_device.logi_device()
         );
 
+        uniform_buf_.init_ubuf(sizeof(U_GbufModel), vulkan_device.mem_alloc());
+        uniform_buf_.set_data(
+            &ubuf_data, sizeof(U_GbufModel), vulkan_device.mem_alloc()
+        );
+
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
-            builder
+            builder.add_uniform_buffer(uniform_buf_, desc_sets_.at(i))
                 .add_combinded_image_sampler(
                     image_view, texture_sampler, desc_sets_.at(i)
                 )
@@ -714,6 +720,7 @@ namespace mirinae {
         VulkanMemoryAllocator mem_alloc, VkDevice logi_device
     ) {
         vert_index_pair_.destroy(mem_alloc);
+        uniform_buf_.destroy(mem_alloc);
         desc_pool_.destroy(logi_device);
     }
 
@@ -738,6 +745,7 @@ namespace mirinae {
     void RenderUnitSkinned::init(
         uint32_t max_flight_count,
         const VerticesSkinnedPair& vertices,
+        const U_GbufModel& ubuf_data,
         VkImageView image_view,
         VkSampler texture_sampler,
         CommandPool& cmd_pool,
@@ -751,9 +759,14 @@ namespace mirinae {
             vulkan_device.logi_device()
         );
 
+        uniform_buf_.init_ubuf(sizeof(U_GbufModel), vulkan_device.mem_alloc());
+        uniform_buf_.set_data(
+            &ubuf_data, sizeof(U_GbufModel), vulkan_device.mem_alloc()
+        );
+
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
-            builder
+            builder.add_uniform_buffer(uniform_buf_, desc_sets_.at(i))
                 .add_combinded_image_sampler(
                     image_view, texture_sampler, desc_sets_.at(i)
                 )
@@ -773,6 +786,7 @@ namespace mirinae {
         VulkanMemoryAllocator mem_alloc, VkDevice logi_device
     ) {
         vert_index_pair_.destroy(mem_alloc);
+        uniform_buf_.destroy(mem_alloc);
         desc_pool_.destroy(logi_device);
     }
 
@@ -953,29 +967,24 @@ namespace mirinae {
                         "asset/textures/missing_texture.png"
                     );
 
-                if (src_unit.material_.transparency_) {
-                    auto& dst_unit = output->render_units_alpha_.emplace_back();
-                    dst_unit.init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        dst_vertices,
-                        texture->image_view(),
-                        texture_sampler_.get(),
-                        cmd_pool_,
-                        desclayouts,
-                        device_
-                    );
-                } else {
-                    auto& dst_unit = output->render_units_.emplace_back();
-                    dst_unit.init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        dst_vertices,
-                        texture->image_view(),
-                        texture_sampler_.get(),
-                        cmd_pool_,
-                        desclayouts,
-                        device_
-                    );
-                }
+                U_GbufModel model_ubuf;
+                model_ubuf.roughness = src_unit.material_.roughness_;
+                model_ubuf.metallic = src_unit.material_.metallic_;
+
+                auto& dst_unit =
+                    ((src_unit.material_.transparency_)
+                         ? output->render_units_alpha_.emplace_back()
+                         : output->render_units_.emplace_back());
+                dst_unit.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    dst_vertices,
+                    model_ubuf,
+                    texture->image_view(),
+                    texture_sampler_.get(),
+                    cmd_pool_,
+                    desclayouts,
+                    device_
+                );
             }
 
             for (const auto& src_unit : parsed_model.units_indexed_joint_) {
@@ -1001,29 +1010,24 @@ namespace mirinae {
                         "asset/textures/missing_texture.png"
                     );
 
-                if (src_unit.material_.transparency_) {
-                    auto& dst_unit = output->render_units_alpha_.emplace_back();
-                    dst_unit.init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        dst_vertices,
-                        texture->image_view(),
-                        texture_sampler_.get(),
-                        cmd_pool_,
-                        desclayouts,
-                        device_
-                    );
-                } else {
-                    auto& dst_unit = output->render_units_.emplace_back();
-                    dst_unit.init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        dst_vertices,
-                        texture->image_view(),
-                        texture_sampler_.get(),
-                        cmd_pool_,
-                        desclayouts,
-                        device_
-                    );
-                }
+                U_GbufModel model_ubuf;
+                model_ubuf.roughness = src_unit.material_.roughness_;
+                model_ubuf.metallic = src_unit.material_.metallic_;
+
+                auto& dst_unit =
+                    ((src_unit.material_.transparency_)
+                         ? output->render_units_alpha_.emplace_back()
+                         : output->render_units_.emplace_back());
+                dst_unit.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    dst_vertices,
+                    model_ubuf,
+                    texture->image_view(),
+                    texture_sampler_.get(),
+                    cmd_pool_,
+                    desclayouts,
+                    device_
+                );
             }
 
             models_[res_id] = output;
@@ -1088,29 +1092,23 @@ namespace mirinae {
                         "asset/textures/missing_texture.png"
                     );
 
-                if (src_unit.material_.transparency_) {
-                    auto& dst_unit = output->runits_alpha_.emplace_back();
-                    dst_unit.init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        dst_vertices,
-                        texture->image_view(),
-                        texture_sampler_.get(),
-                        cmd_pool_,
-                        desclayouts,
-                        device_
-                    );
-                } else {
-                    auto& dst_unit = output->runits_.emplace_back();
-                    dst_unit.init(
-                        mirinae::MAX_FRAMES_IN_FLIGHT,
-                        dst_vertices,
-                        texture->image_view(),
-                        texture_sampler_.get(),
-                        cmd_pool_,
-                        desclayouts,
-                        device_
-                    );
-                }
+                U_GbufModel model_ubuf;
+                model_ubuf.roughness = src_unit.material_.roughness_;
+                model_ubuf.metallic = src_unit.material_.metallic_;
+
+                auto& dst_unit = src_unit.material_.transparency_
+                                     ? output->runits_alpha_.emplace_back()
+                                     : output->runits_.emplace_back();
+                dst_unit.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    dst_vertices,
+                    model_ubuf,
+                    texture->image_view(),
+                    texture_sampler_.get(),
+                    cmd_pool_,
+                    desclayouts,
+                    device_
+                );
             }
 
             output->skeleton_ = parsed_model.skeleton_;

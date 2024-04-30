@@ -604,6 +604,7 @@ namespace { namespace gbuf {
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
         DescLayoutBuilder builder{ "gbuf:model" };
+        builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_GbufModel
         builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
         return builder.build_in_place(desclayouts, device.logi_device());
     }
@@ -910,9 +911,7 @@ namespace { namespace gbuf_skin {
     VkDescriptorSetLayout create_desclayout_model(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "gbuf:model" };
-        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-        return builder.build_in_place(desclayouts, device.logi_device());
+        return desclayouts.get("gbuf:model");
     }
 
     VkDescriptorSetLayout create_desclayout_actor(

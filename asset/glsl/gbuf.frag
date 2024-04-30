@@ -8,7 +8,12 @@ layout(location = 1) out vec4 out_normal;
 layout(location = 2) out vec4 out_material;
 
 
-layout(set = 0, binding = 0) uniform sampler2D u_albedo_map;
+layout(set = 0, binding = 0) uniform U_GbufModel {
+    float roughness;
+    float metallic;
+} u_model;
+
+layout(set = 0, binding = 1) uniform sampler2D u_albedo_map;
 
 
 void main() {
@@ -16,5 +21,5 @@ void main() {
 
     out_albedo = vec4(albedo.xyz, 1);
     out_normal = vec4(normalize(v_normal) * 0.5 + 0.5, 1);
-    out_material = vec4(0.5, 0.0, 0.0, 0.0);
+    out_material = vec4(u_model.roughness, u_model.metallic, 0.0, 0.0);
 }
