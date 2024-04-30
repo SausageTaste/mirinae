@@ -13,12 +13,14 @@ layout(set = 0, binding = 3) uniform sampler2D u_material_map;
 
 layout(set = 0, binding = 4) uniform U_CompositionMain {
     mat4 proj_inv;
-} u_composition_main;
+    vec4 dlight_dir;
+    vec4 dlight_color;
+} u_comp_main;
 
 
 vec3 calc_frag_pos(float depth) {
     vec4 clip_pos = vec4(v_uv_coord * 2 - 1, depth * 2 - 1, 1);
-    vec4 frag_pos = u_composition_main.proj_inv * clip_pos;
+    vec4 frag_pos = u_comp_main.proj_inv * clip_pos;
     frag_pos /= frag_pos.w;
     return frag_pos.xyz;
 }
@@ -34,10 +36,13 @@ void main() {
     vec3 frag_pos = calc_frag_pos(depth_texel);
     float frag_distance = length(frag_pos);
 
-    vec3 light_dir = normalize(vec3(0.5, 1, 0.5));
-    float light = max(dot(normal, light_dir), 0) * 0.9;
-    light += 0.1;
-    //light += 2 / (frag_distance * frag_distance);
+    vec3 light = vec3(0.1);
+
+    // Directional light
+    {
+        float cos_theta = max(dot(normal, u_comp_main.dlight_dir.xyz), 0);
+        light += cos_theta * u_comp_main.dlight_color.rgb;
+    }
 
     f_color = vec4(albedo_texel.rgb * light, 1);
 }
