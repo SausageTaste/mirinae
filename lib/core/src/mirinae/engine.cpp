@@ -301,7 +301,7 @@ namespace {
             overlay_man_.add_widget_test();
 
             camera_view_.pos_ = glm::dvec3{
-                -7.7109375, 3.4878, 0.8025601655244827
+                -1.37109375, 1.0302734375, 0.20775177605186249
             } + world_shift;
             camera_view_.rot_ = {
                 0.8120552484612948, 0, -0.5835805629443673, 0
