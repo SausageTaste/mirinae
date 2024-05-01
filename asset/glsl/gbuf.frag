@@ -1,8 +1,7 @@
 #version 450
 
-layout(location = 0) in vec3 v_normal;
-layout(location = 2) in vec2 v_texcoord;
-layout(location = 3) in mat3 v_tbn;
+layout(location = 0) in mat3 v_tbn;
+layout(location = 3) in vec2 v_texcoord;
 
 layout(location = 0) out vec4 out_albedo;
 layout(location = 1) out vec4 out_normal;
