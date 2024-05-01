@@ -5,9 +5,8 @@ layout(location = 1) in vec3 i_normal;
 layout(location = 2) in vec3 i_tangent;
 layout(location = 3) in vec2 i_texcoord;
 
-layout(location = 0) out vec3 v_normal;
-layout(location = 2) out vec2 v_texcoord;
-layout(location = 3) out mat3 v_tbn;
+layout(location = 0) out mat3 v_tbn;
+layout(location = 3) out vec2 v_texcoord;
 
 
 layout(set = 1, binding = 0) uniform U_GbufActor {
@@ -18,7 +17,6 @@ layout(set = 1, binding = 0) uniform U_GbufActor {
 
 void main() {
     gl_Position = u_gbuf_model.pvm * vec4(i_pos, 1);
-    v_normal = (u_gbuf_model.view_model * vec4(i_normal, 0)).xyz;
     v_tbn = mat3(u_gbuf_model.view_model) * mat3(i_tangent, normalize(cross(i_normal, i_tangent)), i_normal);
     v_texcoord = i_texcoord;
 }
