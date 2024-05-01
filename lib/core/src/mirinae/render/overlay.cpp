@@ -48,8 +48,9 @@ namespace {
             auto& overlay = render_units_.emplace_back(device);
             overlay.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                tex_man.request("asset/textures/lorem_ipsum.png")->image_view(),
-                tex_man.request("asset/textures/white.png")->image_view(),
+                tex_man.request("asset/textures/lorem_ipsum.png", true)
+                    ->image_view(),
+                tex_man.request("asset/textures/white.png", true)->image_view(),
                 sampler,
                 desclayout,
                 tex_man
@@ -232,7 +233,7 @@ namespace {
 
             render_unit_.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                tex_man.request("asset/textures/white.png")->image_view(),
+                tex_man.request("asset/textures/white.png", false)->image_view(),
                 texture_->image_view(),
                 sampler,
                 desclayout,

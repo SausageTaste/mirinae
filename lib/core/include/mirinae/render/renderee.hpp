@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include <daltools/struct.h>
+
 #include "mirinae/actor/transform.hpp"
 
 #include "uniform.hpp"
@@ -36,7 +38,7 @@ namespace mirinae {
         TextureManager(VulkanDevice& device);
         ~TextureManager();
 
-        std::shared_ptr<ITexture> request(const respath_t& res_id);
+        std::shared_ptr<ITexture> request(const respath_t& res_id, bool srgb);
         std::unique_ptr<ITexture> create_image(
             const std::string& id, const IImage2D& image, bool srgb
         );
