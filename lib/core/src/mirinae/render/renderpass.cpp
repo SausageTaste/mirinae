@@ -41,6 +41,14 @@ namespace {
             auto& description = attributeDescriptions.emplace_back();
             description.binding = 0;
             description.location = 2;
+            description.format = VK_FORMAT_R32G32B32_SFLOAT;
+            description.offset = offsetof(mirinae::VertexStatic, tangent_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 3;
             description.format = VK_FORMAT_R32G32_SFLOAT;
             description.offset = offsetof(mirinae::VertexStatic, texcoord_);
         }
@@ -80,6 +88,14 @@ namespace {
             auto& description = attributeDescriptions.emplace_back();
             description.binding = 0;
             description.location = 2;
+            description.format = VK_FORMAT_R32G32B32_SFLOAT;
+            description.offset = offsetof(mirinae::VertexSkinned, tangent_);
+        }
+
+        {
+            auto& description = attributeDescriptions.emplace_back();
+            description.binding = 0;
+            description.location = 3;
             description.format = VK_FORMAT_R32G32_SFLOAT;
             description.offset = offsetof(mirinae::VertexSkinned, uv_);
         }
@@ -87,7 +103,7 @@ namespace {
         {
             auto& description = attributeDescriptions.emplace_back();
             description.binding = 0;
-            description.location = 3;
+            description.location = 4;
             description.format = VK_FORMAT_R32G32B32A32_SFLOAT;
             description.offset = offsetof(
                 mirinae::VertexSkinned, joint_weights_
@@ -97,7 +113,7 @@ namespace {
         {
             auto& description = attributeDescriptions.emplace_back();
             description.binding = 0;
-            description.location = 4;
+            description.location = 5;
             description.format = VK_FORMAT_R32G32B32A32_SINT;
             description.offset = offsetof(
                 mirinae::VertexSkinned, joint_indices_

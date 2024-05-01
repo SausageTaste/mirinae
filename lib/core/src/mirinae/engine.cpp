@@ -380,10 +380,14 @@ namespace {
                 }
 
                 {
+                    const auto t =
+                        sung::CalenderTime::from_now().to_total_seconds() * 0.2;
+
                     mirinae::U_CompositionMain ubuf_data;
                     ubuf_data.set_proj_inv(glm::inverse(proj_mat));
                     ubuf_data.set_dlight_dir(
-                        view_mat * glm::dvec4{ 0.5, 1, 0.5, 0 }
+                        view_mat *
+                        glm::dvec4{ std::cos(t), 0.5, std::sin(t), 0 }
                     );
                     ubuf_data.set_dlight_color(5, 5, 5);
 

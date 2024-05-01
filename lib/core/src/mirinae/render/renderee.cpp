@@ -7,6 +7,51 @@
 
 namespace {
 
+    void calc_tangents(
+        mirinae::VertexStatic& p0,
+        mirinae::VertexStatic& p1,
+        mirinae::VertexStatic& p2
+    ) {
+        glm::vec3 edge1 = p1.pos_ - p0.pos_;
+        glm::vec3 edge2 = p2.pos_ - p0.pos_;
+        glm::vec2 delta_uv1 = p1.texcoord_ - p0.texcoord_;
+        glm::vec2 delta_uv2 = p2.texcoord_ - p0.texcoord_;
+        auto f = 1 / (delta_uv1.x * delta_uv2.y - delta_uv2.x * delta_uv1.y);
+
+        glm::vec3 tangent;
+        tangent.x = f * (delta_uv2.y * edge1.x - delta_uv1.y * edge2.x);
+        tangent.y = f * (delta_uv2.y * edge1.y - delta_uv1.y * edge2.y);
+        tangent.z = f * (delta_uv2.y * edge1.z - delta_uv1.y * edge2.z);
+        tangent = glm::normalize(tangent);
+
+        p0.tangent_ = tangent;
+        p1.tangent_ = tangent;
+        p2.tangent_ = tangent;
+    }
+
+    void calc_tangents(
+        mirinae::VertexSkinned& p0,
+        mirinae::VertexSkinned& p1,
+        mirinae::VertexSkinned& p2
+    ) {
+        glm::vec3 edge1 = p1.pos_ - p0.pos_;
+        glm::vec3 edge2 = p2.pos_ - p0.pos_;
+        glm::vec2 delta_uv1 = p1.uv_ - p0.uv_;
+        glm::vec2 delta_uv2 = p2.uv_ - p0.uv_;
+        auto f = 1 / (delta_uv1.x * delta_uv2.y - delta_uv2.x * delta_uv1.y);
+
+        glm::vec3 tangent;
+        tangent.x = f * (delta_uv2.y * edge1.x - delta_uv1.y * edge2.x);
+        tangent.y = f * (delta_uv2.y * edge1.y - delta_uv1.y * edge2.y);
+        tangent.z = f * (delta_uv2.y * edge1.z - delta_uv1.y * edge2.z);
+        tangent = glm::normalize(tangent);
+
+        p0.tangent_ = tangent;
+        p1.tangent_ = tangent;
+        p2.tangent_ = tangent;
+    }
+
+
     auto interpret_fbuf_usage(const mirinae::FbufUsage usage) {
         VkImageAspectFlags aspect_mask = 0;
         VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -562,7 +607,9 @@ namespace mirinae {
             cmd_pool_.destroy(device_.logi_device());
         }
 
-        std::shared_ptr<TextureData> request(const respath_t& res_id) {
+        std::shared_ptr<TextureData> request(
+            const respath_t& res_id, bool srgb
+        ) {
             if (auto index = this->find_index(res_id))
                 return textures_.at(index.value());
 
@@ -580,7 +627,7 @@ namespace mirinae {
                 img_data->data(), img_data->size(), true
             );
             auto& output = textures_.emplace_back(new TextureData{ device_ });
-            output->init_iimage2d(res_id.u8string(), *image, true, cmd_pool_);
+            output->init_iimage2d(res_id.u8string(), *image, srgb, cmd_pool_);
             return output;
         }
 
@@ -644,8 +691,10 @@ namespace mirinae {
 
     TextureManager::~TextureManager() {}
 
-    std::shared_ptr<ITexture> TextureManager::request(const respath_t& res_id) {
-        return pimpl_->request(res_id);
+    std::shared_ptr<ITexture> TextureManager::request(
+        const respath_t& res_id, bool srgb
+    ) {
+        return pimpl_->request(res_id, srgb);
     }
 
     std::unique_ptr<ITexture> TextureManager::create_image(
@@ -966,20 +1015,41 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
-                auto albedo_map = tex_man.request(replace_file_name_ext(
-                    res_id, src_unit.material_.albedo_map_
-                ));
+                {
+                    const auto tri_count = dst_vertices.indices_.size() / 3;
+                    for (size_t i = 0; i < tri_count; ++i) {
+                        const auto i0 = dst_vertices.indices_.at(i * 3 + 0);
+                        const auto i1 = dst_vertices.indices_.at(i * 3 + 1);
+                        const auto i2 = dst_vertices.indices_.at(i * 3 + 2);
+
+                        auto& v0 = dst_vertices.vertices_.at(i0);
+                        auto& v1 = dst_vertices.vertices_.at(i1);
+                        auto& v2 = dst_vertices.vertices_.at(i2);
+
+                        ::calc_tangents(v0, v1, v2);
+                    }
+                }
+
+                auto albedo_map = tex_man.request(
+                    replace_file_name_ext(
+                        res_id, src_unit.material_.albedo_map_
+                    ),
+                    true
+                );
                 if (!albedo_map)
                     albedo_map = tex_man.request(
-                        "asset/textures/missing_texture.png"
+                        "asset/textures/missing_texture.png", true
                     );
 
-                auto normal_map = tex_man.request(replace_file_name_ext(
-                    res_id, src_unit.material_.normal_map_
-                ));
+                auto normal_map = tex_man.request(
+                    replace_file_name_ext(
+                        res_id, src_unit.material_.normal_map_
+                    ),
+                    false
+                );
                 if (!normal_map)
                     normal_map = tex_man.request(
-                        "asset/textures/null_normal_map.png"
+                        "asset/textures/null_normal_map.png", false
                     );
 
                 U_GbufModel model_ubuf;
@@ -1017,20 +1087,26 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
-                auto albedo_map = tex_man.request(replace_file_name_ext(
-                    res_id, src_unit.material_.albedo_map_
-                ));
+                auto albedo_map = tex_man.request(
+                    replace_file_name_ext(
+                        res_id, src_unit.material_.albedo_map_
+                    ),
+                    true
+                );
                 if (!albedo_map)
                     albedo_map = tex_man.request(
-                        "asset/textures/missing_texture.png"
+                        "asset/textures/missing_texture.png", true
                     );
 
-                auto normal_map = tex_man.request(replace_file_name_ext(
-                    res_id, src_unit.material_.normal_map_
-                ));
+                auto normal_map = tex_man.request(
+                    replace_file_name_ext(
+                        res_id, src_unit.material_.normal_map_
+                    ),
+                    false
+                );
                 if (!normal_map)
                     normal_map = tex_man.request(
-                        "asset/textures/null_normal_map.png"
+                        "asset/textures/null_normal_map.png", false
                     );
 
                 U_GbufModel model_ubuf;
@@ -1104,23 +1180,48 @@ namespace mirinae {
 
                 for (auto& src_vertex : src_unit.mesh_.vertices_) {
                     auto& dst_vertex = dst_vertices.vertices_.emplace_back();
-                    dst_vertex.set(src_vertex);
+                    dst_vertex.pos_ = src_vertex.pos_;
+                    dst_vertex.normal_ = src_vertex.normal_;
+                    dst_vertex.uv_ = src_vertex.uv_;
+                    dst_vertex.joint_indices_ = src_vertex.joint_indices_;
+                    dst_vertex.joint_weights_ = src_vertex.joint_weights_;
                 }
 
-                auto albedo_map = tex_man.request(replace_file_name_ext(
-                    res_id, src_unit.material_.albedo_map_
-                ));
+                {
+                    const auto tri_count = dst_vertices.indices_.size() / 3;
+                    for (size_t i = 0; i < tri_count; ++i) {
+                        const auto i0 = dst_vertices.indices_.at(i * 3 + 0);
+                        const auto i1 = dst_vertices.indices_.at(i * 3 + 1);
+                        const auto i2 = dst_vertices.indices_.at(i * 3 + 2);
+
+                        auto& v0 = dst_vertices.vertices_.at(i0);
+                        auto& v1 = dst_vertices.vertices_.at(i1);
+                        auto& v2 = dst_vertices.vertices_.at(i2);
+
+                        ::calc_tangents(v0, v1, v2);
+                    }
+                }
+
+                auto albedo_map = tex_man.request(
+                    replace_file_name_ext(
+                        res_id, src_unit.material_.albedo_map_
+                    ),
+                    true
+                );
                 if (!albedo_map)
                     albedo_map = tex_man.request(
-                        "asset/textures/missing_texture.png"
+                        "asset/textures/missing_texture.png", true
                     );
 
-                auto normal_map = tex_man.request(replace_file_name_ext(
-                    res_id, src_unit.material_.normal_map_
-                ));
+                auto normal_map = tex_man.request(
+                    replace_file_name_ext(
+                        res_id, src_unit.material_.normal_map_
+                    ),
+                    false
+                );
                 if (!normal_map)
                     normal_map = tex_man.request(
-                        "asset/textures/null_normal_map.png"
+                        "asset/textures/null_normal_map.png", false
                     );
 
                 U_GbufModel model_ubuf;
