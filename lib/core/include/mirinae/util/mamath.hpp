@@ -67,7 +67,7 @@ namespace mirinae {
         }
 
         Angle fov_ = Angle::from_deg(80);
-        T near_ = 0.1;
+        T near_ = 0.01;
         T far_ = 1000;
     };
 

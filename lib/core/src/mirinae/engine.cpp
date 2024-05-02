@@ -266,7 +266,7 @@ namespace {
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
                 cmd_buf_.push_back(cmd_pool_.alloc(device_.logi_device()));
 
-            const glm::dvec3 world_shift = { 10000000000000, 1000000000000, 0 };
+            const glm::dvec3 world_shift = { 100000, 100000, 0 };
             camera_view_.pos_ = world_shift;
 
             {
