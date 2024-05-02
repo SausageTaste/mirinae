@@ -367,84 +367,85 @@ namespace {
             }
             const auto image_index = image_index_opt.value();
 
-            // Update uniform
-            {
-                const auto proj_mat = camera_proj_.make_proj_mat(
-                    swapchain_.width(), swapchain_.height()
-                );
-                const auto view_mat = camera_view_.make_view_mat();
+            const auto proj_mat = camera_proj_.make_proj_mat(
+                swapchain_.width(), swapchain_.height()
+            );
+            const auto view_mat = camera_view_.make_view_mat();
 
-                for (auto& pair : draw_sheet_.ren_pairs_) {
-                    for (auto& actor : pair.actors_) {
-                        mirinae::U_GbufActor ubuf_data;
-                        const auto model_mat = actor->transform_.make_model_mat(
-                        );
-                        ubuf_data.view_model = view_mat * model_mat;
-                        ubuf_data.pvm = proj_mat * view_mat * model_mat;
-                        actor->udpate_ubuf(
-                            framesync_.get_frame_index().get(),
-                            ubuf_data,
-                            device_.mem_alloc()
-                        );
-                    }
-                }
-
-                for (auto& pair : draw_sheet_.skinned_pairs_) {
-                    for (auto& actor : pair.actors_) {
-                        mirinae::U_GbufActorSkinned ubuf_data;
-                        const auto model_m = actor->transform_.make_model_mat();
-                        ubuf_data.view_model = view_mat * model_m;
-                        ubuf_data.pvm = proj_mat * view_mat * model_m;
-
-                        const auto& anim = pair.model_->animations_.front();
-                        const auto anim_tick =
-                            (sung::CalenderTime::from_now().to_total_seconds() *
-                             anim.ticks_per_sec_);
-                        const auto skin_mats = mirinae::make_skinning_matrix(
-                            anim_tick, pair.model_->skeleton_, anim
-                        );
-                        const auto skin_mat_size = std::min<int>(
-                            skin_mats.size(), mirinae::MAX_JOINTS
-                        );
-                        for (int i = 0; i < skin_mat_size; ++i) {
-                            ubuf_data.joint_transforms_[i] = skin_mats[i];
-                        }
-
-                        actor->udpate_ubuf(
-                            framesync_.get_frame_index().get(),
-                            ubuf_data,
-                            device_.mem_alloc()
-                        );
-                    }
-                }
-
-                {
-                    const auto t =
-                        sung::CalenderTime::from_now().to_total_seconds() * 0.2;
-
-                    mirinae::U_CompositionMain ubuf_data;
-                    ubuf_data.set_proj_inv(glm::inverse(proj_mat));
-                    ubuf_data.set_dlight_dir(
-                        view_mat *
-                        glm::dvec4{ std::cos(t), 0.5, std::sin(t), 0 }
+            // Update ubuf: U_GbufActor
+            for (auto& pair : draw_sheet_.ren_pairs_) {
+                for (auto& actor : pair.actors_) {
+                    mirinae::U_GbufActor ubuf_data;
+                    const auto model_mat = actor->transform_.make_model_mat();
+                    ubuf_data.view_model = view_mat * model_mat;
+                    ubuf_data.pvm = proj_mat * view_mat * model_mat;
+                    actor->udpate_ubuf(
+                        framesync_.get_frame_index().get(),
+                        ubuf_data,
+                        device_.mem_alloc()
                     );
-                    ubuf_data.set_dlight_color(5, 5, 5);
-
-                    rp_states_composition_.ubufs_
-                        .at(framesync_.get_frame_index().get())
-                        .set_data(
-                            &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
-                        );
-
-                    rp_states_transparent_.ubufs_
-                        .at(framesync_.get_frame_index().get())
-                        .set_data(
-                            &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
-                        );
                 }
             }
 
+            // Update ubuf: U_GbufActorSkinned
+            for (auto& pair : draw_sheet_.skinned_pairs_) {
+                for (auto& actor : pair.actors_) {
+                    mirinae::U_GbufActorSkinned ubuf_data;
+                    const auto model_m = actor->transform_.make_model_mat();
+                    ubuf_data.view_model = view_mat * model_m;
+                    ubuf_data.pvm = proj_mat * view_mat * model_m;
+
+                    const auto& anim = pair.model_->animations_.front();
+                    const auto anim_tick =
+                        (sung::CalenderTime::from_now().to_total_seconds() *
+                         anim.ticks_per_sec_);
+                    const auto skin_mats = mirinae::make_skinning_matrix(
+                        anim_tick, pair.model_->skeleton_, anim
+                    );
+                    const auto skin_mat_size = std::min<int>(
+                        skin_mats.size(), mirinae::MAX_JOINTS
+                    );
+                    for (int i = 0; i < skin_mat_size; ++i) {
+                        ubuf_data.joint_transforms_[i] = skin_mats[i];
+                    }
+
+                    actor->udpate_ubuf(
+                        framesync_.get_frame_index().get(),
+                        ubuf_data,
+                        device_.mem_alloc()
+                    );
+                }
+            }
+
+            // Update ubuf: U_CompositionMain
+            {
+                const auto t = sung::CalenderTime::from_now().to_total_seconds(
+                               ) *
+                               0.2;
+
+                mirinae::U_CompositionMain ubuf_data;
+                ubuf_data.set_proj_inv(glm::inverse(proj_mat));
+                ubuf_data.set_dlight_dir(
+                    view_mat * glm::dvec4{ std::cos(t), 0.5, std::sin(t), 0 }
+                );
+                ubuf_data.set_dlight_color(5, 5, 5);
+
+                rp_states_composition_.ubufs_
+                    .at(framesync_.get_frame_index().get())
+                    .set_data(
+                        &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
+                    );
+
+                rp_states_transparent_.ubufs_
+                    .at(framesync_.get_frame_index().get())
+                    .set_data(
+                        &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
+                    );
+            }
+
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
+
+            // Begin recording
             {
                 vkResetCommandBuffer(cur_cmd_buf, 0);
 
@@ -466,6 +467,7 @@ namespace {
                 clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
             }
 
+            // Shader: Gbuf
             {
                 auto& rp = *rp_gbuf_;
 
@@ -541,6 +543,7 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
+            // Shader: Gbuf skin
             {
                 auto& rp = *rp_gbuf_skin_;
 
@@ -616,6 +619,7 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
+            // Shader: Composition
             {
                 auto& rp = *rp_composition_;
                 VkRenderPassBeginInfo renderPassInfo{};
@@ -667,6 +671,7 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
+            // Shader: Transparent
             {
                 auto& rp = *rp_transparent_;
 
@@ -756,6 +761,7 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
+            // Shader: Transparent skin
             {
                 auto& rp = *rp_transparent_skin_;
 
@@ -845,6 +851,7 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
+            // Shader: Fillscreen
             {
                 auto& rp = *rp_fillscreen_;
                 VkRenderPassBeginInfo renderPassInfo{};
@@ -896,6 +903,7 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
+            // Shader: Overlay
             {
                 auto& rp = *rp_overlay_;
                 VkRenderPassBeginInfo renderPassInfo{};
@@ -936,14 +944,11 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
-            {
-                if (vkEndCommandBuffer(cur_cmd_buf) != VK_SUCCESS) {
-                    throw std::runtime_error(
-                        "failed to record a command buffer!"
-                    );
-                }
+            if (vkEndCommandBuffer(cur_cmd_buf) != VK_SUCCESS) {
+                throw std::runtime_error("failed to record a command buffer!");
             }
 
+            // Submit and present
             {
                 VkSubmitInfo submitInfo{};
                 submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
