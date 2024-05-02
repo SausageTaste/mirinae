@@ -60,5 +60,32 @@ void main() {
         );
     }
 
+    // Flashlight
+    {
+        const vec3 light_pos = vec3(0, 0, 0);
+        const vec3 to_light = normalize(light_pos - frag_pos);
+        const vec3 light_dir = normalize(vec3(0, 0, -5) - light_pos);
+
+        const float attenuation = calc_slight_attenuation(
+            frag_pos,
+            vec3(0),
+            light_dir,
+            cos(10 * 3.14159265 / 180),
+            cos(25 * 3.14159265 / 180)
+        );
+
+        light += calc_pbr_illumination(
+            roughness,
+            metallic,
+            albedo,
+            normal,
+            F0,
+            -view_direc,
+            to_light,
+            frag_distance,
+            vec3(3)
+        ) * attenuation;
+    }
+
     f_color = vec4(light, 1);
 }

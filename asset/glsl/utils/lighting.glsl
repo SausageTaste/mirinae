@@ -53,6 +53,22 @@ float _calc_attenuation(const float frag_distance, const float max_light_dist) {
 }
 
 
+float calc_slight_attenuation(
+    const vec3 frag_pos,
+    const vec3 light_pos,
+    const vec3 light_direc,
+    const float fade_start,
+    const float fade_end
+) {
+    const vec3 light_to_frag_n = normalize(frag_pos - light_pos);
+    const float theta = dot(light_to_frag_n, light_direc);
+    const float epsilon = fade_start - fade_end;
+    const float atten_factor = 1;
+
+    return clamp((theta - fade_end) / epsilon * atten_factor, 0.0, 1.0);
+}
+
+
 vec3 calc_pbr_illumination(
     const float roughness,
     const float metallic,
