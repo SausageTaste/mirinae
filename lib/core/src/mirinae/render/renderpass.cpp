@@ -1521,6 +1521,14 @@ namespace { namespace composition {
 // transparent
 namespace { namespace transparent {
 
+    VkDescriptorSetLayout create_desclayout_frame(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
+        DescLayoutBuilder builder{ "transparent:frame" };
+        builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompositionMain
+        return builder.build_in_place(desclayouts, device.logi_device());
+    }
+
     VkDescriptorSetLayout create_desclayout_model(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
@@ -1583,11 +1591,13 @@ namespace { namespace transparent {
     }
 
     VkPipelineLayout create_pipeline_layout(
+        VkDescriptorSetLayout desclayout_frame,
         VkDescriptorSetLayout desclayout_model,
         VkDescriptorSetLayout desclayout_actor,
         mirinae::VulkanDevice& device
     ) {
         std::vector<VkDescriptorSetLayout> desclayouts{
+            desclayout_frame,
             desclayout_model,
             desclayout_actor,
         };
@@ -1717,6 +1727,7 @@ namespace { namespace transparent {
                 formats_.at(0), formats_.at(1), device.logi_device()
             );
             layout_ = create_pipeline_layout(
+                create_desclayout_frame(desclayouts, device),
                 create_desclayout_model(desclayouts, device),
                 create_desclayout_actor(desclayouts, device),
                 device
@@ -1799,6 +1810,12 @@ namespace { namespace transparent {
 // transparent skin
 namespace { namespace transparent_skin {
 
+    VkDescriptorSetLayout create_desclayout_frame(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
+        return desclayouts.get("transparent:frame");
+    }
+
     VkDescriptorSetLayout create_desclayout_model(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
@@ -1861,11 +1878,13 @@ namespace { namespace transparent_skin {
     }
 
     VkPipelineLayout create_pipeline_layout(
+        VkDescriptorSetLayout desclayout_frame,
         VkDescriptorSetLayout desclayout_model,
         VkDescriptorSetLayout desclayout_actor,
         mirinae::VulkanDevice& device
     ) {
         std::vector<VkDescriptorSetLayout> desclayouts{
+            desclayout_frame,
             desclayout_model,
             desclayout_actor,
         };
@@ -1997,6 +2016,7 @@ namespace { namespace transparent_skin {
                 formats_.at(0), formats_.at(1), device.logi_device()
             );
             layout_ = create_pipeline_layout(
+                create_desclayout_frame(desclayouts, device),
                 create_desclayout_model(desclayouts, device),
                 create_desclayout_actor(desclayouts, device),
                 device

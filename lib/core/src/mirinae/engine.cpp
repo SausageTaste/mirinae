@@ -157,6 +157,45 @@ namespace {
     };
 
 
+    class RpStatesTransparent {
+
+    public:
+        void init(
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        ) {
+            desc_pool_.init(10, device.logi_device());
+            desc_sets_ = desc_pool_.alloc(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                desclayouts.get("transparent:frame"),
+                device.logi_device()
+            );
+
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& ubuf = ubufs_.emplace_back();
+                ubuf.init_ubuf(
+                    sizeof(mirinae::U_TransparentFrame), device.mem_alloc()
+                );
+
+                mirinae::DescWriteInfoBuilder builder;
+                builder.add_uniform_buffer(ubuf, desc_sets_.at(i))
+                    .apply_all(device.logi_device());
+            }
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            desc_pool_.destroy(device.logi_device());
+
+            for (auto& ubuf : ubufs_) ubuf.destroy(device.mem_alloc());
+            ubufs_.clear();
+        }
+
+        mirinae::DescriptorPool desc_pool_;
+        std::vector<VkDescriptorSet> desc_sets_;
+        std::vector<mirinae::Buffer> ubufs_;
+    };
+
+
     class RpStatesFillscreen {
 
     public:
@@ -392,6 +431,12 @@ namespace {
                     ubuf_data.set_dlight_color(5, 5, 5);
 
                     rp_states_composition_.ubufs_
+                        .at(framesync_.get_frame_index().get())
+                        .set_data(
+                            &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
+                        );
+
+                    rp_states_transparent_.ubufs_
                         .at(framesync_.get_frame_index().get())
                         .set_data(
                             &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
@@ -655,6 +700,20 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
+                auto desc_frame = rp_states_transparent_.desc_sets_.at(
+                    framesync_.get_frame_index().get()
+                );
+                vkCmdBindDescriptorSets(
+                    cur_cmd_buf,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    rp.pipeline_layout(),
+                    0,
+                    1,
+                    &desc_frame,
+                    0,
+                    nullptr
+                );
+
                 for (auto& pair : draw_sheet_.ren_pairs_) {
                     for (auto& unit : pair.model_->render_units_alpha_) {
                         auto unit_desc = unit.get_desc_set(
@@ -664,7 +723,7 @@ namespace {
                             cur_cmd_buf,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
                             rp.pipeline_layout(),
-                            0,
+                            1,
                             1,
                             &unit_desc,
                             0,
@@ -680,7 +739,7 @@ namespace {
                                 cur_cmd_buf,
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 rp.pipeline_layout(),
-                                1,
+                                2,
                                 1,
                                 &actor_desc,
                                 0,
@@ -730,6 +789,20 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
+                auto desc_frame = rp_states_transparent_.desc_sets_.at(
+                    framesync_.get_frame_index().get()
+                );
+                vkCmdBindDescriptorSets(
+                    cur_cmd_buf,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    rp.pipeline_layout(),
+                    0,
+                    1,
+                    &desc_frame,
+                    0,
+                    nullptr
+                );
+
                 for (auto& pair : draw_sheet_.skinned_pairs_) {
                     for (auto& unit : pair.model_->runits_alpha_) {
                         auto unit_desc = unit.get_desc_set(
@@ -739,7 +812,7 @@ namespace {
                             cur_cmd_buf,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
                             rp.pipeline_layout(),
-                            0,
+                            1,
                             1,
                             &unit_desc,
                             0,
@@ -755,7 +828,7 @@ namespace {
                                 cur_cmd_buf,
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 rp.pipeline_layout(),
-                                1,
+                                2,
                                 1,
                                 &actor_desc,
                                 0,
@@ -1017,6 +1090,7 @@ namespace {
             rp_states_composition_.init(
                 desclayout_, fbuf_images_, texture_sampler_.get(), device_
             );
+            rp_states_transparent_.init(desclayout_, device_);
             rp_states_fillscreen_.init(
                 desclayout_, fbuf_images_, texture_sampler_.get(), device_
             );
@@ -1026,6 +1100,7 @@ namespace {
             device_.wait_idle();
 
             rp_states_fillscreen_.destroy(device_);
+            rp_states_transparent_.destroy(device_);
             rp_states_composition_.destroy(device_);
 
             rp_overlay_.reset();
@@ -1092,6 +1167,7 @@ namespace {
         std::unique_ptr<mirinae::IRenderPassBundle> rp_fillscreen_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_overlay_;
         ::RpStatesComposition rp_states_composition_;
+        ::RpStatesTransparent rp_states_transparent_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
