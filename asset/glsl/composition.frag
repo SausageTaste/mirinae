@@ -2,7 +2,6 @@
 
 #include "utils/lighting.glsl"
 
-
 layout(location = 0) in vec2 v_uv_coord;
 
 layout(location = 0) out vec4 f_color;
@@ -29,16 +28,17 @@ vec3 calc_frag_pos(float depth) {
 
 
 void main() {
-    float depth_texel = texture(u_depth_map, v_uv_coord).r;
-    vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
-    vec4 normal_texel = texture(u_normal_map, v_uv_coord);
-    vec4 material_texel = texture(u_material_map, v_uv_coord);
+    const float depth_texel = texture(u_depth_map, v_uv_coord).r;
+    const vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
+    const vec4 normal_texel = texture(u_normal_map, v_uv_coord);
+    const vec4 material_texel = texture(u_material_map, v_uv_coord);
 
+    const vec3 frag_pos = calc_frag_pos(depth_texel);
     const vec3 albedo = albedo_texel.rgb;
     const vec3 normal = normalize(normal_texel.xyz * 2 - 1);
     const float roughness = material_texel.x;
     const float metallic = material_texel.y;
-    const vec3 frag_pos = calc_frag_pos(depth_texel);
+
     const vec3 view_direc = normalize(frag_pos);
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
     const float frag_distance = length(frag_pos);

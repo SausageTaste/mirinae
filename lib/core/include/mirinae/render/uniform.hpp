@@ -35,9 +35,7 @@ namespace mirinae {
     class U_CompositionMain {
 
     public:
-        void set_proj_inv(const glm::mat4& proj_inv) {
-            proj_inv_ = proj_inv;
-        }
+        void set_proj_inv(const glm::mat4& proj_inv) { proj_inv_ = proj_inv; }
 
         // It automatically normalize the input vector.
         void set_dlight_dir(const glm::vec4& dlight_dir) {
@@ -64,6 +62,9 @@ namespace mirinae {
         glm::vec4 dlight_dir_;
         glm::vec4 dlight_color_;
     };
+
+
+    using U_TransparentFrame = U_CompositionMain;
 
 
     struct U_OverlayPushConst {
