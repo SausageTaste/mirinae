@@ -52,6 +52,62 @@ namespace {
     }
 
 
+    class MaterialResources {
+
+    public:
+        void fetch(
+            const mirinae::respath_t& res_id,
+            const dal::parser::Material& src_material,
+            mirinae::TextureManager& tex_man
+        ) {
+            albedo_map_ = this->request_texture(
+                res_id,
+                src_material.albedo_map_,
+                "asset/textures/missing_texture.png",
+                true,
+                tex_man
+            );
+
+            normal_map_ = this->request_texture(
+                res_id,
+                src_material.normal_map_,
+                "asset/textures/null_normal_map.png",
+                false,
+                tex_man
+            );
+
+            model_ubuf_.roughness = src_material.roughness_;
+            model_ubuf_.metallic = src_material.metallic_;
+        }
+
+        mirinae::U_GbufModel model_ubuf_;
+        std::shared_ptr<mirinae::ITexture> albedo_map_;
+        std::shared_ptr<mirinae::ITexture> normal_map_;
+
+    private:
+        static std::shared_ptr<mirinae::ITexture> request_texture(
+            const mirinae::respath_t& res_id,
+            const std::string& file_name,
+            const std::string& fallback_path,
+            const bool srgb,
+            mirinae::TextureManager& tex_man
+        ) {
+            if (file_name.empty())
+                return tex_man.request(fallback_path, srgb);
+
+            const auto full_path = mirinae::replace_file_name_ext(
+                res_id, file_name
+            );
+
+            auto output = tex_man.request(full_path, srgb);
+            if (!output)
+                return tex_man.request(fallback_path, srgb);
+
+            return output;
+        }
+    };
+
+
     auto interpret_fbuf_usage(const mirinae::FbufUsage usage) {
         VkImageAspectFlags aspect_mask = 0;
         VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1030,31 +1086,8 @@ namespace mirinae {
                     }
                 }
 
-                auto albedo_map = tex_man.request(
-                    replace_file_name_ext(
-                        res_id, src_unit.material_.albedo_map_
-                    ),
-                    true
-                );
-                if (!albedo_map)
-                    albedo_map = tex_man.request(
-                        "asset/textures/missing_texture.png", true
-                    );
-
-                auto normal_map = tex_man.request(
-                    replace_file_name_ext(
-                        res_id, src_unit.material_.normal_map_
-                    ),
-                    false
-                );
-                if (!normal_map)
-                    normal_map = tex_man.request(
-                        "asset/textures/null_normal_map.png", false
-                    );
-
-                U_GbufModel model_ubuf;
-                model_ubuf.roughness = src_unit.material_.roughness_;
-                model_ubuf.metallic = src_unit.material_.metallic_;
+                MaterialResources mat_res;
+                mat_res.fetch(res_id, src_unit.material_, tex_man);
 
                 auto& dst_unit =
                     ((src_unit.material_.transparency_)
@@ -1063,9 +1096,9 @@ namespace mirinae {
                 dst_unit.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     dst_vertices,
-                    model_ubuf,
-                    albedo_map->image_view(),
-                    normal_map->image_view(),
+                    mat_res.model_ubuf_,
+                    mat_res.albedo_map_->image_view(),
+                    mat_res.normal_map_->image_view(),
                     texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
@@ -1087,31 +1120,8 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
-                auto albedo_map = tex_man.request(
-                    replace_file_name_ext(
-                        res_id, src_unit.material_.albedo_map_
-                    ),
-                    true
-                );
-                if (!albedo_map)
-                    albedo_map = tex_man.request(
-                        "asset/textures/missing_texture.png", true
-                    );
-
-                auto normal_map = tex_man.request(
-                    replace_file_name_ext(
-                        res_id, src_unit.material_.normal_map_
-                    ),
-                    false
-                );
-                if (!normal_map)
-                    normal_map = tex_man.request(
-                        "asset/textures/null_normal_map.png", false
-                    );
-
-                U_GbufModel model_ubuf;
-                model_ubuf.roughness = src_unit.material_.roughness_;
-                model_ubuf.metallic = src_unit.material_.metallic_;
+                MaterialResources mat_res;
+                mat_res.fetch(res_id, src_unit.material_, tex_man);
 
                 auto& dst_unit =
                     ((src_unit.material_.transparency_)
@@ -1120,9 +1130,9 @@ namespace mirinae {
                 dst_unit.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     dst_vertices,
-                    model_ubuf,
-                    albedo_map->image_view(),
-                    normal_map->image_view(),
+                    mat_res.model_ubuf_,
+                    mat_res.albedo_map_->image_view(),
+                    mat_res.normal_map_->image_view(),
                     texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
@@ -1202,31 +1212,8 @@ namespace mirinae {
                     }
                 }
 
-                auto albedo_map = tex_man.request(
-                    replace_file_name_ext(
-                        res_id, src_unit.material_.albedo_map_
-                    ),
-                    true
-                );
-                if (!albedo_map)
-                    albedo_map = tex_man.request(
-                        "asset/textures/missing_texture.png", true
-                    );
-
-                auto normal_map = tex_man.request(
-                    replace_file_name_ext(
-                        res_id, src_unit.material_.normal_map_
-                    ),
-                    false
-                );
-                if (!normal_map)
-                    normal_map = tex_man.request(
-                        "asset/textures/null_normal_map.png", false
-                    );
-
-                U_GbufModel model_ubuf;
-                model_ubuf.roughness = src_unit.material_.roughness_;
-                model_ubuf.metallic = src_unit.material_.metallic_;
+                MaterialResources mat_res;
+                mat_res.fetch(res_id, src_unit.material_, tex_man);
 
                 auto& dst_unit = src_unit.material_.transparency_
                                      ? output->runits_alpha_.emplace_back()
@@ -1234,9 +1221,9 @@ namespace mirinae {
                 dst_unit.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     dst_vertices,
-                    model_ubuf,
-                    albedo_map->image_view(),
-                    normal_map->image_view(),
+                    mat_res.model_ubuf_,
+                    mat_res.albedo_map_->image_view(),
+                    mat_res.normal_map_->image_view(),
                     texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
