@@ -2,6 +2,8 @@ import os
 import time
 import multiprocessing as mp
 
+import psutil
+
 import utils
 
 
@@ -10,6 +12,7 @@ COMPILER_PATH = os.path.join(VULKAN_SDK_DIR, "Bin", "glslc.exe")
 ROOT_DIR = utils.find_root_dir()
 ASSET_DIR = os.path.join(ROOT_DIR, "asset")
 GLSL_DIR = os.path.join(ROOT_DIR, "asset", "glsl")
+PROC_COUNT = psutil.cpu_count(logical=False) // 2
 
 
 def __gen_glsl_file():
@@ -38,7 +41,7 @@ def main():
     utils.try_mkdir(os.path.join(ASSET_DIR, "spv"))
 
     st = time.time()
-    with mp.Pool(6) as pool:
+    with mp.Pool(PROC_COUNT) as pool:
         for x in pool.imap_unordered(__compile_one, __gen_glsl_file()):
             work_count += 1
             success_count += 1 if x else 0
