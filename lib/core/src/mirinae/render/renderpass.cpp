@@ -364,6 +364,46 @@ namespace {
     };
 
 
+    class SubpassDependencyBuilder {
+
+    public:
+        class View {
+
+        public:
+            View(VkSubpassDependency& dep) : dep_{ dep } {}
+
+        private:
+            VkSubpassDependency& dep_;
+        };
+
+        View& add() {
+            auto& dependency = data_.emplace_back();
+            dependency = {};
+
+            dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+            dependency.dstSubpass = 0;
+            dependency.srcStageMask =
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            dependency.srcAccessMask = 0;
+            dependency.dstStageMask =
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            dependency.dstAccessMask =
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+            return View{ dependency };
+        }
+
+        auto data() const { return data_.data(); }
+        auto size() const { return static_cast<uint32_t>(data_.size()); }
+
+    private:
+        std::vector<VkSubpassDependency> data_;
+    };
+
+
     class ShaderModule {
 
     public:
@@ -665,18 +705,8 @@ namespace { namespace gbuf {
         subpass.pColorAttachments = color_attachment_refs.data();
         subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        SubpassDependencyBuilder dependency;
+        dependency.add();
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -684,8 +714,8 @@ namespace { namespace gbuf {
         create_info.pAttachments = attach.data();
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = 1;
-        create_info.pDependencies = &dependency;
+        create_info.dependencyCount = dependency.size();
+        create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
         if (VK_SUCCESS !=
@@ -982,18 +1012,8 @@ namespace { namespace gbuf_skin {
         subpass.pColorAttachments = color_attachment_refs.data();
         subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        ::SubpassDependencyBuilder dependency;
+        dependency.add();
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1001,8 +1021,8 @@ namespace { namespace gbuf_skin {
         create_info.pAttachments = attach.data();
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = 1;
-        create_info.pDependencies = &dependency;
+        create_info.dependencyCount = dependency.size();
+        create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
         if (VK_SUCCESS !=
@@ -1274,18 +1294,8 @@ namespace { namespace composition {
         subpass.pColorAttachments = color_attachment_refs.data();
         subpass.pDepthStencilAttachment = nullptr;
 
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        ::SubpassDependencyBuilder dependency;
+        dependency.add();
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1293,8 +1303,8 @@ namespace { namespace composition {
         create_info.pAttachments = attachments.data();
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = 1;
-        create_info.pDependencies = &dependency;
+        create_info.dependencyCount = dependency.size();
+        create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
         if (VK_SUCCESS !=
@@ -1551,18 +1561,8 @@ namespace { namespace transparent {
         subpass.pColorAttachments = color_attachment_refs.data();
         subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        ::SubpassDependencyBuilder dependency;
+        dependency.add();
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1570,8 +1570,8 @@ namespace { namespace transparent {
         create_info.pAttachments = attachments.data();
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = 1;
-        create_info.pDependencies = &dependency;
+        create_info.dependencyCount = dependency.size();
+        create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
         if (VK_SUCCESS !=
@@ -1839,18 +1839,8 @@ namespace { namespace transparent_skin {
         subpass.pColorAttachments = color_attachment_refs.data();
         subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        ::SubpassDependencyBuilder dependency;
+        dependency.add();
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1858,8 +1848,8 @@ namespace { namespace transparent_skin {
         create_info.pAttachments = attach.data();
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = 1;
-        create_info.pDependencies = &dependency;
+        create_info.dependencyCount = dependency.size();
+        create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
         if (VK_SUCCESS !=
@@ -2110,18 +2100,8 @@ namespace { namespace fillscreen {
         subpass.pColorAttachments = color_attachment_refs.data();
         subpass.pDepthStencilAttachment = nullptr;
 
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        ::SubpassDependencyBuilder dependency;
+        dependency.add();
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -2129,8 +2109,8 @@ namespace { namespace fillscreen {
         create_info.pAttachments = attachments.data();
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = 1;
-        create_info.pDependencies = &dependency;
+        create_info.dependencyCount = dependency.size();
+        create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
         if (VK_SUCCESS !=
@@ -2376,18 +2356,8 @@ namespace { namespace overlay {
         subpass.pColorAttachments = color_attachment_refs.data();
         subpass.pDepthStencilAttachment = nullptr;
 
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask =
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        ::SubpassDependencyBuilder dependency;
+        dependency.add();
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -2395,8 +2365,8 @@ namespace { namespace overlay {
         create_info.pAttachments = attachments.data();
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = 1;
-        create_info.pDependencies = &dependency;
+        create_info.dependencyCount = dependency.size();
+        create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
         if (VK_SUCCESS !=
