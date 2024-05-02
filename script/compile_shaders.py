@@ -1,40 +1,51 @@
 import os
+import time
+import multiprocessing as mp
 
 import utils
 
 
-def __try_mkdir(path: str):
-    try:
-        os.mkdir(path)
-    except FileExistsError:
-        pass
+VULKAN_SDK_DIR = utils.find_vulkan_sdk();
+COMPILER_PATH = os.path.join(VULKAN_SDK_DIR, "Bin", "glslc.exe")
+ROOT_DIR = utils.find_root_dir()
+ASSET_DIR = os.path.join(ROOT_DIR, "asset")
+GLSL_DIR = os.path.join(ROOT_DIR, "asset", "glsl")
 
 
-def __create_shader_folder(root_dir: str):
-    __try_mkdir(os.path.join(root_dir, "asset"))
-    __try_mkdir(os.path.join(root_dir, "asset", "spv"))
+def __gen_glsl_file():
+    for item_name_ext in os.listdir(GLSL_DIR):
+        item_path = os.path.join(GLSL_DIR, item_name_ext)
+        if os.path.isfile(item_path):
+            yield item_name_ext
+
+
+def __compile_one(glsl_filename_ext):
+    glsl_filename, glsl_ext = os.path.splitext(glsl_filename_ext)
+    glsl_path = os.path.join(GLSL_DIR, glsl_filename_ext)
+    output_filename_ext = "{}_{}.spv".format(glsl_filename, glsl_ext.strip("."))
+    output_path = os.path.join(ROOT_DIR, "asset", "spv", output_filename_ext)
+    cmd = f'{COMPILER_PATH} "{glsl_path}" -o "{output_path}"'
+    return 0 == os.system(cmd)
 
 
 def main():
-    vulkan_sdk_dir = utils.find_vulkan_sdk();
-    root_dir = utils.find_root_dir()
-    glsl_dir = os.path.join(root_dir, "asset", "glsl")
-    compiler_path = os.path.join(vulkan_sdk_dir, "Bin", "glslc.exe")
-    if not os.path.isfile(compiler_path):
-        raise FileNotFoundError("GLSL compiler not found at '{}'".format(compiler_path))
+    if not os.path.isfile(COMPILER_PATH):
+        raise FileNotFoundError("GLSL compiler not found at '{}'".format(COMPILER_PATH))
 
-    for glsl_filename_ext in os.listdir(glsl_dir):
-        glsl_filename, glsl_ext = os.path.splitext(glsl_filename_ext)
-        glsl_path = os.path.join(glsl_dir, glsl_filename_ext)
+    work_count = 0
+    success_count = 0
+    utils.try_mkdir(ASSET_DIR)
+    utils.try_mkdir(os.path.join(ASSET_DIR, "spv"))
 
-        if os.path.isfile(glsl_path):
-            output_filename_ext = "{}_{}.spv".format(glsl_filename, glsl_ext.strip("."))
-            output_path = os.path.join(root_dir, "asset", "spv", output_filename_ext)
-            cmd = f'{compiler_path} "{glsl_path}" -o "{output_path}"'
+    st = time.time()
+    with mp.Pool(6) as pool:
+        for x in pool.imap_unordered(__compile_one, __gen_glsl_file()):
+            work_count += 1
+            success_count += 1 if x else 0
+    et = time.time()
 
-            print(cmd)
-            __create_shader_folder(root_dir)
-            os.system(cmd)
+    print(f"\nCompiled {success_count}/{work_count} shaders successfully.")
+    print(f"Time taken: {et - st:.2f} seconds.")
 
 
 if "__main__" == __name__:

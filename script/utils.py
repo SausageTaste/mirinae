@@ -39,3 +39,10 @@ def find_vulkan_sdk() -> Optional[str]:
             return os.path.normpath(sdk_version_folder)
 
     return None
+
+
+def try_mkdir(path: str):
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
