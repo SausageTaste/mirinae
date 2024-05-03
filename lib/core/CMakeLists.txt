@@ -24,10 +24,10 @@ target_link_libraries(mirinae_core
         spdlog
         lua::lua
         mirinae::platform
+        sungtools::general
     PRIVATE
         VulkanMemoryAllocator
         dalbaragi::daltools
-        sungtools::general
 )
 
 if (WIN32)

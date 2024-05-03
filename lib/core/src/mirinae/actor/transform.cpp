@@ -5,8 +5,6 @@
 namespace mirinae::syst {
 
     bool NoclipController::on_key_event(const key::Event& e) {
-        key_states_.notify(e);
-
         if (e.action_type == key::ActionType::down) {
             if (e.key == key::KeyCode::lbracket)
                 move_speed_ *= 0.5;
@@ -39,17 +37,19 @@ namespace mirinae::syst {
     }
 
     void NoclipController::apply(
-        cpnt::Transform& transform, double delta_time
+        cpnt::Transform& transform,
+        const double delta_time,
+        const key::EventAnalyzer& key_states
     ) {
         {
             glm::dvec3 move_dir{ 0, 0, 0 };
-            if (key_states_.is_pressed(key::KeyCode::w))
+            if (key_states.is_pressed(key::KeyCode::w))
                 move_dir.z -= 1;
-            if (key_states_.is_pressed(key::KeyCode::s))
+            if (key_states.is_pressed(key::KeyCode::s))
                 move_dir.z += 1;
-            if (key_states_.is_pressed(key::KeyCode::a))
+            if (key_states.is_pressed(key::KeyCode::a))
                 move_dir.x -= 1;
-            if (key_states_.is_pressed(key::KeyCode::d))
+            if (key_states.is_pressed(key::KeyCode::d))
                 move_dir.x += 1;
 
             if (glm::length(move_dir) > 0) {
@@ -60,9 +60,9 @@ namespace mirinae::syst {
 
         {
             double vertical = 0;
-            if (key_states_.is_pressed(key::KeyCode::lctrl))
+            if (key_states.is_pressed(key::KeyCode::lctrl))
                 vertical -= 1;
-            if (key_states_.is_pressed(key::KeyCode::space))
+            if (key_states.is_pressed(key::KeyCode::space))
                 vertical += 1;
 
             if (vertical != 0)
@@ -71,9 +71,9 @@ namespace mirinae::syst {
 
         {
             auto rot = cpnt::Transform::Angle::from_zero();
-            if (key_states_.is_pressed(key::KeyCode::left))
+            if (key_states.is_pressed(key::KeyCode::left))
                 rot = rot.add_rad(1);
-            if (key_states_.is_pressed(key::KeyCode::right))
+            if (key_states.is_pressed(key::KeyCode::right))
                 rot = rot.add_rad(-1);
 
             if (0 != rot.rad())
@@ -82,9 +82,9 @@ namespace mirinae::syst {
 
         {
             auto rot = cpnt::Transform::Angle::from_zero();
-            if (key_states_.is_pressed(key::KeyCode::up))
+            if (key_states.is_pressed(key::KeyCode::up))
                 rot = rot.add_rad(1);
-            if (key_states_.is_pressed(key::KeyCode::down))
+            if (key_states.is_pressed(key::KeyCode::down))
                 rot = rot.add_rad(-1);
 
             if (0 != rot.rad()) {
