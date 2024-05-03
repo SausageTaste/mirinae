@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "mirinae/platform/filesys.hpp"
+#include "mirinae/platform/osio.hpp"
 
 
 namespace mirinae {
@@ -15,6 +16,7 @@ namespace mirinae {
         using surface_creator_t = std::function<uint64_t(void*)>;
 
         std::unique_ptr<IFilesys> filesys_;
+        std::unique_ptr<IOsIoFunctions> osio_;
         std::vector<std::string> instance_extensions_;
         surface_creator_t surface_creator_;
         int init_width_ = 0;

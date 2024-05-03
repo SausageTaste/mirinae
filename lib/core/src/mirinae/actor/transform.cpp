@@ -17,7 +17,9 @@ namespace mirinae::syst {
         return true;
     }
 
-    bool NoclipController::on_mouse_event(const mirinae::mouse::Event& e) {
+    bool NoclipController::on_mouse_event(
+        const mouse::Event& e, IOsIoFunctions& osio
+    ) {
         using mirinae::mouse::ActionType;
 
         if (e.action_ == ActionType::down) {
@@ -32,6 +34,7 @@ namespace mirinae::syst {
             last_mouse_pos_ = { e.xpos_, e.ypos_ };
         }
 
+        osio.set_hidden_mouse_mode(owning_mouse_);
         return owning_mouse_;
     }
 
