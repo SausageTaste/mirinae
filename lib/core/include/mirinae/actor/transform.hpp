@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mirinae/platform/osio.hpp"
 #include "mirinae/util/mamath.hpp"
 #include "mirinae/util/uinput.hpp"
 
@@ -17,7 +18,7 @@ namespace mirinae::syst {
 
     public:
         bool on_key_event(const key::Event& e);
-        bool on_mouse_event(const mirinae::mouse::Event& e);
+        bool on_mouse_event(const mouse::Event& e, IOsIoFunctions& osio);
 
         void apply(cpnt::Transform& transform, double delta_time);
 

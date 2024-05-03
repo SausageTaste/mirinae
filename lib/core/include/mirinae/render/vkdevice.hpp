@@ -46,6 +46,7 @@ namespace mirinae {
         // Misc
         VulkanMemoryAllocator mem_alloc();
         IFilesys& filesys();
+        IOsIoFunctions& osio();
 
         class Pimpl;
         std::unique_ptr<Pimpl> pimpl_;

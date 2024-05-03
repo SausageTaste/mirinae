@@ -61,6 +61,9 @@ namespace {
             glfwSetKeyCallback(window_, callback_key);
             glfwSetMouseButtonCallback(window_, callback_mouse);
             glfwSetCursorPosCallback(window_, callback_cursor_pos);
+
+            if (glfwRawMouseMotionSupported())
+                glfwSetInputMode(window_, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
         }
 
         ~GlfwWindow() {
@@ -99,6 +102,14 @@ namespace {
         void notify_should_close() { glfwSetWindowShouldClose(window_, true); }
 
         void set_userdata(void* ptr) { glfwSetWindowUserPointer(window_, ptr); }
+
+        void set_hidden_mouse_mode(bool hidden) {
+            if (hidden) {
+                glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            } else {
+                glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            }
+        }
 
     private:
         static void callback_fbuf_size(
@@ -243,6 +254,21 @@ namespace {
     };
 
 
+    class OsInputOutput : public mirinae::IOsIoFunctions {
+
+    public:
+        OsInputOutput(GlfwWindow& window) : window_(window) {}
+
+        bool set_hidden_mouse_mode(bool hidden) override {
+            window_.set_hidden_mouse_mode(hidden);
+            return true;
+        }
+
+    private:
+        GlfwWindow& window_;
+    };
+
+
     class CombinedEngine {
 
     public:
@@ -251,6 +277,7 @@ namespace {
             create_info.filesys_ = mirinae::create_filesys_std(
                 ::get_windows_documents_path("Mirinapp")
             );
+            create_info.osio_ = std::make_unique<OsInputOutput>(window_);
             create_info.instance_extensions_ = ::get_glfw_extensions();
             create_info.surface_creator_ = [this](void* instance) -> uint64_t {
                 auto surface = this->window_.create_surface(

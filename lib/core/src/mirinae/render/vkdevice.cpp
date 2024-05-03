@@ -769,6 +769,10 @@ namespace mirinae {
         return *pimpl_->create_info_.filesys_;
     }
 
+    IOsIoFunctions& VulkanDevice::osio() {
+        return *pimpl_->create_info_.osio_;
+    }
+
 }
 
 
