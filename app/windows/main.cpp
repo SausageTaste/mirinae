@@ -5,6 +5,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
+#include <sung/general/aabb.hpp>
 
 #include "dump.hpp"
 
@@ -102,6 +103,48 @@ namespace {
         void notify_should_close() { glfwSetWindowShouldClose(window_, true); }
 
         void set_userdata(void* ptr) { glfwSetWindowUserPointer(window_, ptr); }
+
+        bool toggle_fullscreen() {
+            if (auto cur_monitor = glfwGetWindowMonitor(window_)) {
+                glfwSetWindowMonitor(
+                    window_,
+                    nullptr,
+                    last_xpos_,
+                    last_ypos_,
+                    last_width_,
+                    last_height_,
+                    0
+                );
+                return true;
+            } else {
+                glfwGetWindowPos(window_, &last_xpos_, &last_ypos_);
+                glfwGetWindowSize(window_, &last_width_, &last_height_);
+                const sung::AABB2<double> window_aabb(
+                    last_xpos_,
+                    last_xpos_ + last_width_,
+                    last_ypos_,
+                    last_ypos_ + last_height_
+                );
+                const auto selected_monitor = get_closest_monitor(
+                    window_aabb.x_mid(), window_aabb.y_mid()
+                );
+
+                if (nullptr == selected_monitor)
+                    return false;
+
+                const auto mode = glfwGetVideoMode(selected_monitor);
+                glfwSetWindowMonitor(
+                    window_,
+                    selected_monitor,
+                    0,
+                    0,
+                    mode->width,
+                    mode->height,
+                    mode->refreshRate
+                );
+                return true;
+            }
+        }
 
         void set_hidden_mouse_mode(bool hidden) {
             if (hidden) {
@@ -250,7 +293,38 @@ namespace {
             }
         }
 
+        GLFWmonitor* get_closest_monitor(double x, double y) {
+            int count = 0;
+            auto monitors = glfwGetMonitors(&count);
+            GLFWmonitor* closest_monitor = nullptr;
+            double min_distance = (std::numeric_limits<double>::max)();
+
+            for (int i = 0; i < count; ++i) {
+                const auto monitor = monitors[i];
+                const auto mode = glfwGetVideoMode(monitor);
+                int xpos, ypos;
+                glfwGetMonitorPos(monitor, &xpos, &ypos);
+
+                const sung::AABB2<double> monitor_aabb(
+                    xpos, xpos + mode->width, ypos, ypos + mode->height
+                );
+                const auto x_diff = monitor_aabb.x_mid() - x;
+                const auto y_diff = monitor_aabb.y_mid() - y;
+                const auto dist_sqr = x_diff * x_diff + y_diff * y_diff;
+                if (dist_sqr < min_distance) {
+                    min_distance = dist_sqr;
+                    closest_monitor = monitor;
+                }
+            }
+
+            return closest_monitor;
+        }
+
         GLFWwindow* window_ = nullptr;
+        int last_xpos_ = 0;
+        int last_ypos_ = 0;
+        int last_width_ = 0;
+        int last_height_ = 0;
     };
 
 
@@ -258,6 +332,11 @@ namespace {
 
     public:
         OsInputOutput(GlfwWindow& window) : window_(window) {}
+
+        bool toggle_fullscreen() override {
+            window_.toggle_fullscreen();
+            return true;
+        }
 
         bool set_hidden_mouse_mode(bool hidden) override {
             window_.set_hidden_mouse_mode(hidden);

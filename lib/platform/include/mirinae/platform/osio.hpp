@@ -9,6 +9,7 @@ namespace mirinae {
     public:
         virtual ~IOsIoFunctions() = default;
 
+        virtual bool toggle_fullscreen() = 0;
         virtual bool set_hidden_mouse_mode(bool hidden) = 0;
 
     };

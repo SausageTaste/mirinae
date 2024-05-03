@@ -359,7 +359,7 @@ namespace {
 
         void do_frame() override {
             const auto delta_time = fps_timer_.check_get_elapsed_cap_fps();
-            camera_controller_.apply(camera_view_, delta_time);
+            camera_controller_.apply(camera_view_, delta_time, key_states_);
 
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
@@ -1012,6 +1012,16 @@ namespace {
         }
 
         void notify_key_event(const mirinae::key::Event& e) override {
+            key_states_.notify(e);
+
+            if (e.action_type == mirinae::key::ActionType::down) {
+                if (e.key == mirinae::key::KeyCode::enter) {
+                    if (key_states_.is_pressed(mirinae::key::KeyCode::lalt)) {
+                        device_.osio().toggle_fullscreen();
+                    }
+                }
+            }
+
             if (overlay_man_.on_key_event(e))
                 return;
             camera_controller_.on_key_event(e);
@@ -1164,6 +1174,7 @@ namespace {
         mirinae::DesclayoutManager desclayout_;
         mirinae::FbufImageBundle fbuf_images_;
         mirinae::OverlayManager overlay_man_;
+        mirinae::key::EventAnalyzer key_states_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_skin_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
