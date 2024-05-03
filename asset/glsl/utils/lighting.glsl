@@ -11,7 +11,7 @@ float _distribution_GGX(const vec3 N, const vec3 H, const float roughness) {
     float denom = (NdotH2 * (a2 - 1.0) + 1.0);
     denom = PI * denom * denom;
 
-    return nom / max(denom, 0.00001); // prevent divide by zero for roughness=0.0 and NdotH=1.0
+    return nom / max(denom, 0.00001);
 }
 
 
@@ -42,7 +42,7 @@ vec3 _fresnel_Schlick(const float cosTheta, const vec3 F0) {
 
 
 // https://lisyarus.github.io/blog/graphics/2022/07/30/point-light-attenuation.html
-float _calc_attenuation(const float frag_distance, const float max_light_dist) {
+float calc_attenuation(const float frag_distance, const float max_light_dist) {
     const float s = frag_distance / max_light_dist;
 
     if (s > 1.0)
@@ -77,22 +77,19 @@ vec3 calc_pbr_illumination(
     const vec3 F0,
     const vec3 view_direc,
     const vec3 frag_to_light_direc,
-    const float light_distance,
     const vec3 light_color
 ) {
     const vec3 L = frag_to_light_direc;
     const vec3 H = normalize(view_direc + L);
-    const float dist = light_distance;
-    const float attenuation = _calc_attenuation(dist, 15);
-    const vec3 radiance = light_color * attenuation;
+    const vec3 radiance = light_color;
 
     const float NDF = _distribution_GGX(normal, H, roughness);
-    const float G   = _geometry_Smith(normal, view_direc, L, roughness);
-    const vec3 F    = _fresnel_Schlick(clamp(dot(H, view_direc), 0.0, 1.0), F0);
+    const float G = _geometry_Smith(normal, view_direc, L, roughness);
+    const vec3 F = _fresnel_Schlick(clamp(dot(H, view_direc), 0.0, 1.0), F0);
 
-    const vec3 nominator    = NDF * G * F;
+    const vec3 nominator = NDF * G * F;
     const float denominator = 4 * max(dot(normal, view_direc), 0.0) * max(dot(normal, L), 0.0);
-    const vec3 specular = nominator / max(denominator, 0.00001); // prevent divide by zero for NdotV=0.0 or NdotL=0.0
+    const vec3 specular = nominator / max(denominator, 0.00001);
 
     const vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
@@ -100,5 +97,5 @@ vec3 calc_pbr_illumination(
 
     const float NdotL = max(dot(normal, L), 0.0);
 
-    return (kD * albedo / PI + specular) * radiance * NdotL;  // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
+    return (kD * albedo / PI + specular) * radiance * NdotL;
 }

@@ -11,8 +11,15 @@ layout(location = 0) out vec4 out_composition;
 
 layout(set = 0, binding = 0) uniform U_TransparentFrame {
     mat4 proj_inv;
+
+    // Directional light
     vec4 dlight_dir;
     vec4 dlight_color;
+
+    // Spotlight
+    vec4 slight_pos_n_inner_angle;
+    vec4 slight_dir_n_outer_angle;
+    vec4 slight_color_n_max_dist;
 } u_comp_main;
 
 layout(set = 1, binding = 0) uniform U_GbufModel {
@@ -50,23 +57,24 @@ void main() {
             F0,
             -view_direc,
             u_comp_main.dlight_dir.xyz,
-            1,
             u_comp_main.dlight_color.rgb
         );
     }
 
     // Flashlight
     {
-        const vec3 light_pos = vec3(0, 0, 0);
+        const vec3 light_pos = u_comp_main.slight_pos_n_inner_angle.xyz;
         const vec3 to_light = normalize(light_pos - frag_pos);
-        const vec3 light_dir = normalize(vec3(0, 0, -5) - light_pos);
+        const vec3 light_dir = u_comp_main.slight_dir_n_outer_angle.xyz;
 
         const float attenuation = calc_slight_attenuation(
             frag_pos,
-            vec3(0),
+            light_pos,
             light_dir,
-            cos(10 * 3.14159265 / 180),
-            cos(25 * 3.14159265 / 180)
+            u_comp_main.slight_pos_n_inner_angle.w,
+            u_comp_main.slight_dir_n_outer_angle.w
+        ) * calc_attenuation(
+            frag_distance, u_comp_main.slight_color_n_max_dist.w
         );
 
         light += calc_pbr_illumination(
@@ -77,8 +85,7 @@ void main() {
             F0,
             -view_direc,
             to_light,
-            frag_distance,
-            vec3(3)
+            u_comp_main.slight_color_n_max_dist.xyz
         ) * attenuation;
     }
 

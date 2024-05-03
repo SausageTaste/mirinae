@@ -428,7 +428,13 @@ namespace {
                 ubuf_data.set_dlight_dir(
                     view_mat * glm::dvec4{ std::cos(t), 0.5, std::sin(t), 0 }
                 );
-                ubuf_data.set_dlight_color(5, 5, 5);
+                ubuf_data.set_dlight_color(0.2);
+                ubuf_data.set_slight_pos(glm::dvec3{ 0, 0, 0 });
+                ubuf_data.set_slight_dir(glm::dvec3{ 0, 0, -1 });
+                ubuf_data.set_slight_color(10);
+                ubuf_data.set_slight_inner_angle(mirinae::Angle::from_deg(10));
+                ubuf_data.set_slight_outer_angle(mirinae::Angle::from_deg(25));
+                ubuf_data.set_slight_max_dist(5);
 
                 rp_states_composition_.ubufs_
                     .at(framesync_.get_frame_index().get())

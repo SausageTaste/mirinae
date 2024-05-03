@@ -2,12 +2,16 @@
 
 #include <list>
 
-#include "mirinae/util/include_glm.hpp"
+#include <sung/general/angle.hpp>
 
+#include "mirinae/util/include_glm.hpp"
 #include "vkmajorplayers.hpp"
 
 
 namespace mirinae {
+
+    using Angle = sung::TAngle<double>;
+
 
     struct U_GbufModel {
         float roughness;
@@ -38,29 +42,72 @@ namespace mirinae {
         void set_proj_inv(const glm::mat4& proj_inv) { proj_inv_ = proj_inv; }
 
         // It automatically normalize the input vector.
-        void set_dlight_dir(const glm::vec4& dlight_dir) {
-            const auto d = glm::normalize(glm::dvec3(dlight_dir));
+        void set_dlight_dir(const glm::vec3& dlight_dir) {
+            const auto d = glm::normalize(dlight_dir);
             dlight_dir_.x = d.x;
             dlight_dir_.y = d.y;
             dlight_dir_.z = d.z;
         }
-
         void set_dlight_color(float r, float g, float b) {
             dlight_color_.x = r;
             dlight_color_.y = g;
             dlight_color_.z = b;
         }
-
+        void set_dlight_color(float v) {
+            dlight_color_.x = v;
+            dlight_color_.y = v;
+            dlight_color_.z = v;
+        }
         void set_dlight_color(const glm::vec3& dlight_color) {
             dlight_color_.x = dlight_color.r;
             dlight_color_.y = dlight_color.g;
             dlight_color_.z = dlight_color.b;
         }
 
+        void set_slight_pos(const glm::vec3& pos) {
+            slight_pos_n_inner_angle.x = pos.x;
+            slight_pos_n_inner_angle.y = pos.y;
+            slight_pos_n_inner_angle.z = pos.z;
+        }
+        void set_slight_dir(const glm::vec3& dir) {
+            const auto d = glm::normalize(dir);
+            slight_dir_n_outer_angle.x = d.x;
+            slight_dir_n_outer_angle.y = d.y;
+            slight_dir_n_outer_angle.z = d.z;
+        }
+        void set_slight_color(float r, float g, float b) {
+            slight_color_n_max_dist.x = r;
+            slight_color_n_max_dist.y = g;
+            slight_color_n_max_dist.z = b;
+        }
+        void set_slight_color(float v) {
+            slight_color_n_max_dist.x = v;
+            slight_color_n_max_dist.y = v;
+            slight_color_n_max_dist.z = v;
+        }
+        void set_slight_inner_angle(Angle angle) {
+            const auto v = std::cos(angle.rad());
+            slight_pos_n_inner_angle.w = static_cast<float>(v);
+        }
+        void set_slight_outer_angle(Angle angle) {
+            const auto v = std::cos(angle.rad());
+            slight_dir_n_outer_angle.w = static_cast<float>(v);
+        }
+        void set_slight_max_dist(float max_dist) {
+            slight_color_n_max_dist.w = max_dist;
+        }
+
     private:
         glm::mat4 proj_inv_;
+
+        // Directional light
         glm::vec4 dlight_dir_;
         glm::vec4 dlight_color_;
+
+        // Spotlight
+        glm::vec4 slight_pos_n_inner_angle;
+        glm::vec4 slight_dir_n_outer_angle;
+        glm::vec4 slight_color_n_max_dist;
     };
 
 
