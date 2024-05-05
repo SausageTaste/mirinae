@@ -16,8 +16,11 @@ namespace {
         glm::vec3 edge2 = p2.pos_ - p0.pos_;
         glm::vec2 delta_uv1 = p1.texcoord_ - p0.texcoord_;
         glm::vec2 delta_uv2 = p2.texcoord_ - p0.texcoord_;
-        auto f = 1 / (delta_uv1.x * delta_uv2.y - delta_uv2.x * delta_uv1.y);
+        const auto deno = delta_uv1.x * delta_uv2.y - delta_uv2.x * delta_uv1.y;
+        if (0 == deno)
+            return;
 
+        const auto f = 1 / deno;
         glm::vec3 tangent;
         tangent.x = f * (delta_uv2.y * edge1.x - delta_uv1.y * edge2.x);
         tangent.y = f * (delta_uv2.y * edge1.y - delta_uv1.y * edge2.y);
@@ -38,8 +41,11 @@ namespace {
         glm::vec3 edge2 = p2.pos_ - p0.pos_;
         glm::vec2 delta_uv1 = p1.uv_ - p0.uv_;
         glm::vec2 delta_uv2 = p2.uv_ - p0.uv_;
-        auto f = 1 / (delta_uv1.x * delta_uv2.y - delta_uv2.x * delta_uv1.y);
+        const auto deno = delta_uv1.x * delta_uv2.y - delta_uv2.x * delta_uv1.y;
+        if (0 == deno)
+            return;
 
+        const auto f = 1 / deno;
         glm::vec3 tangent;
         tangent.x = f * (delta_uv2.y * edge1.x - delta_uv1.y * edge2.x);
         tangent.y = f * (delta_uv2.y * edge1.y - delta_uv1.y * edge2.y);
