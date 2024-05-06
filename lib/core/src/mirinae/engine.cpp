@@ -1007,7 +1007,7 @@ namespace {
             framesync_.increase_frame_index();
         }
 
-        bool is_ongoing() override { return true; }
+        bool is_ongoing() override { return !quit_; }
 
         void notify_window_resize(uint32_t width, uint32_t height) override {
             fbuf_width_ = width;
@@ -1026,6 +1026,9 @@ namespace {
                 }
                 else if (e.key == mirinae::key::KeyCode::f) {
                     flashlight_on_ = !flashlight_on_;
+                }
+                else if (e.key == mirinae::key::KeyCode::escape) {
+                    quit_ = true;
                 }
             }
 
@@ -1207,6 +1210,7 @@ namespace {
         uint32_t fbuf_height_ = 0;
         bool fbuf_resized_ = false;
         bool flashlight_on_ = false;
+        bool quit_ = false;
 
         mirinae::ScriptEngine script_;
     };
