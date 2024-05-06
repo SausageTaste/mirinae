@@ -358,6 +358,7 @@ namespace {
         }
 
         void do_frame() override {
+            const auto t = sung::CalenderTime::from_now().to_total_seconds();
             const auto delta_time = fps_timer_.check_get_elapsed_cap_fps();
             camera_controller_.apply(camera_view_, delta_time, key_states_);
 
@@ -419,19 +420,16 @@ namespace {
 
             // Update ubuf: U_CompositionMain
             {
-                const auto t = sung::CalenderTime::from_now().to_total_seconds(
-                               ) *
-                               0.2;
-
                 mirinae::U_CompositionMain ubuf_data;
                 ubuf_data.set_proj_inv(glm::inverse(proj_mat));
                 ubuf_data.set_dlight_dir(
-                    view_mat * glm::dvec4{ std::cos(t), 0.5, std::sin(t), 0 }
+                    view_mat *
+                    glm::dvec4{ std::cos(t * 0.2), 1, std::sin(t * 0.2), 0 }
                 );
-                ubuf_data.set_dlight_color(0.2);
+                ubuf_data.set_dlight_color(5);
                 ubuf_data.set_slight_pos(glm::dvec3{ 0, 0, 0 });
                 ubuf_data.set_slight_dir(glm::dvec3{ 0, 0, -1 });
-                ubuf_data.set_slight_color(10);
+                ubuf_data.set_slight_color(flashlight_on_ ? 3.f : 0.f);
                 ubuf_data.set_slight_inner_angle(mirinae::Angle::from_deg(10));
                 ubuf_data.set_slight_outer_angle(mirinae::Angle::from_deg(25));
                 ubuf_data.set_slight_max_dist(5);
@@ -1026,6 +1024,9 @@ namespace {
                         device_.osio().toggle_fullscreen();
                     }
                 }
+                else if (e.key == mirinae::key::KeyCode::f) {
+                    flashlight_on_ = !flashlight_on_;
+                }
             }
 
             if (overlay_man_.on_key_event(e))
@@ -1205,6 +1206,7 @@ namespace {
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;
         bool fbuf_resized_ = false;
+        bool flashlight_on_ = false;
 
         mirinae::ScriptEngine script_;
     };
