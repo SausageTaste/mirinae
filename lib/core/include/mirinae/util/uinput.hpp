@@ -92,7 +92,7 @@ namespace mirinae::mouse {
 
     using Clock_t = std::chrono::steady_clock;
 
-    enum class ActionType { move, down, up };
+    enum class ActionType { move, down, up, mwheel_up, mwheel_down };
 
     enum class ButtonCode {
         left,
