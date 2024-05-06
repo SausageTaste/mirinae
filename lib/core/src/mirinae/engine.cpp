@@ -1023,11 +1023,9 @@ namespace {
                     if (key_states_.is_pressed(mirinae::key::KeyCode::lalt)) {
                         device_.osio().toggle_fullscreen();
                     }
-                }
-                else if (e.key == mirinae::key::KeyCode::f) {
+                } else if (e.key == mirinae::key::KeyCode::f) {
                     flashlight_on_ = !flashlight_on_;
-                }
-                else if (e.key == mirinae::key::KeyCode::escape) {
+                } else if (e.key == mirinae::key::KeyCode::escape) {
                     quit_ = true;
                 }
             }
@@ -1040,7 +1038,14 @@ namespace {
         void notify_mouse_event(const mirinae::mouse::Event& e) override {
             if (overlay_man_.on_mouse_event(e))
                 return;
-            camera_controller_.on_mouse_event(e, device_.osio());
+            if (camera_controller_.on_mouse_event(e, device_.osio()))
+                return;
+
+            constexpr auto FACTOR = 1.05;
+            if (e.action_ == mirinae::mouse::ActionType::mwheel_up)
+                camera_proj_.multiply_fov(1.0 / FACTOR);
+            else if (e.action_ == mirinae::mouse::ActionType::mwheel_down)
+                camera_proj_.multiply_fov(FACTOR);
         }
 
     private:

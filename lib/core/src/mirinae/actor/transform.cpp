@@ -1,5 +1,7 @@
 #include "mirinae/actor/transform.hpp"
 
+#include <spdlog/spdlog.h>
+
 
 // NoclipController
 namespace mirinae::syst {
@@ -20,19 +22,27 @@ namespace mirinae::syst {
     ) {
         using mirinae::mouse::ActionType;
 
-        if (e.action_ == ActionType::down) {
-            owning_mouse_ = true;
+        if (e.action_ == ActionType::move && owning_mouse_) {
             last_mouse_pos_ = { e.xpos_, e.ypos_ };
-            last_applied_mouse_pos_ = last_mouse_pos_;
-        } else if (e.action_ == ActionType::up) {
-            owning_mouse_ = false;
-            last_mouse_pos_ = { 0, 0 };
-            last_applied_mouse_pos_ = last_mouse_pos_;
-        } else if (e.action_ == ActionType::move && owning_mouse_) {
-            last_mouse_pos_ = { e.xpos_, e.ypos_ };
+            return true;
         }
 
-        osio.set_hidden_mouse_mode(owning_mouse_);
+        if (e.button_ == mouse::ButtonCode::right) {
+            if (e.action_ == ActionType::down) {
+                owning_mouse_ = true;
+                last_mouse_pos_ = { e.xpos_, e.ypos_ };
+                last_applied_mouse_pos_ = last_mouse_pos_;
+                osio.set_hidden_mouse_mode(true);
+                return true;
+            } else if (e.action_ == ActionType::up) {
+                owning_mouse_ = false;
+                last_mouse_pos_ = { 0, 0 };
+                last_applied_mouse_pos_ = last_mouse_pos_;
+                osio.set_hidden_mouse_mode(false);
+                return true;
+            }
+        }
+
         return owning_mouse_;
     }
 

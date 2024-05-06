@@ -62,6 +62,7 @@ namespace {
             glfwSetKeyCallback(window_, callback_key);
             glfwSetMouseButtonCallback(window_, callback_mouse);
             glfwSetCursorPosCallback(window_, callback_cursor_pos);
+            glfwSetScrollCallback(window_, callback_scroll);
 
             if (glfwRawMouseMotionSupported())
                 glfwSetInputMode(window_, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -240,6 +241,24 @@ namespace {
             e.action_ = mirinae::mouse::ActionType::move;
             e.xpos_ = xpos;
             e.ypos_ = ypos;
+
+            engine->notify_mouse_event(e);
+        }
+
+        static void callback_scroll(
+            GLFWwindow* window, double xoffset, double yoffset
+        ) {
+            auto ptr = glfwGetWindowUserPointer(window);
+            if (nullptr == ptr)
+                return;
+            auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
+
+            mirinae::mouse::Event e;
+            e.action_ = (yoffset > 0) ?
+                mirinae::mouse::ActionType::mwheel_up :
+                mirinae::mouse::ActionType::mwheel_down;
+            e.button_ = mirinae::mouse::ButtonCode::eoe;
+            glfwGetCursorPos(window, &e.xpos_, &e.ypos_);
 
             engine->notify_mouse_event(e);
         }
