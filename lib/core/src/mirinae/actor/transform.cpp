@@ -108,7 +108,7 @@ namespace mirinae::syst {
             const auto rot = last_applied_mouse_pos_.x - last_mouse_pos_.x;
             if (0 != rot)
                 transform.rotate(
-                    cpnt::Transform::Angle::from_rad(rot * delta_time * 0.3),
+                    cpnt::Transform::Angle::from_rad(rot * delta_time * 0.1),
                     glm::vec3{ 0, 1, 0 }
                 );
         }
@@ -119,7 +119,7 @@ namespace mirinae::syst {
                 const auto right = glm::mat3_cast(transform.rot_) *
                                    glm::vec3{ 1, 0, 0 };
                 transform.rotate(
-                    cpnt::Transform::Angle::from_rad(rot * delta_time * 0.3),
+                    cpnt::Transform::Angle::from_rad(rot * delta_time * 0.1),
                     right
                 );
             }
