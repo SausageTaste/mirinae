@@ -96,8 +96,8 @@ namespace mirinae {
         std::unique_ptr<IRenderPassBundle> shadowmap_;
         std::unique_ptr<IRenderPassBundle> shadowmap_skin_;
         std::unique_ptr<IRenderPassBundle> composition_;
-        std::unique_ptr<IRenderPassBundle> transparent_;
-        std::unique_ptr<IRenderPassBundle> transparent_skin_;
+        std::unique_ptr<IRenderPassBundle> transp_;
+        std::unique_ptr<IRenderPassBundle> transp_skin_;
         std::unique_ptr<IRenderPassBundle> fillscreen_;
         std::unique_ptr<IRenderPassBundle> overlay_;
     };

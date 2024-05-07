@@ -2012,13 +2012,13 @@ namespace { namespace composition {
 }}  // namespace ::composition
 
 
-// transparent
-namespace { namespace transparent {
+// transp
+namespace { namespace transp {
 
     VkDescriptorSetLayout create_desclayout_frame(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "transparent:frame" };
+        DescLayoutBuilder builder{ "transp:frame" };
         builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompositionMain
         return builder.build_in_place(desclayouts, device.logi_device());
     }
@@ -2126,8 +2126,8 @@ namespace { namespace transparent {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/transparent_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/transparent_frag.spv", device };
+        ::ShaderModule vert_shader{ "asset/spv/transp_vert.spv", device };
+        ::ShaderModule frag_shader{ "asset/spv/transp_frag.spv", device };
         const auto shader_stages = ::create_info_shader_stages_pair(
             vert_shader, frag_shader
         );
@@ -2298,16 +2298,16 @@ namespace { namespace transparent {
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
     };
 
-}}  // namespace ::transparent
+}}  // namespace ::transp
 
 
-// transparent skin
-namespace { namespace transparent_skin {
+// transp skin
+namespace { namespace transp_skin {
 
     VkDescriptorSetLayout create_desclayout_frame(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("transparent:frame");
+        return desclayouts.get("transp:frame");
     }
 
     VkDescriptorSetLayout create_desclayout_model(
@@ -2413,9 +2413,9 @@ namespace { namespace transparent_skin {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/transparent_skin_vert.spv",
+        ::ShaderModule vert_shader{ "asset/spv/transp_skin_vert.spv",
                                     device };
-        ::ShaderModule frag_shader{ "asset/spv/transparent_frag.spv", device };
+        ::ShaderModule frag_shader{ "asset/spv/transp_frag.spv", device };
         const auto shader_stages = ::create_info_shader_stages_pair(
             vert_shader, frag_shader
         );
@@ -2587,7 +2587,7 @@ namespace { namespace transparent_skin {
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
     };
 
-}}  // namespace ::transparent_skin
+}}  // namespace ::transp_skin
 
 
 // fillscreen
@@ -3128,11 +3128,11 @@ namespace mirinae {
         composition_ = std::make_unique<::composition::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        transparent_ = std::make_unique<::transparent::RenderPassBundle>(
+        transp_ = std::make_unique<::transp::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        transparent_skin_ =
-            std::make_unique<::transparent_skin::RenderPassBundle>(
+        transp_skin_ =
+            std::make_unique<::transp_skin::RenderPassBundle>(
                 width, height, fbuf_bundle, desclayouts, swapchain, device
             );
         fillscreen_ = std::make_unique<::fillscreen::RenderPassBundle>(
@@ -3149,8 +3149,8 @@ namespace mirinae {
         shadowmap_.reset();
         shadowmap_skin_.reset();
         composition_.reset();
-        transparent_.reset();
-        transparent_skin_.reset();
+        transp_.reset();
+        transp_skin_.reset();
         fillscreen_.reset();
         overlay_.reset();
     }

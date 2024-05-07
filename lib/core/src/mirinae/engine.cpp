@@ -157,7 +157,7 @@ namespace {
     };
 
 
-    class RpStatesTransparent {
+    class RpStatesTransp {
 
     public:
         void init(
@@ -167,14 +167,14 @@ namespace {
             desc_pool_.init(10, device.logi_device());
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayouts.get("transparent:frame"),
+                desclayouts.get("transp:frame"),
                 device.logi_device()
             );
 
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& ubuf = ubufs_.emplace_back();
                 ubuf.init_ubuf(
-                    sizeof(mirinae::U_TransparentFrame), device.mem_alloc()
+                    sizeof(mirinae::U_TranspFrame), device.mem_alloc()
                 );
 
                 mirinae::DescWriteInfoBuilder builder;
@@ -440,7 +440,7 @@ namespace {
                         &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
                     );
 
-                rp_states_transparent_.ubufs_
+                rp_states_transp_.ubufs_
                     .at(framesync_.get_frame_index().get())
                     .set_data(
                         &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
@@ -851,9 +851,9 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
-            // Shader: Transparent
+            // Shader: Transp
             {
-                auto& rp = *rp_.transparent_;
+                auto& rp = *rp_.transp_;
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -885,7 +885,7 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                auto desc_frame = rp_states_transparent_.desc_sets_.at(
+                auto desc_frame = rp_states_transp_.desc_sets_.at(
                     framesync_.get_frame_index().get()
                 );
                 vkCmdBindDescriptorSets(
@@ -941,9 +941,9 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
-            // Shader: Transparent skin
+            // Shader: Transp skin
             {
-                auto& rp = *rp_.transparent_skin_;
+                auto& rp = *rp_.transp_skin_;
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -975,7 +975,7 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                auto desc_frame = rp_states_transparent_.desc_sets_.at(
+                auto desc_frame = rp_states_transp_.desc_sets_.at(
                     framesync_.get_frame_index().get()
                 );
                 vkCmdBindDescriptorSets(
@@ -1248,7 +1248,7 @@ namespace {
             rp_states_composition_.init(
                 desclayout_, fbuf_images_, texture_sampler_.get(), device_
             );
-            rp_states_transparent_.init(desclayout_, device_);
+            rp_states_transp_.init(desclayout_, device_);
             rp_states_fillscreen_.init(
                 desclayout_, fbuf_images_, texture_sampler_.get(), device_
             );
@@ -1293,7 +1293,7 @@ namespace {
             shadow_map_.reset();
 
             rp_states_fillscreen_.destroy(device_);
-            rp_states_transparent_.destroy(device_);
+            rp_states_transp_.destroy(device_);
             rp_states_composition_.destroy(device_);
 
             rp_.destroy();
@@ -1348,7 +1348,7 @@ namespace {
         mirinae::key::EventAnalyzer key_states_;
         mirinae::RenderPassPackage rp_;
         ::RpStatesComposition rp_states_composition_;
-        ::RpStatesTransparent rp_states_transparent_;
+        ::RpStatesTransp rp_states_transp_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
