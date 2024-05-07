@@ -3102,9 +3102,10 @@ namespace { namespace overlay {
 }}  // namespace ::overlay
 
 
+// RenderPassPackage
 namespace mirinae {
 
-    std::unique_ptr<IRenderPassBundle> create_gbuf(
+    void RenderPassPackage::init(
         uint32_t width,
         uint32_t height,
         FbufImageBundle& fbuf_bundle,
@@ -3112,113 +3113,46 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        return std::make_unique<::gbuf::RenderPassBundle>(
+        gbuf_ = std::make_unique<::gbuf::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        gbuf_skin_ = std::make_unique<::gbuf_skin::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        shadowmap_ = std::make_unique<::shadowmap::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        shadowmap_skin_ = std::make_unique<::shadowmap_skin::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        composition_ = std::make_unique<::composition::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        transparent_ = std::make_unique<::transparent::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        transparent_skin_ =
+            std::make_unique<::transparent_skin::RenderPassBundle>(
+                width, height, fbuf_bundle, desclayouts, swapchain, device
+            );
+        fillscreen_ = std::make_unique<::fillscreen::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        overlay_ = std::make_unique<::overlay::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
     }
 
-    std::unique_ptr<IRenderPassBundle> create_gbuf_skin(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    ) {
-        return std::make_unique<::gbuf_skin::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-    }
-
-    std::unique_ptr<IRenderPassBundle> create_shadowmap(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    ) {
-        return std::make_unique<::shadowmap::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-    }
-
-    std::unique_ptr<IRenderPassBundle> create_shadowmap_skin(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    ) {
-        return std::make_unique<::shadowmap_skin::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-    }
-
-    std::unique_ptr<IRenderPassBundle> create_composition(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    ) {
-        return std::make_unique<::composition::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-    }
-
-    std::unique_ptr<IRenderPassBundle> create_transparent(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    ) {
-        return std::make_unique<::transparent::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-    }
-
-    std::unique_ptr<IRenderPassBundle> create_transparent_skin(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    ) {
-        return std::make_unique<::transparent_skin::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-    }
-
-    std::unique_ptr<IRenderPassBundle> create_fillscreen(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    ) {
-        return std::make_unique<::fillscreen::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-    }
-
-    std::unique_ptr<IRenderPassBundle> create_overlay(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    ) {
-        return std::make_unique<::overlay::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
+    void RenderPassPackage::destroy() {
+        gbuf_.reset();
+        gbuf_skin_.reset();
+        shadowmap_.reset();
+        shadowmap_skin_.reset();
+        composition_.reset();
+        transparent_.reset();
+        transparent_skin_.reset();
+        fillscreen_.reset();
+        overlay_.reset();
     }
 
 }  // namespace mirinae

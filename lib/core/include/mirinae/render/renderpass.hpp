@@ -77,85 +77,29 @@ namespace mirinae {
     };
 
 
-    std::unique_ptr<IRenderPassBundle> create_gbuf(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
+    class RenderPassPackage {
 
-    std::unique_ptr<IRenderPassBundle> create_gbuf_skin(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
+    public:
+        void init(
+            uint32_t width,
+            uint32_t height,
+            FbufImageBundle& fbuf_bundle,
+            DesclayoutManager& desclayouts,
+            Swapchain& swapchain,
+            VulkanDevice& device
+        );
 
-    std::unique_ptr<IRenderPassBundle> create_shadowmap(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
+        void destroy();
 
-    std::unique_ptr<IRenderPassBundle> create_shadowmap_skin(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
-
-    std::unique_ptr<IRenderPassBundle> create_composition(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
-
-    std::unique_ptr<IRenderPassBundle> create_transparent(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
-
-    std::unique_ptr<IRenderPassBundle> create_transparent_skin(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
-
-    std::unique_ptr<IRenderPassBundle> create_fillscreen(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
-
-    std::unique_ptr<IRenderPassBundle> create_overlay(
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
+        std::unique_ptr<IRenderPassBundle> gbuf_;
+        std::unique_ptr<IRenderPassBundle> gbuf_skin_;
+        std::unique_ptr<IRenderPassBundle> shadowmap_;
+        std::unique_ptr<IRenderPassBundle> shadowmap_skin_;
+        std::unique_ptr<IRenderPassBundle> composition_;
+        std::unique_ptr<IRenderPassBundle> transparent_;
+        std::unique_ptr<IRenderPassBundle> transparent_skin_;
+        std::unique_ptr<IRenderPassBundle> fillscreen_;
+        std::unique_ptr<IRenderPassBundle> overlay_;
+    };
 
 }  // namespace mirinae

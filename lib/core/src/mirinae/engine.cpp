@@ -473,7 +473,7 @@ namespace {
 
             // Shader: Shadowmap
             {
-                auto& rp = *rp_shadowmap_;
+                auto& rp = *rp_.shadowmap_;
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -561,7 +561,7 @@ namespace {
 
             // Shader: Shadowmap Skin
             {
-                auto& rp = *rp_shadowmap_skin_;
+                auto& rp = *rp_.shadowmap_skin_;
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -649,7 +649,7 @@ namespace {
 
             // Shader: Gbuf
             {
-                auto& rp = *rp_gbuf_;
+                auto& rp = *rp_.gbuf_;
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -725,7 +725,7 @@ namespace {
 
             // Shader: Gbuf skin
             {
-                auto& rp = *rp_gbuf_skin_;
+                auto& rp = *rp_.gbuf_skin_;
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -801,7 +801,7 @@ namespace {
 
             // Shader: Composition
             {
-                auto& rp = *rp_composition_;
+                auto& rp = *rp_.composition_;
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = rp.renderpass();
@@ -853,7 +853,7 @@ namespace {
 
             // Shader: Transparent
             {
-                auto& rp = *rp_transparent_;
+                auto& rp = *rp_.transparent_;
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -943,7 +943,7 @@ namespace {
 
             // Shader: Transparent skin
             {
-                auto& rp = *rp_transparent_skin_;
+                auto& rp = *rp_.transparent_skin_;
 
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1033,7 +1033,7 @@ namespace {
 
             // Shader: Fillscreen
             {
-                auto& rp = *rp_fillscreen_;
+                auto& rp = *rp_.fillscreen_;
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = rp.renderpass();
@@ -1085,7 +1085,7 @@ namespace {
 
             // Shader: Overlay
             {
-                auto& rp = *rp_overlay_;
+                auto& rp = *rp_.overlay_;
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = rp.renderpass();
@@ -1236,73 +1236,9 @@ namespace {
             );
             fbuf_images_.init(gbuf_width, gbuf_height, tex_man_);
 
-            rp_gbuf_ = mirinae::create_gbuf(
+            rp_.init(
                 fbuf_images_.width(),
                 fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_gbuf_skin_ = mirinae::create_gbuf_skin(
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_shadowmap_ = mirinae::create_shadowmap(
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_shadowmap_skin_ = mirinae::create_shadowmap_skin(
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_composition_ = mirinae::create_composition(
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_transparent_ = mirinae::create_transparent(
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_transparent_skin_ = mirinae::create_transparent_skin(
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_fillscreen_ = mirinae::create_fillscreen(
-                swapchain_.width(),
-                swapchain_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_overlay_ = mirinae::create_overlay(
-                swapchain_.width(),
-                swapchain_.height(),
                 fbuf_images_,
                 desclayout_,
                 swapchain_,
@@ -1327,7 +1263,7 @@ namespace {
                 VkFramebufferCreateInfo framebufferInfo{};
                 framebufferInfo.sType =
                     VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                framebufferInfo.renderPass = rp_shadowmap_->renderpass();
+                framebufferInfo.renderPass = rp_.shadowmap_->renderpass();
                 framebufferInfo.attachmentCount = static_cast<uint32_t>(
                     attachments.size()
                 );
@@ -1360,16 +1296,7 @@ namespace {
             rp_states_transparent_.destroy(device_);
             rp_states_composition_.destroy(device_);
 
-            rp_overlay_.reset();
-            rp_fillscreen_.reset();
-            rp_transparent_skin_.reset();
-            rp_transparent_.reset();
-            rp_composition_.reset();
-            rp_shadowmap_skin_.reset();
-            rp_shadowmap_.reset();
-            rp_gbuf_skin_.reset();
-            rp_gbuf_.reset();
-
+            rp_.destroy();
             swapchain_.destroy(device_.logi_device());
         }
 
@@ -1419,15 +1346,7 @@ namespace {
         mirinae::FbufImageBundle fbuf_images_;
         mirinae::OverlayManager overlay_man_;
         mirinae::key::EventAnalyzer key_states_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_skin_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_shadowmap_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_shadowmap_skin_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_transparent_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_transparent_skin_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_fillscreen_;
-        std::unique_ptr<mirinae::IRenderPassBundle> rp_overlay_;
+        mirinae::RenderPassPackage rp_;
         ::RpStatesComposition rp_states_composition_;
         ::RpStatesTransparent rp_states_transparent_;
         ::RpStatesFillscreen rp_states_fillscreen_;
