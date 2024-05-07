@@ -36,6 +36,11 @@ namespace mirinae {
     static_assert(sizeof(U_GbufActorSkinned) < 65536);
 
 
+    struct U_ShadowPushConst {
+        glm::mat4 pvm_;
+    };
+
+
     class U_CompositionMain {
 
     public:

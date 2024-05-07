@@ -471,6 +471,94 @@ namespace {
                 clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
             }
 
+            // Shader: Shadowmap
+            {
+                auto& rp = *rp_shadowmap_;
+
+                VkRenderPassBeginInfo renderPassInfo{};
+                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderPassInfo.renderPass = rp.renderpass();
+                renderPassInfo.framebuffer = shadow_map_fbuf_;
+                renderPassInfo.renderArea.offset = { 0, 0 };
+                renderPassInfo.renderArea.extent = { 512, 512 };
+                renderPassInfo.clearValueCount = rp.clear_value_count();
+                renderPassInfo.pClearValues = rp.clear_values();
+
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = 512;
+                viewport.height = 512;
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = fbuf_images_.extent();
+                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                for (auto& pair : draw_sheet_.ren_pairs_) {
+                    for (auto& unit : pair.model_->render_units_) {
+                        auto unit_desc = unit.get_desc_set(
+                            framesync_.get_frame_index().get()
+                        );
+                        unit.record_bind_vert_buf(cur_cmd_buf);
+
+                        for (auto& actor : pair.actors_) {
+                            auto actor_desc = actor->get_desc_set(
+                                framesync_.get_frame_index().get()
+                            );
+                            vkCmdBindDescriptorSets(
+                                cur_cmd_buf,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                rp.pipeline_layout(),
+                                0,
+                                1,
+                                &actor_desc,
+                                0,
+                                nullptr
+                            );
+
+                            const auto m = actor->transform_.make_model_mat();
+                            const auto v = glm::lookAt<double>(
+                                camera_view_.pos_,
+                                camera_view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
+                                glm::dvec3{ 0, 1, 0 }
+                            );
+                            auto p = glm::ortho<double>(
+                                -10, 10, -10, 10, -10, 10
+                            );
+                            p[1][1] *= -1;
+
+                            mirinae::U_ShadowPushConst push_const;
+                            push_const.pvm_ = p * v * m;
+                            vkCmdPushConstants(
+                                cur_cmd_buf,
+                                rp.pipeline_layout(),
+                                VK_SHADER_STAGE_VERTEX_BIT,
+                                0,
+                                sizeof(push_const),
+                                &push_const
+                            );
+
+                            vkCmdDrawIndexed(
+                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                            );
+                        }
+                    }
+                }
+
+                vkCmdEndRenderPass(cur_cmd_buf);
+            }
+
             // Shader: Gbuf
             {
                 auto& rp = *rp_gbuf_;
@@ -1076,6 +1164,14 @@ namespace {
                 swapchain_,
                 device_
             );
+            rp_shadowmap_ = mirinae::create_shadowmap(
+                fbuf_images_.width(),
+                fbuf_images_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
             rp_composition_ = mirinae::create_composition(
                 fbuf_images_.width(),
                 fbuf_images_.height(),
@@ -1124,10 +1220,45 @@ namespace {
             rp_states_fillscreen_.init(
                 desclayout_, fbuf_images_, texture_sampler_.get(), device_
             );
+
+            {
+                shadow_map_ = tex_man_.create_depth(512, 512);
+
+                const std::vector<VkImageView> attachments{
+                    shadow_map_->image_view()
+                };
+
+                VkFramebufferCreateInfo framebufferInfo{};
+                framebufferInfo.sType =
+                    VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                framebufferInfo.renderPass = rp_shadowmap_->renderpass();
+                framebufferInfo.attachmentCount = static_cast<uint32_t>(
+                    attachments.size()
+                );
+                framebufferInfo.pAttachments = attachments.data();
+                framebufferInfo.width = shadow_map_->width();
+                framebufferInfo.height = shadow_map_->height();
+                framebufferInfo.layers = 1;
+
+                const auto result = vkCreateFramebuffer(
+                    device_.logi_device(),
+                    &framebufferInfo,
+                    nullptr,
+                    &shadow_map_fbuf_
+                );
+                if (VK_SUCCESS != result) {
+                    throw std::runtime_error("failed to create framebuffer!");
+                }
+            }
         }
 
         void destroy_swapchain_and_relatives() {
             device_.wait_idle();
+
+            vkDestroyFramebuffer(
+                device_.logi_device(), shadow_map_fbuf_, nullptr
+            );
+            shadow_map_.reset();
 
             rp_states_fillscreen_.destroy(device_);
             rp_states_transparent_.destroy(device_);
@@ -1138,6 +1269,7 @@ namespace {
             rp_transparent_skin_.reset();
             rp_transparent_.reset();
             rp_composition_.reset();
+            rp_shadowmap_.reset();
             rp_gbuf_skin_.reset();
             rp_gbuf_.reset();
 
@@ -1192,6 +1324,7 @@ namespace {
         mirinae::key::EventAnalyzer key_states_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_skin_;
+        std::unique_ptr<mirinae::IRenderPassBundle> rp_shadowmap_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_transparent_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_transparent_skin_;
@@ -1210,6 +1343,9 @@ namespace {
         mirinae::PerspectiveCamera<double> camera_proj_;
         mirinae::syst::NoclipController camera_controller_;
         dal::TimerThatCaps fps_timer_;
+
+        std::unique_ptr<mirinae::ITexture> shadow_map_;
+        VkFramebuffer shadow_map_fbuf_;
 
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;
