@@ -534,7 +534,95 @@ namespace {
                                 glm::dvec3{ 0, 1, 0 }
                             );
                             auto p = glm::ortho<double>(
-                                -10, 10, -10, 10, -10, 10
+                                -1, 1, -1, 1, -10, 10
+                            );
+                            p[1][1] *= -1;
+
+                            mirinae::U_ShadowPushConst push_const;
+                            push_const.pvm_ = p * v * m;
+                            vkCmdPushConstants(
+                                cur_cmd_buf,
+                                rp.pipeline_layout(),
+                                VK_SHADER_STAGE_VERTEX_BIT,
+                                0,
+                                sizeof(push_const),
+                                &push_const
+                            );
+
+                            vkCmdDrawIndexed(
+                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                            );
+                        }
+                    }
+                }
+
+                vkCmdEndRenderPass(cur_cmd_buf);
+            }
+
+            // Shader: Shadowmap Skin
+            {
+                auto& rp = *rp_shadowmap_skin_;
+
+                VkRenderPassBeginInfo renderPassInfo{};
+                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderPassInfo.renderPass = rp.renderpass();
+                renderPassInfo.framebuffer = shadow_map_fbuf_;
+                renderPassInfo.renderArea.offset = { 0, 0 };
+                renderPassInfo.renderArea.extent = { 512, 512 };
+                renderPassInfo.clearValueCount = rp.clear_value_count();
+                renderPassInfo.pClearValues = rp.clear_values();
+
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = 512;
+                viewport.height = 512;
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = fbuf_images_.extent();
+                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                for (auto& pair : draw_sheet_.skinned_pairs_) {
+                    for (auto& unit : pair.model_->runits_) {
+                        auto unit_desc = unit.get_desc_set(
+                            framesync_.get_frame_index().get()
+                        );
+                        unit.record_bind_vert_buf(cur_cmd_buf);
+
+                        for (auto& actor : pair.actors_) {
+                            auto actor_desc = actor->get_desc_set(
+                                framesync_.get_frame_index().get()
+                            );
+                            vkCmdBindDescriptorSets(
+                                cur_cmd_buf,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                rp.pipeline_layout(),
+                                0,
+                                1,
+                                &actor_desc,
+                                0,
+                                nullptr
+                            );
+
+                            const auto m = actor->transform_.make_model_mat();
+                            const auto v = glm::lookAt<double>(
+                                camera_view_.pos_,
+                                camera_view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
+                                glm::dvec3{ 0, 1, 0 }
+                            );
+                            auto p = glm::ortho<double>(
+                                -1, 1, -1, 1, -10, 10
                             );
                             p[1][1] *= -1;
 
@@ -1172,6 +1260,14 @@ namespace {
                 swapchain_,
                 device_
             );
+            rp_shadowmap_skin_ = mirinae::create_shadowmap_skin(
+                fbuf_images_.width(),
+                fbuf_images_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
             rp_composition_ = mirinae::create_composition(
                 fbuf_images_.width(),
                 fbuf_images_.height(),
@@ -1269,6 +1365,7 @@ namespace {
             rp_transparent_skin_.reset();
             rp_transparent_.reset();
             rp_composition_.reset();
+            rp_shadowmap_skin_.reset();
             rp_shadowmap_.reset();
             rp_gbuf_skin_.reset();
             rp_gbuf_.reset();
@@ -1325,6 +1422,7 @@ namespace {
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_gbuf_skin_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_shadowmap_;
+        std::unique_ptr<mirinae::IRenderPassBundle> rp_shadowmap_skin_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_composition_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_transparent_;
         std::unique_ptr<mirinae::IRenderPassBundle> rp_transparent_skin_;
