@@ -95,7 +95,7 @@ namespace {
     };
 
 
-    class RpStatesComposition {
+    class RpStatesCompo {
 
     public:
         void init(
@@ -107,14 +107,14 @@ namespace {
             desc_pool_.init(10, device.logi_device());
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayouts.get("composition:main"),
+                desclayouts.get("compo:main"),
                 device.logi_device()
             );
 
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& ubuf = ubufs_.emplace_back();
                 ubuf.init_ubuf(
-                    sizeof(mirinae::U_CompositionMain), device.mem_alloc()
+                    sizeof(mirinae::U_CompoMain), device.mem_alloc()
                 );
 
                 mirinae::DescWriteInfoBuilder builder;
@@ -216,7 +216,7 @@ namespace {
                 mirinae::DescWriteInfoBuilder builder;
                 builder
                     .add_combinded_image_sampler(
-                        fbufs.composition().image_view(),
+                        fbufs.compo().image_view(),
                         texture_sampler,
                         desc_sets_.at(i)
                     )
@@ -418,9 +418,9 @@ namespace {
                 }
             }
 
-            // Update ubuf: U_CompositionMain
+            // Update ubuf: U_CompoMain
             {
-                mirinae::U_CompositionMain ubuf_data;
+                mirinae::U_CompoMain ubuf_data;
                 ubuf_data.set_proj_inv(glm::inverse(proj_mat));
                 ubuf_data.set_dlight_dir(
                     view_mat *
@@ -434,7 +434,7 @@ namespace {
                 ubuf_data.set_slight_outer_angle(mirinae::Angle::from_deg(25));
                 ubuf_data.set_slight_max_dist(5);
 
-                rp_states_composition_.ubufs_
+                rp_states_compo_.ubufs_
                     .at(framesync_.get_frame_index().get())
                     .set_data(
                         &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
@@ -799,9 +799,9 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
-            // Shader: Composition
+            // Shader: Compo
             {
-                auto& rp = *rp_.composition_;
+                auto& rp = *rp_.compo_;
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = rp.renderpass();
@@ -832,7 +832,7 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                auto desc_main = rp_states_composition_.desc_sets_.at(
+                auto desc_main = rp_states_compo_.desc_sets_.at(
                     framesync_.get_frame_index().get()
                 );
                 vkCmdBindDescriptorSets(
@@ -1245,7 +1245,7 @@ namespace {
                 device_
             );
 
-            rp_states_composition_.init(
+            rp_states_compo_.init(
                 desclayout_, fbuf_images_, texture_sampler_.get(), device_
             );
             rp_states_transp_.init(desclayout_, device_);
@@ -1294,7 +1294,7 @@ namespace {
 
             rp_states_fillscreen_.destroy(device_);
             rp_states_transp_.destroy(device_);
-            rp_states_composition_.destroy(device_);
+            rp_states_compo_.destroy(device_);
 
             rp_.destroy();
             swapchain_.destroy(device_.logi_device());
@@ -1347,7 +1347,7 @@ namespace {
         mirinae::OverlayManager overlay_man_;
         mirinae::key::EventAnalyzer key_states_;
         mirinae::RenderPassPackage rp_;
-        ::RpStatesComposition rp_states_composition_;
+        ::RpStatesCompo rp_states_compo_;
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         ::DrawSheet draw_sheet_;

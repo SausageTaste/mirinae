@@ -33,12 +33,12 @@ namespace mirinae {
                 mirinae::FbufUsage::color_attachment,
                 "material"
             );
-            composition_ = tex_man.create_attachment(
+            compo_ = tex_man.create_attachment(
                 width,
                 height,
                 VK_FORMAT_B10G11R11_UFLOAT_PACK32,
                 mirinae::FbufUsage::color_attachment,
-                "composition"
+                "compo"
             );
         }
 
@@ -50,14 +50,14 @@ namespace mirinae {
         mirinae::ITexture& albedo() { return *albedo_; }
         mirinae::ITexture& normal() { return *normal_; }
         mirinae::ITexture& material() { return *material_; }
-        mirinae::ITexture& composition() { return *composition_; }
+        mirinae::ITexture& compo() { return *compo_; }
 
     private:
         std::unique_ptr<mirinae::ITexture> depth_;
         std::unique_ptr<mirinae::ITexture> albedo_;
         std::unique_ptr<mirinae::ITexture> normal_;
         std::unique_ptr<mirinae::ITexture> material_;
-        std::unique_ptr<mirinae::ITexture> composition_;
+        std::unique_ptr<mirinae::ITexture> compo_;
     };
 
 
@@ -95,7 +95,7 @@ namespace mirinae {
         std::unique_ptr<IRenderPassBundle> gbuf_skin_;
         std::unique_ptr<IRenderPassBundle> shadowmap_;
         std::unique_ptr<IRenderPassBundle> shadowmap_skin_;
-        std::unique_ptr<IRenderPassBundle> composition_;
+        std::unique_ptr<IRenderPassBundle> compo_;
         std::unique_ptr<IRenderPassBundle> transp_;
         std::unique_ptr<IRenderPassBundle> transp_skin_;
         std::unique_ptr<IRenderPassBundle> fillscreen_;
