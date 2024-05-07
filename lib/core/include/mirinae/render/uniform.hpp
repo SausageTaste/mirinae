@@ -41,7 +41,7 @@ namespace mirinae {
     };
 
 
-    class U_CompositionMain {
+    class U_CompoMain {
 
     public:
         void set_proj_inv(const glm::mat4& proj_inv) { proj_inv_ = proj_inv; }
@@ -116,7 +116,7 @@ namespace mirinae {
     };
 
 
-    using U_TranspFrame = U_CompositionMain;
+    using U_TranspFrame = U_CompoMain;
 
 
     struct U_OverlayPushConst {

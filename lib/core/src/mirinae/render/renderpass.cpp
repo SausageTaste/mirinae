@@ -1753,34 +1753,34 @@ namespace { namespace shadowmap_skin {
 }}  // namespace ::shadowmap_skin
 
 
-// composition
-namespace { namespace composition {
+// compo
+namespace { namespace compo {
 
     VkDescriptorSetLayout create_desclayout_main(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "composition:main" };
+        DescLayoutBuilder builder{ "compo:main" };
         builder
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // depth
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // albedo
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // normal
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // material
-            .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompositionMain
+            .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompoMain
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
     VkRenderPass create_renderpass(
-        VkFormat composition_format, VkDevice logi_device
+        VkFormat compo_format, VkDevice logi_device
     ) {
         ::AttachmentDescBuilder attachments;
         attachments.add(
-            composition_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            compo_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         );
 
         ::AttachmentRefBuilder color_attachment_refs;
         color_attachment_refs.add(
             0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        );  // composition
+        );  // compo
 
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -1846,8 +1846,8 @@ namespace { namespace composition {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/composition_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/composition_frag.spv", device };
+        ::ShaderModule vert_shader{ "asset/spv/compo_vert.spv", device };
+        ::ShaderModule frag_shader{ "asset/spv/compo_frag.spv", device };
         const auto shader_stages = ::create_info_shader_stages_pair(
             vert_shader, frag_shader
         );
@@ -1927,7 +1927,7 @@ namespace { namespace composition {
         )
             : device_(device) {
             formats_ = {
-                fbuf_bundle.composition().format(),
+                fbuf_bundle.compo().format(),
             };
 
             clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -1947,7 +1947,7 @@ namespace { namespace composition {
                     renderpass_,
                     device.logi_device(),
                     {
-                        fbuf_bundle.composition().image_view(),
+                        fbuf_bundle.compo().image_view(),
                     }
                 ));
             }
@@ -2009,7 +2009,7 @@ namespace { namespace composition {
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
     };
 
-}}  // namespace ::composition
+}}  // namespace ::compo
 
 
 // transp
@@ -2019,7 +2019,7 @@ namespace { namespace transp {
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
         DescLayoutBuilder builder{ "transp:frame" };
-        builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompositionMain
+        builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompoMain
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
@@ -2036,10 +2036,10 @@ namespace { namespace transp {
     }
 
     VkRenderPass create_renderpass(
-        VkFormat composition_format, VkFormat depth_format, VkDevice logi_device
+        VkFormat compo_format, VkFormat depth_format, VkDevice logi_device
     ) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(composition_format)
+        attachments.add(compo_format)
             .initial_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .final_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
@@ -2051,7 +2051,7 @@ namespace { namespace transp {
         ::AttachmentRefBuilder color_attachment_refs;
         color_attachment_refs.add(
             0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        );  // composition
+        );  // compo
 
         VkAttachmentReference depth_attachment_ref{
             1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
@@ -2211,7 +2211,7 @@ namespace { namespace transp {
         )
             : device_(device) {
             formats_ = {
-                fbuf_bundle.composition().format(),
+                fbuf_bundle.compo().format(),
                 fbuf_bundle.depth().format(),
             };
 
@@ -2235,7 +2235,7 @@ namespace { namespace transp {
                     renderpass_,
                     device.logi_device(),
                     {
-                        fbuf_bundle.composition().image_view(),
+                        fbuf_bundle.compo().image_view(),
                         fbuf_bundle.depth().image_view(),
                     }
                 ));
@@ -2323,10 +2323,10 @@ namespace { namespace transp_skin {
     }
 
     VkRenderPass create_renderpass(
-        VkFormat composition_format, VkFormat depth_format, VkDevice logi_device
+        VkFormat compo_format, VkFormat depth_format, VkDevice logi_device
     ) {
         ::AttachmentDescBuilder attach;
-        attach.add(composition_format)
+        attach.add(compo_format)
             .initial_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .final_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
@@ -2338,7 +2338,7 @@ namespace { namespace transp_skin {
         ::AttachmentRefBuilder color_attachment_refs;
         color_attachment_refs.add(
             0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        );  // composition
+        );  // compo
 
         VkAttachmentReference depth_attachment_ref{
             1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
@@ -2500,7 +2500,7 @@ namespace { namespace transp_skin {
         )
             : device_(device) {
             formats_ = {
-                fbuf_bundle.composition().format(),
+                fbuf_bundle.compo().format(),
                 fbuf_bundle.depth().format(),
             };
 
@@ -2524,7 +2524,7 @@ namespace { namespace transp_skin {
                     renderpass_,
                     device.logi_device(),
                     {
-                        fbuf_bundle.composition().image_view(),
+                        fbuf_bundle.compo().image_view(),
                         fbuf_bundle.depth().image_view(),
                     }
                 ));
@@ -2597,7 +2597,7 @@ namespace { namespace fillscreen {
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
         DescLayoutBuilder builder{ "fillscreen:main" };
-        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // composition
+        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // compo
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
@@ -3125,7 +3125,7 @@ namespace mirinae {
         shadowmap_skin_ = std::make_unique<::shadowmap_skin::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        composition_ = std::make_unique<::composition::RenderPassBundle>(
+        compo_ = std::make_unique<::compo::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
         transp_ = std::make_unique<::transp::RenderPassBundle>(
@@ -3148,7 +3148,7 @@ namespace mirinae {
         gbuf_skin_.reset();
         shadowmap_.reset();
         shadowmap_skin_.reset();
-        composition_.reset();
+        compo_.reset();
         transp_.reset();
         transp_skin_.reset();
         fillscreen_.reset();

@@ -12,7 +12,7 @@ layout(set = 0, binding = 1) uniform sampler2D u_albedo_map;
 layout(set = 0, binding = 2) uniform sampler2D u_normal_map;
 layout(set = 0, binding = 3) uniform sampler2D u_material_map;
 
-layout(set = 0, binding = 4) uniform U_CompositionMain {
+layout(set = 0, binding = 4) uniform U_CompoMain {
     mat4 proj_inv;
 
     // Directional light

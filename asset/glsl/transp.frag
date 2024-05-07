@@ -6,7 +6,7 @@ layout(location = 0) in mat3 v_tbn;
 layout(location = 3) in vec3 v_frag_pos;
 layout(location = 4) in vec2 v_texcoord;
 
-layout(location = 0) out vec4 out_composition;
+layout(location = 0) out vec4 out_compo;
 
 
 layout(set = 0, binding = 0) uniform U_TranspFrame {
@@ -89,6 +89,6 @@ void main() {
         ) * attenuation;
     }
 
-    out_composition.rgb = light;
-    out_composition.a = albedo_texel.a;
+    out_compo.rgb = light;
+    out_compo.a = albedo_texel.a;
 }
