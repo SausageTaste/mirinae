@@ -8,12 +8,6 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
-    fetch_sungtools
-    GIT_REPOSITORY https://github.com/SausageTaste/SungToolsCpp
-    GIT_TAG        8f516182776b028a3e268db89402f0bd6d4d6ec7
-)
-
-FetchContent_Declare(
     fetch_vma
     GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
     GIT_TAG        v3.0.1
@@ -37,7 +31,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(
     fetch_spdlog
-    fetch_sungtools
     fetch_vma
     fetch_stb
     fetch_lua
@@ -55,6 +48,7 @@ target_include_directories(liblua PUBLIC ${fetch_lua_SOURCE_DIR})
 # define global macro
 add_compile_definitions(_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
 
+add_subdirectory(../extern/SungToolsCpp  ${PROJECT_BINARY_DIR}/SungToolsCpp)
 add_subdirectory(../extern/DalbaragiTools  ${PROJECT_BINARY_DIR}/DalbaragiTools)
 
 add_subdirectory(platform)
