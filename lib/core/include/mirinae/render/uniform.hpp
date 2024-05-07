@@ -116,7 +116,7 @@ namespace mirinae {
     };
 
 
-    using U_TransparentFrame = U_CompositionMain;
+    using U_TranspFrame = U_CompositionMain;
 
 
     struct U_OverlayPushConst {

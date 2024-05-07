@@ -9,7 +9,7 @@ layout(location = 4) in vec2 v_texcoord;
 layout(location = 0) out vec4 out_composition;
 
 
-layout(set = 0, binding = 0) uniform U_TransparentFrame {
+layout(set = 0, binding = 0) uniform U_TranspFrame {
     mat4 proj_inv;
 
     // Directional light
