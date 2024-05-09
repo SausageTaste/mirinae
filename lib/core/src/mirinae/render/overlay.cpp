@@ -49,8 +49,7 @@ namespace {
             auto& overlay = render_units_.emplace_back(device);
             overlay.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                tex_man.request("asset/textures/lorem_ipsum.png", true)
-                    ->image_view(),
+                tex_man.request("asset/textures/black.png", true)->image_view(),
                 tex_man.request("asset/textures/white.png", true)->image_view(),
                 sampler,
                 desclayout,
@@ -87,25 +86,19 @@ namespace {
 
         void on_parent_resize(double width, double height) override {
             for (auto& overlay : render_units_) {
-                overlay.ubuf_data_.set(
-                    (width - 10 - 100) / width * 2 - 1,
-                    (height - 10 - 100) / height * 2 - 1,
-                    100 / width,
-                    100 / height
+                overlay.push_const_.pos_offset = ::convert_screen_pos<double>(
+                    pos_.x, pos_.y, width, height
                 );
-
-                overlay.push_const_.pos_offset = {
-                    (width - 10 - 100) / width * 2 - 1,
-                    (height - 10 - 100) / height * 2 - 1
-                };
-                overlay.push_const_.pos_scale = { 100 / width, 100 / height };
+                overlay.push_const_.pos_scale = ::convert_screen_offset<double>(
+                    size_.x, size_.y, width, height
+                );
                 overlay.push_const_.uv_offset = { 0, 0 };
                 overlay.push_const_.uv_scale = { 1, 1 };
-
-                for (size_t i = 0; i < overlay.ubuf_count(); ++i)
-                    overlay.udpate_ubuf(i);
             }
         }
+
+        glm::vec2 pos_{ 10, 10 };
+        glm::vec2 size_{ 512, 512 };
 
     private:
         std::vector<mirinae::OverlayRenderUnit> render_units_;
@@ -459,17 +452,36 @@ namespace {
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
         )
-            : bg_img_(sampler, desclayout, tex_man, device)
+            : bg_img_text_box_(sampler, desclayout, tex_man, device)
+            , bg_img_line_edit_(sampler, desclayout, tex_man, device)
+            , line_edit_(text_render_data)
             , text_box_(text_render_data) {
+            text_box_.pos_ = { 10, 10 };
+            text_box_.size_ = { 500, 400 };
             text_box_.add_text("Hello, World!\n");
+
+            bg_img_text_box_.pos_ = { 10, 10 };
+            bg_img_text_box_.size_ = { 500, 400 };
+
+            constexpr float LINE_EDIT_VER_MARGIN = 4;
+
+            line_edit_.pos_ = { 10, 415 + LINE_EDIT_VER_MARGIN };
+            line_edit_.size_ = { 500, text_render_data.text_height() };
+
+            bg_img_line_edit_.pos_ = { 10, 415 };
+            bg_img_line_edit_.size_ = {
+                500, text_render_data.text_height() + (LINE_EDIT_VER_MARGIN * 2)
+            };
         }
 
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
             if (hidden_)
                 return;
 
+            bg_img_line_edit_.record_render(udata);
+            line_edit_.record_render(udata);
+            bg_img_text_box_.record_render(udata);
             text_box_.record_render(udata);
-            bg_img_.record_render(udata);
         }
 
         void hide(bool hidden) override { hidden_ = hidden; }
@@ -477,12 +489,21 @@ namespace {
         bool hidden() const override { return hidden_; }
 
         void on_parent_resize(double width, double height) override {
-            bg_img_.on_parent_resize(width, height);
+            bg_img_line_edit_.on_parent_resize(width, height);
+            line_edit_.on_parent_resize(width, height);
+            bg_img_text_box_.on_parent_resize(width, height);
             text_box_.on_parent_resize(width, height);
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
-            if (bg_img_.on_key_event(e))
+            line_edit_.add_text("a");
+            return true;
+
+            if (bg_img_line_edit_.on_key_event(e))
+                return true;
+            if (line_edit_.on_key_event(e))
+                return true;
+            if (bg_img_text_box_.on_key_event(e))
                 return true;
             if (text_box_.on_key_event(e))
                 return true;
@@ -491,7 +512,11 @@ namespace {
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
-            if (bg_img_.on_mouse_event(e))
+            if (bg_img_line_edit_.on_mouse_event(e))
+                return true;
+            if (line_edit_.on_mouse_event(e))
+                return true;
+            if (bg_img_text_box_.on_mouse_event(e))
                 return true;
             if (text_box_.on_mouse_event(e))
                 return true;
@@ -500,7 +525,9 @@ namespace {
         }
 
     private:
-        ImageView bg_img_;
+        ImageView bg_img_text_box_;
+        ImageView bg_img_line_edit_;
+        TextBox line_edit_;
         TextBox text_box_;
         bool hidden_ = false;
     };
