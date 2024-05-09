@@ -59,10 +59,11 @@ namespace {
             window_ = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
             glfwSetFramebufferSizeCallback(window_, callback_fbuf_size);
-            glfwSetKeyCallback(window_, callback_key);
             glfwSetMouseButtonCallback(window_, callback_mouse);
             glfwSetCursorPosCallback(window_, callback_cursor_pos);
             glfwSetScrollCallback(window_, callback_scroll);
+            glfwSetCharCallback(window_, callback_char);
+            glfwSetKeyCallback(window_, callback_key);
 
             if (glfwRawMouseMotionSupported())
                 glfwSetInputMode(window_, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -261,6 +262,15 @@ namespace {
             glfwGetCursorPos(window, &e.xpos_, &e.ypos_);
 
             engine->notify_mouse_event(e);
+        }
+
+        static void callback_char(GLFWwindow* window, unsigned int codepoint) {
+            auto ptr = glfwGetWindowUserPointer(window);
+            if (nullptr == ptr)
+                return;
+            auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
+
+            fmt::print("Char: {}\n", codepoint);
         }
 
         static mirinae::key::KeyCode map_key_code(const int glfw_key) {
