@@ -408,7 +408,9 @@ namespace {
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
-            if (e.action_ == mirinae::mouse::ActionType::down) {
+            using mirinae::mouse::ActionType;
+
+            if (e.action_ == ActionType::down) {
                 const sung::AABB2<double> bounding(
                     pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y
                 );
@@ -416,12 +418,13 @@ namespace {
                     owning_mouse_ = true;
                     last_mouse_pos_ = { e.xpos_, e.ypos_ };
                 }
-            } else if (e.action_ == mirinae::mouse::ActionType::up) {
+            } else if (e.action_ == ActionType::up) {
                 owning_mouse_ = false;
-            } else if (e.action_ == mirinae::mouse::ActionType::move &&
-                       owning_mouse_) {
-                scroll_.x += e.xpos_ - last_mouse_pos_.x;
-                scroll_.y += e.ypos_ - last_mouse_pos_.y;
+            } else if (e.action_ == ActionType::move && owning_mouse_) {
+                if (enable_scroll_) {
+                    scroll_.x += e.xpos_ - last_mouse_pos_.x;
+                    scroll_.y += e.ypos_ - last_mouse_pos_.y;
+                }
                 last_mouse_pos_ = { e.xpos_, e.ypos_ };
             }
 
@@ -431,6 +434,7 @@ namespace {
         glm::dvec2 pos_{ 10, 10 };
         glm::dvec2 size_{ 512, 512 };
         glm::dvec2 scroll_{ 0, 0 };
+        bool enable_scroll_ = true;
 
     private:
         ::TextRenderData& text_render_data_;
@@ -467,6 +471,7 @@ namespace {
 
             line_edit_.pos_ = { 10, 415 + LINE_EDIT_VER_MARGIN };
             line_edit_.size_ = { 500, text_render_data.text_height() };
+            line_edit_.enable_scroll_ = false;
 
             bg_img_line_edit_.pos_ = { 10, 415 };
             bg_img_line_edit_.size_ = {
