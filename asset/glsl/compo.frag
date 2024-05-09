@@ -50,7 +50,7 @@ void main() {
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
     const float frag_distance = length(frag_pos);
 
-    vec3 light = albedo_texel.rgb * 0.2;
+    vec3 light = albedo_texel.rgb * 0.4;
 
     // Directional light
     {

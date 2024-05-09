@@ -427,10 +427,10 @@ namespace {
                 ubuf_data.set_dlight_color(5);
                 ubuf_data.set_slight_pos(glm::dvec3{ 0, 0, 0 });
                 ubuf_data.set_slight_dir(glm::dvec3{ 0, 0, -1 });
-                ubuf_data.set_slight_color(flashlight_on_ ? 3.f : 0.f);
+                ubuf_data.set_slight_color(flashlight_on_ ? 5.f : 0.f);
                 ubuf_data.set_slight_inner_angle(mirinae::Angle::from_deg(10));
                 ubuf_data.set_slight_outer_angle(mirinae::Angle::from_deg(25));
-                ubuf_data.set_slight_max_dist(5);
+                ubuf_data.set_slight_max_dist(10);
 
                 rp_states_compo_.ubufs_
                     .at(framesync_.get_frame_index().get())

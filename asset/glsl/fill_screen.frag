@@ -1,5 +1,7 @@
 #version 450
 
+#include "utils/tone_mappings.glsl"
+
 
 layout(location = 0) in vec2 v_uv_coord;
 
@@ -9,6 +11,7 @@ layout(set = 0, binding = 0) uniform sampler2D u_compo_image;
 
 
 void main() {
-    vec4 compo_color = texture(u_compo_image, v_uv_coord);
-    f_color = vec4(compo_color);
+    vec4 compo_texel = texture(u_compo_image, v_uv_coord);
+    vec3 mapped = aces_fitted(compo_texel.xyz);
+    f_color = vec4(mapped.xyz, 1);
 }
