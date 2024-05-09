@@ -134,6 +134,7 @@ namespace mirinae {
         VkDescriptorSet get_desc_set(size_t index);
 
         U_OverlayMain ubuf_data_;
+        U_OverlayPushConst push_const_;
 
     private:
         VulkanDevice& device_;

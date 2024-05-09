@@ -337,8 +337,6 @@ namespace {
                 }
             }
 
-            overlay_man_.add_widget_test();
-
             camera_view_.pos_ = glm::dvec3{
                 -1.37109375, 1.0302734375, 0.20775177605186249
             } + world_shift;
