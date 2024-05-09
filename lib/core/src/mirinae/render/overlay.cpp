@@ -4,6 +4,7 @@
 #include <string_view>
 
 #define STB_TRUETYPE_IMPLEMENTATION
+#include <spdlog/spdlog.h>
 #include <stb_truetype.h>
 #include <sung/general/aabb.hpp>
 
@@ -71,6 +72,15 @@ namespace {
                     nullptr
                 );
 
+                vkCmdPushConstants(
+                    udata.cmd_buf_,
+                    udata.pipe_layout_,
+                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                    0,
+                    sizeof(overlay.push_const_),
+                    &overlay.push_const_
+                );
+
                 vkCmdDraw(udata.cmd_buf_, 6, 1, 0, 0);
             }
         }
@@ -83,6 +93,14 @@ namespace {
                     100 / width,
                     100 / height
                 );
+
+                overlay.push_const_.pos_offset = {
+                    (width - 10 - 100) / width * 2 - 1,
+                    (height - 10 - 100) / height * 2 - 1
+                };
+                overlay.push_const_.pos_scale = { 100 / width, 100 / height };
+                overlay.push_const_.uv_offset = { 0, 0 };
+                overlay.push_const_.uv_scale = { 1, 1 };
 
                 for (size_t i = 0; i < overlay.ubuf_count(); ++i)
                     overlay.udpate_ubuf(i);
@@ -233,7 +251,8 @@ namespace {
 
             render_unit_.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                tex_man.request("asset/textures/white.png", false)->image_view(),
+                tex_man.request("asset/textures/white.png", false)
+                    ->image_view(),
                 texture_->image_view(),
                 sampler,
                 desclayout,
@@ -433,16 +452,57 @@ namespace {
     class DevConsole : public mirinae::IWidget {
 
     public:
-        DevConsole(::TextRenderData& text_render_data)
-            : text_box_(text_render_data) {}
+        DevConsole(
+            VkSampler sampler,
+            ::TextRenderData& text_render_data,
+            mirinae::DesclayoutManager& desclayout,
+            mirinae::TextureManager& tex_man,
+            mirinae::VulkanDevice& device
+        )
+            : bg_img_(sampler, desclayout, tex_man, device)
+            , text_box_(text_render_data) {
+            text_box_.add_text("Hello, World!\n");
+        }
 
-        void record_render(const mirinae::WidgetRenderUniData& uniform_data
-        ) override {
-            text_box_.record_render(uniform_data);
+        void record_render(const mirinae::WidgetRenderUniData& udata) override {
+            if (hidden_)
+                return;
+
+            text_box_.record_render(udata);
+            bg_img_.record_render(udata);
+        }
+
+        void hide(bool hidden) override { hidden_ = hidden; }
+
+        bool hidden() const override { return hidden_; }
+
+        void on_parent_resize(double width, double height) override {
+            bg_img_.on_parent_resize(width, height);
+            text_box_.on_parent_resize(width, height);
+        }
+
+        bool on_key_event(const mirinae::key::Event& e) override {
+            if (bg_img_.on_key_event(e))
+                return true;
+            if (text_box_.on_key_event(e))
+                return true;
+
+            return false;
+        }
+
+        bool on_mouse_event(const mirinae::mouse::Event& e) override {
+            if (bg_img_.on_mouse_event(e))
+                return true;
+            if (text_box_.on_mouse_event(e))
+                return true;
+
+            return false;
         }
 
     private:
+        ImageView bg_img_;
         TextBox text_box_;
+        bool hidden_ = false;
     };
 
 }  // namespace
@@ -470,7 +530,44 @@ namespace mirinae {
             , wid_height_(win_height) {
             SamplerBuilder sampler_builder;
             sampler_.reset(sampler_builder.build(device_));
-            widgets_.push_back(std::make_unique<DevConsole>(text_render_data_));
+        }
+
+        DevConsole& get_or_create_dev_console() {
+            if (auto w = get_widget_type<DevConsole>())
+                return *w;
+
+            auto w = std::make_unique<DevConsole>(
+                sampler_.get(),
+                this->ascii_ren_data(),
+                desclayout_,
+                tex_man_,
+                device_
+            );
+
+            w->on_parent_resize(wid_width_, wid_height_);
+            w->hide(true);
+            widgets_.emplace_back(std::move(w));
+            return *this->get_widget_type<DevConsole>();
+        }
+
+        template <typename TWidget>
+        TWidget* get_widget_type() {
+            for (auto& widget : widgets_) {
+                if (auto casted = dynamic_cast<TWidget*>(widget.get()))
+                    return casted;
+            }
+
+            return nullptr;
+        }
+
+        TextRenderData& ascii_ren_data() {
+            if (!text_render_data_.is_ready()) {
+                text_render_data_.init_ascii(
+                    sampler_.get(), font_lib_, desclayout_, tex_man_, device_
+                );
+            }
+
+            return text_render_data_;
         }
 
         mirinae::VulkanDevice& device_;
@@ -479,11 +576,13 @@ namespace mirinae {
 
         mirinae::Sampler sampler_;
         ::FontLibrary font_lib_;
-        ::TextRenderData text_render_data_;
         double wid_width_ = 0;
         double wid_height_ = 0;
 
         std::vector<std::unique_ptr<IWidget>> widgets_;
+
+    private:
+        ::TextRenderData text_render_data_;
     };
 
 
@@ -523,6 +622,14 @@ namespace mirinae {
     }
 
     bool OverlayManager::on_key_event(const mirinae::key::Event& e) {
+        if (e.action_type == key::ActionType::up) {
+            if (e.key == key::KeyCode::backquote) {
+                auto& w = pimpl_->get_or_create_dev_console();
+                w.hide(!w.hidden());
+                return true;
+            }
+        }
+
         for (auto& widget : pimpl_->widgets_) {
             if (widget->on_key_event(e))
                 return true;
@@ -538,29 +645,6 @@ namespace mirinae {
         }
 
         return false;
-    }
-
-    void OverlayManager::add_widget_test() {
-        if (!pimpl_->text_render_data_.is_ready())
-            pimpl_->text_render_data_.init_ascii(
-                pimpl_->sampler_.get(),
-                pimpl_->font_lib_,
-                pimpl_->desclayout_,
-                pimpl_->tex_man_,
-                pimpl_->device_
-            );
-
-        auto widget = std::make_unique<::TextBox>(pimpl_->text_render_data_);
-        widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
-
-        for (int i = 0; i < 100; ++i) {
-            widget->add_text(
-                "Hello, World! This is Sungmin Woo. Nice to meet you! I wish "
-                "you a good day.\n"
-            );
-        }
-
-        pimpl_->widgets_.emplace_back(std::move(widget));
     }
 
     std::vector<std::unique_ptr<IWidget>>::iterator OverlayManager::begin() {

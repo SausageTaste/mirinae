@@ -21,6 +21,10 @@ namespace mirinae {
     public:
         virtual ~IWidget() = default;
         virtual void record_render(const WidgetRenderUniData& uniform_data) {}
+
+        virtual void hide(bool hidden) {}
+        virtual bool hidden() const { return false; }
+
         virtual void on_parent_resize(double width, double height) {}
         virtual bool on_key_event(const key::Event& e) { return false; }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
@@ -38,8 +42,6 @@ namespace mirinae {
             mirinae::VulkanDevice& device
         );
         ~OverlayManager();
-
-        void add_widget_test();
 
         void record_render(
             size_t frame_index,
