@@ -84,21 +84,17 @@ namespace {
             }
         }
 
-        void on_parent_resize(double width, double height) override {
+        void update_content(const mirinae::WindowDimInfo& wd) override {
             for (auto& overlay : render_units_) {
-                overlay.push_const_.pos_offset = ::convert_screen_pos<double>(
-                    pos_.x, pos_.y, width, height
-                );
-                overlay.push_const_.pos_scale = ::convert_screen_offset<double>(
-                    size_.x, size_.y, width, height
-                );
+                overlay.push_const_.pos_offset = wd.pos_2_ndc(pos_);
+                overlay.push_const_.pos_scale = wd.len_2_ndc(size_);
                 overlay.push_const_.uv_offset = { 0, 0 };
                 overlay.push_const_.uv_scale = { 1, 1 };
             }
         }
 
-        glm::vec2 pos_{ 10, 10 };
-        glm::vec2 size_{ 512, 512 };
+        glm::dvec2 pos_{ 10, 10 };
+        glm::dvec2 size_{ 512, 512 };
 
     private:
         std::vector<mirinae::OverlayRenderUnit> render_units_;
@@ -478,15 +474,11 @@ namespace {
             text_box_.record_render(udata);
         }
 
-        void hide(bool hidden) override { hidden_ = hidden; }
-
-        bool hidden() const override { return hidden_; }
-
-        void on_parent_resize(double width, double height) override {
-            bg_img_line_edit_.on_parent_resize(width, height);
-            line_edit_.on_parent_resize(width, height);
-            bg_img_text_box_.on_parent_resize(width, height);
-            text_box_.on_parent_resize(width, height);
+        void update_content(const mirinae::WindowDimInfo& wd) override {
+            bg_img_line_edit_.update_content(wd);
+            line_edit_.update_content(wd);
+            bg_img_text_box_.update_content(wd);
+            text_box_.update_content(wd);
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
@@ -523,6 +515,10 @@ namespace {
 
             return false;
         }
+
+        void hide(bool hidden) override { hidden_ = hidden; }
+
+        bool hidden() const override { return hidden_; }
 
     private:
         ImageView bg_img_text_box_;
@@ -593,7 +589,7 @@ namespace mirinae {
                 device_
             );
 
-            w->on_parent_resize(win_dim_.width(), win_dim_.height());
+            w->update_content(win_dim_);
             w->hide(true);
             widgets_.emplace_back(std::move(w));
             return *this->get_widget_type<DevConsole>();
@@ -666,11 +662,8 @@ namespace mirinae {
                                           static_cast<double>(height),
                                           1.0 };
 
-        for (auto& widget : pimpl_->widgets_) {
-            widget->on_parent_resize(
-                pimpl_->win_dim_.width(), pimpl_->win_dim_.height()
-            );
-        }
+        for (auto& widget : pimpl_->widgets_)
+            widget->update_content(pimpl_->win_dim_);
     }
 
     bool OverlayManager::on_key_event(const mirinae::key::Event& e) {
