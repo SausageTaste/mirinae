@@ -1211,6 +1211,11 @@ namespace {
             camera_controller_.on_key_event(e);
         }
 
+        void notify_text_event(uint32_t c) override {
+            if (overlay_man_.on_text_event(c))
+                return;
+        }
+
         void notify_mouse_event(const mirinae::mouse::Event& e) override {
             if (overlay_man_.on_mouse_event(e))
                 return;
