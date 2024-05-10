@@ -501,9 +501,6 @@ namespace {
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
-            line_edit_.add_text("a");
-            return true;
-
             if (bg_img_line_edit_.on_key_event(e))
                 return true;
             if (line_edit_.on_key_event(e))
@@ -514,6 +511,15 @@ namespace {
                 return true;
 
             return false;
+        }
+
+        bool on_text_event(uint32_t c) override {
+            if (c < 128) {
+                const std::string text{ static_cast<char>(c) };
+                line_edit_.add_text(std::string_view{ text });
+            }
+
+            return true;
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
@@ -664,6 +670,15 @@ namespace mirinae {
 
         for (auto& widget : pimpl_->widgets_) {
             if (widget->on_key_event(e))
+                return true;
+        }
+
+        return false;
+    }
+
+    bool OverlayManager::on_text_event(uint32_t c) {
+        for (auto& widget : pimpl_->widgets_) {
+            if (widget->on_text_event(c))
                 return true;
         }
 

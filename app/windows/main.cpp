@@ -269,8 +269,7 @@ namespace {
             if (nullptr == ptr)
                 return;
             auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
-
-            fmt::print("Char: {}\n", codepoint);
+            engine->notify_text_event(codepoint);
         }
 
         static mirinae::key::KeyCode map_key_code(const int glfw_key) {

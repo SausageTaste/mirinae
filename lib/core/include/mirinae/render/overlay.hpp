@@ -27,6 +27,7 @@ namespace mirinae {
 
         virtual void on_parent_resize(double width, double height) {}
         virtual bool on_key_event(const key::Event& e) { return false; }
+        virtual bool on_text_event(uint32_t c) { return false; }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
     };
 
@@ -50,6 +51,7 @@ namespace mirinae {
         );
         void on_fbuf_resize(uint32_t width, uint32_t height);
         bool on_key_event(const mirinae::key::Event& e);
+        bool on_text_event(uint32_t c);
         bool on_mouse_event(const mouse::Event& e);
 
         std::vector<std::unique_ptr<IWidget>>::iterator begin();
