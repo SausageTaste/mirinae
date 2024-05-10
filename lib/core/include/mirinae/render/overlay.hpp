@@ -16,7 +16,14 @@ namespace mirinae {
         double ui_scale() const;
 
         glm::dvec2 pos_2_ndc(double x, double y) const;
+        glm::dvec2 pos_2_ndc(const glm::dvec2& v) const {
+            return pos_2_ndc(v.x, v.y);
+        }
+
         glm::dvec2 len_2_ndc(double w, double h) const;
+        glm::dvec2 len_2_ndc(const glm::dvec2& v) const {
+            return len_2_ndc(v.x, v.y);
+        }
 
     private:
         double width_ = 16;
@@ -46,12 +53,13 @@ namespace mirinae {
 
     public:
         virtual ~IWidget() = default;
+
         virtual void record_render(const WidgetRenderUniData& uniform_data) {}
+        virtual void update_content(const WindowDimInfo& wd) {}
 
         virtual void hide(bool hidden) {}
         virtual bool hidden() const { return false; }
 
-        virtual void on_parent_resize(double width, double height) {}
         virtual bool on_key_event(const key::Event& e) { return false; }
         virtual bool on_text_event(uint32_t c) { return false; }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
