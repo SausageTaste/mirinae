@@ -37,7 +37,7 @@ namespace {
 
 namespace {
 
-    class ImageView : public mirinae::IWidget {
+    class ImageView : public mirinae::IRectWidget {
 
     public:
         ImageView(
@@ -92,9 +92,6 @@ namespace {
                 overlay.push_const_.uv_scale = { 1, 1 };
             }
         }
-
-        glm::dvec2 pos_{ 10, 10 };
-        glm::dvec2 size_{ 512, 512 };
 
     private:
         std::vector<mirinae::OverlayRenderUnit> render_units_;
@@ -275,7 +272,7 @@ namespace {
     };
 
 
-    class TextBox : public mirinae::IWidget {
+    class TextBox : public mirinae::IRectWidget {
 
     public:
         TextBox(::TextRenderData& text_render_data)
@@ -396,10 +393,7 @@ namespace {
             using mirinae::mouse::ActionType;
 
             if (e.action_ == ActionType::down) {
-                const sung::AABB2<double> bounding(
-                    pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y
-                );
-                if (bounding.is_inside_cl(e.xpos_, e.ypos_)) {
+                if (this->is_inside_cl(e.xpos_, e.ypos_)) {
                     owning_mouse_ = true;
                     last_mouse_pos_ = { e.xpos_, e.ypos_ };
                 }
@@ -416,8 +410,6 @@ namespace {
             return owning_mouse_;
         }
 
-        glm::dvec2 pos_{ 10, 10 };
-        glm::dvec2 size_{ 512, 512 };
         glm::dvec2 scroll_{ 0, 0 };
         bool enable_scroll_ = true;
 

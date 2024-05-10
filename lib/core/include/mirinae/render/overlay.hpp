@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sung/general/aabb.hpp>
+
 #include "mirinae/render/renderee.hpp"
 
 
@@ -60,9 +62,33 @@ namespace mirinae {
         virtual void hide(bool hidden) {}
         virtual bool hidden() const { return false; }
 
+        virtual bool on_activate() { return false; }
+        virtual bool on_deactivate() { return false; }
+
         virtual bool on_key_event(const key::Event& e) { return false; }
         virtual bool on_text_event(uint32_t c) { return false; }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
+    };
+
+
+    class IRectWidget : public IWidget {
+
+    public:
+        void hide(bool hidden) override { hidden_ = hidden; }
+        bool hidden() const override { return hidden_; }
+
+        sung::AABB2<double> aabb() const {
+            return sung::AABB2<double>(
+                pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y
+            );
+        }
+        bool is_inside_cl(double x, double y) const {
+            return this->aabb().is_inside_cl(x, y);
+        }
+
+        glm::dvec2 pos_{ 0, 0 };
+        glm::dvec2 size_{ 0, 0 };
+        bool hidden_ = false;
     };
 
 
