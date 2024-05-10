@@ -344,17 +344,13 @@ namespace {
                             x_offset += char_info.xadvance;
                             continue;
                         } else if (clipped_glyph_area < glyph_box.area()) {
-                            push_const.pos_offset = ::convert_screen_pos(
+                            push_const.pos_offset = udata.pos_2_ndc(
                                 clipped_glyph_box.x_min(),
-                                clipped_glyph_box.y_min(),
-                                udata.width(),
-                                udata.height()
+                                clipped_glyph_box.y_min()
                             );
-                            push_const.pos_scale = ::convert_screen_offset(
+                            push_const.pos_scale = udata.len_2_ndc(
                                 clipped_glyph_box.width(),
-                                clipped_glyph_box.height(),
-                                udata.width(),
-                                udata.height()
+                                clipped_glyph_box.height()
                             );
                             push_const.uv_scale =
                                 char_info_dim *
@@ -367,19 +363,12 @@ namespace {
                             push_const.uv_offset = (char_info_min +
                                                     texture_space_offset) /
                                                    texture_dim;
-
                         } else {
-                            push_const.pos_offset = ::convert_screen_pos(
-                                glyph_box.x_min(),
-                                glyph_box.y_min(),
-                                udata.width(),
-                                udata.height()
+                            push_const.pos_offset = udata.pos_2_ndc(
+                                glyph_box.x_min(), glyph_box.y_min()
                             );
-                            push_const.pos_scale = ::convert_screen_offset(
-                                glyph_box.width(),
-                                glyph_box.height(),
-                                udata.width(),
-                                udata.height()
+                            push_const.pos_scale = udata.len_2_ndc(
+                                glyph_box.width(), glyph_box.height()
                             );
                             push_const.uv_offset = char_info_min / texture_dim;
                             push_const.uv_scale = char_info_dim / texture_dim;
@@ -546,6 +535,29 @@ namespace {
 }  // namespace
 
 
+// WindowDimInfo
+namespace mirinae {
+
+    WindowDimInfo::WindowDimInfo(double width, double height, double ui_scale)
+        : width_(width), height_(height), ui_scale_(ui_scale) {}
+
+    double WindowDimInfo::width() const { return width_; }
+
+    double WindowDimInfo::height() const { return height_; }
+
+    double WindowDimInfo::ui_scale() const { return ui_scale_; }
+
+    glm::dvec2 WindowDimInfo::pos_2_ndc(double x, double y) const {
+        return ::convert_screen_pos(x, y, width_, height_);
+    }
+
+    glm::dvec2 WindowDimInfo::len_2_ndc(double w, double h) const {
+        return ::convert_screen_offset(w, h, width_, height_);
+    }
+
+}  // namespace mirinae
+
+
 namespace mirinae {
 
     class OverlayManager::Impl {
@@ -564,8 +576,7 @@ namespace mirinae {
             , sampler_(device)
             , font_lib_(device.filesys())
             , text_render_data_(device)
-            , wid_width_(win_width)
-            , wid_height_(win_height) {
+            , win_dim_(win_width, win_height, 1) {
             SamplerBuilder sampler_builder;
             sampler_.reset(sampler_builder.build(device_));
         }
@@ -582,7 +593,7 @@ namespace mirinae {
                 device_
             );
 
-            w->on_parent_resize(wid_width_, wid_height_);
+            w->on_parent_resize(win_dim_.width(), win_dim_.height());
             w->hide(true);
             widgets_.emplace_back(std::move(w));
             return *this->get_widget_type<DevConsole>();
@@ -612,10 +623,9 @@ namespace mirinae {
         mirinae::TextureManager& tex_man_;
         mirinae::DesclayoutManager& desclayout_;
 
+        mirinae::WindowDimInfo win_dim_;
         mirinae::Sampler sampler_;
         ::FontLibrary font_lib_;
-        double wid_width_ = 0;
-        double wid_height_ = 0;
 
         std::vector<std::unique_ptr<IWidget>> widgets_;
 
@@ -643,7 +653,7 @@ namespace mirinae {
         VkPipelineLayout pipe_layout
     ) {
         WidgetRenderUniData udata;
-        udata.screen_size_ = { pimpl_->wid_width_, pimpl_->wid_height_ };
+        udata.win_dim_ = pimpl_->win_dim_;
         udata.frame_index_ = frame_index;
         udata.cmd_buf_ = cmd_buf;
         udata.pipe_layout_ = pipe_layout;
@@ -652,11 +662,15 @@ namespace mirinae {
     }
 
     void OverlayManager::on_fbuf_resize(uint32_t width, uint32_t height) {
-        pimpl_->wid_width_ = width;
-        pimpl_->wid_height_ = height;
+        pimpl_->win_dim_ = WindowDimInfo{ static_cast<double>(width),
+                                          static_cast<double>(height),
+                                          1.0 };
 
-        for (auto& widget : pimpl_->widgets_)
-            widget->on_parent_resize(pimpl_->wid_width_, pimpl_->wid_height_);
+        for (auto& widget : pimpl_->widgets_) {
+            widget->on_parent_resize(
+                pimpl_->win_dim_.width(), pimpl_->win_dim_.height()
+            );
+        }
     }
 
     bool OverlayManager::on_key_event(const mirinae::key::Event& e) {

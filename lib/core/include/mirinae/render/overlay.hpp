@@ -5,11 +5,37 @@
 
 namespace mirinae {
 
-    struct WidgetRenderUniData {
-        double width() const { return screen_size_.x; }
-        double height() const { return screen_size_.y; }
+    class WindowDimInfo {
 
-        glm::dvec2 screen_size_;
+    public:
+        WindowDimInfo() = default;
+        WindowDimInfo(double width, double height, double ui_scale);
+
+        double width() const;
+        double height() const;
+        double ui_scale() const;
+
+        glm::dvec2 pos_2_ndc(double x, double y) const;
+        glm::dvec2 len_2_ndc(double w, double h) const;
+
+    private:
+        double width_ = 16;
+        double height_ = 16;
+        double ui_scale_ = 1;
+    };
+
+
+    struct WidgetRenderUniData {
+        double width() const { return win_dim_.width(); }
+        double height() const { return win_dim_.height(); }
+        glm::dvec2 pos_2_ndc(double x, double y) const {
+            return win_dim_.pos_2_ndc(x, y);
+        }
+        glm::dvec2 len_2_ndc(double w, double h) const {
+            return win_dim_.len_2_ndc(w, h);
+        }
+
+        WindowDimInfo win_dim_;
         size_t frame_index_;
         VkCommandBuffer cmd_buf_;
         VkPipelineLayout pipe_layout_;
