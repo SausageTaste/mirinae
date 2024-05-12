@@ -305,11 +305,11 @@ namespace {
             {
                 const std::vector<mirinae::respath_t> mesh_paths{
                     "ThinMatrix/Character Running.dmd",
-                    "Sung/artist/artist_subset.dmd",
                     "Sung/bard/bard_subset.dmd",
+                    "Sung/artist/artist_subset.dmd",
                 };
                 const std::vector<float> model_scales{
-                    1.8f / 16.f,
+                    1.8f / 8.66793f,
                     1,
                     1,
                 };
@@ -333,7 +333,7 @@ namespace {
                         std::make_shared<mirinae::RenderActorSkinned>(device_)
                     );
                     actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                    actor->transform_.pos_ = glm::dvec3(i * 3, 0, 0) +
+                    actor->transform_.pos_ = glm::dvec3(i * 0.75, 0, 0) +
                                              world_shift;
                     actor->transform_.scale_ = glm::dvec3(model_scales[i]);
                 }
