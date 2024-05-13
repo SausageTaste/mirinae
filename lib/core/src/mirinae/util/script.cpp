@@ -1,11 +1,5 @@
 #include "mirinae/util/script.hpp"
 
-extern "C" {
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-}
-
 
 namespace {
 
@@ -24,16 +18,49 @@ namespace {
             state_ = nullptr;
         }
 
-        operator lua_State* () {
-            return state_;
-        }
+        operator lua_State*() { return state_; }
 
     private:
         lua_State* state_;
-
     };
 
-}
+}  // namespace
+
+
+// Functions
+namespace mirinae {
+
+    void push_lua_constant(lua_State* L, const char* name, lua_Number value) {
+        lua_pushstring(L, name);
+        lua_pushnumber(L, value);
+        lua_settable(L, -3);
+    }
+
+}  // namespace mirinae
+
+
+// LuaFuncList
+namespace mirinae {
+
+    LuaFuncList::LuaFuncList() { this->append_null_pair(); }
+
+    void LuaFuncList::add(const char* const name, lua_CFunction func) {
+        data_.back().name = name;
+        data_.back().func = func;
+        this->append_null_pair();
+    }
+
+    const luaL_Reg* LuaFuncList::data() const { return data_.data(); }
+
+    void LuaFuncList::reserve(const size_t s) { data_.reserve(s + 1); }
+
+    void LuaFuncList::append_null_pair() {
+        data_.emplace_back();
+        data_.back().func = nullptr;
+        data_.back().name = nullptr;
+    }
+
+}  // namespace mirinae
 
 
 namespace mirinae {
@@ -42,16 +69,15 @@ namespace mirinae {
 
     public:
         LuaState state_;
-
     };
 
 
-    ScriptEngine::ScriptEngine()
-        : pimpl_(std::make_unique<Impl>())
-    {
-
-    }
+    ScriptEngine::ScriptEngine() : pimpl_(std::make_unique<Impl>()) {}
 
     ScriptEngine::~ScriptEngine() = default;
 
-}
+    void ScriptEngine::register_module(const char* name, lua_CFunction funcs) {
+        luaL_requiref(pimpl_->state_, name, funcs, 0);
+    }
+
+}  // namespace mirinae
