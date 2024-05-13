@@ -120,6 +120,11 @@ namespace {
         std::vector<SkinnedRenderPairs> skinned_pairs_;
     };
 
+}  // namespace
+
+
+// Render pass states
+namespace {
 
     class RpStatesCompo {
 
@@ -258,6 +263,11 @@ namespace {
         std::vector<VkDescriptorSet> desc_sets_;
     };
 
+}  // namespace
+
+
+// Engine
+namespace {
 
     class EngineGlfw : public mirinae::IEngine {
 
