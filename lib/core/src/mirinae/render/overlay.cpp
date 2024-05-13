@@ -138,6 +138,13 @@ namespace {
             data_[fill_size_++] = value;
             return true;
         }
+        bool pop_back() {
+            if (fill_size_ == 0)
+                return false;
+
+            --fill_size_;
+            return true;
+        }
         void clear() { fill_size_ = 0; }
 
         size_t size() const { return fill_size_; }
@@ -147,8 +154,8 @@ namespace {
         bool is_full() const { return fill_size_ >= CAPACITY; }
         bool is_empty() const { return fill_size_ == 0; }
 
-        auto begin() const { return data_; }
-        auto end() const { return data_ + fill_size_; }
+        const uint32_t* begin() const { return data_; }
+        const uint32_t* end() const { return data_ + fill_size_; }
 
     private:
         constexpr static size_t CAPACITY = 1024;
@@ -160,12 +167,40 @@ namespace {
     class TextBlocks {
 
     public:
+        void append(char c) {
+            this->last_valid_block().append(static_cast<uint32_t>(c));
+        }
+        void append(uint32_t c) { this->last_valid_block().append(c); }
         void append(const std::string_view str) {
-            size_t start_index = 0;
-
             for (auto c : str) {
                 this->last_valid_block().append(static_cast<uint32_t>(c));
             }
+        }
+
+        void pop_back() {
+            const auto block_count = blocks_.size();
+            for (size_t i = 0; i < block_count; ++i) {
+                auto& block = blocks_[block_count - i - 1];
+
+                if (block.pop_back())
+                    return;
+                else
+                    blocks_.pop_back();
+            }
+        }
+
+        void clear() { blocks_.clear(); }
+
+        std::string make_str() const {
+            std::ostringstream oss;
+
+            for (const auto& block : blocks_) {
+                for (auto c : block) {
+                    oss << static_cast<char>(c);
+                }
+            }
+
+            return oss.str();
         }
 
         auto begin() const { return blocks_.begin(); }
@@ -182,10 +217,21 @@ namespace {
                 return data_.push_back(value);
             }
 
-            bool is_full() const { return data_.is_full(); }
+            bool pop_back() {
+                if (data_.is_empty())
+                    return false;
 
-            auto begin() const { return data_.begin(); }
-            auto end() const { return data_.end(); }
+                if ('\n' == data_.end()[-1])
+                    --new_line_count_;
+
+                return data_.pop_back();
+            }
+
+            bool is_full() const { return data_.is_full(); }
+            bool is_empty() const { return data_.is_empty(); }
+
+            const uint32_t* begin() const { return data_.begin(); }
+            const uint32_t* end() const { return data_.end(); }
 
         private:
             StaticVector data_;
@@ -253,7 +299,11 @@ namespace {
         }
 
         auto& get_char_info(size_t index) {
-            return char_baked_.at(index - START_CHAR);
+            const auto i = index - START_CHAR;
+            if (i >= char_baked_.size())
+                return char_baked_['?' - START_CHAR];
+            else
+                return char_baked_.at(i);
         }
 
         auto text_height() const { return TEXT_HEIGHT; }
@@ -277,8 +327,6 @@ namespace {
     public:
         TextBox(::TextRenderData& text_render_data)
             : text_render_data_(text_render_data) {}
-
-        void add_text(const std::string_view str) { texts_.append(str); }
 
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
             auto desc_main = text_render_data_.get_desc_set(udata.frame_index_);
@@ -410,6 +458,15 @@ namespace {
             return owning_mouse_;
         }
 
+        std::string make_str() const { return texts_.make_str(); }
+
+        void add_text(const char c) { texts_.append(c); }
+        void add_text(const uint32_t c) { texts_.append(c); }
+        void add_text(const std::string_view str) { texts_.append(str); }
+
+        void remove_one_char() { texts_.pop_back(); }
+        void clear_text() { texts_.clear(); }
+
         glm::dvec2 scroll_{ 0, 0 };
         bool enable_scroll_ = true;
 
@@ -458,19 +515,30 @@ namespace {
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
-            return true;
-        }
-
-        bool on_text_event(uint32_t c) override {
-            if (c < 128) {
-                const std::string text{ static_cast<char>(c) };
-                text_box_.add_text(std::string_view{ text });
+            if (e.key == mirinae::key::KeyCode::backspace) {
+                if (e.action_type == mirinae::key::ActionType::down) {
+                    text_box_.remove_one_char();
+                }
             }
 
             return true;
         }
 
+        bool on_text_event(uint32_t c) override {
+            if (c == '`')
+                return false;
+
+            text_box_.add_text(c);
+            return true;
+        }
+
         void add_text(const std::string_view str) { text_box_.add_text(str); }
+
+        std::string flush_str() {
+            const auto str = text_box_.make_str();
+            text_box_.clear_text();
+            return str;
+        }
 
     private:
         ImageView bg_img_;
@@ -519,6 +587,17 @@ namespace {
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
+            if (e.key == mirinae::key::KeyCode::enter) {
+                if (e.action_type == mirinae::key::ActionType::down) {
+                    const auto line = line_edit_.flush_str();
+                    if (!line.empty()) {
+                        text_box_.add_text(line);
+                        text_box_.add_text("\n");
+                        spdlog::info("Console command: '{}'", line);
+                    }
+                }
+            }
+
             if (line_edit_.on_key_event(e))
                 return true;
             if (bg_img_text_box_.on_key_event(e))
@@ -530,7 +609,7 @@ namespace {
         }
 
         bool on_text_event(uint32_t c) override {
-             if (line_edit_.on_text_event(c))
+            if (line_edit_.on_text_event(c))
                 return true;
             if (bg_img_text_box_.on_text_event(c))
                 return true;
