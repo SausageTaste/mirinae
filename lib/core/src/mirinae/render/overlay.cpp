@@ -423,6 +423,61 @@ namespace {
     };
 
 
+    class LineEdit : public mirinae::IRectWidget {
+
+    public:
+        LineEdit(
+            VkSampler sampler,
+            ::TextRenderData& text_render_data,
+            mirinae::DesclayoutManager& desclayout,
+            mirinae::TextureManager& tex_man,
+            mirinae::VulkanDevice& device
+        )
+            : bg_img_(sampler, desclayout, tex_man, device)
+            , text_box_(text_render_data) {
+            text_box_.scroll_ = { 0, 0 };
+            text_box_.enable_scroll_ = false;
+        }
+
+        void record_render(const mirinae::WidgetRenderUniData& udata) override {
+            if (hidden_)
+                return;
+
+            bg_img_.record_render(udata);
+            text_box_.record_render(udata);
+        }
+
+        void update_content(const mirinae::WindowDimInfo& wd) override {
+            bg_img_.pos_ = pos_;
+            bg_img_.size_ = size_;
+            bg_img_.update_content(wd);
+
+            text_box_.pos_ = pos_;
+            text_box_.size_ = size_;
+            text_box_.update_content(wd);
+        }
+
+        bool on_key_event(const mirinae::key::Event& e) override {
+            return true;
+        }
+
+        bool on_text_event(uint32_t c) override {
+            if (c < 128) {
+                const std::string text{ static_cast<char>(c) };
+                text_box_.add_text(std::string_view{ text });
+            }
+
+            return true;
+        }
+
+        void add_text(const std::string_view str) { text_box_.add_text(str); }
+
+    private:
+        ImageView bg_img_;
+        TextBox text_box_;
+    };
+
+
     class DevConsole : public mirinae::IWidget {
 
     public:
@@ -434,9 +489,10 @@ namespace {
             mirinae::VulkanDevice& device
         )
             : bg_img_text_box_(sampler, desclayout, tex_man, device)
-            , bg_img_line_edit_(sampler, desclayout, tex_man, device)
-            , line_edit_(text_render_data)
-            , text_box_(text_render_data) {
+            , text_box_(text_render_data)
+            , line_edit_(
+                  sampler, text_render_data, desclayout, tex_man, device
+              ) {
             text_box_.pos_ = { 10, 10 };
             text_box_.size_ = { 500, 400 };
             text_box_.add_text("Hello, World!\n");
@@ -446,36 +502,23 @@ namespace {
 
             constexpr float LINE_EDIT_VER_MARGIN = 4;
 
-            line_edit_.pos_ = { 10, 415 + LINE_EDIT_VER_MARGIN };
+            line_edit_.pos_ = { 10, 415 };
             line_edit_.size_ = { 500, text_render_data.text_height() };
-            line_edit_.enable_scroll_ = false;
-
-            bg_img_line_edit_.pos_ = { 10, 415 };
-            bg_img_line_edit_.size_ = {
-                500, text_render_data.text_height() + (LINE_EDIT_VER_MARGIN * 2)
-            };
         }
 
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
-            if (hidden_)
-                return;
-
-            bg_img_line_edit_.record_render(udata);
             line_edit_.record_render(udata);
             bg_img_text_box_.record_render(udata);
             text_box_.record_render(udata);
         }
 
         void update_content(const mirinae::WindowDimInfo& wd) override {
-            bg_img_line_edit_.update_content(wd);
-            line_edit_.update_content(wd);
             bg_img_text_box_.update_content(wd);
             text_box_.update_content(wd);
+            line_edit_.update_content(wd);
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
-            if (bg_img_line_edit_.on_key_event(e))
-                return true;
             if (line_edit_.on_key_event(e))
                 return true;
             if (bg_img_text_box_.on_key_event(e))
@@ -487,17 +530,17 @@ namespace {
         }
 
         bool on_text_event(uint32_t c) override {
-            if (c < 128) {
-                const std::string text{ static_cast<char>(c) };
-                line_edit_.add_text(std::string_view{ text });
-            }
+             if (line_edit_.on_text_event(c))
+                return true;
+            if (bg_img_text_box_.on_text_event(c))
+                return true;
+            if (text_box_.on_text_event(c))
+                return true;
 
-            return true;
+            return false;
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
-            if (bg_img_line_edit_.on_mouse_event(e))
-                return true;
             if (line_edit_.on_mouse_event(e))
                 return true;
             if (bg_img_text_box_.on_mouse_event(e))
@@ -514,9 +557,8 @@ namespace {
 
     private:
         ImageView bg_img_text_box_;
-        ImageView bg_img_line_edit_;
-        TextBox line_edit_;
         TextBox text_box_;
+        LineEdit line_edit_;
         bool hidden_ = false;
     };
 
@@ -646,7 +688,11 @@ namespace mirinae {
         udata.cmd_buf_ = cmd_buf;
         udata.pipe_layout_ = pipe_layout;
 
-        for (auto& widget : pimpl_->widgets_) widget->record_render(udata);
+        for (auto& widget : pimpl_->widgets_) {
+            if (widget->hidden())
+                continue;
+            widget->record_render(udata);
+        }
     }
 
     void OverlayManager::on_fbuf_resize(uint32_t width, uint32_t height) {
@@ -654,8 +700,11 @@ namespace mirinae {
                                           static_cast<double>(height),
                                           1.0 };
 
-        for (auto& widget : pimpl_->widgets_)
+        for (auto& widget : pimpl_->widgets_) {
+            if (widget->hidden())
+                continue;
             widget->update_content(pimpl_->win_dim_);
+        }
     }
 
     bool OverlayManager::on_key_event(const mirinae::key::Event& e) {
@@ -668,6 +717,8 @@ namespace mirinae {
         }
 
         for (auto& widget : pimpl_->widgets_) {
+            if (widget->hidden())
+                continue;
             if (widget->on_key_event(e))
                 return true;
         }
@@ -677,6 +728,8 @@ namespace mirinae {
 
     bool OverlayManager::on_text_event(uint32_t c) {
         for (auto& widget : pimpl_->widgets_) {
+            if (widget->hidden())
+                continue;
             if (widget->on_text_event(c))
                 return true;
         }
@@ -686,6 +739,8 @@ namespace mirinae {
 
     bool OverlayManager::on_mouse_event(const mouse::Event& e) {
         for (auto& widget : pimpl_->widgets_) {
+            if (widget->hidden())
+                continue;
             if (widget->on_mouse_event(e))
                 return true;
         }
