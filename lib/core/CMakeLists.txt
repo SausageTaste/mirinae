@@ -10,6 +10,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/render/vkdevice.cpp
     ./src/mirinae/render/vkmajorplayers.cpp
     ./src/mirinae/util/image.cpp
+    ./src/mirinae/util/input_proc.cpp
     ./src/mirinae/util/mamath.cpp
     ./src/mirinae/util/script.cpp
     ./src/mirinae/util/skin_anim.cpp

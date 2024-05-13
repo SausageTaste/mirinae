@@ -36,6 +36,32 @@ namespace {
     }
 
 
+    class DominantCommandProc : public mirinae::IInputProcessor {
+
+    public:
+        DominantCommandProc(mirinae::VulkanDevice& device) : device_(device) {}
+
+        bool on_key_event(const mirinae::key::Event& e) override {
+            keys_.notify(e);
+
+            if (e.key == mirinae::key::KeyCode::enter) {
+                if (keys_.is_pressed(mirinae::key::KeyCode::lalt)) {
+                    if (e.action_type == mirinae::key::ActionType::up) {
+                        device_.osio().toggle_fullscreen();
+                    }
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+    private:
+        mirinae::key::EventAnalyzer keys_;
+        mirinae::VulkanDevice& device_;
+    };
+
+
     class FrameSync {
 
     public:
@@ -266,6 +292,12 @@ namespace {
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
                 cmd_buf_.push_back(cmd_pool_.alloc(device_.logi_device()));
 
+            {
+                input_mgrs_.add(std::make_unique<DominantCommandProc>(device_));
+                input_mgrs_.add(&overlay_man_);
+                input_mgrs_.add(&camera_controller_);
+            }
+
             const glm::dvec3 world_shift = { 100000, 100000, 0 };
             camera_view_.pos_ = world_shift;
 
@@ -360,7 +392,7 @@ namespace {
         void do_frame() override {
             const auto t = sung::CalenderTime::from_now().to_total_seconds();
             const auto delta_time = fps_timer_.check_get_elapsed_cap_fps();
-            camera_controller_.apply(camera_view_, delta_time, key_states_);
+            camera_controller_.apply(camera_view_, delta_time);
 
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
@@ -434,14 +466,12 @@ namespace {
                 ubuf_data.set_slight_outer_angle(mirinae::Angle::from_deg(25));
                 ubuf_data.set_slight_max_dist(10);
 
-                rp_states_compo_.ubufs_
-                    .at(framesync_.get_frame_index().get())
+                rp_states_compo_.ubufs_.at(framesync_.get_frame_index().get())
                     .set_data(
                         &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
                     );
 
-                rp_states_transp_.ubufs_
-                    .at(framesync_.get_frame_index().get())
+                rp_states_transp_.ubufs_.at(framesync_.get_frame_index().get())
                     .set_data(
                         &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
                     );
@@ -533,9 +563,7 @@ namespace {
                                 camera_view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
                                 glm::dvec3{ 0, 1, 0 }
                             );
-                            auto p = glm::ortho<double>(
-                                -1, 1, -1, 1, -10, 10
-                            );
+                            auto p = glm::ortho<double>(-1, 1, -1, 1, -10, 10);
                             p[1][1] *= -1;
 
                             mirinae::U_ShadowPushConst push_const;
@@ -621,9 +649,7 @@ namespace {
                                 camera_view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
                                 glm::dvec3{ 0, 1, 0 }
                             );
-                            auto p = glm::ortho<double>(
-                                -1, 1, -1, 1, -10, 10
-                            );
+                            auto p = glm::ortho<double>(-1, 1, -1, 1, -10, 10);
                             p[1][1] *= -1;
 
                             mirinae::U_ShadowPushConst push_const;
@@ -1191,42 +1217,33 @@ namespace {
             fbuf_resized_ = true;
         }
 
-        void notify_key_event(const mirinae::key::Event& e) override {
-            key_states_.notify(e);
+        bool on_key_event(const mirinae::key::Event& e) override {
+            if (input_mgrs_.on_key_event(e))
+                return true;
 
-            if (e.action_type == mirinae::key::ActionType::down) {
-                if (e.key == mirinae::key::KeyCode::enter) {
-                    if (key_states_.is_pressed(mirinae::key::KeyCode::lalt)) {
-                        device_.osio().toggle_fullscreen();
-                    }
-                } else if (e.key == mirinae::key::KeyCode::f) {
-                    flashlight_on_ = !flashlight_on_;
-                } else if (e.key == mirinae::key::KeyCode::escape) {
-                    quit_ = true;
-                }
-            }
-
-            if (overlay_man_.on_key_event(e))
-                return;
-            camera_controller_.on_key_event(e);
+            return true;
         }
 
-        void notify_text_event(uint32_t c) override {
-            if (overlay_man_.on_text_event(c))
-                return;
+        bool on_text_event(uint32_t c) override {
+            if (input_mgrs_.on_text_event(c))
+                return true;
+
+            return true;
         }
 
-        void notify_mouse_event(const mirinae::mouse::Event& e) override {
-            if (overlay_man_.on_mouse_event(e))
-                return;
-            if (camera_controller_.on_mouse_event(e, device_.osio()))
-                return;
+        bool on_mouse_event(const mirinae::mouse::Event& e) override {
+            camera_controller_.osio_ = &device_.osio();
+
+            if (input_mgrs_.on_mouse_event(e))
+                return true;
 
             constexpr auto FACTOR = 1.05;
             if (e.action_ == mirinae::mouse::ActionType::mwheel_up)
                 camera_proj_.multiply_fov(1.0 / FACTOR);
             else if (e.action_ == mirinae::mouse::ActionType::mwheel_down)
                 camera_proj_.multiply_fov(FACTOR);
+
+            return true;
         }
 
     private:
@@ -1350,7 +1367,6 @@ namespace {
         mirinae::DesclayoutManager desclayout_;
         mirinae::FbufImageBundle fbuf_images_;
         mirinae::OverlayManager overlay_man_;
-        mirinae::key::EventAnalyzer key_states_;
         mirinae::RenderPassPackage rp_;
         ::RpStatesCompo rp_states_compo_;
         ::RpStatesTransp rp_states_transp_;
@@ -1364,6 +1380,7 @@ namespace {
         mirinae::cpnt::Transform camera_view_;
         mirinae::PerspectiveCamera<double> camera_proj_;
         mirinae::syst::NoclipController camera_controller_;
+        mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;
 
         std::unique_ptr<mirinae::ITexture> shadow_map_;

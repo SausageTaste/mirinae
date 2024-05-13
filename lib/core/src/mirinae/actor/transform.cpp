@@ -7,6 +7,8 @@
 namespace mirinae::syst {
 
     bool NoclipController::on_key_event(const key::Event& e) {
+        keys_.notify(e);
+
         if (e.action_type == key::ActionType::down) {
             if (e.key == key::KeyCode::lbracket)
                 move_speed_ *= 0.5;
@@ -17,9 +19,7 @@ namespace mirinae::syst {
         return true;
     }
 
-    bool NoclipController::on_mouse_event(
-        const mouse::Event& e, IOsIoFunctions& osio
-    ) {
+    bool NoclipController::on_mouse_event(const mouse::Event& e) {
         using mirinae::mouse::ActionType;
 
         if (e.action_ == ActionType::move && owning_mouse_) {
@@ -32,13 +32,15 @@ namespace mirinae::syst {
                 owning_mouse_ = true;
                 last_mouse_pos_ = { e.xpos_, e.ypos_ };
                 last_applied_mouse_pos_ = last_mouse_pos_;
-                osio.set_hidden_mouse_mode(true);
+                if (osio_)
+                    osio_->set_hidden_mouse_mode(true);
                 return true;
             } else if (e.action_ == ActionType::up) {
                 owning_mouse_ = false;
                 last_mouse_pos_ = { 0, 0 };
                 last_applied_mouse_pos_ = last_mouse_pos_;
-                osio.set_hidden_mouse_mode(false);
+                if (osio_)
+                    osio_->set_hidden_mouse_mode(false);
                 return true;
             }
         }
@@ -47,19 +49,17 @@ namespace mirinae::syst {
     }
 
     void NoclipController::apply(
-        cpnt::Transform& transform,
-        const double delta_time,
-        const key::EventAnalyzer& key_states
+        cpnt::Transform& transform, const double delta_time
     ) {
         {
             glm::dvec3 move_dir{ 0, 0, 0 };
-            if (key_states.is_pressed(key::KeyCode::w))
+            if (keys_.is_pressed(key::KeyCode::w))
                 move_dir.z -= 1;
-            if (key_states.is_pressed(key::KeyCode::s))
+            if (keys_.is_pressed(key::KeyCode::s))
                 move_dir.z += 1;
-            if (key_states.is_pressed(key::KeyCode::a))
+            if (keys_.is_pressed(key::KeyCode::a))
                 move_dir.x -= 1;
-            if (key_states.is_pressed(key::KeyCode::d))
+            if (keys_.is_pressed(key::KeyCode::d))
                 move_dir.x += 1;
 
             if (glm::length(move_dir) > 0) {
@@ -70,9 +70,9 @@ namespace mirinae::syst {
 
         {
             double vertical = 0;
-            if (key_states.is_pressed(key::KeyCode::lctrl))
+            if (keys_.is_pressed(key::KeyCode::lctrl))
                 vertical -= 1;
-            if (key_states.is_pressed(key::KeyCode::space))
+            if (keys_.is_pressed(key::KeyCode::space))
                 vertical += 1;
 
             if (vertical != 0)
@@ -81,9 +81,9 @@ namespace mirinae::syst {
 
         {
             auto rot = cpnt::Transform::Angle::from_zero();
-            if (key_states.is_pressed(key::KeyCode::left))
+            if (keys_.is_pressed(key::KeyCode::left))
                 rot = rot.add_rad(1);
-            if (key_states.is_pressed(key::KeyCode::right))
+            if (keys_.is_pressed(key::KeyCode::right))
                 rot = rot.add_rad(-1);
 
             if (0 != rot.rad())
@@ -92,9 +92,9 @@ namespace mirinae::syst {
 
         {
             auto rot = cpnt::Transform::Angle::from_zero();
-            if (key_states.is_pressed(key::KeyCode::up))
+            if (keys_.is_pressed(key::KeyCode::up))
                 rot = rot.add_rad(1);
-            if (key_states.is_pressed(key::KeyCode::down))
+            if (keys_.is_pressed(key::KeyCode::down))
                 rot = rot.add_rad(-1);
 
             if (0 != rot.rad()) {

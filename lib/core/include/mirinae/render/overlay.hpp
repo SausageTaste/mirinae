@@ -51,11 +51,9 @@ namespace mirinae {
     };
 
 
-    class IWidget {
+    class IWidget : public IInputProcessor {
 
     public:
-        virtual ~IWidget() = default;
-
         virtual void record_render(const WidgetRenderUniData& uniform_data) {}
         virtual void update_content(const WindowDimInfo& wd) {}
 
@@ -64,10 +62,6 @@ namespace mirinae {
 
         virtual bool on_activate() { return false; }
         virtual bool on_deactivate() { return false; }
-
-        virtual bool on_key_event(const key::Event& e) { return false; }
-        virtual bool on_text_event(uint32_t c) { return false; }
-        virtual bool on_mouse_event(const mouse::Event& e) { return false; }
     };
 
 
@@ -92,7 +86,7 @@ namespace mirinae {
     };
 
 
-    class OverlayManager {
+    class OverlayManager : public IInputProcessor {
 
     public:
         OverlayManager(
@@ -110,9 +104,10 @@ namespace mirinae {
             VkPipelineLayout pipe_layout
         );
         void on_fbuf_resize(uint32_t width, uint32_t height);
-        bool on_key_event(const mirinae::key::Event& e);
-        bool on_text_event(uint32_t c);
-        bool on_mouse_event(const mouse::Event& e);
+
+        bool on_key_event(const mirinae::key::Event& e) override;
+        bool on_text_event(uint32_t c) override;
+        bool on_mouse_event(const mouse::Event& e) override;
 
         std::vector<std::unique_ptr<IWidget>>::iterator begin();
         std::vector<std::unique_ptr<IWidget>>::iterator end();
