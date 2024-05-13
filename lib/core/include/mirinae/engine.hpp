@@ -7,12 +7,12 @@
 
 #include "mirinae/platform/filesys.hpp"
 #include "mirinae/util/create_info.hpp"
-#include "mirinae/util/uinput.hpp"
+#include "mirinae/util/input_proc.hpp"
 
 
 namespace mirinae {
 
-    class IEngine {
+    class IEngine : public IInputProcessor {
 
     public:
         virtual ~IEngine() = default;
@@ -21,9 +21,6 @@ namespace mirinae {
         virtual bool is_ongoing() = 0;
 
         virtual void notify_window_resize(uint32_t width, uint32_t height) = 0;
-        virtual void notify_key_event(const key::Event& e) = 0;
-        virtual void notify_text_event(uint32_t c) = 0;
-        virtual void notify_mouse_event(const mouse::Event& e) = 0;
     };
 
 

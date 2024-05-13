@@ -188,7 +188,7 @@ namespace {
             }
 
             e.key = map_key_code(key);
-            engine->notify_key_event(e);
+            engine->on_key_event(e);
         }
 
         static void callback_mouse(
@@ -227,7 +227,7 @@ namespace {
             }
 
             glfwGetCursorPos(window, &e.xpos_, &e.ypos_);
-            engine->notify_mouse_event(e);
+            engine->on_mouse_event(e);
         }
 
         static void callback_cursor_pos(
@@ -243,7 +243,7 @@ namespace {
             e.xpos_ = xpos;
             e.ypos_ = ypos;
 
-            engine->notify_mouse_event(e);
+            engine->on_mouse_event(e);
         }
 
         static void callback_scroll(
@@ -261,7 +261,7 @@ namespace {
             e.button_ = mirinae::mouse::ButtonCode::eoe;
             glfwGetCursorPos(window, &e.xpos_, &e.ypos_);
 
-            engine->notify_mouse_event(e);
+            engine->on_mouse_event(e);
         }
 
         static void callback_char(GLFWwindow* window, unsigned int codepoint) {
@@ -269,7 +269,7 @@ namespace {
             if (nullptr == ptr)
                 return;
             auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
-            engine->notify_text_event(codepoint);
+            engine->on_text_event(codepoint);
         }
 
         static mirinae::key::KeyCode map_key_code(const int glfw_key) {
