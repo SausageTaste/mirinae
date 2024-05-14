@@ -1,8 +1,10 @@
 add_library(mirinae_core STATIC
     ./src/mirinae/actor/transform.cpp
+    ./src/mirinae/overlay/iwidget.cpp
+    ./src/mirinae/overlay/overlay.cpp
+    ./src/mirinae/overlay/text.cpp
     ./src/mirinae/render/mem_alloc.cpp
     ./src/mirinae/render/meshdata.cpp
-    ./src/mirinae/render/overlay.cpp
     ./src/mirinae/render/renderee.cpp
     ./src/mirinae/render/renderpass.cpp
     ./src/mirinae/render/uniform.cpp
