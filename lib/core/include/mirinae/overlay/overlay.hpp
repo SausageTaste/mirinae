@@ -25,7 +25,7 @@ namespace mirinae {
         void on_fbuf_resize(uint32_t width, uint32_t height);
 
         bool on_key_event(const mirinae::key::Event& e) override;
-        bool on_text_event(uint32_t c) override;
+        bool on_text_event(char32_t c) override;
         bool on_mouse_event(const mouse::Event& e) override;
 
         std::vector<std::unique_ptr<IWidget>>::iterator begin();

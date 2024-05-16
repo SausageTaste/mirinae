@@ -9,13 +9,14 @@
 // TextBlocks
 namespace {
 
+    template <typename T>
     class StaticVector {
 
     public:
-        uint32_t& operator[](size_t index) { return data_[index]; }
-        const uint32_t& operator[](size_t index) const { return data_[index]; }
+        T& operator[](size_t index) { return data_[index]; }
+        const T& operator[](size_t index) const { return data_[index]; }
 
-        bool push_back(uint32_t value) {
+        bool push_back(T value) {
             if (fill_size_ >= CAPACITY)
                 return false;
 
@@ -38,12 +39,12 @@ namespace {
         bool is_full() const { return fill_size_ >= CAPACITY; }
         bool is_empty() const { return fill_size_ == 0; }
 
-        const uint32_t* begin() const { return data_; }
-        const uint32_t* end() const { return data_ + fill_size_; }
+        const T* begin() const { return data_; }
+        const T* end() const { return data_ + fill_size_; }
 
     private:
         constexpr static size_t CAPACITY = 1024;
-        uint32_t data_[CAPACITY];
+        T data_[CAPACITY];
         size_t fill_size_ = 0;
     };
 
@@ -51,7 +52,7 @@ namespace {
     class TextBlock {
 
     public:
-        bool append(uint32_t value) {
+        bool append(char32_t value) {
             if ('\n' == value)
                 ++new_line_count_;
 
@@ -72,12 +73,12 @@ namespace {
 
         bool is_empty() const { return data_.is_empty(); }
 
-        const uint32_t* begin() const { return data_.begin(); }
+        const char32_t* begin() const { return data_.begin(); }
 
-        const uint32_t* end() const { return data_.end(); }
+        const char32_t* end() const { return data_.end(); }
 
     private:
-        StaticVector data_;
+        StaticVector<char32_t> data_;
         size_t new_line_count_ = 0;
     };
 
@@ -86,17 +87,17 @@ namespace {
 
     public:
         bool append(char c) override {
-            this->last_valid_block().append(static_cast<uint32_t>(c));
+            this->last_valid_block().append(static_cast<char32_t>(c));
             return true;
         }
 
-        bool append(uint32_t c) override {
+        bool append(char32_t c) override {
             this->last_valid_block().append(c);
             return true;
         }
 
         bool append(const std::string_view str) {
-            const auto str32 = una::utf8to32<char, uint32_t>(str);
+            const auto str32 = una::utf8to32<char, char32_t>(str);
             for (auto c : str32) {
                 this->last_valid_block().append(c);
             }

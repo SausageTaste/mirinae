@@ -14,7 +14,7 @@ namespace mirinae {
     public:
         virtual ~IInputProcessor() = default;
         virtual bool on_key_event(const key::Event& e) { return false; }
-        virtual bool on_text_event(uint32_t c) { return false; }
+        virtual bool on_text_event(char32_t c) { return false; }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
     };
 
@@ -38,7 +38,7 @@ namespace mirinae {
             return false;
         }
 
-        bool on_text_event(uint32_t e) {
+        bool on_text_event(char32_t e) {
             for (auto& x : items_) {
                 switch (x.index()) {
                     case 0:

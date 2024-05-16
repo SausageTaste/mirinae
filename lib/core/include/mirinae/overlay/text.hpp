@@ -66,7 +66,7 @@ namespace mirinae {
         std::string make_str() const;
 
         void add_text(const char c);
-        void add_text(const uint32_t c);
+        void add_text(const char32_t c);
         void add_text(const std::string_view str);
 
         void remove_one_char();

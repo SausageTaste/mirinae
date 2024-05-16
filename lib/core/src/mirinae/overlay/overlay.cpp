@@ -118,7 +118,7 @@ namespace {
             return true;
         }
 
-        bool on_text_event(uint32_t c) override {
+        bool on_text_event(char32_t c) override {
             if (c == '`')
                 return false;
 
@@ -202,7 +202,7 @@ namespace {
             return false;
         }
 
-        bool on_text_event(uint32_t c) override {
+        bool on_text_event(char32_t c) override {
             if (line_edit_.on_text_event(c))
                 return true;
             if (bg_img_text_box_.on_text_event(c))
@@ -376,7 +376,7 @@ namespace mirinae {
         return false;
     }
 
-    bool OverlayManager::on_text_event(uint32_t c) {
+    bool OverlayManager::on_text_event(char32_t c) {
         for (auto& widget : pimpl_->widgets_) {
             if (widget->hidden())
                 continue;
