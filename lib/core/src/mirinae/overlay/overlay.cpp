@@ -262,10 +262,10 @@ namespace mirinae {
         }
 
         DevConsole& get_or_create_dev_console() {
-            if (auto w = get_widget_type<DevConsole>())
+            if (auto w = widgets_.find_by_type<DevConsole>())
                 return *w;
 
-            auto w = std::make_unique<DevConsole>(
+            auto w = widgets_.emplace_back<::DevConsole>(
                 sampler_.get(),
                 this->ascii_ren_data(),
                 desclayout_,
@@ -275,18 +275,7 @@ namespace mirinae {
 
             w->update_content(win_dim_);
             w->hide(true);
-            widgets_.emplace_back(std::move(w));
-            return *this->get_widget_type<DevConsole>();
-        }
-
-        template <typename TWidget>
-        TWidget* get_widget_type() {
-            for (auto& widget : widgets_) {
-                if (auto casted = dynamic_cast<TWidget*>(widget.get()))
-                    return casted;
-            }
-
-            return nullptr;
+            return *w;
         }
 
         TextRenderData& ascii_ren_data() {
@@ -307,7 +296,7 @@ namespace mirinae {
         Sampler sampler_;
         FontLibrary font_lib_;
 
-        std::vector<std::unique_ptr<IWidget>> widgets_;
+        WidgetManager widgets_;
 
     private:
         TextRenderData text_render_data_;
@@ -338,11 +327,7 @@ namespace mirinae {
         udata.cmd_buf_ = cmd_buf;
         udata.pipe_layout_ = pipe_layout;
 
-        for (auto& widget : pimpl_->widgets_) {
-            if (widget->hidden())
-                continue;
-            widget->record_render(udata);
-        }
+        pimpl_->widgets_.record_render(udata);
     }
 
     void OverlayManager::on_fbuf_resize(uint32_t width, uint32_t height) {
@@ -350,11 +335,7 @@ namespace mirinae {
                                           static_cast<double>(height),
                                           1.0 };
 
-        for (auto& widget : pimpl_->widgets_) {
-            if (widget->hidden())
-                continue;
-            widget->update_content(pimpl_->win_dim_);
-        }
+        pimpl_->widgets_.request_update();
     }
 
     bool OverlayManager::on_key_event(const mirinae::key::Event& e) {
@@ -366,44 +347,15 @@ namespace mirinae {
             }
         }
 
-        for (auto& widget : pimpl_->widgets_) {
-            if (widget->hidden())
-                continue;
-            if (widget->on_key_event(e))
-                return true;
-        }
-
-        return false;
+        return pimpl_->widgets_.on_key_event(e);
     }
 
     bool OverlayManager::on_text_event(char32_t c) {
-        for (auto& widget : pimpl_->widgets_) {
-            if (widget->hidden())
-                continue;
-            if (widget->on_text_event(c))
-                return true;
-        }
-
-        return false;
+        return pimpl_->widgets_.on_text_event(c);
     }
 
     bool OverlayManager::on_mouse_event(const mouse::Event& e) {
-        for (auto& widget : pimpl_->widgets_) {
-            if (widget->hidden())
-                continue;
-            if (widget->on_mouse_event(e))
-                return true;
-        }
-
-        return false;
-    }
-
-    std::vector<std::unique_ptr<IWidget>>::iterator OverlayManager::begin() {
-        return pimpl_->widgets_.begin();
-    }
-
-    std::vector<std::unique_ptr<IWidget>>::iterator OverlayManager::end() {
-        return pimpl_->widgets_.end();
+        return pimpl_->widgets_.on_mouse_event(e);
     }
 
 }  // namespace mirinae
