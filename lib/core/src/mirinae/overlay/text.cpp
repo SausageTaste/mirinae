@@ -21,98 +21,6 @@ namespace {
 }  // namespace
 
 
-// TextBlocks::Block
-namespace mirinae {
-
-    bool TextBlocks::Block::append(uint32_t value) {
-        if ('\n' == value)
-            ++new_line_count_;
-
-        return data_.push_back(value);
-    }
-
-    bool TextBlocks::Block::pop_back() {
-        if (data_.is_empty())
-            return false;
-
-        if ('\n' == data_.end()[-1])
-            --new_line_count_;
-
-        return data_.pop_back();
-    }
-
-    bool TextBlocks::Block::is_full() const { return data_.is_full(); }
-
-    bool TextBlocks::Block::is_empty() const { return data_.is_empty(); }
-
-    const uint32_t* TextBlocks::Block::begin() const { return data_.begin(); }
-
-    const uint32_t* TextBlocks::Block::end() const { return data_.end(); }
-
-}  // namespace mirinae
-
-
-// TextBlocks
-namespace mirinae {
-
-    void TextBlocks::append(char c) {
-        this->last_valid_block().append(static_cast<uint32_t>(c));
-    }
-
-    void TextBlocks::append(uint32_t c) { this->last_valid_block().append(c); }
-
-    void TextBlocks::append(const std::string_view str) {
-        for (auto c : str) {
-            this->last_valid_block().append(static_cast<uint32_t>(c));
-        }
-    }
-
-    void TextBlocks::pop_back() {
-        const auto block_count = blocks_.size();
-        for (size_t i = 0; i < block_count; ++i) {
-            auto& block = blocks_[block_count - i - 1];
-
-            if (block.pop_back())
-                return;
-            else
-                blocks_.pop_back();
-        }
-    }
-
-    void TextBlocks::clear() { blocks_.clear(); }
-
-    std::string TextBlocks::make_str() const {
-        std::ostringstream oss;
-
-        for (const auto& block : blocks_) {
-            for (auto c : block) {
-                oss << static_cast<char>(c);
-            }
-        }
-
-        return oss.str();
-    }
-
-    std::vector<TextBlocks::Block>::const_iterator TextBlocks::begin() const {
-        return blocks_.begin();
-    }
-
-    std::vector<TextBlocks::Block>::const_iterator TextBlocks::end() const {
-        return blocks_.end();
-    }
-
-    TextBlocks::Block& TextBlocks::last_valid_block() {
-        if (blocks_.empty())
-            blocks_.emplace_back();
-        if (blocks_.back().is_full())
-            blocks_.emplace_back();
-
-        return blocks_.back();
-    }
-
-}  // namespace mirinae
-
-
 // FontLibrary
 namespace mirinae {
 
@@ -198,7 +106,7 @@ namespace mirinae {
 
     TextBox::TextBox(TextRenderData& text_render_data)
         : text_render_data_(text_render_data) {
-        texts_ = std::make_shared<TextBlocks>();
+        texts_ = mirinae::create_text_blocks();
     }
 
     void TextBox::record_render(const mirinae::WidgetRenderUniData& udata) {
@@ -220,88 +128,84 @@ namespace mirinae {
         auto x_offset = pos_.x;
         auto y_offset = pos_.y + text_render_data_.text_height();
 
-        for (auto& block : *texts_) {
-            for (auto c : block) {
-                if ('\n' == c) {
-                    x_offset = pos_.x;
-                    y_offset += text_render_data_.text_height() * line_spacing_;
-                    continue;
-                }
+        for (auto c : texts_->make_str32()) {
+            if ('\n' == c) {
+                x_offset = pos_.x;
+                y_offset += text_render_data_.text_height() * line_spacing_;
+                continue;
+            }
 
-                const auto& char_info = text_render_data_.get_char_info(c);
-                const sung::AABB2<double> char_info_box(
-                    char_info.x0, char_info.x1, char_info.y0, char_info.y1
-                );
-                const auto char_info_min = ::get_aabb_min(char_info_box);
-                const auto char_info_dim = ::get_aabb_dim(char_info_box);
-                const glm::dvec2 texture_dim(
-                    text_render_data_.atlas_width(),
-                    text_render_data_.atlas_height()
-                );
+            const auto& char_info = text_render_data_.get_char_info(c);
+            const sung::AABB2<double> char_info_box(
+                char_info.x0, char_info.x1, char_info.y0, char_info.y1
+            );
+            const auto char_info_min = ::get_aabb_min(char_info_box);
+            const auto char_info_dim = ::get_aabb_dim(char_info_box);
+            const glm::dvec2 texture_dim(
+                text_render_data_.atlas_width(),
+                text_render_data_.atlas_height()
+            );
 
-                const sung::AABB2<double> glyph_box(
-                    x_offset + char_info.xoff + scroll_.x,
-                    x_offset + char_info.xoff + scroll_.x + char_info_dim.x,
-                    y_offset + char_info.yoff + scroll_.y,
-                    y_offset + char_info.yoff + scroll_.y + char_info_dim.y
-                );
+            const sung::AABB2<double> glyph_box(
+                x_offset + char_info.xoff + scroll_.x,
+                x_offset + char_info.xoff + scroll_.x + char_info_dim.x,
+                y_offset + char_info.yoff + scroll_.y,
+                y_offset + char_info.yoff + scroll_.y + char_info_dim.y
+            );
 
-                mirinae::U_OverlayPushConst push_const;
-                sung::AABB2<double> clipped_glyph_box;
-                if (widget_box.make_intersection(
-                        glyph_box, clipped_glyph_box
-                    )) {
-                    const auto clipped_glyph_area = clipped_glyph_box.area();
-                    if (clipped_glyph_area <= 0.0) {
-                        x_offset += char_info.xadvance;
-                        continue;
-                    } else if (clipped_glyph_area < glyph_box.area()) {
-                        push_const.pos_offset = udata.pos_2_ndc(
-                            clipped_glyph_box.x_min(), clipped_glyph_box.y_min()
-                        );
-                        push_const.pos_scale = udata.len_2_ndc(
-                            clipped_glyph_box.width(),
-                            clipped_glyph_box.height()
-                        );
-                        push_const.uv_scale =
-                            char_info_dim * ::get_aabb_dim(clipped_glyph_box) /
-                            (::get_aabb_dim(glyph_box) * texture_dim);
-                        const auto texture_space_offset =
-                            (::get_aabb_min(clipped_glyph_box) -
-                             ::get_aabb_min(glyph_box)) *
-                            char_info_dim / ::get_aabb_dim(glyph_box);
-                        push_const.uv_offset = (char_info_min +
-                                                texture_space_offset) /
-                                               texture_dim;
-                    } else {
-                        push_const.pos_offset = udata.pos_2_ndc(
-                            glyph_box.x_min(), glyph_box.y_min()
-                        );
-                        push_const.pos_scale = udata.len_2_ndc(
-                            glyph_box.width(), glyph_box.height()
-                        );
-                        push_const.uv_offset = char_info_min / texture_dim;
-                        push_const.uv_scale = char_info_dim / texture_dim;
-                    }
-                } else {
+            mirinae::U_OverlayPushConst push_const;
+            sung::AABB2<double> clipped_glyph_box;
+            if (widget_box.make_intersection(glyph_box, clipped_glyph_box)) {
+                const auto clipped_glyph_area = clipped_glyph_box.area();
+                if (clipped_glyph_area <= 0.0) {
                     x_offset += char_info.xadvance;
                     continue;
+                } else if (clipped_glyph_area < glyph_box.area()) {
+                    push_const.pos_offset = udata.pos_2_ndc(
+                        clipped_glyph_box.x_min(), clipped_glyph_box.y_min()
+                    );
+                    push_const.pos_scale = udata.len_2_ndc(
+                        clipped_glyph_box.width(), clipped_glyph_box.height()
+                    );
+                    push_const.uv_scale = char_info_dim *
+                                          ::get_aabb_dim(clipped_glyph_box) /
+                                          (::get_aabb_dim(glyph_box) *
+                                           texture_dim);
+                    const auto texture_space_offset =
+                        (::get_aabb_min(clipped_glyph_box) -
+                         ::get_aabb_min(glyph_box)) *
+                        char_info_dim / ::get_aabb_dim(glyph_box);
+                    push_const.uv_offset = (char_info_min + texture_space_offset
+                                           ) /
+                                           texture_dim;
+                } else {
+                    push_const.pos_offset = udata.pos_2_ndc(
+                        glyph_box.x_min(), glyph_box.y_min()
+                    );
+                    push_const.pos_scale = udata.len_2_ndc(
+                        glyph_box.width(), glyph_box.height()
+                    );
+                    push_const.uv_offset = char_info_min / texture_dim;
+                    push_const.uv_scale = char_info_dim / texture_dim;
                 }
-
-                push_const.color = { 1, 1, 1, 1 };
-
-                vkCmdPushConstants(
-                    udata.cmd_buf_,
-                    udata.pipe_layout_,
-                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                    0,
-                    sizeof(push_const),
-                    &push_const
-                );
-
-                vkCmdDraw(udata.cmd_buf_, 6, 1, 0, 0);
+            } else {
                 x_offset += char_info.xadvance;
+                continue;
             }
+
+            push_const.color = { 1, 1, 1, 1 };
+
+            vkCmdPushConstants(
+                udata.cmd_buf_,
+                udata.pipe_layout_,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(push_const),
+                &push_const
+            );
+
+            vkCmdDraw(udata.cmd_buf_, 6, 1, 0, 0);
+            x_offset += char_info.xadvance;
         }
     }
 
