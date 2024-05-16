@@ -3,87 +3,10 @@
 #include <stb_truetype.h>
 
 #include "mirinae/overlay/iwidget.hpp"
+#include "mirinae/util/text_data.hpp"
 
 
 namespace mirinae {
-
-    class StaticVector {
-
-    public:
-        uint32_t& operator[](size_t index) { return data_[index]; }
-        const uint32_t& operator[](size_t index) const { return data_[index]; }
-
-        bool push_back(uint32_t value) {
-            if (fill_size_ >= CAPACITY)
-                return false;
-
-            data_[fill_size_++] = value;
-            return true;
-        }
-        bool pop_back() {
-            if (fill_size_ == 0)
-                return false;
-
-            --fill_size_;
-            return true;
-        }
-        void clear() { fill_size_ = 0; }
-
-        size_t size() const { return fill_size_; }
-        size_t capacity() const { return CAPACITY; }
-        size_t remaining() const { return CAPACITY - fill_size_; }
-
-        bool is_full() const { return fill_size_ >= CAPACITY; }
-        bool is_empty() const { return fill_size_ == 0; }
-
-        const uint32_t* begin() const { return data_; }
-        const uint32_t* end() const { return data_ + fill_size_; }
-
-    private:
-        constexpr static size_t CAPACITY = 1024;
-        uint32_t data_[CAPACITY];
-        size_t fill_size_ = 0;
-    };
-
-
-    class TextBlocks {
-
-    public:
-        class Block {
-
-        public:
-            bool append(uint32_t value);
-            bool pop_back();
-
-            bool is_full() const;
-            bool is_empty() const;
-
-            const uint32_t* begin() const;
-            const uint32_t* end() const;
-
-        private:
-            StaticVector data_;
-            size_t new_line_count_ = 0;
-        };
-
-        void append(char c);
-        void append(uint32_t c);
-        void append(const std::string_view str);
-
-        void pop_back();
-        void clear();
-
-        std::string make_str() const;
-
-        std::vector<Block>::const_iterator begin() const;
-        std::vector<Block>::const_iterator end() const;
-
-    private:
-        Block& last_valid_block();
-
-        std::vector<Block> blocks_;
-    };
-
 
     class FontLibrary {
 
@@ -154,7 +77,7 @@ namespace mirinae {
 
     private:
         TextRenderData& text_render_data_;
-        std::shared_ptr<TextBlocks> texts_;
+        std::shared_ptr<ITextData> texts_;
         glm::dvec2 last_mouse_pos_;
         double line_spacing_ = 1.2;
         bool word_wrap_ = true;
