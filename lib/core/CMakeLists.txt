@@ -27,6 +27,7 @@ target_link_libraries(mirinae_core
         Vulkan::Vulkan
         spdlog
         lua::lua
+        uni-algo::uni-algo
         mirinae::platform
         sungtools::general
     PRIVATE
