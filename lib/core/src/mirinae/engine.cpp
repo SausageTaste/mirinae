@@ -1258,7 +1258,7 @@ namespace {
             return true;
         }
 
-        bool on_text_event(uint32_t c) override {
+        bool on_text_event(char32_t c) override {
             if (input_mgrs_.on_text_event(c))
                 return true;
 

@@ -233,7 +233,7 @@ namespace mirinae {
     std::string TextBox::make_str() const { return texts_->make_str(); }
 
     void TextBox::add_text(const char c) { texts_->append(c); }
-    void TextBox::add_text(const uint32_t c) { texts_->append(c); }
+    void TextBox::add_text(const char32_t c) { texts_->append(c); }
     void TextBox::add_text(const std::string_view str) { texts_->append(str); }
 
     void TextBox::remove_one_char() { texts_->pop_back(); }

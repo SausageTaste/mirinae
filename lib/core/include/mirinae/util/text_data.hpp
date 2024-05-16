@@ -16,7 +16,7 @@ namespace mirinae {
         virtual std::u32string make_str32() const = 0;
 
         virtual bool append(char) = 0;
-        virtual bool append(uint32_t) = 0;
+        virtual bool append(char32_t) = 0;
         virtual bool append(std::string_view) = 0;
 
         virtual bool pop_back() = 0;
