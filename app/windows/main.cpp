@@ -380,6 +380,8 @@ namespace {
 
     public:
         CombinedEngine() : window_(800, 600, "Mirinapp") {
+            system("chcp 65001");
+
             mirinae::EngineCreateInfo create_info;
             create_info.filesys_ = mirinae::create_filesys_std(
                 ::get_windows_documents_path("Mirinapp")
