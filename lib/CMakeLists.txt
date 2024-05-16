@@ -29,11 +29,18 @@ FetchContent_Declare(
     BUILD_COMMAND     ""
 )
 
+FetchContent_Declare(
+    fetch_unialgo
+    GIT_REPOSITORY  https://github.com/uni-algo/uni-algo
+    GIT_TAG         v1.2.0
+)
+
 FetchContent_MakeAvailable(
     fetch_spdlog
     fetch_vma
     fetch_stb
     fetch_lua
+    fetch_unialgo
 )
 
 find_package(Vulkan REQUIRED)

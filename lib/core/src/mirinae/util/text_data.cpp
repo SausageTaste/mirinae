@@ -3,6 +3,8 @@
 #include <sstream>
 #include <vector>
 
+#include <uni_algo/conv.h>
+
 
 // TextBlocks
 namespace {
@@ -94,8 +96,9 @@ namespace {
         }
 
         bool append(const std::string_view str) {
-            for (auto c : str) {
-                this->last_valid_block().append(static_cast<uint32_t>(c));
+            const auto str32 = una::utf8to32<char, uint32_t>(str);
+            for (auto c : str32) {
+                this->last_valid_block().append(c);
             }
             return true;
         }
@@ -120,15 +123,8 @@ namespace {
         }
 
         std::string make_str() const override {
-            std::ostringstream oss;
-
-            for (const auto& block : blocks_) {
-                for (auto c : block) {
-                    oss << static_cast<char>(c);
-                }
-            }
-
-            return oss.str();
+            const auto str32 = this->make_str32();
+            return una::utf32to8(str32);
         }
 
         std::u32string make_str32() const override {
