@@ -111,8 +111,15 @@ namespace mirinae {
         for (auto& widget : widgets_) {
             if (widget.get() == focused_widget_)
                 continue;
-            if (widget->on_mouse_event(e))
+
+            if (widget->on_mouse_event(e)) {
+                if (focused_widget_)
+                    focused_widget_->set_focus(false);
+                widget->set_focus(true);
+                focused_widget_ = widget.get();
+
                 return true;
+            }
         }
 
         return false;
