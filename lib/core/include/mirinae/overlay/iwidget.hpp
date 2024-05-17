@@ -54,8 +54,8 @@ namespace mirinae {
     class IWidget : public IInputProcessor {
 
     public:
-        virtual void tick() {}
-        virtual void record_render(const WidgetRenderUniData& uniform_data) {}
+        virtual void tick(const WidgetRenderUniData& ren_data) {}
+        virtual void record_render(const WidgetRenderUniData& ren_data) {}
         virtual void update_content(const WindowDimInfo& wd) {}
         virtual void request_update() {};
 
@@ -70,6 +70,13 @@ namespace mirinae {
     class IRectWidget : public IWidget {
 
     public:
+        void tick(const WidgetRenderUniData& ren_data) override {
+            if (need_update_)
+                this->update_content(ren_data.win_dim_);
+        }
+
+        void request_update() override { need_update_ = true; };
+
         void hide(bool hidden) override { hidden_ = hidden; }
         bool hidden() const override { return hidden_; }
 
@@ -85,13 +92,14 @@ namespace mirinae {
         glm::dvec2 pos_{ 0, 0 };
         glm::dvec2 size_{ 0, 0 };
         bool hidden_ = false;
+        bool need_update_ = true;
     };
 
 
     class WidgetManager : public IWidget {
 
     public:
-        void tick() override;
+        void tick(const WidgetRenderUniData& ren_data) override;
         void record_render(const WidgetRenderUniData& uniform_data) override;
         void update_content(const WindowDimInfo& wd) override;
         void request_update() override;
@@ -112,6 +120,7 @@ namespace mirinae {
         template <typename TWidget, typename... TArgs>
         TWidget* emplace_back(TArgs&&... args) {
             auto w = std::make_unique<TWidget>(std::forward<TArgs>(args)...);
+            w->request_update();
             auto ptr = w.get();
             widgets_.emplace_back(std::move(w));
             return ptr;

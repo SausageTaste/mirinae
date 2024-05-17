@@ -1,9 +1,21 @@
 #pragma once
 
 #include "mirinae/overlay/iwidget.hpp"
+#include "mirinae/overlay/text.hpp"
 
 
 namespace mirinae {
+
+    class IDevConsole : public IWidget {};
+
+    std::unique_ptr<IDevConsole> create_dev_console(
+        VkSampler sampler,
+        mirinae::TextRenderData& text_render_data,
+        mirinae::DesclayoutManager& desclayout,
+        mirinae::TextureManager& tex_man,
+        mirinae::VulkanDevice& device
+    );
+
 
     class OverlayManager : public IInputProcessor {
 
@@ -17,16 +29,20 @@ namespace mirinae {
         );
         ~OverlayManager();
 
-        void record_render(
-            size_t frame_index,
-            VkCommandBuffer cmd_buf,
-            VkPipelineLayout pipe_layout
-        );
+        void tick(WidgetRenderUniData& ren_data);
+        void record_render(WidgetRenderUniData& ren_data);
 
         void on_fbuf_resize(uint32_t width, uint32_t height);
         bool on_key_event(const mirinae::key::Event& e) override;
         bool on_text_event(char32_t c) override;
         bool on_mouse_event(const mouse::Event& e) override;
+
+        VkSampler sampler() const;
+        const WindowDimInfo& win_dim() const;
+        TextRenderData& text_render_data();
+
+        WidgetManager& widgets();
+        WidgetManager const& widgets() const;
 
     private:
         class Impl;
