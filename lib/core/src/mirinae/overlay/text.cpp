@@ -215,9 +215,14 @@ namespace mirinae {
         if (read_only_)
             return true;
 
-        if (e.key == mirinae::key::KeyCode::backspace) {
-            if (e.action_type == mirinae::key::ActionType::down) {
+        using mirinae::key::ActionType;
+        using mirinae::key::KeyCode;
+
+        if (e.action_type == ActionType::down) {
+            if (e.key == KeyCode::backspace) {
                 this->remove_one_char();
+            } else if (e.key == KeyCode::enter) {
+                this->add_text('\n');
             }
         }
 

@@ -126,9 +126,7 @@ namespace {
 
         bool focused() const override { return text_box_.focused(); }
 
-        void set_focus(bool focused) override {
-            text_box_.set_focus(focused);
-        }
+        void set_focus(bool focused) override { text_box_.set_focus(focused); }
 
         void add_text(const std::string_view str) { text_box_.add_text(str); }
 
@@ -227,6 +225,7 @@ namespace {
                         tb->add_text("\n");
                         spdlog::info("Console command: '{}'", line);
                     }
+                    return true;
                 }
             }
 
