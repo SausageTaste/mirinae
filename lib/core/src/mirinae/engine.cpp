@@ -333,6 +333,7 @@ namespace {
             const glm::dvec3 world_shift = { 100000, 100000, 0 };
             camera_view_.pos_ = world_shift;
 
+            // Static models
             {
                 const std::vector<mirinae::respath_t> mesh_paths{
                     "asset/models/sponza/sponza.dmd",
@@ -366,6 +367,7 @@ namespace {
                 }
             }
 
+            // Skinned models
             {
                 const std::vector<mirinae::respath_t> mesh_paths{
                     "ThinMatrix/Character Running.dmd",
@@ -401,6 +403,19 @@ namespace {
                                              world_shift;
                     actor->transform_.scale_ = glm::dvec3(model_scales[i]);
                 }
+            }
+
+            // Widget: Dev console
+            {
+                auto w = mirinae::create_dev_console(
+                    overlay_man_.sampler(),
+                    overlay_man_.text_render_data(),
+                    desclayout_,
+                    tex_man_,
+                    device_
+                );
+                w->hide(true);
+                overlay_man_.widgets().add_widget(std::move(w));
             }
 
             camera_view_.pos_ = glm::dvec3{
@@ -510,6 +525,14 @@ namespace {
                         &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
                     );
             }
+
+            // Update widgets
+            mirinae::WidgetRenderUniData widget_ren_data;
+            widget_ren_data.win_dim_ = overlay_man_.win_dim();
+            widget_ren_data.frame_index_ = framesync_.get_frame_index().get();
+            widget_ren_data.cmd_buf_ = VK_NULL_HANDLE;
+            widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
+            overlay_man_.widgets().tick(widget_ren_data);
 
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
 
@@ -1176,11 +1199,10 @@ namespace {
                 scissor.extent = swapchain_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                overlay_man_.record_render(
-                    framesync_.get_frame_index().get(),
-                    cur_cmd_buf,
-                    rp.pipeline_layout()
-                );
+                widget_ren_data.cmd_buf_ = cur_cmd_buf;
+                widget_ren_data.pipe_layout_ = rp.pipeline_layout();
+                overlay_man_.record_render(widget_ren_data);
+
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 

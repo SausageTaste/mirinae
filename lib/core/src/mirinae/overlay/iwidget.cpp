@@ -39,17 +39,19 @@ namespace mirinae {
 }  // namespace mirinae
 
 
-//
+// WidgetManager
 namespace mirinae {
 
-    void WidgetManager::tick() {
+    void WidgetManager::tick(const WidgetRenderUniData& ren_data) {
         for (auto& widget : widgets_) {
-            widget->tick();
+            widget->tick(ren_data);
         }
     }
 
     void WidgetManager::record_render(const WidgetRenderUniData& uniform_data) {
-        for (auto& widget : widgets_) {
+        const auto vec_size = widgets_.size();
+        for (size_t i = 0; i < vec_size; ++i) {
+            auto& widget = widgets_[vec_size - i - 1];
             if (!widget->hidden()) {
                 widget->record_render(uniform_data);
             }

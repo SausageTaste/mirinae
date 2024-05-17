@@ -63,6 +63,8 @@ namespace {
                 overlay.push_const_.uv_offset = { 0, 0 };
                 overlay.push_const_.uv_scale = { 1, 1 };
             }
+
+            need_update_ = false;
         }
 
     private:
@@ -106,6 +108,8 @@ namespace {
             text_box_.pos_ = pos_;
             text_box_.size_ = size_;
             text_box_.update_content(wd);
+
+            need_update_ = false;
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
@@ -140,7 +144,7 @@ namespace {
     };
 
 
-    class DevConsole : public mirinae::IWidget {
+    class DevConsole : public mirinae::IDevConsole {
 
     public:
         DevConsole(
@@ -149,89 +153,110 @@ namespace {
             mirinae::DesclayoutManager& desclayout,
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
-        )
-            : bg_img_text_box_(sampler, desclayout, tex_man, device)
-            , text_box_(text_render_data)
-            , line_edit_(
-                  sampler, text_render_data, desclayout, tex_man, device
-              ) {
-            text_box_.pos_ = { 10, 10 };
-            text_box_.size_ = { 500, 400 };
-            text_box_.add_text("Hello, World!\n");
+        ) {
+            {
+                auto w = widgets_.emplace_back<LineEdit>(
+                    sampler, text_render_data, desclayout, tex_man, device
+                );
+                w->pos_ = { 10, 415 };
+                w->size_ = { 500, text_render_data.text_height() };
+            }
 
-            bg_img_text_box_.pos_ = { 10, 10 };
-            bg_img_text_box_.size_ = { 500, 400 };
+            {
+                auto w = widgets_.emplace_back<mirinae::TextBox>(
+                    text_render_data
+                );
+                w->pos_ = { 10, 10 };
+                w->size_ = { 500, 400 };
+                w->add_text("Hello, World!\n");
+            }
 
-            constexpr float LINE_EDIT_VER_MARGIN = 4;
+            {
+                auto w = widgets_.emplace_back<ImageView>(
+                    sampler, desclayout, tex_man, device
+                );
+                w->pos_ = { 10, 10 };
+                w->size_ = { 500, 400 };
+            }
+        }
 
-            line_edit_.pos_ = { 10, 415 };
-            line_edit_.size_ = { 500, text_render_data.text_height() };
+        void tick(const mirinae::WidgetRenderUniData& ren_data) override {
+            widgets_.tick(ren_data);
         }
 
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
-            line_edit_.record_render(udata);
-            bg_img_text_box_.record_render(udata);
-            text_box_.record_render(udata);
+            if (hidden_)
+                return;
+            widgets_.record_render(udata);
         }
 
         void update_content(const mirinae::WindowDimInfo& wd) override {
-            bg_img_text_box_.update_content(wd);
-            text_box_.update_content(wd);
-            line_edit_.update_content(wd);
+            widgets_.update_content(wd);
         }
 
+        void request_update() { widgets_.request_update(); };
+
         bool on_key_event(const mirinae::key::Event& e) override {
-            if (e.key == mirinae::key::KeyCode::enter) {
-                if (e.action_type == mirinae::key::ActionType::down) {
-                    const auto line = line_edit_.flush_str();
+            using mirinae::key::ActionType;
+            using mirinae::key::KeyCode;
+
+            if (e.action_type == ActionType::up) {
+                if (e.key == KeyCode::backquote) {
+                    if (this->hidden()) {
+                        this->hide(false);
+                        this->set_focus(true);
+                    } else {
+                        this->hide(true);
+                        this->set_focus(false);
+                    }
+
+                    return true;
+                }
+            }
+
+            if (hidden_)
+                return false;
+
+            if (e.key == KeyCode::enter) {
+                if (e.action_type == ActionType::down) {
+                    auto line_edit = widgets_.find_by_type<LineEdit>();
+                    const auto line = line_edit->flush_str();
                     if (!line.empty()) {
-                        text_box_.add_text(line);
-                        text_box_.add_text("\n");
+                        auto tb = widgets_.find_by_type<mirinae::TextBox>();
+                        tb->add_text(line);
+                        tb->add_text("\n");
                         spdlog::info("Console command: '{}'", line);
                     }
                 }
             }
 
-            if (line_edit_.on_key_event(e))
-                return true;
-            if (bg_img_text_box_.on_key_event(e))
-                return true;
-            if (text_box_.on_key_event(e))
-                return true;
-
-            return false;
+            return widgets_.on_key_event(e);
         }
 
         bool on_text_event(char32_t c) override {
-            if (line_edit_.on_text_event(c))
-                return true;
-            if (bg_img_text_box_.on_text_event(c))
-                return true;
-            if (text_box_.on_text_event(c))
-                return true;
+            if (hidden_)
+                return false;
 
-            return false;
+            return widgets_.on_text_event(c);
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
-            if (line_edit_.on_mouse_event(e))
-                return true;
-            if (bg_img_text_box_.on_mouse_event(e))
-                return true;
-            if (text_box_.on_mouse_event(e))
-                return true;
+            if (hidden_)
+                return false;
 
-            return false;
+            return widgets_.on_mouse_event(e);
         }
 
         void hide(bool hidden) override { hidden_ = hidden; }
 
         bool hidden() const override { return hidden_; }
 
+        void set_focus(bool focused) override { widgets_.set_focus(focused); }
+
+        bool focused() const override { return widgets_.focused(); }
+
     private:
-        ImageView bg_img_text_box_;
-        mirinae::TextBox text_box_;
-        LineEdit line_edit_;
+        mirinae::WidgetManager widgets_;
         bool hidden_ = false;
     };
 
@@ -239,6 +264,19 @@ namespace {
 
 
 namespace mirinae {
+
+    std::unique_ptr<IDevConsole> create_dev_console(
+        VkSampler sampler,
+        mirinae::TextRenderData& text_render_data,
+        mirinae::DesclayoutManager& desclayout,
+        mirinae::TextureManager& tex_man,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<::DevConsole>(
+            sampler, text_render_data, desclayout, tex_man, device
+        );
+    }
+
 
     class OverlayManager::Impl {
 
@@ -259,23 +297,6 @@ namespace mirinae {
             , win_dim_(win_width, win_height, 1) {
             SamplerBuilder sampler_builder;
             sampler_.reset(sampler_builder.build(device_));
-        }
-
-        DevConsole& get_or_create_dev_console() {
-            if (auto w = widgets_.find_by_type<DevConsole>())
-                return *w;
-
-            auto w = widgets_.emplace_back<::DevConsole>(
-                sampler_.get(),
-                this->ascii_ren_data(),
-                desclayout_,
-                tex_man_,
-                device_
-            );
-
-            w->update_content(win_dim_);
-            w->hide(true);
-            return *w;
         }
 
         TextRenderData& ascii_ren_data() {
@@ -316,18 +337,12 @@ namespace mirinae {
 
     OverlayManager::~OverlayManager() = default;
 
-    void OverlayManager::record_render(
-        size_t frame_index,
-        VkCommandBuffer cmd_buf,
-        VkPipelineLayout pipe_layout
-    ) {
-        WidgetRenderUniData udata;
-        udata.win_dim_ = pimpl_->win_dim_;
-        udata.frame_index_ = frame_index;
-        udata.cmd_buf_ = cmd_buf;
-        udata.pipe_layout_ = pipe_layout;
+    void OverlayManager::tick(WidgetRenderUniData& ren_data) {
+        pimpl_->widgets_.record_render(ren_data);
+    }
 
-        pimpl_->widgets_.record_render(udata);
+    void OverlayManager::record_render(WidgetRenderUniData& ren_data) {
+        pimpl_->widgets_.record_render(ren_data);
     }
 
     void OverlayManager::on_fbuf_resize(uint32_t width, uint32_t height) {
@@ -339,14 +354,6 @@ namespace mirinae {
     }
 
     bool OverlayManager::on_key_event(const mirinae::key::Event& e) {
-        if (e.action_type == key::ActionType::up) {
-            if (e.key == key::KeyCode::backquote) {
-                auto& w = pimpl_->get_or_create_dev_console();
-                w.hide(!w.hidden());
-                return true;
-            }
-        }
-
         return pimpl_->widgets_.on_key_event(e);
     }
 
@@ -356,6 +363,22 @@ namespace mirinae {
 
     bool OverlayManager::on_mouse_event(const mouse::Event& e) {
         return pimpl_->widgets_.on_mouse_event(e);
+    }
+
+    VkSampler OverlayManager::sampler() const { return pimpl_->sampler_.get(); }
+
+    const WindowDimInfo& OverlayManager::win_dim() const {
+        return pimpl_->win_dim_;
+    }
+
+    mirinae::TextRenderData& OverlayManager::text_render_data() {
+        return pimpl_->ascii_ren_data();
+    }
+
+    WidgetManager& OverlayManager::widgets() { return pimpl_->widgets_; }
+
+    WidgetManager const& OverlayManager::widgets() const {
+        return pimpl_->widgets_;
     }
 
 }  // namespace mirinae
