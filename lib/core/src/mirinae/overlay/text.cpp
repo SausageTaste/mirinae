@@ -1,5 +1,7 @@
 #include "mirinae/overlay/text.hpp"
 
+#include <spdlog/spdlog.h>
+
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
 
@@ -209,6 +211,27 @@ namespace mirinae {
         }
     }
 
+    bool TextBox::on_key_event(const mirinae::key::Event& e) {
+        if (read_only_)
+            return true;
+
+        if (e.key == mirinae::key::KeyCode::backspace) {
+            if (e.action_type == mirinae::key::ActionType::down) {
+                this->remove_one_char();
+            }
+        }
+
+        return true;
+    }
+
+    bool TextBox::on_text_event(char32_t c) {
+        if (read_only_)
+            return true;
+
+        this->add_text(c);
+        return true;
+    }
+
     bool TextBox::on_mouse_event(const mirinae::mouse::Event& e) {
         using mirinae::mouse::ActionType;
 
@@ -216,6 +239,8 @@ namespace mirinae {
             if (this->is_inside_cl(e.xpos_, e.ypos_)) {
                 owning_mouse_ = true;
                 last_mouse_pos_ = { e.xpos_, e.ypos_ };
+            } else {
+                owning_mouse_ = false;
             }
         } else if (e.action_ == ActionType::up) {
             owning_mouse_ = false;

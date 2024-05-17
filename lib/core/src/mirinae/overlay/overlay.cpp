@@ -113,21 +113,21 @@ namespace {
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
-            if (e.key == mirinae::key::KeyCode::backspace) {
-                if (e.action_type == mirinae::key::ActionType::down) {
-                    text_box_.remove_one_char();
-                }
-            }
-
-            return true;
+            return text_box_.on_key_event(e);
         }
 
         bool on_text_event(char32_t c) override {
-            if (c == '`')
-                return false;
+            return text_box_.on_text_event(c);
+        }
 
-            text_box_.add_text(c);
-            return true;
+        bool on_mouse_event(const mirinae::mouse::Event& e) override {
+            return text_box_.on_mouse_event(e);
+        }
+
+        bool focused() const override { return text_box_.focused(); }
+
+        void set_focus(bool focused) override {
+            text_box_.set_focus(focused);
         }
 
         void add_text(const std::string_view str) { text_box_.add_text(str); }
@@ -236,6 +236,8 @@ namespace {
         bool on_text_event(char32_t c) override {
             if (hidden_)
                 return false;
+            if ('`' == c)
+                return true;
 
             return widgets_.on_text_event(c);
         }

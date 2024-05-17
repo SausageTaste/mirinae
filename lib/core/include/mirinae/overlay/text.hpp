@@ -61,6 +61,9 @@ namespace mirinae {
         TextBox(TextRenderData& text_render_data);
 
         void record_render(const WidgetRenderUniData& udata) override;
+
+        bool on_key_event(const mirinae::key::Event& e) override;
+        bool on_text_event(char32_t c) override;
         bool on_mouse_event(const mouse::Event& e) override;
 
         std::string make_str() const;
@@ -82,6 +85,7 @@ namespace mirinae {
         double line_spacing_ = 1.2;
         bool word_wrap_ = true;
         bool owning_mouse_ = false;
+        bool read_only_ = false;
     };
 
 }  // namespace mirinae
