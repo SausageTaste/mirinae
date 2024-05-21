@@ -150,8 +150,10 @@ namespace {
             mirinae::TextRenderData& text_render_data,
             mirinae::DesclayoutManager& desclayout,
             mirinae::TextureManager& tex_man,
+            mirinae::ScriptEngine& script,
             mirinae::VulkanDevice& device
-        ) {
+        )
+            : script_(script) {
             {
                 auto w = widgets_.emplace_back<LineEdit>(
                     sampler, text_render_data, desclayout, tex_man, device
@@ -223,6 +225,7 @@ namespace {
                         auto tb = widgets_.find_by_type<mirinae::TextBox>();
                         tb->add_text(line);
                         tb->add_text("\n");
+                        script_.exec(line.c_str());
                         spdlog::info("Console command: '{}'", line);
                     }
                     return true;
@@ -258,6 +261,7 @@ namespace {
 
     private:
         mirinae::WidgetManager widgets_;
+        mirinae::ScriptEngine& script_;
         bool hidden_ = false;
     };
 
@@ -271,10 +275,11 @@ namespace mirinae {
         mirinae::TextRenderData& text_render_data,
         mirinae::DesclayoutManager& desclayout,
         mirinae::TextureManager& tex_man,
+        mirinae::ScriptEngine& script,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<::DevConsole>(
-            sampler, text_render_data, desclayout, tex_man, device
+            sampler, text_render_data, desclayout, tex_man, script, device
         );
     }
 

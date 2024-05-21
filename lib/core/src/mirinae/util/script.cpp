@@ -76,6 +76,10 @@ namespace mirinae {
 
     ScriptEngine::~ScriptEngine() = default;
 
+    void ScriptEngine::exec(const char* script) {
+        luaL_dostring(pimpl_->state_, script);
+    }
+
     void ScriptEngine::register_module(const char* name, lua_CFunction funcs) {
         luaL_requiref(pimpl_->state_, name, funcs, 0);
     }

@@ -412,6 +412,7 @@ namespace {
                     overlay_man_.text_render_data(),
                     desclayout_,
                     tex_man_,
+                    script_,
                     device_
                 );
                 w->hide(true);
@@ -1417,6 +1418,7 @@ namespace {
 
         // This must be the first member variable
         mirinae::VulkanDevice device_;
+        mirinae::ScriptEngine script_;
 
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
@@ -1447,8 +1449,6 @@ namespace {
         bool fbuf_resized_ = false;
         bool flashlight_on_ = false;
         bool quit_ = false;
-
-        mirinae::ScriptEngine script_;
     };
 
 }  // namespace
