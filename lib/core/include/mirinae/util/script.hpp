@@ -37,6 +37,7 @@ namespace mirinae {
         ScriptEngine();
         ~ScriptEngine();
 
+        void exec(const char* script);
         void register_module(const char* name, lua_CFunction funcs);
 
     private:

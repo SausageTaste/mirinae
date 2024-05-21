@@ -2,6 +2,7 @@
 
 #include "mirinae/overlay/iwidget.hpp"
 #include "mirinae/overlay/text.hpp"
+#include "mirinae/util/script.hpp"
 
 
 namespace mirinae {
@@ -13,6 +14,7 @@ namespace mirinae {
         mirinae::TextRenderData& text_render_data,
         mirinae::DesclayoutManager& desclayout,
         mirinae::TextureManager& tex_man,
+        mirinae::ScriptEngine& script,
         mirinae::VulkanDevice& device
     );
 
