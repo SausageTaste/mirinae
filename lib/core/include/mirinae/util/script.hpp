@@ -14,8 +14,16 @@ extern "C" {
 
 namespace mirinae {
 
-    // The target table must be on top of the stack
-    void push_lua_constant(lua_State* L, const char* name, lua_Number value);
+    template <typename T>
+    T* find_global_ptr(lua_State* const L, const char* name) {
+        lua_getglobal(L, name);
+        const auto ud_ptr = lua_touserdata(L, -1);
+        lua_pop(L, 1);
+        if (!ud_ptr)
+            return nullptr;
+
+        return static_cast<T*>(ud_ptr);
+    }
 
 
     class LuaFuncList {
@@ -41,6 +49,7 @@ namespace mirinae {
 
         void exec(const char* script);
         void register_module(const char* name, lua_CFunction funcs);
+        void register_global_ptr(const char* name, void* ptr);
 
         // Might be nullptr
         ITextStream* output_buf() const;

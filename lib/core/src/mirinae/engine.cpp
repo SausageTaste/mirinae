@@ -266,28 +266,6 @@ namespace {
 }  // namespace
 
 
-namespace { namespace lua { namespace test {
-
-    // test.time() -> number
-    int time(lua_State* const L) {
-        lua_pushnumber(L, dal::get_cur_sec());
-        return 1;
-    }
-
-
-    int luaopen_test(lua_State* const L) {
-        mirinae::LuaFuncList func_list;
-        func_list.add("time", test::time);
-
-        luaL_newlib(L, func_list.data());
-        mirinae::push_lua_constant(L, "NUM_OF_DEATH", 4);
-
-        return 1;
-    }
-
-}}}  // namespace ::lua::test
-
-
 // Engine
 namespace {
 
@@ -431,8 +409,6 @@ namespace {
             };
 
             fps_timer_.set_fps_cap(120);
-
-            script_.register_module("test", ::lua::test::luaopen_test);
         }
 
         ~EngineGlfw() {

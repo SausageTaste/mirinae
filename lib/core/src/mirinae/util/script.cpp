@@ -1,5 +1,7 @@
 #include "mirinae/util/script.hpp"
 
+#include <sstream>
+
 #include <spdlog/spdlog.h>
 #include <sung/general/time.hpp>
 
@@ -29,13 +31,9 @@ namespace {
 
 
     mirinae::ScriptEngine* find_script_engine(lua_State* const L) {
-        lua_getglobal(L, "__mirinae_script_ptr");
-        const auto ud_ptr = lua_touserdata(L, -1);
-        lua_pop(L, 1);
-        if (!ud_ptr)
-            return nullptr;
-
-        return static_cast<mirinae::ScriptEngine*>(ud_ptr);
+        return mirinae::find_global_ptr<mirinae::ScriptEngine>(
+            L, "__mirinae_script_ptr"
+        );
     }
 
     mirinae::ITextStream* find_output_buf(lua_State* const L) {
@@ -54,24 +52,27 @@ namespace { namespace lua { namespace global {
 
     // print(str)
     int print(lua_State* const L) {
-        if (const auto buf = find_output_buf(L)) {
-            const auto nargs = lua_gettop(L);
-            for (int i = 1; i <= nargs; ++i) {
-                if (i > 1)
-                    buf->append(' ');
+        std::stringstream ss;
 
-                luaL_tolstring(L, i, nullptr);
-                if (const auto str = lua_tostring(L, -1)) {
-                    buf->append(str);
-                } else {
-                    buf->append("nil");
-                }
-                lua_pop(L, 1);
+        const auto nargs = lua_gettop(L);
+        for (int i = 1; i <= nargs; ++i) {
+            if (i > 1)
+                ss << ' ';
+
+            luaL_tolstring(L, i, nullptr);
+            if (const auto str = lua_tostring(L, -1)) {
+                ss << str;
+            } else {
+                ss << "nil";
             }
-            buf->append('\n');
-        } else {
-            fmt::print("{}\n", lua_tostring(L, 1));
+            lua_pop(L, 1);
         }
+        ss << '\n';
+
+        const auto str = ss.str();
+        if (const auto buf = find_output_buf(L))
+            buf->append(str);
+        spdlog::info("Lua print: {}", str);
 
         return 0;
     }
@@ -87,12 +88,6 @@ namespace { namespace lua { namespace global {
 
 // Functions
 namespace mirinae {
-
-    void push_lua_constant(lua_State* L, const char* name, lua_Number value) {
-        lua_pushstring(L, name);
-        lua_pushnumber(L, value);
-        lua_settable(L, -3);
-    }
 
 }  // namespace mirinae
 
@@ -126,6 +121,8 @@ namespace mirinae {
     class ScriptEngine::Impl {
 
     public:
+        lua_State* L() { return state_.operator lua_State*(); }
+
         LuaState state_;
         std::shared_ptr<ITextStream> output_buf_;
     };
@@ -133,8 +130,7 @@ namespace mirinae {
 
     ScriptEngine::ScriptEngine() : pimpl_(std::make_unique<Impl>()) {
         auto L = pimpl_->state_.operator lua_State*();
-        lua_pushlightuserdata(L, this);
-        lua_setglobal(L, "__mirinae_script_ptr");
+        this->register_global_ptr("__mirinae_script_ptr", this);
 
         LuaFuncList funcs;
         funcs.add("print", ::lua::global::print);
@@ -159,6 +155,12 @@ namespace mirinae {
 
     void ScriptEngine::register_module(const char* name, lua_CFunction funcs) {
         luaL_requiref(pimpl_->state_, name, funcs, 0);
+    }
+
+    void ScriptEngine::register_global_ptr(const char* name, void* ptr) {
+        auto L = pimpl_->L();
+        lua_pushlightuserdata(L, this);
+        lua_setglobal(L, name);
     }
 
     ITextStream* ScriptEngine::output_buf() const {
