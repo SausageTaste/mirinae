@@ -1,5 +1,8 @@
 #pragma once
 
+#include <optional>
+#include <string>
+
 
 namespace mirinae {
 
@@ -12,6 +15,8 @@ namespace mirinae {
         virtual bool toggle_fullscreen() = 0;
         virtual bool set_hidden_mouse_mode(bool hidden) = 0;
 
+        virtual std::optional<std::string> get_clipboard() = 0;
+        virtual bool set_clipboard(const std::string& text) = 0;
     };
 
-}
+}  // namespace mirinae

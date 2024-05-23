@@ -87,7 +87,9 @@ namespace {
             mirinae::VulkanDevice& device
         )
             : bg_img_(sampler, desclayout, tex_man, device)
-            , text_box_(text_render_data) {}
+            , text_box_(text_render_data) {
+            text_box_.replace_osio(device.osio());
+        }
 
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
             if (hidden_)
@@ -166,6 +168,7 @@ namespace {
                 );
                 w->pos_ = { 10, 10 };
                 w->size_ = { 500, 400 };
+                w->replace_osio(device.osio());
                 w->add_text("Hello, World!\n");
             }
 
@@ -328,6 +331,7 @@ namespace mirinae {
         Sampler sampler_;
         FontLibrary font_lib_;
 
+        key::EventAnalyzer key_states_;
         WidgetManager widgets_;
 
     private:
@@ -365,7 +369,10 @@ namespace mirinae {
     }
 
     bool OverlayManager::on_key_event(const mirinae::key::Event& e) {
-        return pimpl_->widgets_.on_key_event(e);
+        pimpl_->key_states_.notify(e);
+        auto new_e = e;
+        new_e.states_ = &pimpl_->key_states_;
+        return pimpl_->widgets_.on_key_event(new_e);
     }
 
     bool OverlayManager::on_text_event(char32_t c) {
