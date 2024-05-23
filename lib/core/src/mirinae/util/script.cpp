@@ -60,12 +60,13 @@ namespace { namespace lua { namespace global {
                 if (i > 1)
                     buf->append(' ');
 
-                if (lua_isstring(L, i)) {
-                    const auto str = lua_tostring(L, i);
+                luaL_tolstring(L, i, nullptr);
+                if (const auto str = lua_tostring(L, -1)) {
                     buf->append(str);
                 } else {
                     buf->append("nil");
                 }
+                lua_pop(L, 1);
             }
             buf->append('\n');
         } else {
