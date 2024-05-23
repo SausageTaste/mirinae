@@ -1,5 +1,4 @@
 add_library(mirinae_core STATIC
-    ./src/mirinae/actor/transform.cpp
     ./src/mirinae/overlay/iwidget.cpp
     ./src/mirinae/overlay/overlay.cpp
     ./src/mirinae/overlay/text.cpp
@@ -11,6 +10,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/render/vkcomposition.cpp
     ./src/mirinae/render/vkdevice.cpp
     ./src/mirinae/render/vkmajorplayers.cpp
+    ./src/mirinae/scene/transform.cpp
     ./src/mirinae/util/image.cpp
     ./src/mirinae/util/input_proc.cpp
     ./src/mirinae/util/mamath.cpp

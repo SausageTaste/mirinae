@@ -4,7 +4,7 @@
 
 #include <daltools/struct.h>
 
-#include "mirinae/actor/transform.hpp"
+#include "mirinae/scene/transform.hpp"
 
 #include "uniform.hpp"
 #include "vkcomposition.hpp"
