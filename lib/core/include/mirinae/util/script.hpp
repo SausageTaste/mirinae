@@ -9,6 +9,8 @@ extern "C" {
 #include <lualib.h>
 }
 
+#include "mirinae/util/text_data.hpp"
+
 
 namespace mirinae {
 
@@ -39,6 +41,7 @@ namespace mirinae {
 
         void exec(const char* script);
         void register_module(const char* name, lua_CFunction funcs);
+        void replace_output_buf(std::shared_ptr<ITextStream> texts);
 
     private:
         class Impl;
