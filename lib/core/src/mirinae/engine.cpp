@@ -404,36 +404,21 @@ namespace {
                 };
 
                 for (size_t i = 0; i < mesh_paths.size(); ++i) {
-                    const auto& model_path = mesh_paths.at(i);
-                    auto model = model_man_.request_static(
-                        model_path, desclayout_, tex_man_
-                    );
-                    if (!model) {
-                        spdlog::warn(
-                            "Failed to load model: {}", model_path.u8string()
-                        );
-                        continue;
-                    }
-
                     const auto enttid = scene_.reg_.create();
+                    scene_.entt_without_model_.push_back(enttid);
 
                     {
-                        auto& ren_pair =
-                            scene_.reg_.emplace<::cpnt::StaticActorVk>(enttid);
-                        ren_pair.model_ = model;
-                        ren_pair.actor_ =
-                            std::make_shared<mirinae::RenderActor>(device_);
-                        ren_pair.actor_->init(
-                            mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_
-                        );
+                        auto& mactor = scene_.reg_.emplace<
+                            mirinae::cpnt::StaticModelActorVk>(enttid);
+                        mactor.model_path_ = mesh_paths.at(i);
                     }
 
                     {
-                        auto& transform =
+                        auto& trans =
                             scene_.reg_.emplace<mirinae::cpnt::Transform>(enttid
                             );
-                        transform.pos_ = glm::dvec3(i * 3, 0, 0) + world_shift;
-                        transform.scale_ = glm::dvec3(model_scales[i]);
+                        trans.pos_ = glm::dvec3(i * 3, 0, 0) + world_shift;
+                        trans.scale_ = glm::dvec3(model_scales[i]);
                     }
                 }
             }
@@ -452,39 +437,21 @@ namespace {
                 };
 
                 for (size_t i = 0; i < mesh_paths.size(); ++i) {
-                    const auto& model_path = mesh_paths.at(i);
-                    auto model = model_man_.request_skinned(
-                        model_path, desclayout_, tex_man_
-                    );
-                    if (!model) {
-                        spdlog::warn(
-                            "Failed to load model: {}", model_path.u8string()
-                        );
-                        continue;
-                    }
-
                     const auto enttid = scene_.reg_.create();
+                    scene_.entt_without_model_.push_back(enttid);
 
                     {
-                        auto& ren_pair =
-                            scene_.reg_.emplace<::cpnt::SkinnedActorVk>(enttid);
-                        ren_pair.model_ = model;
-                        ren_pair.actor_ =
-                            std::make_shared<mirinae::RenderActorSkinned>(
-                                device_
-                            );
-                        ren_pair.actor_->init(
-                            mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_
-                        );
+                        auto& mactor = scene_.reg_.emplace<
+                            mirinae::cpnt::SkinnedModelActorVk>(enttid);
+                        mactor.model_path_ = mesh_paths.at(i);
                     }
 
                     {
-                        auto& transform =
+                        auto& trans =
                             scene_.reg_.emplace<mirinae::cpnt::Transform>(enttid
                             );
-                        transform.pos_ = glm::dvec3(i * 0.75, 0, 0) +
-                                         world_shift;
-                        transform.scale_ = glm::dvec3(model_scales[i]);
+                        trans.pos_ = glm::dvec3(i * 0.75, 0, 0) + world_shift;
+                        trans.scale_ = glm::dvec3(model_scales[i]);
                     }
                 }
             }
@@ -529,6 +496,8 @@ namespace {
             const auto t = sung::CalenderTime::from_now().to_total_seconds();
             const auto delta_time = fps_timer_.check_get_elapsed_cap_fps();
             camera_controller_.apply(camera_view_, delta_time);
+
+            this->update_unloaded_models();
 
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
@@ -1501,6 +1470,52 @@ namespace {
 
             framesync_.get_cur_in_flight_fence().reset(device_.logi_device());
             return image_index_opt.value();
+        }
+
+        void update_unloaded_models() {
+            using SrcStatic = mirinae::cpnt::StaticModelActorVk;
+            using SrcSkinn = mirinae::cpnt::SkinnedModelActorVk;
+            using ActorSkinn = mirinae::RenderActorSkinned;
+
+            auto& reg = scene_.reg_;
+
+            for (auto eid : scene_.entt_without_model_) {
+                if (const auto src = reg.try_get<SrcStatic>(eid)) {
+                    auto model = model_man_.request_static(
+                        src->model_path_, desclayout_, tex_man_
+                    );
+                    if (!model) {
+                        spdlog::warn(
+                            "Failed to load model: {}",
+                            src->model_path_.u8string()
+                        );
+                        continue;
+                    }
+
+                    auto& d = reg.emplace<::cpnt::StaticActorVk>(eid);
+                    d.model_ = model;
+                    d.actor_ = std::make_shared<mirinae::RenderActor>(device_);
+                    d.actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                } else if (const auto src = reg.try_get<SrcSkinn>(eid)) {
+                    auto model = model_man_.request_skinned(
+                        src->model_path_, desclayout_, tex_man_
+                    );
+                    if (!model) {
+                        spdlog::warn(
+                            "Failed to load model: {}",
+                            src->model_path_.u8string()
+                        );
+                        continue;
+                    }
+
+                    auto& d = reg.emplace<::cpnt::SkinnedActorVk>(eid);
+                    d.model_ = model;
+                    d.actor_ = std::make_shared<ActorSkinn>(device_);
+                    d.actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                }
+            }
+
+            scene_.entt_without_model_.clear();
         }
 
         // This must be the first member variable
