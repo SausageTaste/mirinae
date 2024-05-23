@@ -7,6 +7,8 @@
 
 namespace mirinae::key {
 
+    class EventAnalyzer;
+
     using Clock_t = std::chrono::steady_clock;
 
     enum class ActionType { down, up };
@@ -38,6 +40,7 @@ namespace mirinae::key {
         Clock_t::time_point timepoint = Clock_t::now();
         ActionType action_type = ActionType::down;
         KeyCode key = KeyCode::eoe;
+        const EventAnalyzer* states_ = nullptr;
     };
 
 

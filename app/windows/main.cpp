@@ -156,6 +156,18 @@ namespace {
             }
         }
 
+        std::optional<std::string> get_clipboard() const {
+            if (auto text = glfwGetClipboardString(window_)) {
+                return text;
+            } else {
+                return "";
+            }
+        }
+
+        void set_clipboard(const std::string& text) {
+            glfwSetClipboardString(window_, text.c_str());
+        }
+
     private:
         static void callback_fbuf_size(
             GLFWwindow* window, int width, int height
@@ -255,9 +267,8 @@ namespace {
             auto engine = reinterpret_cast<mirinae::IEngine*>(ptr);
 
             mirinae::mouse::Event e;
-            e.action_ = (yoffset > 0) ?
-                mirinae::mouse::ActionType::mwheel_up :
-                mirinae::mouse::ActionType::mwheel_down;
+            e.action_ = (yoffset > 0) ? mirinae::mouse::ActionType::mwheel_up
+                                      : mirinae::mouse::ActionType::mwheel_down;
             e.button_ = mirinae::mouse::ButtonCode::eoe;
             glfwGetCursorPos(window, &e.xpos_, &e.ypos_);
 
@@ -368,6 +379,15 @@ namespace {
 
         bool set_hidden_mouse_mode(bool hidden) override {
             window_.set_hidden_mouse_mode(hidden);
+            return true;
+        }
+
+        std::optional<std::string> get_clipboard() override {
+            return window_.get_clipboard();
+        }
+
+        bool set_clipboard(const std::string& text) override {
+            window_.set_clipboard(text);
             return true;
         }
 

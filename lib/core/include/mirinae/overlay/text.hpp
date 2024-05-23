@@ -4,6 +4,7 @@
 
 #include "mirinae/overlay/iwidget.hpp"
 #include "mirinae/util/text_data.hpp"
+#include "mirinae/platform/osio.hpp"
 
 
 namespace mirinae {
@@ -74,7 +75,9 @@ namespace mirinae {
 
         void remove_one_char();
         void clear_text();
+
         void replace_text_buffer(std::shared_ptr<ITextData>& texts);
+        void replace_osio(IOsIoFunctions& osio);
 
         glm::dvec2 scroll_{ 0, 0 };
         bool enable_scroll_ = true;
@@ -82,6 +85,7 @@ namespace mirinae {
     private:
         TextRenderData& text_render_data_;
         std::shared_ptr<ITextData> texts_;
+        IOsIoFunctions* osio_ = nullptr;
         glm::dvec2 last_mouse_pos_;
         double line_spacing_ = 1.2;
         bool word_wrap_ = true;

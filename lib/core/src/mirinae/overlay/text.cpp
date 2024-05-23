@@ -20,6 +20,18 @@ namespace {
         return glm::tvec2<T>(aabb.width(), aabb.height());
     };
 
+
+    bool is_ctrl_modifier_on(const mirinae::key::EventAnalyzer& states) {
+        return states.is_pressed(mirinae::key::KeyCode::lctrl) ||
+               states.is_pressed(mirinae::key::KeyCode::rctrl);
+    }
+
+    bool is_ctrl_modifier_on(const mirinae::key::Event& e) {
+        if (!e.states_)
+            return false;
+        return ::is_ctrl_modifier_on(*e.states_);
+    }
+
 }  // namespace
 
 
@@ -219,10 +231,28 @@ namespace mirinae {
         using mirinae::key::KeyCode;
 
         if (e.action_type == ActionType::down) {
-            if (e.key == KeyCode::backspace) {
-                this->remove_one_char();
-            } else if (e.key == KeyCode::enter) {
-                this->add_text('\n');
+            if (::is_ctrl_modifier_on(e)) {
+                if (e.key == KeyCode::c) {
+                    if (osio_)
+                        osio_->set_clipboard(this->make_str());
+                    else
+                        spdlog::error("OsIo was not given");
+                } else if (e.key == KeyCode::v) {
+                    if (osio_) {
+                        if (const auto str = osio_->get_clipboard())
+                            this->add_text(str.value());
+                        else
+                            spdlog::error("OsIo failed to get clipboard");
+                    } else {
+                        spdlog::error("OsIo was not given");
+                    }
+                }
+            } else {
+                if (e.key == KeyCode::backspace) {
+                    this->remove_one_char();
+                } else if (e.key == KeyCode::enter) {
+                    this->add_text('\n');
+                }
             }
         }
 
@@ -272,5 +302,6 @@ namespace mirinae {
     void TextBox::replace_text_buffer(std::shared_ptr<ITextData>& texts) {
         texts_ = texts;
     }
+    void TextBox::replace_osio(IOsIoFunctions& osio) { osio_ = &osio; }
 
 }  // namespace mirinae
