@@ -88,14 +88,13 @@ namespace {
         )
             : bg_img_(sampler, desclayout, tex_man, device)
             , text_box_(text_render_data) {
-            text_box_.scroll_ = { 0, 0 };
-            text_box_.enable_scroll_ = false;
         }
 
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
             if (hidden_)
                 return;
 
+            text_box_.scroll_.y = -4;
             bg_img_.record_render(udata);
             text_box_.record_render(udata);
         }
@@ -223,10 +222,11 @@ namespace {
                     const auto line = line_edit->flush_str();
                     if (!line.empty()) {
                         auto tb = widgets_.find_by_type<mirinae::TextBox>();
+                        spdlog::info("Console command: '{}'", line);
+                        tb->add_text(">> ");
                         tb->add_text(line);
                         tb->add_text("\n");
                         script_.exec(line.c_str());
-                        spdlog::info("Console command: '{}'", line);
                     }
                     return true;
                 }
