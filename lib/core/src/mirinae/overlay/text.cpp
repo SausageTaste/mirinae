@@ -269,4 +269,8 @@ namespace mirinae {
     void TextBox::remove_one_char() { texts_->pop_back(); }
     void TextBox::clear_text() { texts_->clear(); }
 
+    void TextBox::replace_text_buffer(std::shared_ptr<ITextData>& texts) {
+        texts_ = texts;
+    }
+
 }  // namespace mirinae

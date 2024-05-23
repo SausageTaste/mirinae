@@ -1,5 +1,7 @@
 #include "mirinae/util/script.hpp"
 
+#include <spdlog/spdlog.h>
+
 
 namespace {
 
@@ -69,6 +71,7 @@ namespace mirinae {
 
     public:
         LuaState state_;
+        std::shared_ptr<ITextStream> output_buf_;
     };
 
 
@@ -77,11 +80,22 @@ namespace mirinae {
     ScriptEngine::~ScriptEngine() = default;
 
     void ScriptEngine::exec(const char* script) {
-        luaL_dostring(pimpl_->state_, script);
+        if (luaL_dostring(pimpl_->state_, script)) {
+            const auto err = lua_tostring(pimpl_->state_, -1);
+            spdlog::warn("Lua error: {}", err);
+            if (auto buf = pimpl_->output_buf_.get()) {
+                buf->append(err);
+                buf->append('\n');
+            }
+        }
     }
 
     void ScriptEngine::register_module(const char* name, lua_CFunction funcs) {
         luaL_requiref(pimpl_->state_, name, funcs, 0);
+    }
+
+    void ScriptEngine::replace_output_buf(std::shared_ptr<ITextStream> texts) {
+        pimpl_->output_buf_ = texts;
     }
 
 }  // namespace mirinae

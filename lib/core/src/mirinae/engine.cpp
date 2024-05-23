@@ -6,9 +6,9 @@
 #include <daltools/util.h>
 #include <sung/general/time.hpp>
 
-#include <mirinae/overlay/overlay.hpp>
-#include <mirinae/render/renderpass.hpp>
-#include <mirinae/util/mamath.hpp>
+#include "mirinae/overlay/overlay.hpp"
+#include "mirinae/render/renderpass.hpp"
+#include "mirinae/util/mamath.hpp"
 #include "mirinae/util/script.hpp"
 #include "mirinae/util/skin_anim.hpp"
 
@@ -407,6 +407,9 @@ namespace {
 
             // Widget: Dev console
             {
+                dev_console_output_ = mirinae::create_text_blocks();
+                script_.replace_output_buf(dev_console_output_);
+
                 auto w = mirinae::create_dev_console(
                     overlay_man_.sampler(),
                     overlay_man_.text_render_data(),
@@ -415,6 +418,7 @@ namespace {
                     script_,
                     device_
                 );
+                w->replace_output_buf(dev_console_output_);
                 w->hide(true);
                 overlay_man_.widgets().add_widget(std::move(w));
             }
@@ -1440,6 +1444,7 @@ namespace {
         mirinae::syst::NoclipController camera_controller_;
         mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;
+        std::shared_ptr<mirinae::ITextData> dev_console_output_;
 
         std::unique_ptr<mirinae::ITexture> shadow_map_;
         VkFramebuffer shadow_map_fbuf_;

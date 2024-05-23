@@ -7,17 +7,22 @@
 
 namespace mirinae {
 
-    class ITextData {
+    class ITextStream {
 
     public:
-        virtual ~ITextData() = default;
-
-        virtual std::string make_str() const = 0;
-        virtual std::u32string make_str32() const = 0;
+        virtual ~ITextStream() = default;
 
         virtual bool append(char) = 0;
         virtual bool append(char32_t) = 0;
         virtual bool append(std::string_view) = 0;
+    };
+
+
+    class ITextData : public ITextStream {
+
+    public:
+        virtual std::string make_str() const = 0;
+        virtual std::u32string make_str32() const = 0;
 
         virtual bool pop_back() = 0;
         virtual bool clear() = 0;

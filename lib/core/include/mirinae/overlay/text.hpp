@@ -74,6 +74,7 @@ namespace mirinae {
 
         void remove_one_char();
         void clear_text();
+        void replace_text_buffer(std::shared_ptr<ITextData>& texts);
 
         glm::dvec2 scroll_{ 0, 0 };
         bool enable_scroll_ = true;

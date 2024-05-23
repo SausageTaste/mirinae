@@ -7,7 +7,11 @@
 
 namespace mirinae {
 
-    class IDevConsole : public IWidget {};
+    class IDevConsole : public IWidget {
+
+    public:
+        virtual void replace_output_buf(std::shared_ptr<ITextData>& texts) = 0;
+    };
 
     std::unique_ptr<IDevConsole> create_dev_console(
         VkSampler sampler,

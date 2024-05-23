@@ -87,8 +87,7 @@ namespace {
             mirinae::VulkanDevice& device
         )
             : bg_img_(sampler, desclayout, tex_man, device)
-            , text_box_(text_render_data) {
-        }
+            , text_box_(text_render_data) {}
 
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
             if (hidden_)
@@ -258,6 +257,12 @@ namespace {
         void set_focus(bool focused) override { widgets_.set_focus(focused); }
 
         bool focused() const override { return widgets_.focused(); }
+
+        void replace_output_buf(std::shared_ptr<mirinae::ITextData>& texts
+        ) override {
+            if (auto tb = widgets_.find_by_type<mirinae::TextBox>())
+                tb->replace_text_buffer(texts);
+        }
 
     private:
         mirinae::WidgetManager widgets_;
