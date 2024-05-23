@@ -10,6 +10,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/render/vkcomposition.cpp
     ./src/mirinae/render/vkdevice.cpp
     ./src/mirinae/render/vkmajorplayers.cpp
+    ./src/mirinae/scene/scene.cpp
     ./src/mirinae/scene/transform.cpp
     ./src/mirinae/util/image.cpp
     ./src/mirinae/util/input_proc.cpp
@@ -28,6 +29,7 @@ target_link_libraries(mirinae_core
         spdlog
         lua::lua
         uni-algo::uni-algo
+        EnTT::EnTT
         mirinae::platform
         sungtools::general
     PRIVATE
