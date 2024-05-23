@@ -213,11 +213,8 @@ namespace mirinae {
         );
         VkDescriptorSet get_desc_set(size_t index);
 
-        TransformQuat<double> transform_;
-
     private:
         DescriptorPool desc_pool_;
-        U_GbufActor ubuf_data_;
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;
@@ -240,8 +237,6 @@ namespace mirinae {
             VulkanMemoryAllocator mem_alloc
         );
         VkDescriptorSet get_desc_set(size_t index);
-
-        TransformQuat<double> transform_;
 
     private:
         DescriptorPool desc_pool_;

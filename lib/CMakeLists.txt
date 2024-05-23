@@ -35,12 +35,19 @@ FetchContent_Declare(
     GIT_TAG         v1.2.0
 )
 
+FetchContent_Declare(
+    fetch_entt
+    GIT_REPOSITORY  https://github.com/skypjack/entt
+    GIT_TAG         v3.13.2
+)
+
 FetchContent_MakeAvailable(
     fetch_spdlog
     fetch_vma
     fetch_stb
     fetch_lua
     fetch_unialgo
+    fetch_entt
 )
 
 find_package(Vulkan REQUIRED)

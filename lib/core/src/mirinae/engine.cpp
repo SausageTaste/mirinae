@@ -8,6 +8,7 @@
 
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/renderpass.hpp"
+#include "mirinae/scene/scene.hpp"
 #include "mirinae/util/mamath.hpp"
 #include "mirinae/util/script.hpp"
 #include "mirinae/util/skin_anim.hpp"
@@ -104,21 +105,103 @@ namespace {
         FrameIndex cur_frame_{ 0 };
     };
 
+}  // namespace
+
+
+namespace { namespace cpnt {
+
+    struct StaticActorVk {
+        std::shared_ptr<mirinae::RenderModel> model_;
+        std::shared_ptr<mirinae::RenderActor> actor_;
+    };
+
+
+    struct SkinnedActorVk {
+        std::shared_ptr<mirinae::RenderModelSkinned> model_;
+        std::shared_ptr<mirinae::RenderActorSkinned> actor_;
+    };
+
+}}  // namespace ::cpnt
+
+
+namespace {
 
     struct DrawSheet {
-        struct RenderPairs {
-            std::shared_ptr<mirinae::RenderModel> model_;
-            std::vector<std::shared_ptr<mirinae::RenderActor>> actors_;
+        struct StaticRenderPairs {
+            struct Actor {
+                mirinae::RenderActor* actor_;
+                glm::dmat4 model_mat_;
+            };
+
+            mirinae::RenderModel* model_;
+            std::vector<Actor> actors_;
         };
 
         struct SkinnedRenderPairs {
-            std::shared_ptr<mirinae::RenderModelSkinned> model_;
-            std::vector<std::shared_ptr<mirinae::RenderActorSkinned>> actors_;
+            struct Actor {
+                mirinae::RenderActorSkinned* actor_;
+                glm::dmat4 model_mat_;
+            };
+
+            mirinae::RenderModelSkinned* model_;
+            std::vector<Actor> actors_;
         };
 
-        std::vector<RenderPairs> ren_pairs_;
+        StaticRenderPairs& get_static_pair(mirinae::RenderModel& model) {
+            for (auto& x : static_pairs_) {
+                if (x.model_ == &model)
+                    return x;
+            }
+
+            auto& output = static_pairs_.emplace_back();
+            output.model_ = &model;
+            return output;
+        }
+
+        SkinnedRenderPairs& get_skinn_pair(mirinae::RenderModelSkinned& model) {
+            for (auto& x : skinned_pairs_) {
+                if (x.model_ == &model)
+                    return x;
+            }
+
+            auto& output = skinned_pairs_.emplace_back();
+            output.model_ = &model;
+            return output;
+        }
+
+        std::vector<StaticRenderPairs> static_pairs_;
         std::vector<SkinnedRenderPairs> skinned_pairs_;
     };
+
+    DrawSheet make_draw_sheet(mirinae::Scene& scene) {
+        using CTrans = mirinae::cpnt::Transform;
+        using CStaticModelActor = ::cpnt::StaticActorVk;
+        using CSkinnedModelActor = ::cpnt::SkinnedActorVk;
+
+        DrawSheet sheet;
+
+        for (auto enttid : scene.reg_.view<CTrans, CStaticModelActor>()) {
+            auto& pair = scene.reg_.get<CStaticModelActor>(enttid);
+            auto& trans = scene.reg_.get<CTrans>(enttid);
+
+            auto& dst = sheet.get_static_pair(*pair.model_);
+            auto& actor = dst.actors_.emplace_back();
+            actor.actor_ = pair.actor_.get();
+            actor.model_mat_ = trans.make_model_mat();
+        }
+
+        for (auto& enttid : scene.reg_.view<CTrans, CSkinnedModelActor>()) {
+            auto& pair = scene.reg_.get<CSkinnedModelActor>(enttid);
+            auto& trans = scene.reg_.get<CTrans>(enttid);
+
+            auto& dst = sheet.get_skinn_pair(*pair.model_);
+            auto& actor = dst.actors_.emplace_back();
+            actor.actor_ = pair.actor_.get();
+            actor.model_mat_ = trans.make_model_mat();
+        }
+
+        return sheet;
+    }
 
 }  // namespace
 
@@ -332,16 +415,26 @@ namespace {
                         continue;
                     }
 
-                    auto& ren_pair = draw_sheet_.ren_pairs_.emplace_back();
-                    ren_pair.model_ = model;
+                    const auto enttid = scene_.reg_.create();
 
-                    auto& actor = ren_pair.actors_.emplace_back(
-                        std::make_shared<mirinae::RenderActor>(device_)
-                    );
-                    actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                    actor->transform_.pos_ = glm::dvec3(i * 3, 0, 0) +
-                                             world_shift;
-                    actor->transform_.scale_ = glm::dvec3(model_scales[i]);
+                    {
+                        auto& ren_pair =
+                            scene_.reg_.emplace<::cpnt::StaticActorVk>(enttid);
+                        ren_pair.model_ = model;
+                        ren_pair.actor_ =
+                            std::make_shared<mirinae::RenderActor>(device_);
+                        ren_pair.actor_->init(
+                            mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_
+                        );
+                    }
+
+                    {
+                        auto& transform =
+                            scene_.reg_.emplace<mirinae::cpnt::Transform>(enttid
+                            );
+                        transform.pos_ = glm::dvec3(i * 3, 0, 0) + world_shift;
+                        transform.scale_ = glm::dvec3(model_scales[i]);
+                    }
                 }
             }
 
@@ -370,16 +463,29 @@ namespace {
                         continue;
                     }
 
-                    auto& ren_pair = draw_sheet_.skinned_pairs_.emplace_back();
-                    ren_pair.model_ = model;
+                    const auto enttid = scene_.reg_.create();
 
-                    auto& actor = ren_pair.actors_.emplace_back(
-                        std::make_shared<mirinae::RenderActorSkinned>(device_)
-                    );
-                    actor->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                    actor->transform_.pos_ = glm::dvec3(i * 0.75, 0, 0) +
-                                             world_shift;
-                    actor->transform_.scale_ = glm::dvec3(model_scales[i]);
+                    {
+                        auto& ren_pair =
+                            scene_.reg_.emplace<::cpnt::SkinnedActorVk>(enttid);
+                        ren_pair.model_ = model;
+                        ren_pair.actor_ =
+                            std::make_shared<mirinae::RenderActorSkinned>(
+                                device_
+                            );
+                        ren_pair.actor_->init(
+                            mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_
+                        );
+                    }
+
+                    {
+                        auto& transform =
+                            scene_.reg_.emplace<mirinae::cpnt::Transform>(enttid
+                            );
+                        transform.pos_ = glm::dvec3(i * 0.75, 0, 0) +
+                                         world_shift;
+                        transform.scale_ = glm::dvec3(model_scales[i]);
+                    }
                 }
             }
 
@@ -436,49 +542,49 @@ namespace {
             const auto view_mat = camera_view_.make_view_mat();
 
             // Update ubuf: U_GbufActor
-            for (auto& pair : draw_sheet_.ren_pairs_) {
-                for (auto& actor : pair.actors_) {
+            scene_.reg_.view<mirinae::cpnt::Transform, ::cpnt::StaticActorVk>()
+                .each([&](auto enttid, auto& transform, auto& ren_pair) {
+                    const auto model_mat = transform.make_model_mat();
+
                     mirinae::U_GbufActor ubuf_data;
-                    const auto model_mat = actor->transform_.make_model_mat();
                     ubuf_data.view_model = view_mat * model_mat;
                     ubuf_data.pvm = proj_mat * view_mat * model_mat;
-                    actor->udpate_ubuf(
+
+                    ren_pair.actor_->udpate_ubuf(
                         framesync_.get_frame_index().get(),
                         ubuf_data,
                         device_.mem_alloc()
                     );
-                }
-            }
+                });
 
             // Update ubuf: U_GbufActorSkinned
-            for (auto& pair : draw_sheet_.skinned_pairs_) {
-                for (auto& actor : pair.actors_) {
-                    mirinae::U_GbufActorSkinned ubuf_data;
-                    const auto model_m = actor->transform_.make_model_mat();
-                    ubuf_data.view_model = view_mat * model_m;
-                    ubuf_data.pvm = proj_mat * view_mat * model_m;
+            scene_.reg_.view<mirinae::cpnt::Transform, ::cpnt::SkinnedActorVk>()
+                .each([&](auto enttid, auto& transform, auto& ren_pair) {
+                    const auto model_m = transform.make_model_mat();
 
-                    const auto& anim = pair.model_->animations_.front();
+                    const auto& anim = ren_pair.model_->animations_.front();
                     const auto anim_tick =
                         (sung::CalenderTime::from_now().to_total_seconds() *
                          anim.ticks_per_sec_);
                     const auto skin_mats = mirinae::make_skinning_matrix(
-                        anim_tick, pair.model_->skeleton_, anim
+                        anim_tick, ren_pair.model_->skeleton_, anim
                     );
                     const auto skin_mat_size = std::min<int>(
                         skin_mats.size(), mirinae::MAX_JOINTS
                     );
-                    for (int i = 0; i < skin_mat_size; ++i) {
-                        ubuf_data.joint_transforms_[i] = skin_mats[i];
-                    }
 
-                    actor->udpate_ubuf(
+                    mirinae::U_GbufActorSkinned ubuf_data;
+                    ubuf_data.view_model = view_mat * model_m;
+                    ubuf_data.pvm = proj_mat * view_mat * model_m;
+                    for (int i = 0; i < skin_mat_size; ++i)
+                        ubuf_data.joint_transforms_[i] = skin_mats[i];
+
+                    ren_pair.actor_->udpate_ubuf(
                         framesync_.get_frame_index().get(),
                         ubuf_data,
                         device_.mem_alloc()
                     );
-                }
-            }
+                });
 
             // Update ubuf: U_CompoMain
             {
@@ -515,6 +621,7 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
+            auto draw_sheet = ::make_draw_sheet(scene_);
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
 
             // Begin recording
@@ -573,7 +680,7 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& pair : draw_sheet_.ren_pairs_) {
+                for (auto& pair : draw_sheet.static_pairs_) {
                     for (auto& unit : pair.model_->render_units_) {
                         auto unit_desc = unit.get_desc_set(
                             framesync_.get_frame_index().get()
@@ -581,7 +688,7 @@ namespace {
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor->get_desc_set(
+                            auto actor_desc = actor.actor_->get_desc_set(
                                 framesync_.get_frame_index().get()
                             );
                             vkCmdBindDescriptorSets(
@@ -595,7 +702,7 @@ namespace {
                                 nullptr
                             );
 
-                            const auto m = actor->transform_.make_model_mat();
+                            const auto& m = actor.model_mat_;
                             const auto v = glm::lookAt<double>(
                                 camera_view_.pos_,
                                 camera_view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
@@ -659,7 +766,7 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& pair : draw_sheet_.skinned_pairs_) {
+                for (auto& pair : draw_sheet.skinned_pairs_) {
                     for (auto& unit : pair.model_->runits_) {
                         auto unit_desc = unit.get_desc_set(
                             framesync_.get_frame_index().get()
@@ -667,7 +774,7 @@ namespace {
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor->get_desc_set(
+                            auto actor_desc = actor.actor_->get_desc_set(
                                 framesync_.get_frame_index().get()
                             );
                             vkCmdBindDescriptorSets(
@@ -681,7 +788,7 @@ namespace {
                                 nullptr
                             );
 
-                            const auto m = actor->transform_.make_model_mat();
+                            const auto& m = actor.model_mat_;
                             const auto v = glm::lookAt<double>(
                                 camera_view_.pos_,
                                 camera_view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
@@ -745,7 +852,7 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& pair : draw_sheet_.ren_pairs_) {
+                for (auto& pair : draw_sheet.static_pairs_) {
                     for (auto& unit : pair.model_->render_units_) {
                         auto unit_desc = unit.get_desc_set(
                             framesync_.get_frame_index().get()
@@ -763,7 +870,7 @@ namespace {
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor->get_desc_set(
+                            auto actor_desc = actor.actor_->get_desc_set(
                                 framesync_.get_frame_index().get()
                             );
                             vkCmdBindDescriptorSets(
@@ -821,7 +928,7 @@ namespace {
                 scissor.extent = fbuf_images_.extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& pair : draw_sheet_.skinned_pairs_) {
+                for (auto& pair : draw_sheet.skinned_pairs_) {
                     for (auto& unit : pair.model_->runits_) {
                         auto unit_desc = unit.get_desc_set(
                             framesync_.get_frame_index().get()
@@ -839,7 +946,7 @@ namespace {
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor->get_desc_set(
+                            auto actor_desc = actor.actor_->get_desc_set(
                                 framesync_.get_frame_index().get()
                             );
                             vkCmdBindDescriptorSets(
@@ -963,7 +1070,7 @@ namespace {
                     nullptr
                 );
 
-                for (auto& pair : draw_sheet_.ren_pairs_) {
+                for (auto& pair : draw_sheet.static_pairs_) {
                     for (auto& unit : pair.model_->render_units_alpha_) {
                         auto unit_desc = unit.get_desc_set(
                             framesync_.get_frame_index().get()
@@ -981,7 +1088,7 @@ namespace {
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor->get_desc_set(
+                            auto actor_desc = actor.actor_->get_desc_set(
                                 framesync_.get_frame_index().get()
                             );
                             vkCmdBindDescriptorSets(
@@ -1053,7 +1160,7 @@ namespace {
                     nullptr
                 );
 
-                for (auto& pair : draw_sheet_.skinned_pairs_) {
+                for (auto& pair : draw_sheet.skinned_pairs_) {
                     for (auto& unit : pair.model_->runits_alpha_) {
                         auto unit_desc = unit.get_desc_set(
                             framesync_.get_frame_index().get()
@@ -1071,7 +1178,7 @@ namespace {
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor->get_desc_set(
+                            auto actor_desc = actor.actor_->get_desc_set(
                                 framesync_.get_frame_index().get()
                             );
                             vkCmdBindDescriptorSets(
@@ -1400,6 +1507,7 @@ namespace {
         mirinae::VulkanDevice device_;
         mirinae::ScriptEngine script_;
 
+        mirinae::Scene scene_;
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DesclayoutManager desclayout_;
@@ -1409,7 +1517,6 @@ namespace {
         ::RpStatesCompo rp_states_compo_;
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesFillscreen rp_states_fillscreen_;
-        ::DrawSheet draw_sheet_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         mirinae::CommandPool cmd_pool_;
