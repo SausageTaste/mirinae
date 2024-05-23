@@ -359,6 +359,7 @@ namespace {
             mirinae::EngineCreateInfo&& cinfo, int init_width, int init_height
         )
             : device_(std::move(cinfo))
+            , scene_(script_)
             , tex_man_(device_)
             , model_man_(device_)
             , desclayout_(device_)
@@ -391,37 +392,8 @@ namespace {
                 input_mgrs_.add(&camera_controller_);
             }
 
-            const glm::dvec3 world_shift = { 100000, 100000, 0 };
+            const glm::dvec3 world_shift = { 0, 0, 0 };
             camera_view_.pos_ = world_shift;
-
-            // Static models
-            {
-                const std::vector<mirinae::respath_t> mesh_paths{
-                    "asset/models/sponza/sponza.dmd",
-                };
-                const std::vector<float> model_scales{
-                    0.01f,
-                };
-
-                for (size_t i = 0; i < mesh_paths.size(); ++i) {
-                    const auto enttid = scene_.reg_.create();
-                    scene_.entt_without_model_.push_back(enttid);
-
-                    {
-                        auto& mactor = scene_.reg_.emplace<
-                            mirinae::cpnt::StaticModelActorVk>(enttid);
-                        mactor.model_path_ = mesh_paths.at(i);
-                    }
-
-                    {
-                        auto& trans =
-                            scene_.reg_.emplace<mirinae::cpnt::Transform>(enttid
-                            );
-                        trans.pos_ = glm::dvec3(i * 3, 0, 0) + world_shift;
-                        trans.scale_ = glm::dvec3(model_scales[i]);
-                    }
-                }
-            }
 
             // Skinned models
             {
@@ -442,7 +414,7 @@ namespace {
 
                     {
                         auto& mactor = scene_.reg_.emplace<
-                            mirinae::cpnt::SkinnedModelActorVk>(enttid);
+                            mirinae::cpnt::SkinnedModelActor>(enttid);
                         mactor.model_path_ = mesh_paths.at(i);
                     }
 
@@ -1473,8 +1445,8 @@ namespace {
         }
 
         void update_unloaded_models() {
-            using SrcStatic = mirinae::cpnt::StaticModelActorVk;
-            using SrcSkinn = mirinae::cpnt::SkinnedModelActorVk;
+            using SrcStatic = mirinae::cpnt::StaticModelActor;
+            using SrcSkinn = mirinae::cpnt::SkinnedModelActor;
             using ActorSkinn = mirinae::RenderActorSkinned;
 
             auto& reg = scene_.reg_;
