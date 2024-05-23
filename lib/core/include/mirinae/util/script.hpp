@@ -14,16 +14,7 @@ extern "C" {
 
 namespace mirinae {
 
-    template <typename T>
-    T* find_global_ptr(lua_State* const L, const char* name) {
-        lua_getglobal(L, name);
-        const auto ud_ptr = lua_touserdata(L, -1);
-        lua_pop(L, 1);
-        if (!ud_ptr)
-            return nullptr;
-
-        return static_cast<T*>(ud_ptr);
-    }
+    void* find_global_ptr(lua_State* const L, const char* name);
 
 
     class LuaFuncList {
