@@ -41,6 +41,9 @@ namespace mirinae {
 
         void exec(const char* script);
         void register_module(const char* name, lua_CFunction funcs);
+
+        // Might be nullptr
+        ITextStream* output_buf() const;
         void replace_output_buf(std::shared_ptr<ITextStream> texts);
 
     private:

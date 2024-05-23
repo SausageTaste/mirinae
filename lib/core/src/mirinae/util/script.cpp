@@ -1,6 +1,7 @@
 #include "mirinae/util/script.hpp"
 
 #include <spdlog/spdlog.h>
+#include <sung/general/time.hpp>
 
 
 namespace {
@@ -26,7 +27,61 @@ namespace {
         lua_State* state_;
     };
 
+
+    mirinae::ScriptEngine* find_script_engine(lua_State* const L) {
+        lua_getglobal(L, "__mirinae_script_ptr");
+        const auto ud_ptr = lua_touserdata(L, -1);
+        lua_pop(L, 1);
+        if (!ud_ptr)
+            return nullptr;
+
+        return static_cast<mirinae::ScriptEngine*>(ud_ptr);
+    }
+
+    mirinae::ITextStream* find_output_buf(lua_State* const L) {
+        const auto script = find_script_engine(L);
+        if (!script)
+            return nullptr;
+
+        return script->output_buf();
+    }
+
 }  // namespace
+
+
+// Lua module: global
+namespace { namespace lua { namespace global {
+
+    // print(str)
+    int print(lua_State* const L) {
+        if (const auto buf = find_output_buf(L)) {
+            const auto nargs = lua_gettop(L);
+            for (int i = 1; i <= nargs; ++i) {
+                if (i > 1)
+                    buf->append(' ');
+
+                if (lua_isstring(L, i)) {
+                    const auto str = lua_tostring(L, i);
+                    buf->append(str);
+                } else {
+                    buf->append("nil");
+                }
+            }
+            buf->append('\n');
+        } else {
+            fmt::print("{}\n", lua_tostring(L, 1));
+        }
+
+        return 0;
+    }
+
+    int time(lua_State* const L) {
+        const auto sec = sung::CalenderTime::from_now().to_total_seconds();
+        lua_pushnumber(L, sec);
+        return 1;
+    }
+
+}}}  // namespace ::lua::global
 
 
 // Functions
@@ -75,7 +130,18 @@ namespace mirinae {
     };
 
 
-    ScriptEngine::ScriptEngine() : pimpl_(std::make_unique<Impl>()) {}
+    ScriptEngine::ScriptEngine() : pimpl_(std::make_unique<Impl>()) {
+        auto L = pimpl_->state_.operator lua_State*();
+        lua_pushlightuserdata(L, this);
+        lua_setglobal(L, "__mirinae_script_ptr");
+
+        LuaFuncList funcs;
+        funcs.add("print", ::lua::global::print);
+        funcs.add("time", ::lua::global::time);
+        lua_getglobal(L, "_G");
+        luaL_setfuncs(L, funcs.data(), 0);
+        lua_pop(L, 1);
+    }
 
     ScriptEngine::~ScriptEngine() = default;
 
@@ -92,6 +158,10 @@ namespace mirinae {
 
     void ScriptEngine::register_module(const char* name, lua_CFunction funcs) {
         luaL_requiref(pimpl_->state_, name, funcs, 0);
+    }
+
+    ITextStream* ScriptEngine::output_buf() const {
+        return pimpl_->output_buf_.get();
     }
 
     void ScriptEngine::replace_output_buf(std::shared_ptr<ITextStream> texts) {
