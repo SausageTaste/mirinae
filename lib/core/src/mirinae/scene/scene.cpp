@@ -87,6 +87,41 @@ namespace { namespace scene {
     namespace cpnt = mirinae::cpnt;
 
 
+    // TransformView
+    namespace tview {
+
+        using Transform = mirinae::cpnt::Transform;
+        using UdataType = Transform*;
+
+        const char* const UDATA_ID = "mirinae.transform_view";
+
+        auto& check_udata(lua_State* const L, const int idx) {
+            void* const ud = luaL_checkudata(L, idx, UDATA_ID);
+            return *static_cast<UdataType*>(ud);
+        }
+
+
+        int get_scale(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            lua_pushnumber(L, self->scale_.x);
+            lua_pushnumber(L, self->scale_.y);
+            lua_pushnumber(L, self->scale_.z);
+            return 3;
+        }
+
+        int set_scale(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            self->scale_.x = luaL_checknumber(L, 2);
+            self->scale_.y = luaL_checknumber(L, 3);
+            self->scale_.z = luaL_checknumber(L, 4);
+            return 0;
+        }
+
+    }  // namespace tview
+
+
     // Entity
     namespace entity {
 
@@ -115,6 +150,19 @@ namespace { namespace scene {
             }
         }
 
+        int get_transform(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+
+            if (auto c = reg.try_get<tview::Transform>(self)) {
+                auto& o = ::push_meta_obj<tview::UdataType>(L, tview::UDATA_ID);
+                o = c;
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+
     }  // namespace entity
 
 
@@ -130,7 +178,6 @@ namespace { namespace scene {
             mactor.model_path_.assign(model_path);
 
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
-            trans.scale_ = glm::vec3{ 0.01f, 0.01f, 0.01f };
         }
 
         auto& o = ::push_meta_obj<entity::UdataType>(L, entity::UDATA_ID);
@@ -159,10 +206,20 @@ namespace { namespace scene {
 
 
     int luaopen_scene(lua_State* const L) {
-        // entity
+        // TransformView
+        {
+            mirinae::LuaFuncList methods;
+            methods.add("get_scale", tview::get_scale);
+            methods.add("set_scale", tview::set_scale);
+
+            ::add_metatable_definition(L, tview::UDATA_ID, methods.data());
+        }
+
+        // Entity
         {
             mirinae::LuaFuncList methods;
             methods.add("get_respath", entity::get_respath);
+            methods.add("get_transform", entity::get_transform);
 
             ::add_metatable_definition(L, entity::UDATA_ID, methods.data());
         }
