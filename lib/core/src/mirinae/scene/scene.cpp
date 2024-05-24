@@ -84,6 +84,10 @@ namespace {
 
 namespace { namespace scene {
 
+    namespace cpnt = mirinae::cpnt;
+
+
+    // Entity
     namespace entity {
 
         using UdataType = entt::entity;
@@ -97,15 +101,13 @@ namespace { namespace scene {
 
 
         int get_respath(lua_State* const L) {
-            using namespace mirinae::cpnt;
-
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
 
-            if (auto c = reg.try_get<StaticModelActor>(self)) {
+            if (auto c = reg.try_get<cpnt::StaticModelActor>(self)) {
                 lua_pushstring(L, c->model_path_.u8string().c_str());
                 return 1;
-            } else if (auto c = reg.try_get<SkinnedModelActor>(self)) {
+            } else if (auto c = reg.try_get<cpnt::SkinnedModelActor>(self)) {
                 lua_pushstring(L, c->model_path_.u8string().c_str());
                 return 1;
             } else {
@@ -117,22 +119,17 @@ namespace { namespace scene {
 
 
     int create_static_model(lua_State* const L) {
-        const auto scene = ::find_scene_ptr(L);
-        if (!scene)
-            return luaL_error(L, "Scene pointer not found");
-
+        GET_SCENE_PTR();
         const auto model_path = luaL_checkstring(L, 1);
-        const auto enttid = scene->reg_.create();
+        const auto enttid = reg.create();
 
         {
-            scene->entt_without_model_.push_back(enttid);
+            scene.entt_without_model_.push_back(enttid);
 
-            auto& mactor = scene->reg_.emplace<mirinae::cpnt::StaticModelActor>(
-                enttid
-            );
+            auto& mactor = reg.emplace<cpnt::StaticModelActor>(enttid);
             mactor.model_path_.assign(model_path);
 
-            auto& trans = scene->reg_.emplace<mirinae::cpnt::Transform>(enttid);
+            auto& trans = reg.emplace<cpnt::Transform>(enttid);
             trans.scale_ = glm::vec3{ 0.01f, 0.01f, 0.01f };
         }
 
@@ -142,21 +139,17 @@ namespace { namespace scene {
     }
 
     int create_skinned_model(lua_State* const L) {
-        const auto scene = ::find_scene_ptr(L);
-        if (!scene)
-            return luaL_error(L, "Scene pointer not found");
-
+        GET_SCENE_PTR();
         const auto model_path = luaL_checkstring(L, 1);
-        const auto enttid = scene->reg_.create();
+        const auto enttid = reg.create();
 
         {
-            scene->entt_without_model_.push_back(enttid);
+            scene.entt_without_model_.push_back(enttid);
 
-            auto& mactor =
-                scene->reg_.emplace<mirinae::cpnt::SkinnedModelActor>(enttid);
+            auto& mactor = reg.emplace<cpnt::SkinnedModelActor>(enttid);
             mactor.model_path_.assign(model_path);
 
-            auto& trans = scene->reg_.emplace<mirinae::cpnt::Transform>(enttid);
+            auto& trans = reg.emplace<cpnt::Transform>(enttid);
         }
 
         auto& o = ::push_meta_obj<entity::UdataType>(L, entity::UDATA_ID);
