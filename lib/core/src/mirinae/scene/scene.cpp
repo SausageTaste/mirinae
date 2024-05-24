@@ -13,27 +13,6 @@
 
 namespace {
 
-    union entt_cast_t {
-        entt::entity enttid_;
-        void* ptr_;
-    };
-
-    void* entt_cast(const entt::entity enttid) {
-        static_assert(sizeof(void*) >= sizeof(entt::entity));
-        entt_cast_t cast;
-        cast.ptr_ = nullptr;
-        cast.enttid_ = enttid;
-        return cast.ptr_;
-    }
-
-    entt::entity entt_cast(const void* const ptr) {
-        static_assert(sizeof(void*) >= sizeof(entt::entity));
-        entt_cast_t cast;
-        cast.ptr_ = const_cast<void*>(ptr);
-        return cast.enttid_;
-    }
-
-
     mirinae::Scene* find_scene_ptr(lua_State* const L) {
         const auto usrptr = mirinae::find_global_ptr(L, "__mirinae_scene_ptr");
         const auto scene = static_cast<mirinae::Scene*>(usrptr);
