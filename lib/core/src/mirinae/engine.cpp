@@ -395,39 +395,6 @@ namespace {
             const glm::dvec3 world_shift = { 0, 0, 0 };
             camera_view_.pos_ = world_shift;
 
-            // Skinned models
-            {
-                const std::vector<mirinae::respath_t> mesh_paths{
-                    "ThinMatrix/Character Running.dmd",
-                    "Sung/bard/bard_subset.dmd",
-                    "Sung/artist/artist_subset.dmd",
-                };
-                const std::vector<float> model_scales{
-                    1.8f / 8.66793f,
-                    1,
-                    1,
-                };
-
-                for (size_t i = 0; i < mesh_paths.size(); ++i) {
-                    const auto enttid = scene_.reg_.create();
-                    scene_.entt_without_model_.push_back(enttid);
-
-                    {
-                        auto& mactor = scene_.reg_.emplace<
-                            mirinae::cpnt::SkinnedModelActor>(enttid);
-                        mactor.model_path_ = mesh_paths.at(i);
-                    }
-
-                    {
-                        auto& trans =
-                            scene_.reg_.emplace<mirinae::cpnt::Transform>(enttid
-                            );
-                        trans.pos_ = glm::dvec3(i * 0.75, 0, 0) + world_shift;
-                        trans.scale_ = glm::dvec3(model_scales[i]);
-                    }
-                }
-            }
-
             // Widget: Dev console
             {
                 dev_console_output_ = mirinae::create_text_blocks();
