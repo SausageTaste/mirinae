@@ -68,11 +68,12 @@ namespace { namespace lua { namespace global {
             }
             lua_pop(L, 1);
         }
-        ss << '\n';
 
         const auto str = ss.str();
-        if (const auto buf = find_output_buf(L))
+        if (const auto buf = find_output_buf(L)) {
             buf->append(str);
+            buf->append('\n');
+        }
         spdlog::info("Lua print: {}", str);
 
         return 0;
