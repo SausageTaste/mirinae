@@ -101,6 +101,24 @@ namespace { namespace scene {
         }
 
 
+        int get_pos(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            lua_pushnumber(L, self->pos_.x);
+            lua_pushnumber(L, self->pos_.y);
+            lua_pushnumber(L, self->pos_.z);
+            return 3;
+        }
+
+        int set_pos(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            self->pos_.x = luaL_checknumber(L, 2);
+            self->pos_.y = luaL_checknumber(L, 3);
+            self->pos_.z = luaL_checknumber(L, 4);
+            return 0;
+        }
+
         int get_scale(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
@@ -209,6 +227,8 @@ namespace { namespace scene {
         // TransformView
         {
             mirinae::LuaFuncList methods;
+            methods.add("get_pos", tview::get_pos);
+            methods.add("set_pos", tview::set_pos);
             methods.add("get_scale", tview::get_scale);
             methods.add("set_scale", tview::set_scale);
 
