@@ -421,6 +421,17 @@ namespace {
             };
 
             fps_timer_.set_fps_cap(120);
+
+            // Script
+            {
+                const auto contents = device_.filesys().read_file_to_vector(
+                    "asset/script/startup.lua"
+                );
+                if (contents) {
+                    const std::string str{ contents->begin(), contents->end() };
+                    script_.exec(str.c_str());
+                }
+            }
         }
 
         ~EngineGlfw() {
