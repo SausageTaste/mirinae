@@ -132,6 +132,13 @@ namespace { namespace scene {
         }
 
 
+        int get_id(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            lua_pushinteger(L, static_cast<lua_Integer>(self));
+            return 1;
+        }
+
         int get_respath(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
@@ -162,6 +169,20 @@ namespace { namespace scene {
 
     }  // namespace entity
 
+
+    int get_entt_by_id(lua_State* const L) {
+        GET_SCENE_PTR();
+        const auto id = luaL_checkinteger(L, 1);
+        const auto entity = static_cast<entt::entity>(id);
+
+        if (reg.valid(entity)) {
+            auto& o = ::push_meta_obj<entity::UdataType>(L, entity::UDATA_ID);
+            o = entity;
+            return 1;
+        } else {
+            return 0;
+        }
+    }
 
     int create_static_model(lua_State* const L) {
         GET_SCENE_PTR();
@@ -217,6 +238,7 @@ namespace { namespace scene {
         // Entity
         {
             mirinae::LuaFuncList methods;
+            methods.add("get_id", entity::get_id);
             methods.add("get_respath", entity::get_respath);
             methods.add("get_transform", entity::get_transform);
 
@@ -226,6 +248,7 @@ namespace { namespace scene {
         // Module
         {
             mirinae::LuaFuncList funcs;
+            funcs.add("get_entt_by_id", get_entt_by_id);
             funcs.add("create_static_model", create_static_model);
             funcs.add("create_skinned_model", create_skinned_model);
             luaL_newlib(L, funcs.data());
