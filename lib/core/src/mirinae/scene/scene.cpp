@@ -3,13 +3,20 @@
 #include "mirinae/scene/transform.hpp"
 
 
+#define GET_SCENE_PTR()                                  \
+    const auto scene_ptr = ::find_scene_ptr(L);          \
+    if (!scene_ptr)                                      \
+        return luaL_error(L, "Scene pointer not found"); \
+    auto& scene = *scene_ptr;                            \
+    auto& reg = scene.reg_;
+
+
 namespace {
 
     union entt_cast_t {
         entt::entity enttid_;
         void* ptr_;
     };
-
 
     void* entt_cast(const entt::entity enttid) {
         static_assert(sizeof(void*) >= sizeof(entt::entity));
@@ -37,19 +44,78 @@ namespace {
         return scene;
     }
 
+
+    void set_lua_func_to_table(lua_State* L, const luaL_Reg* l, int nup) {
+        for (; l->name; l++) {
+            int i;
+            lua_pushstring(L, l->name);
+            for (i = 0; i < nup; i++) /* copy upvalues to the top */
+                lua_pushvalue(L, -(nup + 1));
+            lua_pushcclosure(L, l->func, nup);
+            lua_settable(L, -(nup + 3));
+        }
+        lua_pop(L, nup); /* remove upvalues */
+    }
+
+    void add_metatable_definition(
+        lua_State* const L,
+        const char* const name,
+        const luaL_Reg* const functions
+    ) {
+        luaL_newmetatable(L, name);
+        lua_pushstring(L, "__index");
+        lua_pushvalue(L, -2); /* pushes the metatable */
+        lua_settable(L, -3);  /* metatable.__index = metatable */
+        ::set_lua_func_to_table(L, functions, 0);
+    }
+
+    template <typename T>
+    auto& push_meta_obj(lua_State* const L, const char* const type_name) {
+        const auto ud = lua_newuserdata(L, sizeof(T));
+        luaL_getmetatable(L, type_name);
+        lua_setmetatable(L, -2);
+
+        const auto ud_ptr = static_cast<T*>(ud);
+        return *ud_ptr;
+    }
+
 }  // namespace
 
 
 namespace { namespace scene {
 
-    /**
-     * Test with following lua code:
-     * `scene = require('scene')`
-     * `e = scene.create_static_model("asset/models/sponza/sponza.dmd")`
-     *
-     * @param str model_path
-     * @return Entity ID as lightuserdata
-     */
+    namespace entity {
+
+        using UdataType = entt::entity;
+
+        const char* const UDATA_ID = "mirinae.entity";
+
+        auto& check_udata(lua_State* const L, const int idx) {
+            void* const ud = luaL_checkudata(L, idx, UDATA_ID);
+            return *static_cast<UdataType*>(ud);
+        }
+
+
+        int get_respath(lua_State* const L) {
+            using namespace mirinae::cpnt;
+
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+
+            if (auto c = reg.try_get<StaticModelActor>(self)) {
+                lua_pushstring(L, c->model_path_.u8string().c_str());
+                return 1;
+            } else if (auto c = reg.try_get<SkinnedModelActor>(self)) {
+                lua_pushstring(L, c->model_path_.u8string().c_str());
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+
+    }  // namespace entity
+
+
     int create_static_model(lua_State* const L) {
         const auto scene = ::find_scene_ptr(L);
         if (!scene)
@@ -70,19 +136,11 @@ namespace { namespace scene {
             trans.scale_ = glm::vec3{ 0.01f, 0.01f, 0.01f };
         }
 
-        lua_pushlightuserdata(L, ::entt_cast(enttid));
+        auto& o = ::push_meta_obj<entity::UdataType>(L, entity::UDATA_ID);
+        o = enttid;
         return 1;
     }
 
-
-    /**
-     * Test with following lua code:
-     * `scene = require('scene')`
-     * `e = scene.create_skinned_model("ThinMatrix/Character Running.dmd")`
-     *
-     * @param str model_path
-     * @return Entity ID as lightuserdata
-     */
     int create_skinned_model(lua_State* const L) {
         const auto scene = ::find_scene_ptr(L);
         if (!scene)
@@ -101,12 +159,22 @@ namespace { namespace scene {
             auto& trans = scene->reg_.emplace<mirinae::cpnt::Transform>(enttid);
         }
 
-        lua_pushlightuserdata(L, ::entt_cast(enttid));
+        auto& o = ::push_meta_obj<entity::UdataType>(L, entity::UDATA_ID);
+        o = enttid;
         return 1;
     }
 
 
     int luaopen_scene(lua_State* const L) {
+        // entity
+        {
+            mirinae::LuaFuncList methods;
+            methods.add("get_respath", entity::get_respath);
+
+            ::add_metatable_definition(L, entity::UDATA_ID, methods.data());
+        }
+
+        // Module
         {
             mirinae::LuaFuncList funcs;
             funcs.add("create_static_model", create_static_model);
