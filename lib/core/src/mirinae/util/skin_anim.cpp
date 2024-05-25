@@ -171,3 +171,22 @@ namespace mirinae {
     }
 
 }  // namespace mirinae
+
+
+// SkinAnimState
+namespace mirinae {
+
+    void SkinAnimState::sample_anim(
+        glm::mat4* const out_buf,
+        const size_t buf_size,
+        const double delta_time,
+        const dal::parser::Skeleton& skeleton,
+        const dal::parser::Animation& anim
+    ) {
+        tick_ += delta_time * anim.ticks_per_sec_;
+        const auto mats = mirinae::make_skinning_matrix(tick_, skeleton, anim);
+        const auto copy_size = std::min<size_t>(buf_size, mats.size());
+        std::copy(mats.begin(), mats.begin() + copy_size, out_buf);
+    }
+
+}  // namespace mirinae

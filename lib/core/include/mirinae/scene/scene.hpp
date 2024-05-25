@@ -4,6 +4,7 @@
 
 #include "mirinae/platform/filesys.hpp"
 #include "mirinae/util/script.hpp"
+#include "mirinae/util/skin_anim.hpp"
 
 
 namespace mirinae { namespace cpnt {
@@ -14,6 +15,7 @@ namespace mirinae { namespace cpnt {
 
     struct SkinnedModelActor {
         respath_t model_path_;
+        SkinAnimState anim_state_;
     };
 
 }}  // namespace mirinae::cpnt
