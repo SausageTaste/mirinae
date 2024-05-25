@@ -25,7 +25,7 @@ namespace mirinae {
     };
 
 
-    constexpr uint32_t MAX_JOINTS = 128;
+    constexpr uint32_t MAX_JOINTS = 256;
 
     struct U_GbufActorSkinned {
         glm::mat4 joint_transforms_[MAX_JOINTS];

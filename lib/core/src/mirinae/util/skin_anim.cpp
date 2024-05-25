@@ -2,6 +2,8 @@
 
 #include <unordered_map>
 
+#include <spdlog/spdlog.h>
+
 
 namespace {
 
@@ -191,6 +193,17 @@ namespace mirinae {
         }
 
         auto& anim = this->anims().at(anim_index_);
+
+        if (buf_size < this->skel().joints_.size()) {
+            spdlog::warn(
+                "Buffer size ({}) is too small to store all joint matrices "
+                "({}) in '{}'",
+                buf_size,
+                this->skel().joints_.size(),
+                anim.name_
+            );
+        }
+
         tick_ += delta_time * anim.ticks_per_sec_ * play_speed_;
         tick_ = ::mod_tick(tick_, 0, anim_duration_);
 

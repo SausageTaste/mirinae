@@ -1,5 +1,7 @@
 #version 450
 
+const int MAX_JOINTS = 256;
+
 layout(location = 0) in vec3 i_pos;
 layout(location = 1) in vec3 i_normal;
 layout(location = 2) in vec3 i_tangent;
@@ -13,7 +15,7 @@ layout(push_constant) uniform U_ShadowPushConst {
 } u_push_const;
 
 layout(set = 0, binding = 0) uniform U_GbufActorSkinned {
-    mat4 joint_transforms[128];
+    mat4 joint_transforms[MAX_JOINTS];
     mat4 view_model;
     mat4 pvm;
 } u_gbuf_model;
