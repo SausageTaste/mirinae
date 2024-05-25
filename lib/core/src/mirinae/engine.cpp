@@ -11,7 +11,6 @@
 #include "mirinae/scene/scene.hpp"
 #include "mirinae/util/mamath.hpp"
 #include "mirinae/util/script.hpp"
-#include "mirinae/util/skin_anim.hpp"
 
 
 namespace {
@@ -455,7 +454,7 @@ namespace {
             }
             const auto image_index = image_index_opt.value();
 
-            this->update_ubufs();
+            this->update_ubufs(delta_time);
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -1393,7 +1392,7 @@ namespace {
             scene_.entt_without_model_.clear();
         }
 
-        void update_ubufs() {
+        void update_ubufs(double dt) {
             const auto t = sung::CalenderTime::from_now().to_total_seconds();
             const auto proj_mat = camera_proj_.make_proj_mat(
                 swapchain_.width(), swapchain_.height()
@@ -1417,26 +1416,28 @@ namespace {
                 });
 
             // Update ubuf: U_GbufActorSkinned
-            scene_.reg_.view<mirinae::cpnt::Transform, ::cpnt::SkinnedActorVk>()
-                .each([&](auto enttid, auto& transform, auto& ren_pair) {
+            scene_.reg_
+                .view<
+                    mirinae::cpnt::Transform,
+                    ::cpnt::SkinnedActorVk,
+                    mirinae::cpnt::SkinnedModelActor>()
+                .each([&](auto enttid,
+                          auto& transform,
+                          auto& ren_pair,
+                          auto& mactor) {
                     const auto model_m = transform.make_model_mat();
-
                     const auto& anim = ren_pair.model_->animations_.front();
-                    const auto anim_tick =
-                        (sung::CalenderTime::from_now().to_total_seconds() *
-                         anim.ticks_per_sec_);
-                    const auto skin_mats = mirinae::make_skinning_matrix(
-                        anim_tick, ren_pair.model_->skeleton_, anim
-                    );
-                    const auto skin_mat_size = std::min<int>(
-                        skin_mats.size(), mirinae::MAX_JOINTS
-                    );
 
                     mirinae::U_GbufActorSkinned ubuf_data;
+                    mactor.anim_state_.sample_anim(
+                        ubuf_data.joint_transforms_,
+                        mirinae::MAX_JOINTS,
+                        dt,
+                        ren_pair.model_->skeleton_,
+                        anim
+                    );
                     ubuf_data.view_model = view_mat * model_m;
                     ubuf_data.pvm = proj_mat * view_mat * model_m;
-                    for (int i = 0; i < skin_mat_size; ++i)
-                        ubuf_data.joint_transforms_[i] = skin_mats[i];
 
                     ren_pair.actor_->udpate_ubuf(
                         framesync_.get_frame_index().get(),

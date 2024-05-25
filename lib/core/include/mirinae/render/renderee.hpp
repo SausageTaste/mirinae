@@ -240,7 +240,6 @@ namespace mirinae {
 
     private:
         DescriptorPool desc_pool_;
-        U_GbufActorSkinned ubuf_data_;
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;
