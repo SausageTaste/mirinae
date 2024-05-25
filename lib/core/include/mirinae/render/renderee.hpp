@@ -4,10 +4,10 @@
 
 #include <daltools/struct.h>
 
+#include "mirinae/render/uniform.hpp"
+#include "mirinae/render/vkcomposition.hpp"
 #include "mirinae/scene/transform.hpp"
-
-#include "uniform.hpp"
-#include "vkcomposition.hpp"
+#include "mirinae/util/skin_anim.hpp"
 
 
 namespace mirinae {
@@ -161,14 +161,15 @@ namespace mirinae {
 
     public:
         RenderModelSkinned(VulkanDevice& vulkan_device)
-            : device_(vulkan_device) {}
+            : skel_anim_(std::make_shared<SkelAnimPair>())
+            , device_(vulkan_device) {}
+
         ~RenderModelSkinned();
 
     public:
         std::vector<RenderUnitSkinned> runits_;
         std::vector<RenderUnitSkinned> runits_alpha_;
-        std::vector<dal::parser::Animation> animations_;
-        dal::parser::Skeleton skeleton_;
+        HSkelAnim skel_anim_;
         VulkanDevice& device_;
     };
 
@@ -244,5 +245,21 @@ namespace mirinae {
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;
     };
+
+
+    namespace cpnt {
+
+        struct StaticActorVk {
+            std::shared_ptr<mirinae::RenderModel> model_;
+            std::shared_ptr<mirinae::RenderActor> actor_;
+        };
+
+
+        struct SkinnedActorVk {
+            std::shared_ptr<mirinae::RenderModelSkinned> model_;
+            std::shared_ptr<mirinae::RenderActorSkinned> actor_;
+        };
+
+    }  // namespace cpnt
 
 }  // namespace mirinae

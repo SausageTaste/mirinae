@@ -107,22 +107,6 @@ namespace {
 }  // namespace
 
 
-namespace { namespace cpnt {
-
-    struct StaticActorVk {
-        std::shared_ptr<mirinae::RenderModel> model_;
-        std::shared_ptr<mirinae::RenderActor> actor_;
-    };
-
-
-    struct SkinnedActorVk {
-        std::shared_ptr<mirinae::RenderModelSkinned> model_;
-        std::shared_ptr<mirinae::RenderActorSkinned> actor_;
-    };
-
-}}  // namespace ::cpnt
-
-
 namespace {
 
     struct DrawSheet {
@@ -174,8 +158,8 @@ namespace {
 
     DrawSheet make_draw_sheet(mirinae::Scene& scene) {
         using CTrans = mirinae::cpnt::Transform;
-        using CStaticModelActor = ::cpnt::StaticActorVk;
-        using CSkinnedModelActor = ::cpnt::SkinnedActorVk;
+        using CStaticModelActor = mirinae::cpnt::StaticActorVk;
+        using CSkinnedModelActor = mirinae::cpnt::SkinnedActorVk;
 
         DrawSheet sheet;
 
@@ -1347,14 +1331,14 @@ namespace {
         }
 
         void update_unloaded_models() {
-            using SrcStatic = mirinae::cpnt::StaticModelActor;
-            using SrcSkinn = mirinae::cpnt::SkinnedModelActor;
-            using ActorSkinn = mirinae::RenderActorSkinned;
+            namespace cpnt = mirinae::cpnt;
+            using SrcSkinn = cpnt::SkinnedModelActor;
+            using mirinae::RenderActorSkinned;
 
             auto& reg = scene_.reg_;
 
             for (auto eid : scene_.entt_without_model_) {
-                if (const auto src = reg.try_get<SrcStatic>(eid)) {
+                if (const auto src = reg.try_get<cpnt::StaticModelActor>(eid)) {
                     auto model = model_man_.request_static(
                         src->model_path_, desclayout_, tex_man_
                     );
@@ -1366,7 +1350,7 @@ namespace {
                         continue;
                     }
 
-                    auto& d = reg.emplace<::cpnt::StaticActorVk>(eid);
+                    auto& d = reg.emplace<cpnt::StaticActorVk>(eid);
                     d.model_ = model;
                     d.actor_ = std::make_shared<mirinae::RenderActor>(device_);
                     d.actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
@@ -1382,10 +1366,11 @@ namespace {
                         continue;
                     }
 
-                    auto& d = reg.emplace<::cpnt::SkinnedActorVk>(eid);
+                    auto& d = reg.emplace<cpnt::SkinnedActorVk>(eid);
                     d.model_ = model;
-                    d.actor_ = std::make_shared<ActorSkinn>(device_);
+                    d.actor_ = std::make_shared<RenderActorSkinned>(device_);
                     d.actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                    src->anim_state_.skel_anim_ = d.model_->skel_anim_;
                 }
             }
 
@@ -1393,6 +1378,8 @@ namespace {
         }
 
         void update_ubufs(double dt) {
+            namespace cpnt = mirinae::cpnt;
+
             const auto t = sung::CalenderTime::from_now().to_total_seconds();
             const auto proj_mat = camera_proj_.make_proj_mat(
                 swapchain_.width(), swapchain_.height()
@@ -1400,8 +1387,8 @@ namespace {
             const auto view_mat = camera_view_.make_view_mat();
 
             // Update ubuf: U_GbufActor
-            scene_.reg_.view<mirinae::cpnt::Transform, ::cpnt::StaticActorVk>()
-                .each([&](auto enttid, auto& transform, auto& ren_pair) {
+            scene_.reg_.view<cpnt::Transform, cpnt::StaticActorVk>().each(
+                [&](auto enttid, auto& transform, auto& ren_pair) {
                     const auto model_mat = transform.make_model_mat();
 
                     mirinae::U_GbufActor ubuf_data;
@@ -1413,28 +1400,26 @@ namespace {
                         ubuf_data,
                         device_.mem_alloc()
                     );
-                });
+                }
+            );
 
             // Update ubuf: U_GbufActorSkinned
             scene_.reg_
                 .view<
-                    mirinae::cpnt::Transform,
-                    ::cpnt::SkinnedActorVk,
-                    mirinae::cpnt::SkinnedModelActor>()
+                    cpnt::Transform,
+                    cpnt::SkinnedActorVk,
+                    cpnt::SkinnedModelActor>()
                 .each([&](auto enttid,
                           auto& transform,
                           auto& ren_pair,
                           auto& mactor) {
                     const auto model_m = transform.make_model_mat();
-                    const auto& anim = ren_pair.model_->animations_.front();
 
                     mirinae::U_GbufActorSkinned ubuf_data;
                     mactor.anim_state_.sample_anim(
                         ubuf_data.joint_transforms_,
                         mirinae::MAX_JOINTS,
-                        dt,
-                        ren_pair.model_->skeleton_,
-                        anim
+                        dt
                     );
                     ubuf_data.view_model = view_mat * model_m;
                     ubuf_data.pvm = proj_mat * view_mat * model_m;

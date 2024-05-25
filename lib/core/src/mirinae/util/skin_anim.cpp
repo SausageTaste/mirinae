@@ -177,16 +177,35 @@ namespace mirinae {
 namespace mirinae {
 
     void SkinAnimState::sample_anim(
-        glm::mat4* const out_buf,
-        const size_t buf_size,
-        const double delta_time,
-        const dal::parser::Skeleton& skeleton,
-        const dal::parser::Animation& anim
+        glm::mat4* const out_buf, const size_t buf_size, const double delta_time
     ) {
+        auto& anim = this->anims().at(anim_index_);
+
         tick_ += delta_time * anim.ticks_per_sec_;
-        const auto mats = mirinae::make_skinning_matrix(tick_, skeleton, anim);
+        const auto mats = mirinae::make_skinning_matrix(
+            tick_, this->skel(), anim
+        );
         const auto copy_size = std::min<size_t>(buf_size, mats.size());
         std::copy(mats.begin(), mats.begin() + copy_size, out_buf);
+    }
+
+    bool SkinAnimState::set_anim_index(const size_t index) {
+        if (index >= this->anims().size())
+            return false;
+
+        anim_index_ = index;
+        return true;
+    }
+
+    bool SkinAnimState::set_anim_name(const std::string& name) {
+        for (size_t i = 0; i < this->anims().size(); i++) {
+            if (this->anims().at(i).name_ == name) {
+                anim_index_ = i;
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }  // namespace mirinae

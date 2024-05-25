@@ -1237,8 +1237,8 @@ namespace mirinae {
                 );
             }
 
-            output->skeleton_ = parsed_model.skeleton_;
-            output->animations_ = parsed_model.animations_;
+            output->skel_anim_->skel_ = parsed_model.skeleton_;
+            output->skel_anim_->anims_ = parsed_model.animations_;
 
             skin_models_[res_id] = output;
             return output;
