@@ -5,6 +5,12 @@
 
 namespace {
 
+    double mod_tick(double tick, double lower, double upper) {
+        const auto span = upper - lower;
+        const auto into_floor = (tick - lower) / span;
+        return tick - std::floor(into_floor) * span;
+    }
+
     float interpolate(float start, float end, float factor) {
         const auto delta = end - start;
         return start + factor * delta;
@@ -122,8 +128,6 @@ namespace mirinae {
         const dal::parser::Skeleton& skeleton,
         const dal::parser::Animation& anim
     ) {
-        tick_point = std::fmod(tick_point, anim.calc_duration_in_ticks());
-
         std::unordered_map<std::string, glm::mat4> joint_transforms;
         joint_transforms.reserve(anim.joints_.size());
         for (auto& anim_joint : anim.joints_) {
@@ -179,9 +183,17 @@ namespace mirinae {
     void SkinAnimState::sample_anim(
         glm::mat4* const out_buf, const size_t buf_size, const double delta_time
     ) {
-        auto& anim = this->anims().at(anim_index_);
+        if (this->anims().size() <= anim_index_) {
+            for (size_t i = 0; i < buf_size; i++) {
+                out_buf[i] = glm::mat4{ 1 };
+            }
+            return;
+        }
 
-        tick_ += delta_time * anim.ticks_per_sec_;
+        auto& anim = this->anims().at(anim_index_);
+        tick_ += delta_time * anim.ticks_per_sec_ * play_speed_;
+        tick_ = ::mod_tick(tick_, 0, anim_duration_);
+
         const auto mats = mirinae::make_skinning_matrix(
             tick_, this->skel(), anim
         );
@@ -189,19 +201,36 @@ namespace mirinae {
         std::copy(mats.begin(), mats.begin() + copy_size, out_buf);
     }
 
+    void SkinAnimState::set_skel_anim(const HSkelAnim& skel_anim) {
+        skel_anim_ = skel_anim;
+
+        tick_ = 0;
+        anim_index_ = 0;
+        anim_duration_ = this->anims().empty()
+                             ? 10
+                             : this->anims().at(0).calc_duration_in_ticks();
+    }
+
     bool SkinAnimState::set_anim_index(const size_t index) {
         if (index >= this->anims().size())
             return false;
+        if (anim_index_ == index)
+            return true;
 
+        tick_ = 0;
         anim_index_ = index;
+        anim_duration_ =
+            this->anims().empty()
+                ? 10
+                : this->anims().at(anim_index_).calc_duration_in_ticks();
+
         return true;
     }
 
     bool SkinAnimState::set_anim_name(const std::string& name) {
         for (size_t i = 0; i < this->anims().size(); i++) {
             if (this->anims().at(i).name_ == name) {
-                anim_index_ = i;
-                return true;
+                return this->set_anim_index(i);
             }
         }
 

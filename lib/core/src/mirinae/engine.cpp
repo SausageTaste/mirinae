@@ -1370,7 +1370,7 @@ namespace {
                     d.model_ = model;
                     d.actor_ = std::make_shared<RenderActorSkinned>(device_);
                     d.actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                    src->anim_state_.skel_anim_ = d.model_->skel_anim_;
+                    src->anim_state_.set_skel_anim(d.model_->skel_anim_);
                 }
             }
 
