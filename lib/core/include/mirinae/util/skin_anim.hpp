@@ -36,12 +36,15 @@ namespace mirinae {
             const double delta_time
         );
 
+        void set_skel_anim(const HSkelAnim& skel_anim);
         bool set_anim_index(const size_t index);
         bool set_anim_name(const std::string& name);
 
-        HSkelAnim skel_anim_;
+        double play_speed_ = 1;
 
     private:
+        HSkelAnim skel_anim_;
+        double anim_duration_ = 10;
         double tick_ = 0;
         size_t anim_index_ = 0;
     };
