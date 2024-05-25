@@ -184,6 +184,23 @@ namespace { namespace scene {
             return 1;
         }
 
+        int get_anim_name_by_idx(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            const auto anim_index = luaL_checkinteger(L, 2);
+
+            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
+            if (!mactor)
+                return luaL_error(L, "This entity is not a skinned model.");
+
+            auto& anims = mactor->anim_state_.anims();
+            if (anim_index < 0 || anim_index >= anims.size())
+                return 0;
+
+            lua_pushstring(L, anims[anim_index].name_.c_str());
+            return 1;
+        }
+
         int set_anim_by_name(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
@@ -193,11 +210,36 @@ namespace { namespace scene {
             if (!mactor)
                 return luaL_error(L, "This entity is not a skinned model.");
 
-            if (mactor->anim_state_.set_anim_name(anim_name)) {
-                return 0;
-            } else {
-                return luaL_error(L, "Animation not found.");
-            }
+            const auto result = mactor->anim_state_.set_anim_name(anim_name);
+            lua_pushboolean(L, result ? 1 : 0);
+            return 1;
+        }
+
+        int set_anim_by_idx(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            const auto anim_index = luaL_checkinteger(L, 2);
+
+            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
+            if (!mactor)
+                return luaL_error(L, "This entity is not a skinned model.");
+
+            const auto result = mactor->anim_state_.set_anim_index(anim_index);
+            lua_pushboolean(L, result ? 1 : 0);
+            return 1;
+        }
+
+        int set_anim_speed(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            const auto speed = luaL_checknumber(L, 2);
+
+            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
+            if (!mactor)
+                return luaL_error(L, "This entity is not a skinned model.");
+
+            mactor->anim_state_.play_speed_ = speed;
+            return 0;
         }
 
     }  // namespace entity
@@ -275,7 +317,10 @@ namespace { namespace scene {
             methods.add("get_respath", entity::get_respath);
             methods.add("get_transform", entity::get_transform);
             methods.add("get_anim_names", entity::get_anim_names);
+            methods.add("get_anim_name_by_idx", entity::get_anim_name_by_idx);
             methods.add("set_anim_by_name", entity::set_anim_by_name);
+            methods.add("set_anim_by_idx", entity::set_anim_by_idx);
+            methods.add("set_anim_speed", entity::set_anim_speed);
 
             ::add_metatable_definition(L, entity::UDATA_ID, methods.data());
         }
