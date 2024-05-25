@@ -167,6 +167,39 @@ namespace { namespace scene {
             }
         }
 
+        int get_anim_names(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+
+            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
+            if (!mactor)
+                return luaL_error(L, "This entity is not a skinned model.");
+
+            lua_newtable(L);
+            for (size_t i = 0; i < mactor->anim_state_.anims().size(); ++i) {
+                lua_pushstring(L, mactor->anim_state_.anims()[i].name_.c_str());
+                lua_rawseti(L, -2, i + 1);
+            }
+
+            return 1;
+        }
+
+        int set_anim_by_name(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            const auto anim_name = luaL_checkstring(L, 2);
+
+            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
+            if (!mactor)
+                return luaL_error(L, "This entity is not a skinned model.");
+
+            if (mactor->anim_state_.set_anim_name(anim_name)) {
+                return 0;
+            } else {
+                return luaL_error(L, "Animation not found.");
+            }
+        }
+
     }  // namespace entity
 
 
@@ -241,6 +274,8 @@ namespace { namespace scene {
             methods.add("get_id", entity::get_id);
             methods.add("get_respath", entity::get_respath);
             methods.add("get_transform", entity::get_transform);
+            methods.add("get_anim_names", entity::get_anim_names);
+            methods.add("set_anim_by_name", entity::set_anim_by_name);
 
             ::add_metatable_definition(L, entity::UDATA_ID, methods.data());
         }
