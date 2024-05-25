@@ -13,13 +13,13 @@ do
 end
 
 do
-    local e = scene.create_skinned_model("Sung/bard/bard_subset.dmd")
-    e:get_transform():set_pos(1, 0, 0)
-    print("Skinned actor created:", e:get_id(), e:get_respath())
+    bard = scene.create_skinned_model("Sung/bard/bard_subset.dmd")
+    bard:get_transform():set_pos(1, 0, 0)
+    print("Skinned actor created:", bard:get_id(), bard:get_respath())
 end
 
 do
-    local e = scene.create_skinned_model("Sung/artist/artist_subset.dmd")
-    e:get_transform():set_pos(1.35, 0, 0)
-    print("Skinned actor created:", e:get_id(), e:get_respath())
+    artist = scene.create_skinned_model("Sung/artist/artist_subset.dmd")
+    artist:get_transform():set_pos(1.35, 0, 0)
+    print("Skinned actor created:", artist:get_id(), artist:get_respath())
 end
