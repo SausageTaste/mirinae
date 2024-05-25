@@ -455,82 +455,7 @@ namespace {
             }
             const auto image_index = image_index_opt.value();
 
-            const auto proj_mat = camera_proj_.make_proj_mat(
-                swapchain_.width(), swapchain_.height()
-            );
-            const auto view_mat = camera_view_.make_view_mat();
-
-            // Update ubuf: U_GbufActor
-            scene_.reg_.view<mirinae::cpnt::Transform, ::cpnt::StaticActorVk>()
-                .each([&](auto enttid, auto& transform, auto& ren_pair) {
-                    const auto model_mat = transform.make_model_mat();
-
-                    mirinae::U_GbufActor ubuf_data;
-                    ubuf_data.view_model = view_mat * model_mat;
-                    ubuf_data.pvm = proj_mat * view_mat * model_mat;
-
-                    ren_pair.actor_->udpate_ubuf(
-                        framesync_.get_frame_index().get(),
-                        ubuf_data,
-                        device_.mem_alloc()
-                    );
-                });
-
-            // Update ubuf: U_GbufActorSkinned
-            scene_.reg_.view<mirinae::cpnt::Transform, ::cpnt::SkinnedActorVk>()
-                .each([&](auto enttid, auto& transform, auto& ren_pair) {
-                    const auto model_m = transform.make_model_mat();
-
-                    const auto& anim = ren_pair.model_->animations_.front();
-                    const auto anim_tick =
-                        (sung::CalenderTime::from_now().to_total_seconds() *
-                         anim.ticks_per_sec_);
-                    const auto skin_mats = mirinae::make_skinning_matrix(
-                        anim_tick, ren_pair.model_->skeleton_, anim
-                    );
-                    const auto skin_mat_size = std::min<int>(
-                        skin_mats.size(), mirinae::MAX_JOINTS
-                    );
-
-                    mirinae::U_GbufActorSkinned ubuf_data;
-                    ubuf_data.view_model = view_mat * model_m;
-                    ubuf_data.pvm = proj_mat * view_mat * model_m;
-                    for (int i = 0; i < skin_mat_size; ++i)
-                        ubuf_data.joint_transforms_[i] = skin_mats[i];
-
-                    ren_pair.actor_->udpate_ubuf(
-                        framesync_.get_frame_index().get(),
-                        ubuf_data,
-                        device_.mem_alloc()
-                    );
-                });
-
-            // Update ubuf: U_CompoMain
-            {
-                mirinae::U_CompoMain ubuf_data;
-                ubuf_data.set_proj_inv(glm::inverse(proj_mat));
-                ubuf_data.set_dlight_dir(
-                    view_mat *
-                    glm::dvec4{ std::cos(t * 0.2), 1, std::sin(t * 0.2), 0 }
-                );
-                ubuf_data.set_dlight_color(5);
-                ubuf_data.set_slight_pos(glm::dvec3{ 0, 0, 0 });
-                ubuf_data.set_slight_dir(glm::dvec3{ 0, 0, -1 });
-                ubuf_data.set_slight_color(flashlight_on_ ? 5.f : 0.f);
-                ubuf_data.set_slight_inner_angle(mirinae::Angle::from_deg(10));
-                ubuf_data.set_slight_outer_angle(mirinae::Angle::from_deg(25));
-                ubuf_data.set_slight_max_dist(10);
-
-                rp_states_compo_.ubufs_.at(framesync_.get_frame_index().get())
-                    .set_data(
-                        &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
-                    );
-
-                rp_states_transp_.ubufs_.at(framesync_.get_frame_index().get())
-                    .set_data(
-                        &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
-                    );
-            }
+            this->update_ubufs();
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -1466,6 +1391,86 @@ namespace {
             }
 
             scene_.entt_without_model_.clear();
+        }
+
+        void update_ubufs() {
+            const auto t = sung::CalenderTime::from_now().to_total_seconds();
+            const auto proj_mat = camera_proj_.make_proj_mat(
+                swapchain_.width(), swapchain_.height()
+            );
+            const auto view_mat = camera_view_.make_view_mat();
+
+            // Update ubuf: U_GbufActor
+            scene_.reg_.view<mirinae::cpnt::Transform, ::cpnt::StaticActorVk>()
+                .each([&](auto enttid, auto& transform, auto& ren_pair) {
+                    const auto model_mat = transform.make_model_mat();
+
+                    mirinae::U_GbufActor ubuf_data;
+                    ubuf_data.view_model = view_mat * model_mat;
+                    ubuf_data.pvm = proj_mat * view_mat * model_mat;
+
+                    ren_pair.actor_->udpate_ubuf(
+                        framesync_.get_frame_index().get(),
+                        ubuf_data,
+                        device_.mem_alloc()
+                    );
+                });
+
+            // Update ubuf: U_GbufActorSkinned
+            scene_.reg_.view<mirinae::cpnt::Transform, ::cpnt::SkinnedActorVk>()
+                .each([&](auto enttid, auto& transform, auto& ren_pair) {
+                    const auto model_m = transform.make_model_mat();
+
+                    const auto& anim = ren_pair.model_->animations_.front();
+                    const auto anim_tick =
+                        (sung::CalenderTime::from_now().to_total_seconds() *
+                         anim.ticks_per_sec_);
+                    const auto skin_mats = mirinae::make_skinning_matrix(
+                        anim_tick, ren_pair.model_->skeleton_, anim
+                    );
+                    const auto skin_mat_size = std::min<int>(
+                        skin_mats.size(), mirinae::MAX_JOINTS
+                    );
+
+                    mirinae::U_GbufActorSkinned ubuf_data;
+                    ubuf_data.view_model = view_mat * model_m;
+                    ubuf_data.pvm = proj_mat * view_mat * model_m;
+                    for (int i = 0; i < skin_mat_size; ++i)
+                        ubuf_data.joint_transforms_[i] = skin_mats[i];
+
+                    ren_pair.actor_->udpate_ubuf(
+                        framesync_.get_frame_index().get(),
+                        ubuf_data,
+                        device_.mem_alloc()
+                    );
+                });
+
+            // Update ubuf: U_CompoMain
+            {
+                mirinae::U_CompoMain ubuf_data;
+                ubuf_data.set_proj_inv(glm::inverse(proj_mat));
+                ubuf_data.set_dlight_dir(
+                    view_mat *
+                    glm::dvec4{ std::cos(t * 0.2), 1, std::sin(t * 0.2), 0 }
+                );
+                ubuf_data.set_dlight_color(5);
+                ubuf_data.set_slight_pos(glm::dvec3{ 0, 0, 0 });
+                ubuf_data.set_slight_dir(glm::dvec3{ 0, 0, -1 });
+                ubuf_data.set_slight_color(flashlight_on_ ? 5.f : 0.f);
+                ubuf_data.set_slight_inner_angle(mirinae::Angle::from_deg(10));
+                ubuf_data.set_slight_outer_angle(mirinae::Angle::from_deg(25));
+                ubuf_data.set_slight_max_dist(10);
+
+                rp_states_compo_.ubufs_.at(framesync_.get_frame_index().get())
+                    .set_data(
+                        &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
+                    );
+
+                rp_states_transp_.ubufs_.at(framesync_.get_frame_index().get())
+                    .set_data(
+                        &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
+                    );
+            }
         }
 
         // This must be the first member variable
