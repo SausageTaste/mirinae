@@ -98,6 +98,20 @@ namespace { namespace scene {
             return 0;
         }
 
+        int rotate(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            const auto angle = luaL_checknumber(L, 2);
+            const auto x_axis = luaL_checknumber(L, 3);
+            const auto y_axis = luaL_checknumber(L, 4);
+            const auto z_axis = luaL_checknumber(L, 5);
+            self->rotate(
+                Transform::Angle::from_deg(angle),
+                glm::vec3{ x_axis, y_axis, z_axis }
+            );
+            return 0;
+        }
+
         int get_scale(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
@@ -304,6 +318,7 @@ namespace { namespace scene {
             mirinae::LuaFuncList methods;
             methods.add("get_pos", tview::get_pos);
             methods.add("set_pos", tview::set_pos);
+            methods.add("rotate", tview::rotate);
             methods.add("get_scale", tview::get_scale);
             methods.add("set_scale", tview::set_scale);
 
