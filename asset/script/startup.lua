@@ -14,12 +14,17 @@ end
 
 do
     bard = scene.create_skinned_model("Sung/bard/bard_subset.dmd")
-    bard:get_transform():set_pos(1, 0, 0)
+    local t = bard:get_transform()
+    t:set_pos(1, 0, 0)
+    t:rotate(-90, 0, 1, 0)
     print("Skinned actor created:", bard:get_id(), bard:get_respath())
 end
 
 do
     artist = scene.create_skinned_model("Sung/artist/artist_subset.dmd")
     artist:get_transform():set_pos(1.35, 0, 0)
+    local t = artist:get_transform()
+    t:set_pos(2, 0, 0)
+    t:rotate(-90, 0, 1, 0)
     print("Skinned actor created:", artist:get_id(), artist:get_respath())
 end
