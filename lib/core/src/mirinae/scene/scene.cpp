@@ -215,7 +215,7 @@ namespace { namespace scene {
             return 1;
         }
 
-        int set_anim_by_name(lua_State* const L) {
+        int set_anim_name(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
             const auto anim_name = luaL_checkstring(L, 2);
@@ -228,7 +228,7 @@ namespace { namespace scene {
             return 0;
         }
 
-        int set_anim_by_idx(lua_State* const L) {
+        int set_anim_idx(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
             const auto anim_index = luaL_checkinteger(L, 2);
@@ -271,7 +271,7 @@ namespace { namespace scene {
         }
     }
 
-    int create_static_model(lua_State* const L) {
+    int create_static_actor(lua_State* const L) {
         GET_SCENE_PTR();
         const auto model_path = luaL_checkstring(L, 1);
         const auto enttid = reg.create();
@@ -290,7 +290,7 @@ namespace { namespace scene {
         return 1;
     }
 
-    int create_skinned_model(lua_State* const L) {
+    int create_skinned_actor(lua_State* const L) {
         GET_SCENE_PTR();
         const auto model_path = luaL_checkstring(L, 1);
         const auto enttid = reg.create();
@@ -331,8 +331,8 @@ namespace { namespace scene {
             methods.add("get_transform", entity::get_transform);
             methods.add("get_anim_names", entity::get_anim_names);
             methods.add("get_anim_name_by_idx", entity::get_anim_name_by_idx);
-            methods.add("set_anim_by_name", entity::set_anim_by_name);
-            methods.add("set_anim_by_idx", entity::set_anim_by_idx);
+            methods.add("set_anim_name", entity::set_anim_name);
+            methods.add("set_anim_idx", entity::set_anim_idx);
             methods.add("set_anim_speed", entity::set_anim_speed);
 
             ::add_metatable_definition(L, entity::UDATA_ID, methods.data());
@@ -342,8 +342,8 @@ namespace { namespace scene {
         {
             mirinae::LuaFuncList funcs;
             funcs.add("get_entt_by_id", get_entt_by_id);
-            funcs.add("create_static_model", create_static_model);
-            funcs.add("create_skinned_model", create_skinned_model);
+            funcs.add("create_static_actor", create_static_actor);
+            funcs.add("create_skinned_actor", create_skinned_actor);
             luaL_newlib(L, funcs.data());
         }
 
