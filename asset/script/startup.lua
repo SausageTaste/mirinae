@@ -12,6 +12,7 @@ do
     print("Skinned actor created:", e:get_id(), e:get_respath())
 end
 
+--[[
 do
     bard = scene.create_skinned_actor("Sung/bard/bard_subset.dmd")
     local t = bard:get_transform()
@@ -29,3 +30,4 @@ do
     t:rotate(-90, 0, 1, 0)
     print("Skinned actor created:", artist:get_id(), artist:get_respath())
 end
+]]--

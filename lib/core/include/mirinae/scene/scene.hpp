@@ -3,6 +3,8 @@
 #include <entt/entt.hpp>
 
 #include "mirinae/platform/filesys.hpp"
+#include "mirinae/scene/transform.hpp"
+#include "mirinae/util/mamath.hpp"
 #include "mirinae/util/script.hpp"
 #include "mirinae/util/skin_anim.hpp"
 
@@ -16,6 +18,12 @@ namespace mirinae { namespace cpnt {
     struct SkinnedModelActor {
         respath_t model_path_;
         SkinAnimState anim_state_;
+    };
+
+
+    struct StandardCamera {
+        mirinae::cpnt::Transform view_;
+        mirinae::PerspectiveCamera<double> proj_;
     };
 
 }}  // namespace mirinae::cpnt
@@ -38,6 +46,7 @@ namespace mirinae {
 
         entt::registry reg_;
         std::vector<entt::entity> entt_without_model_;
+        entt::entity main_camera_ = entt::null;
         const uint64_t magic_num_ = MAGIC_NUM;
 
     private:
