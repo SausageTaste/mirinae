@@ -433,8 +433,9 @@ namespace {
         }
 
         void do_frame() override {
-            const auto t = sung::CalenderTime::from_now().to_total_seconds();
-            const auto delta_time = fps_timer_.check_get_elapsed_cap_fps();
+            const auto ftime = scene_.get_time();
+            const auto t = ftime.tp_;
+            const auto delta_time = ftime.dt_;
 
             auto& cam = scene_.reg_.get<mirinae::cpnt::StandardCamera>(
                 scene_.main_camera_
