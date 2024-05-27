@@ -131,6 +131,78 @@ namespace { namespace scene {
     }  // namespace tview
 
 
+    // AnimStateView
+    namespace animv {
+
+        using UdataType = mirinae::SkinAnimState*;
+
+        const char* const UDATA_ID = "mirinae.anim_state_view";
+
+        auto& check_udata(lua_State* const L, const int idx) {
+            void* const ud = luaL_checkudata(L, idx, UDATA_ID);
+            return *static_cast<UdataType*>(ud);
+        }
+
+
+        int get_anim_names(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = *check_udata(L, 1);
+
+            lua_newtable(L);
+            for (size_t i = 0; i < self.anims().size(); ++i) {
+                lua_pushstring(L, self.anims()[i].name_.c_str());
+                lua_rawseti(L, -2, i + 1);
+            }
+
+            return 1;
+        }
+
+        int get_anim_name_by_idx(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = *check_udata(L, 1);
+            const auto anim_index = luaL_checkinteger(L, 2);
+
+            if (anim_index < 0 || anim_index >= self.anims().size())
+                return 0;
+
+            lua_pushstring(L, self.anims()[anim_index].name_.c_str());
+            return 1;
+        }
+
+        int set_anim_name(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = *check_udata(L, 1);
+            const auto anim_name = luaL_checkstring(L, 2);
+
+            self.select_anim_name(anim_name);
+            return 0;
+        }
+
+        int set_anim_idx(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = *check_udata(L, 1);
+            const auto anim_index = luaL_checkinteger(L, 2);
+
+            if (anim_index < 0)
+                self.deselect_anim();
+            else
+                self.select_anim_index((size_t)anim_index);
+
+            return 0;
+        }
+
+        int set_anim_speed(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = *check_udata(L, 1);
+            const auto speed = luaL_checknumber(L, 2);
+
+            self.play_speed_ = speed;
+            return 0;
+        }
+
+    }  // namespace animv
+
+
     // Entity
     namespace entity {
 
@@ -179,7 +251,7 @@ namespace { namespace scene {
             }
         }
 
-        int get_anim_names(lua_State* const L) {
+        int get_anim_state(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
 
@@ -187,73 +259,9 @@ namespace { namespace scene {
             if (!mactor)
                 return luaL_error(L, "This entity is not a skinned model.");
 
-            lua_newtable(L);
-            for (size_t i = 0; i < mactor->anim_state_.anims().size(); ++i) {
-                lua_pushstring(L, mactor->anim_state_.anims()[i].name_.c_str());
-                lua_rawseti(L, -2, i + 1);
-            }
-
+            auto& o = ::push_meta_obj<animv::UdataType>(L, animv::UDATA_ID);
+            o = &mactor->anim_state_;
             return 1;
-        }
-
-        int get_anim_name_by_idx(lua_State* const L) {
-            GET_SCENE_PTR();
-            auto& self = check_udata(L, 1);
-            const auto anim_index = luaL_checkinteger(L, 2);
-
-            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
-            if (!mactor)
-                return luaL_error(L, "This entity is not a skinned model.");
-
-            auto& anims = mactor->anim_state_.anims();
-            if (anim_index < 0 || anim_index >= anims.size())
-                return 0;
-
-            lua_pushstring(L, anims[anim_index].name_.c_str());
-            return 1;
-        }
-
-        int set_anim_name(lua_State* const L) {
-            GET_SCENE_PTR();
-            auto& self = check_udata(L, 1);
-            const auto anim_name = luaL_checkstring(L, 2);
-
-            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
-            if (!mactor)
-                return luaL_error(L, "This entity is not a skinned model.");
-
-            mactor->anim_state_.select_anim_name(anim_name);
-            return 0;
-        }
-
-        int set_anim_idx(lua_State* const L) {
-            GET_SCENE_PTR();
-            auto& self = check_udata(L, 1);
-            const auto anim_index = luaL_checkinteger(L, 2);
-
-            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
-            if (!mactor)
-                return luaL_error(L, "This entity is not a skinned model.");
-
-            if (anim_index < 0)
-                mactor->anim_state_.deselect_anim();
-            else
-                mactor->anim_state_.select_anim_index((size_t)anim_index);
-
-            return 0;
-        }
-
-        int set_anim_speed(lua_State* const L) {
-            GET_SCENE_PTR();
-            auto& self = check_udata(L, 1);
-            const auto speed = luaL_checknumber(L, 2);
-
-            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
-            if (!mactor)
-                return luaL_error(L, "This entity is not a skinned model.");
-
-            mactor->anim_state_.play_speed_ = speed;
-            return 0;
         }
 
     }  // namespace entity
@@ -359,17 +367,25 @@ namespace { namespace scene {
             ::add_metatable_definition(L, tview::UDATA_ID, methods.data());
         }
 
+        // AnimStateView
+        {
+            mirinae::LuaFuncList methods;
+            methods.add("get_anim_names", animv::get_anim_names);
+            methods.add("get_anim_name_by_idx", animv::get_anim_name_by_idx);
+            methods.add("set_anim_name", animv::set_anim_name);
+            methods.add("set_anim_idx", animv::set_anim_idx);
+            methods.add("set_anim_speed", animv::set_anim_speed);
+
+            ::add_metatable_definition(L, animv::UDATA_ID, methods.data());
+        }
+
         // Entity
         {
             mirinae::LuaFuncList methods;
             methods.add("get_id", entity::get_id);
             methods.add("get_respath", entity::get_respath);
             methods.add("get_transform", entity::get_transform);
-            methods.add("get_anim_names", entity::get_anim_names);
-            methods.add("get_anim_name_by_idx", entity::get_anim_name_by_idx);
-            methods.add("set_anim_name", entity::set_anim_name);
-            methods.add("set_anim_idx", entity::set_anim_idx);
-            methods.add("set_anim_speed", entity::set_anim_speed);
+            methods.add("get_anim_state", entity::get_anim_state);
 
             ::add_metatable_definition(L, entity::UDATA_ID, methods.data());
         }
