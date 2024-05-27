@@ -41,8 +41,10 @@ namespace mirinae {
         );
 
         void set_skel_anim(const HSkelAnim& skel_anim);
+
         void select_anim_index(const size_t index);
         void select_anim_name(const std::string& name);
+        void deselect_anim();
 
         double play_speed_ = 1;
 
@@ -54,9 +56,10 @@ namespace mirinae {
             std::optional<std::string> name() const;
             void set_index(const size_t index);
             void set_name(const std::string& name);
+            void reset();
 
         private:
-            std::variant<size_t, std::string> data_;
+            std::variant<std::monostate, size_t, std::string> data_;
         };
 
         class DeferredData {

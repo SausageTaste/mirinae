@@ -207,14 +207,14 @@ namespace mirinae {
 namespace mirinae {
 
     std::optional<size_t> SkinAnimState::AnimSelection::index() const {
-        if (data_.index() == 0)
+        if (data_.index() == 1)
             return std::get<size_t>(data_);
         else
             return std::nullopt;
     }
 
     std::optional<std::string> SkinAnimState::AnimSelection::name() const {
-        if (data_.index() == 1)
+        if (data_.index() == 2)
             return std::get<std::string>(data_);
         else
             return std::nullopt;
@@ -227,6 +227,8 @@ namespace mirinae {
     void SkinAnimState::AnimSelection::set_name(const std::string& name) {
         data_ = name;
     }
+
+    void SkinAnimState::AnimSelection::reset() { data_ = std::monostate{}; }
 
 }  // namespace mirinae
 
@@ -328,6 +330,11 @@ namespace mirinae {
 
     void SkinAnimState::select_anim_name(const std::string& name) {
         selection_.set_name(name);
+        deferred_data_.notify(selection_, skel_anim_);
+    }
+
+    void SkinAnimState::deselect_anim() {
+        selection_.reset();
         deferred_data_.notify(selection_, skel_anim_);
     }
 
