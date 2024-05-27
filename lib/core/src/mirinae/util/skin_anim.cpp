@@ -1,5 +1,6 @@
 #include "mirinae/util/skin_anim.hpp"
 
+#include <algorithm>
 #include <unordered_map>
 
 #include <spdlog/spdlog.h>
@@ -243,6 +244,13 @@ namespace mirinae {
             return std::nullopt;
     }
 
+    std::optional<double> SkinAnimState::DeferredData::ticks_per_sec() const {
+        if (is_ready_)
+            return ticks_per_sec_;
+        else
+            return std::nullopt;
+    }
+
     std::optional<size_t> SkinAnimState::DeferredData::anim_index() const {
         if (is_ready_)
             return anim_index_;
@@ -263,16 +271,18 @@ namespace mirinae {
         if (const auto idx = selection.index()) {
             if (idx.value() < skel_anim->anims_.size()) {
                 auto& anim = skel_anim->anims_.at(*idx);
-                anim_index_ = *idx;
+                ticks_per_sec_ = anim.ticks_per_sec_;
                 anim_duration_ = anim.calc_duration_in_ticks();
+                anim_index_ = *idx;
                 is_ready_ = true;
                 return;
             }
         } else if (const auto name = selection.name()) {
             if (auto idx = skel_anim->find_anim_idx(*name)) {
                 auto& anim = skel_anim->anims_.at(*idx);
-                anim_index_ = *idx;
+                ticks_per_sec_ = anim.ticks_per_sec_;
                 anim_duration_ = anim.calc_duration_in_ticks();
+                anim_index_ = *idx;
                 is_ready_ = true;
                 return;
             }
@@ -289,10 +299,11 @@ namespace mirinae {
 
     void SkinAnimState::sample_anim(
         glm::mat4* const out_buf, const size_t buf_size, const double delta_time
-    ) {
+    ) const {
         const auto anim_idx = deferred_data_.anim_index();
         if (!anim_idx)
             return ::set_all_identity(out_buf, buf_size);
+
         const auto anim_duration = deferred_data_.anim_duration();
         if (!anim_duration)
             return ::set_all_identity(out_buf, buf_size);
@@ -306,16 +317,21 @@ namespace mirinae {
                 this->skel().joints_.size(),
                 anim.name_
             );
+            return ::set_all_identity(out_buf, buf_size);
         }
 
-        tick_ += delta_time * anim.ticks_per_sec_ * play_speed_;
-        tick_ = ::mod_tick(tick_, 0, anim_duration.value());
-
-        const auto mats = mirinae::make_skinning_matrix(
-            tick_, this->skel(), anim
-        );
-        const size_t copy_size = (std::min)(buf_size, mats.size());
+        const auto mtick = ::mod_tick(tick_, 0, anim_duration.value());
+        const auto mats = make_skinning_matrix(mtick, this->skel(), anim);
+        const size_t copy_size = std::min(buf_size, mats.size());
         std::copy(mats.begin(), mats.begin() + copy_size, out_buf);
+    }
+
+    void SkinAnimState::update_tick(const double delta_time) {
+        const auto tps = deferred_data_.ticks_per_sec();
+        if (tps)
+            tick_ += delta_time * tps.value() * play_speed_;
+        else
+            tick_ = 0;
     }
 
     void SkinAnimState::set_skel_anim(const HSkelAnim& skel_anim) {

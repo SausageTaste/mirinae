@@ -38,8 +38,9 @@ namespace mirinae {
             glm::mat4* const out_buf,
             const size_t buf_size,
             const double delta_time
-        );
+        ) const;
 
+        void update_tick(const double delta_time);
         void set_skel_anim(const HSkelAnim& skel_anim);
 
         void select_anim_index(const size_t index);
@@ -66,14 +67,16 @@ namespace mirinae {
 
         public:
             std::optional<double> anim_duration() const;
+            std::optional<double> ticks_per_sec() const;
             std::optional<size_t> anim_index() const;
 
             bool is_ready() const;
             void notify(const AnimSelection& selection, HSkelAnim skel_anim);
 
         private:
-            double anim_duration_ = 10;
-            size_t anim_index_ = 0;
+            double ticks_per_sec_;
+            double anim_duration_;
+            size_t anim_index_;
             bool is_ready_ = false;
         };
 
