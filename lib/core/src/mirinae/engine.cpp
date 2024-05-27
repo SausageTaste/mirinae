@@ -375,9 +375,6 @@ namespace {
                 input_mgrs_.add(&camera_controller_);
             }
 
-            const glm::dvec3 world_shift = { 0, 0, 0 };
-            camera_view_.pos_ = world_shift;
-
             // Widget: Dev console
             {
                 dev_console_output_ = mirinae::create_text_blocks();
@@ -396,14 +393,22 @@ namespace {
                 overlay_man_.widgets().add_widget(std::move(w));
             }
 
-            camera_view_.pos_ = glm::dvec3{
-                -1.37109375, 1.0302734375, 0.20775177605186249
-            } + world_shift;
-            camera_view_.rot_ = {
-                0.8120552484612948, 0, -0.5835805629443673, 0
-            };
+            // Main Camera
+            {
+                const auto entt = scene_.reg_.create();
+                scene_.main_camera_ = entt;
 
-            fps_timer_.set_fps_cap(120);
+                auto& d = scene_.reg_.emplace<mirinae::cpnt::StandardCamera>(
+                    entt
+                );
+
+                d.view_.pos_ = glm::dvec3{ -1.37109375,
+                                           1.0302734375,
+                                           0.20775177605186249 };
+                d.view_.rot_ = {
+                    0.8120552484612948, 0, -0.5835805629443673, 0
+                };
+            }
 
             // Script
             {
@@ -415,6 +420,8 @@ namespace {
                     script_.exec(str.c_str());
                 }
             }
+
+            fps_timer_.set_fps_cap(120);
         }
 
         ~EngineGlfw() {
@@ -428,7 +435,11 @@ namespace {
         void do_frame() override {
             const auto t = sung::CalenderTime::from_now().to_total_seconds();
             const auto delta_time = fps_timer_.check_get_elapsed_cap_fps();
-            camera_controller_.apply(camera_view_, delta_time);
+
+            auto& cam = scene_.reg_.get<mirinae::cpnt::StandardCamera>(
+                scene_.main_camera_
+            );
+            camera_controller_.apply(cam.view_, delta_time);
 
             this->update_unloaded_models();
 
@@ -438,7 +449,11 @@ namespace {
             }
             const auto image_index = image_index_opt.value();
 
-            this->update_ubufs(delta_time);
+            const auto proj_mat = cam.proj_.make_proj_mat(
+                swapchain_.width(), swapchain_.height()
+            );
+            const auto view_mat = cam.view_.make_view_mat();
+            this->update_ubufs(delta_time, proj_mat, view_mat);
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -531,8 +546,8 @@ namespace {
 
                             const auto& m = actor.model_mat_;
                             const auto v = glm::lookAt<double>(
-                                camera_view_.pos_,
-                                camera_view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
+                                cam.view_.pos_,
+                                cam.view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
                                 glm::dvec3{ 0, 1, 0 }
                             );
                             auto p = glm::ortho<double>(-1, 1, -1, 1, -10, 10);
@@ -617,8 +632,8 @@ namespace {
 
                             const auto& m = actor.model_mat_;
                             const auto v = glm::lookAt<double>(
-                                camera_view_.pos_,
-                                camera_view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
+                                cam.view_.pos_,
+                                cam.view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
                                 glm::dvec3{ 0, 1, 0 }
                             );
                             auto p = glm::ortho<double>(-1, 1, -1, 1, -10, 10);
@@ -1208,11 +1223,16 @@ namespace {
             if (input_mgrs_.on_mouse_event(e))
                 return true;
 
-            constexpr auto FACTOR = 1.05;
-            if (e.action_ == mirinae::mouse::ActionType::mwheel_up)
-                camera_proj_.multiply_fov(1.0 / FACTOR);
-            else if (e.action_ == mirinae::mouse::ActionType::mwheel_down)
-                camera_proj_.multiply_fov(FACTOR);
+            auto cam = scene_.reg_.try_get<mirinae::cpnt::StandardCamera>(
+                scene_.main_camera_
+            );
+            if (cam) {
+                constexpr auto FACTOR = 1.05;
+                if (e.action_ == mirinae::mouse::ActionType::mwheel_up)
+                    cam->proj_.multiply_fov(1.0 / FACTOR);
+                else if (e.action_ == mirinae::mouse::ActionType::mwheel_down)
+                    cam->proj_.multiply_fov(FACTOR);
+            }
 
             return true;
         }
@@ -1377,14 +1397,11 @@ namespace {
             scene_.entt_without_model_.clear();
         }
 
-        void update_ubufs(double dt) {
+        void update_ubufs(
+            double dt, const glm::dmat4& proj_mat, const glm::dmat4& view_mat
+        ) {
             namespace cpnt = mirinae::cpnt;
-
             const auto t = sung::CalenderTime::from_now().to_total_seconds();
-            const auto proj_mat = camera_proj_.make_proj_mat(
-                swapchain_.width(), swapchain_.height()
-            );
-            const auto view_mat = camera_view_.make_view_mat();
 
             // Update ubuf: U_GbufActor
             scene_.reg_.view<cpnt::Transform, cpnt::StaticActorVk>().each(
@@ -1477,8 +1494,6 @@ namespace {
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::Sampler texture_sampler_;
-        mirinae::cpnt::Transform camera_view_;
-        mirinae::PerspectiveCamera<double> camera_proj_;
         mirinae::syst::NoclipController camera_controller_;
         mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;

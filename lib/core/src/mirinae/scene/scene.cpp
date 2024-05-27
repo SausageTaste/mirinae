@@ -1,7 +1,5 @@
 #include "mirinae/scene/scene.hpp"
 
-#include "mirinae/scene/transform.hpp"
-
 
 #define GET_SCENE_PTR()                                  \
     const auto scene_ptr = ::find_scene_ptr(L);          \
@@ -275,6 +273,40 @@ namespace { namespace scene {
         }
     }
 
+    int get_cam_pos(lua_State* const L) {
+        GET_SCENE_PTR();
+        auto cam = reg.try_get<cpnt::StandardCamera>(scene.main_camera_);
+
+        if (cam) {
+            lua_pushnumber(L, cam->view_.pos_.x);
+            lua_pushnumber(L, cam->view_.pos_.y);
+            lua_pushnumber(L, cam->view_.pos_.z);
+        } else {
+            lua_pushnumber(L, 0);
+            lua_pushnumber(L, 0);
+            lua_pushnumber(L, 0);
+        }
+        return 3;
+    }
+
+    int get_cam_quat(lua_State* const L) {
+        GET_SCENE_PTR();
+        auto cam = reg.try_get<cpnt::StandardCamera>(scene.main_camera_);
+
+        if (cam) {
+            lua_pushnumber(L, cam->view_.rot_.w);
+            lua_pushnumber(L, cam->view_.rot_.x);
+            lua_pushnumber(L, cam->view_.rot_.y);
+            lua_pushnumber(L, cam->view_.rot_.z);
+        } else {
+            lua_pushnumber(L, 1);
+            lua_pushnumber(L, 0);
+            lua_pushnumber(L, 0);
+            lua_pushnumber(L, 0);
+        }
+        return 4;
+    }
+
     int create_static_actor(lua_State* const L) {
         GET_SCENE_PTR();
         const auto model_path = luaL_checkstring(L, 1);
@@ -346,6 +378,8 @@ namespace { namespace scene {
         {
             mirinae::LuaFuncList funcs;
             funcs.add("get_entt_by_id", get_entt_by_id);
+            funcs.add("get_cam_pos", get_cam_pos);
+            funcs.add("get_cam_quat", get_cam_quat);
             funcs.add("create_static_actor", create_static_actor);
             funcs.add("create_skinned_actor", create_skinned_actor);
             luaL_newlib(L, funcs.data());
