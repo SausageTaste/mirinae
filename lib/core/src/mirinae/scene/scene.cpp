@@ -224,9 +224,8 @@ namespace { namespace scene {
             if (!mactor)
                 return luaL_error(L, "This entity is not a skinned model.");
 
-            const auto result = mactor->anim_state_.set_anim_name(anim_name);
-            lua_pushboolean(L, result ? 1 : 0);
-            return 1;
+            mactor->anim_state_.select_anim_name(anim_name);
+            return 0;
         }
 
         int set_anim_by_idx(lua_State* const L) {
@@ -238,9 +237,8 @@ namespace { namespace scene {
             if (!mactor)
                 return luaL_error(L, "This entity is not a skinned model.");
 
-            const auto result = mactor->anim_state_.set_anim_index(anim_index);
-            lua_pushboolean(L, result ? 1 : 0);
-            return 1;
+            mactor->anim_state_.select_anim_index(anim_index);
+            return 0;
         }
 
         int set_anim_speed(lua_State* const L) {
