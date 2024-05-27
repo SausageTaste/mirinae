@@ -237,7 +237,11 @@ namespace { namespace scene {
             if (!mactor)
                 return luaL_error(L, "This entity is not a skinned model.");
 
-            mactor->anim_state_.select_anim_index(anim_index);
+            if (anim_index < 0)
+                mactor->anim_state_.deselect_anim();
+            else
+                mactor->anim_state_.select_anim_index((size_t)anim_index);
+
             return 0;
         }
 
