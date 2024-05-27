@@ -5,6 +5,8 @@
 
 #include <daltools/struct.h>
 
+#include "mirinae/util/time.hpp"
+
 
 namespace mirinae {
 
