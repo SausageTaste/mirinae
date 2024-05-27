@@ -22,6 +22,7 @@ end
 
 do
     artist = scene.create_skinned_model("Sung/artist/artist_subset.dmd")
+    artist:set_anim_by_idx(10)
     artist:get_transform():set_pos(1.35, 0, 0)
     local t = artist:get_transform()
     t:set_pos(2, 0, 0)

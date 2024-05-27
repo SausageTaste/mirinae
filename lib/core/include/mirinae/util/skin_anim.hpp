@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <variant>
 
 #include <daltools/struct.h>
 
@@ -15,6 +16,9 @@ namespace mirinae {
 
 
     class SkelAnimPair {
+
+    public:
+        std::optional<size_t> find_anim_idx(const std::string& name);
 
     public:
         dal::parser::Skeleton skel_;
@@ -37,16 +41,43 @@ namespace mirinae {
         );
 
         void set_skel_anim(const HSkelAnim& skel_anim);
-        bool set_anim_index(const size_t index);
-        bool set_anim_name(const std::string& name);
+        void select_anim_index(const size_t index);
+        void select_anim_name(const std::string& name);
 
         double play_speed_ = 1;
 
     private:
+        class AnimSelection {
+
+        public:
+            std::optional<size_t> index() const;
+            std::optional<std::string> name() const;
+            void set_index(const size_t index);
+            void set_name(const std::string& name);
+
+        private:
+            std::variant<size_t, std::string> data_;
+        };
+
+        class DeferredData {
+
+        public:
+            std::optional<double> anim_duration() const;
+            std::optional<size_t> anim_index() const;
+
+            bool is_ready() const;
+            void notify(const AnimSelection& selection, HSkelAnim skel_anim);
+
+        private:
+            double anim_duration_ = 10;
+            size_t anim_index_ = 0;
+            bool is_ready_ = false;
+        };
+
         HSkelAnim skel_anim_;
-        double anim_duration_ = 10;
+        AnimSelection selection_;
+        DeferredData deferred_data_;
         double tick_ = 0;
-        size_t anim_index_ = 0;
     };
 
 }  // namespace mirinae

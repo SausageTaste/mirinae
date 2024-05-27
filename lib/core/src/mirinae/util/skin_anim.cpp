@@ -120,9 +120,17 @@ namespace {
         return translate_mat * rotate_mat * scale_mat;
     }
 
+
+    void set_all_identity(glm::mat4* const mats, const size_t size) {
+        for (size_t i = 0; i < size; i++) {
+            mats[i] = glm::mat4{ 1 };
+        }
+    }
+
 }  // namespace
 
 
+// Free functions
 namespace mirinae {
 
     std::vector<glm::mat4> make_skinning_matrix(
@@ -179,21 +187,115 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// SkelAnimPair
+namespace mirinae {
+
+    std::optional<size_t> SkelAnimPair::find_anim_idx(const std::string& name) {
+        for (size_t i = 0; i < this->anims_.size(); i++) {
+            if (this->anims_.at(i).name_ == name) {
+                return i;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+}  // namespace mirinae
+
+
+// SkinAnimState::AnimSelection
+namespace mirinae {
+
+    std::optional<size_t> SkinAnimState::AnimSelection::index() const {
+        if (data_.index() == 0)
+            return std::get<size_t>(data_);
+        else
+            return std::nullopt;
+    }
+
+    std::optional<std::string> SkinAnimState::AnimSelection::name() const {
+        if (data_.index() == 1)
+            return std::get<std::string>(data_);
+        else
+            return std::nullopt;
+    }
+
+    void SkinAnimState::AnimSelection::set_index(const size_t index) {
+        data_ = index;
+    }
+
+    void SkinAnimState::AnimSelection::set_name(const std::string& name) {
+        data_ = name;
+    }
+
+}  // namespace mirinae
+
+
+// SkinAnimState::DeferredData
+namespace mirinae {
+
+    std::optional<double> SkinAnimState::DeferredData::anim_duration() const {
+        if (is_ready_)
+            return anim_duration_;
+        else
+            return std::nullopt;
+    }
+
+    std::optional<size_t> SkinAnimState::DeferredData::anim_index() const {
+        if (is_ready_)
+            return anim_index_;
+        else
+            return std::nullopt;
+    }
+
+    bool SkinAnimState::DeferredData::is_ready() const { return is_ready_; }
+
+    void SkinAnimState::DeferredData::notify(
+        const AnimSelection& selection, HSkelAnim skel_anim
+    ) {
+        if (!skel_anim) {
+            is_ready_ = false;
+            return;
+        }
+
+        if (const auto idx = selection.index()) {
+            if (idx.value() < skel_anim->anims_.size()) {
+                auto& anim = skel_anim->anims_.at(*idx);
+                anim_index_ = *idx;
+                anim_duration_ = anim.calc_duration_in_ticks();
+                is_ready_ = true;
+                return;
+            }
+        } else if (const auto name = selection.name()) {
+            if (auto idx = skel_anim->find_anim_idx(*name)) {
+                auto& anim = skel_anim->anims_.at(*idx);
+                anim_index_ = *idx;
+                anim_duration_ = anim.calc_duration_in_ticks();
+                is_ready_ = true;
+                return;
+            }
+        }
+
+        is_ready_ = false;
+    }
+
+}  // namespace mirinae
+
+
 // SkinAnimState
 namespace mirinae {
 
     void SkinAnimState::sample_anim(
         glm::mat4* const out_buf, const size_t buf_size, const double delta_time
     ) {
-        if (this->anims().size() <= anim_index_) {
-            for (size_t i = 0; i < buf_size; i++) {
-                out_buf[i] = glm::mat4{ 1 };
-            }
-            return;
-        }
+        const auto anim_idx = deferred_data_.anim_index();
+        if (!anim_idx)
+            return ::set_all_identity(out_buf, buf_size);
+        const auto anim_duration = deferred_data_.anim_duration();
+        if (!anim_duration)
+            return ::set_all_identity(out_buf, buf_size);
 
-        auto& anim = this->anims().at(anim_index_);
-
+        auto& anim = this->anims()[*anim_idx];
         if (buf_size < this->skel().joints_.size()) {
             spdlog::warn(
                 "Buffer size ({}) is too small to store all joint matrices "
@@ -205,49 +307,28 @@ namespace mirinae {
         }
 
         tick_ += delta_time * anim.ticks_per_sec_ * play_speed_;
-        tick_ = ::mod_tick(tick_, 0, anim_duration_);
+        tick_ = ::mod_tick(tick_, 0, anim_duration.value());
 
         const auto mats = mirinae::make_skinning_matrix(
             tick_, this->skel(), anim
         );
-        const auto copy_size = std::min<size_t>(buf_size, mats.size());
+        const size_t copy_size = (std::min)(buf_size, mats.size());
         std::copy(mats.begin(), mats.begin() + copy_size, out_buf);
     }
 
     void SkinAnimState::set_skel_anim(const HSkelAnim& skel_anim) {
         skel_anim_ = skel_anim;
-
-        tick_ = 0;
-        anim_index_ = 0;
-        anim_duration_ = this->anims().empty()
-                             ? 10
-                             : this->anims().at(0).calc_duration_in_ticks();
+        deferred_data_.notify(selection_, skel_anim_);
     }
 
-    bool SkinAnimState::set_anim_index(const size_t index) {
-        if (index >= this->anims().size())
-            return false;
-        if (anim_index_ == index)
-            return true;
-
-        tick_ = 0;
-        anim_index_ = index;
-        anim_duration_ =
-            this->anims().empty()
-                ? 10
-                : this->anims().at(anim_index_).calc_duration_in_ticks();
-
-        return true;
+    void SkinAnimState::select_anim_index(const size_t index) {
+        selection_.set_index(index);
+        deferred_data_.notify(selection_, skel_anim_);
     }
 
-    bool SkinAnimState::set_anim_name(const std::string& name) {
-        for (size_t i = 0; i < this->anims().size(); i++) {
-            if (this->anims().at(i).name_ == name) {
-                return this->set_anim_index(i);
-            }
-        }
-
-        return false;
+    void SkinAnimState::select_anim_name(const std::string& name) {
+        selection_.set_name(name);
+        deferred_data_.notify(selection_, skel_anim_);
     }
 
 }  // namespace mirinae
