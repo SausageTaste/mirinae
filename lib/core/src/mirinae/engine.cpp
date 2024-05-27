@@ -1414,12 +1414,11 @@ namespace {
                           auto& ren_pair,
                           auto& mactor) {
                     const auto model_m = transform.make_model_mat();
+                    mactor.anim_state_.update_tick(dt);
 
                     mirinae::U_GbufActorSkinned ubuf_data;
                     mactor.anim_state_.sample_anim(
-                        ubuf_data.joint_transforms_,
-                        mirinae::MAX_JOINTS,
-                        dt
+                        ubuf_data.joint_transforms_, mirinae::MAX_JOINTS, dt
                     );
                     ubuf_data.view_model = view_mat * model_m;
                     ubuf_data.pvm = proj_mat * view_mat * model_m;
