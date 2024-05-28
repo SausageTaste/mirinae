@@ -1246,7 +1246,7 @@ namespace {
             swapchain_.init(fbuf_width, fbuf_height, device_);
 
             const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
-                swapchain_.width(), swapchain_.height(), 1
+                swapchain_.width(), swapchain_.height(), 0.9
             );
             fbuf_images_.init(gbuf_width, gbuf_height, tex_man_);
 
