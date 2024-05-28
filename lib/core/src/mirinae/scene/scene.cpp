@@ -174,7 +174,7 @@ namespace { namespace scene {
             auto& self = *check_udata(L, 1);
             const auto anim_name = luaL_checkstring(L, 2);
 
-            self.select_anim_name(anim_name);
+            self.select_anim_name(anim_name, scene.get_time());
             return 0;
         }
 
@@ -184,9 +184,9 @@ namespace { namespace scene {
             const auto anim_index = luaL_checkinteger(L, 2);
 
             if (anim_index < 0)
-                self.deselect_anim();
+                self.deselect_anim(scene.get_time());
             else
-                self.select_anim_index((size_t)anim_index);
+                self.select_anim_index((size_t)anim_index, scene.get_time());
 
             return 0;
         }
@@ -196,7 +196,7 @@ namespace { namespace scene {
             auto& self = *check_udata(L, 1);
             const auto speed = luaL_checknumber(L, 2);
 
-            self.play_speed_ = speed;
+            self.set_play_speed(speed);
             return 0;
         }
 

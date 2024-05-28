@@ -221,15 +221,34 @@ namespace mirinae {
             return std::nullopt;
     }
 
-    void SkinAnimState::AnimSelection::set_index(const size_t index) {
+    void SkinAnimState::AnimSelection::set_index(
+        const size_t index, const FTime& ftime
+    ) {
         data_ = index;
+        start_sim_time_ = ftime.tp_;
     }
 
-    void SkinAnimState::AnimSelection::set_name(const std::string& name) {
+    void SkinAnimState::AnimSelection::set_name(
+        const std::string& name, const FTime& ftime
+    ) {
         data_ = name;
+        start_sim_time_ = ftime.tp_;
     }
 
-    void SkinAnimState::AnimSelection::reset() { data_ = std::monostate{}; }
+    void SkinAnimState::AnimSelection::set_play_speed(const double speed) {
+        play_speed_ = speed;
+    }
+
+    void SkinAnimState::AnimSelection::reset_anim(const FTime& ftime) {
+        data_ = std::monostate{};
+        start_sim_time_ = ftime.tp_;
+    }
+
+    void SkinAnimState::AnimSelection::update_clock(const FTime& ftime) {
+        local_clock_ += ftime.dt_ * play_speed_;
+    }
+
+    void SkinAnimState::AnimSelection::reset_clock() { local_clock_ = 0; }
 
 }  // namespace mirinae
 
@@ -298,7 +317,7 @@ namespace mirinae {
 namespace mirinae {
 
     void SkinAnimState::sample_anim(
-        glm::mat4* const out_buf, const size_t buf_size, const double delta_time
+        glm::mat4* const out_buf, const size_t buf_size, const FTime& ftime
     ) const {
         const auto anim_idx = deferred_data_.anim_index();
         if (!anim_idx)
@@ -320,18 +339,15 @@ namespace mirinae {
             return ::set_all_identity(out_buf, buf_size);
         }
 
-        const auto mtick = ::mod_tick(tick_, 0, anim_duration.value());
+        const auto tick = this->calc_tick(ftime, selection_, deferred_data_);
+        const auto mtick = ::mod_tick(tick, 0, anim_duration.value());
         const auto mats = make_skinning_matrix(mtick, this->skel(), anim);
         const size_t copy_size = std::min(buf_size, mats.size());
         std::copy(mats.begin(), mats.begin() + copy_size, out_buf);
     }
 
-    void SkinAnimState::update_tick(const double delta_time) {
-        const auto tps = deferred_data_.ticks_per_sec();
-        if (tps)
-            tick_ += delta_time * tps.value() * play_speed_;
-        else
-            tick_ = 0;
+    void SkinAnimState::update_tick(const FTime& ftime) {
+        selection_.update_clock(ftime);
     }
 
     void SkinAnimState::set_skel_anim(const HSkelAnim& skel_anim) {
@@ -339,19 +355,39 @@ namespace mirinae {
         deferred_data_.notify(selection_, skel_anim_);
     }
 
-    void SkinAnimState::select_anim_index(const size_t index) {
-        selection_.set_index(index);
+    void SkinAnimState::select_anim_index(
+        const size_t index, const FTime& ftime
+    ) {
+        selection_.set_index(index, ftime);
+        selection_.reset_clock();
         deferred_data_.notify(selection_, skel_anim_);
     }
 
-    void SkinAnimState::select_anim_name(const std::string& name) {
-        selection_.set_name(name);
+    void SkinAnimState::select_anim_name(
+        const std::string& name, const FTime& ftime
+    ) {
+        selection_.set_name(name, ftime);
+        selection_.reset_clock();
         deferred_data_.notify(selection_, skel_anim_);
     }
 
-    void SkinAnimState::deselect_anim() {
-        selection_.reset();
+    void SkinAnimState::deselect_anim(const FTime& ftime) {
+        selection_.reset_anim(ftime);
+        selection_.reset_clock();
         deferred_data_.notify(selection_, skel_anim_);
+    }
+
+    double SkinAnimState::calc_tick(
+        const FTime& ftime,
+        const SkinAnimState::AnimSelection& selection,
+        const SkinAnimState::DeferredData& deferred
+    ) {
+        const auto elapsed = selection.local_clock();
+        const auto ticks_per_sec = deferred.ticks_per_sec();
+        if (!ticks_per_sec)
+            return 0;
+
+        return elapsed * ticks_per_sec.value();
     }
 
 }  // namespace mirinae

@@ -36,3 +36,6 @@ namespace mirinae {
     };
 
 }  // namespace mirinae
+
+
+using FTime = mirinae::FrameTime;

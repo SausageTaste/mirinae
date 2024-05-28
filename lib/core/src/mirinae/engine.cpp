@@ -433,9 +433,9 @@ namespace {
         }
 
         void do_frame() override {
-            const auto ftime = scene_.get_time();
-            const auto t = ftime.tp_;
-            const auto delta_time = ftime.dt_;
+            scene_.update_time();
+            const auto t = scene_.get_time().tp_;
+            const auto delta_time = scene_.get_time().dt_;
 
             auto& cam = scene_.reg_.get<mirinae::cpnt::StandardCamera>(
                 scene_.main_camera_
@@ -454,7 +454,7 @@ namespace {
                 swapchain_.width(), swapchain_.height()
             );
             const auto view_mat = cam.view_.make_view_mat();
-            this->update_ubufs(delta_time, proj_mat, view_mat);
+            this->update_ubufs(proj_mat, view_mat);
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -1399,10 +1399,10 @@ namespace {
         }
 
         void update_ubufs(
-            double dt, const glm::dmat4& proj_mat, const glm::dmat4& view_mat
+            const glm::dmat4& proj_mat, const glm::dmat4& view_mat
         ) {
             namespace cpnt = mirinae::cpnt;
-            const auto t = sung::CalenderTime::from_now().to_total_seconds();
+            const auto t = scene_.get_time().tp_;
 
             // Update ubuf: U_GbufActor
             scene_.reg_.view<cpnt::Transform, cpnt::StaticActorVk>().each(
@@ -1432,11 +1432,13 @@ namespace {
                           auto& ren_pair,
                           auto& mactor) {
                     const auto model_m = transform.make_model_mat();
-                    mactor.anim_state_.update_tick(dt);
+                    mactor.anim_state_.update_tick(scene_.get_time());
 
                     mirinae::U_GbufActorSkinned ubuf_data;
                     mactor.anim_state_.sample_anim(
-                        ubuf_data.joint_transforms_, mirinae::MAX_JOINTS, dt
+                        ubuf_data.joint_transforms_,
+                        mirinae::MAX_JOINTS,
+                        scene_.get_time()
                     );
                     ubuf_data.view_model = view_mat * model_m;
                     ubuf_data.pvm = proj_mat * view_mat * model_m;
