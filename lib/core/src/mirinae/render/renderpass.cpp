@@ -2768,8 +2768,8 @@ namespace { namespace fillscreen {
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
-                    width,
-                    height,
+                    swapchain.width(),
+                    swapchain.height(),
                     renderpass_,
                     device.logi_device(),
                     {
@@ -3032,8 +3032,8 @@ namespace { namespace overlay {
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
-                    width,
-                    height,
+                    swapchain.width(),
+                    swapchain.height(),
                     renderpass_,
                     device.logi_device(),
                     {
