@@ -19,7 +19,7 @@ do
     a:set_anim_name("sc_groupdance_1")
 
     local t = bard:get_transform()
-    t:set_pos(3, 0, -0.25)
+    t:set_pos(3, 0, 0.5)
     t:rotate(180, 0, 1, 0)
 
     print("Skinned actor created:", bard:get_id(), bard:get_respath())
@@ -32,27 +32,44 @@ do
     a:set_anim_name("sc_groupdance_1")
 
     local t = artist:get_transform()
-    t:set_pos(3, 0, 0.25)
+    t:set_pos(3, 0, 0)
     t:rotate(180, 0, 1, 0)
 
     print("Skinned actor created:", artist:get_id(), artist:get_respath())
 end
 
+do
+    slayer = scene.create_skinned_actor("Sung/slayer/slayer_subset.dmd")
+
+    local a = slayer:get_anim_state()
+    a:set_anim_name("sc_groupdance_1")
+
+    local t = slayer:get_transform()
+    t:set_pos(3, 0, -0.5)
+    t:rotate(180, 0, 1, 0)
+
+    print("Skinned actor created:", slayer:get_id(), slayer:get_respath())
+end
+
 
 function cycle_anim(offset)
-    do
-        local a = bard:get_anim_state()
+    actors = {bard, artist, slayer}
+
+    for _, actor in ipairs(actors) do
+        local a = actor:get_anim_state()
         local idx = a:get_cur_anim_idx()
         if idx ~= nil then
             a:set_anim_idx((idx + offset) % a:get_anim_count())
         end
     end
+end
 
-    do
-        local a = artist:get_anim_state()
-        local idx = a:get_cur_anim_idx()
-        if idx ~= nil then
-            a:set_anim_idx((idx + offset) % a:get_anim_count())
-        end
+
+function set_anim_speed(speed)
+    actors = {bard, artist, slayer}
+
+    for _, actor in ipairs(actors) do
+        local a = actor:get_anim_state()
+        a:set_anim_speed(speed)
     end
 end
