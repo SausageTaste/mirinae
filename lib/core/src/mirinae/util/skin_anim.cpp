@@ -316,6 +316,27 @@ namespace mirinae {
 // SkinAnimState
 namespace mirinae {
 
+    std::optional<size_t> SkinAnimState::get_cur_anim_idx() const {
+        if (auto idx = deferred_data_.anim_index())
+            return idx;
+        if (auto idx = selection_.index())
+            return idx;
+        return std::nullopt;
+    }
+
+    std::optional<std::string> SkinAnimState::get_cur_anim_name() const {
+        if (auto idx = deferred_data_.anim_index()) {
+            if (skel_anim_) {
+                return skel_anim_->anims_.at(*idx).name_;
+            }
+        }
+
+        if (auto name = selection_.name())
+            return name;
+
+        return std::nullopt;
+    }
+
     void SkinAnimState::sample_anim(
         glm::mat4* const out_buf, const size_t buf_size, const FTime& ftime
     ) const {

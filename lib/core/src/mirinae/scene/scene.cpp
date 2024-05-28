@@ -144,6 +144,37 @@ namespace { namespace scene {
         }
 
 
+        int get_cur_anim_idx(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = *check_udata(L, 1);
+
+            if (const auto idx = self.get_cur_anim_idx())
+                lua_pushinteger(L, *idx);
+            else
+                lua_pushnil(L);
+
+            return 1;
+        }
+
+        int get_cur_anim_name(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = *check_udata(L, 1);
+
+            if (const auto name = self.get_cur_anim_name())
+                lua_pushstring(L, name->c_str());
+            else
+                lua_pushnil(L);
+
+            return 1;
+        }
+
+        int get_anim_count(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = *check_udata(L, 1);
+            lua_pushinteger(L, self.anims().size());
+            return 1;
+        }
+
         int get_anim_names(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = *check_udata(L, 1);
@@ -370,6 +401,9 @@ namespace { namespace scene {
         // AnimStateView
         {
             mirinae::LuaFuncList methods;
+            methods.add("get_cur_anim_idx", animv::get_cur_anim_idx);
+            methods.add("get_cur_anim_name", animv::get_cur_anim_name);
+            methods.add("get_anim_count", animv::get_anim_count);
             methods.add("get_anim_names", animv::get_anim_names);
             methods.add("get_anim_name_by_idx", animv::get_anim_name_by_idx);
             methods.add("set_anim_name", animv::set_anim_name);
