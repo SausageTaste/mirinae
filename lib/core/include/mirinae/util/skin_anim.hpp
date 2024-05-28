@@ -36,6 +36,9 @@ namespace mirinae {
         auto& skel() const { return this->skel_anim_->skel_; }
         auto& anims() const { return this->skel_anim_->anims_; }
 
+        std::optional<size_t> get_cur_anim_idx() const;
+        std::optional<std::string> get_cur_anim_name() const;
+
         void sample_anim(
             glm::mat4* const out_buf, const size_t buf_size, const FTime& ftime
         ) const;
