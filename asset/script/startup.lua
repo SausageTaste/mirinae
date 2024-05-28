@@ -8,7 +8,15 @@ end
 
 do
     local e = scene.create_skinned_actor("ThinMatrix/Character Running.dmd")
-    e:get_transform():set_scale(0.15, 0.15, 0.15)
+
+    local a = e:get_anim_state()
+    a:set_anim_idx(0)
+
+    local t = e:get_transform()
+    t:set_pos(-3, 0, -0.5)
+    t:rotate(90, 0, 1, 0)
+    t:set_scale(0.15, 0.15, 0.15)
+
     print("Skinned actor created:", e:get_id(), e:get_respath())
 end
 
