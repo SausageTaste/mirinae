@@ -41,7 +41,8 @@ namespace mirinae {
         Scene& operator=(const Scene&) = delete;
         Scene& operator=(Scene&&) = delete;
 
-        FrameTime get_time() { return global_clock_.update(); }
+        void update_time() { ftime_ = global_clock_.update(); }
+        const FrameTime& get_time() { return ftime_; }
 
     public:
         constexpr static uint64_t MAGIC_NUM = 46461236464165;
@@ -54,6 +55,7 @@ namespace mirinae {
     private:
         ScriptEngine& script_;
         GlobalClock global_clock_;
+        FrameTime ftime_;
     };
 
 };  // namespace mirinae

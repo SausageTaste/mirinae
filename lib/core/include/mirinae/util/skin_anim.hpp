@@ -37,19 +37,19 @@ namespace mirinae {
         auto& anims() const { return this->skel_anim_->anims_; }
 
         void sample_anim(
-            glm::mat4* const out_buf,
-            const size_t buf_size,
-            const double delta_time
+            glm::mat4* const out_buf, const size_t buf_size, const FTime& ftime
         ) const;
 
-        void update_tick(const double delta_time);
+        void update_tick(const FTime& ftime);
         void set_skel_anim(const HSkelAnim& skel_anim);
 
-        void select_anim_index(const size_t index);
-        void select_anim_name(const std::string& name);
-        void deselect_anim();
+        void select_anim_index(const size_t index, const FTime& ftime);
+        void select_anim_name(const std::string& name, const FTime& ftime);
+        void deselect_anim(const FTime& ftime);
 
-        double play_speed_ = 1;
+        void set_play_speed(const double speed) {
+            selection_.set_play_speed(speed);
+        }
 
     private:
         class AnimSelection {
@@ -57,12 +57,23 @@ namespace mirinae {
         public:
             std::optional<size_t> index() const;
             std::optional<std::string> name() const;
-            void set_index(const size_t index);
-            void set_name(const std::string& name);
-            void reset();
+            double start_sim_time() const { return this->start_sim_time_; }
+
+            void set_index(const size_t index, const FTime& ftime);
+            void set_name(const std::string& name, const FTime& ftime);
+            void set_play_speed(const double speed);
+
+            void reset_anim(const FTime& ftime);
+
+            double local_clock() const { return this->local_clock_; }
+            void update_clock(const FTime& ftime);
+            void reset_clock();
 
         private:
             std::variant<std::monostate, size_t, std::string> data_;
+            double start_sim_time_ = 0;
+            double play_speed_ = 1;
+            double local_clock_ = 0;
         };
 
         class DeferredData {
@@ -82,10 +93,15 @@ namespace mirinae {
             bool is_ready_ = false;
         };
 
+        static double calc_tick(
+            const FTime& ftime,
+            const AnimSelection& selection,
+            const DeferredData& deferred
+        );
+
         HSkelAnim skel_anim_;
         AnimSelection selection_;
         DeferredData deferred_data_;
-        double tick_ = 0;
     };
 
 }  // namespace mirinae
