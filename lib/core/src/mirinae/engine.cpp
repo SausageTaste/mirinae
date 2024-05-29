@@ -199,7 +199,9 @@ namespace {
         void init(
             mirinae::DesclayoutManager& desclayouts,
             mirinae::FbufImageBundle& fbufs,
+            VkImageView dlight_shadowmap,
             VkSampler texture_sampler,
+            VkSampler shadow_map_sampler,
             mirinae::VulkanDevice& device
         ) {
             desc_pool_.init(10, device.logi_device());
@@ -238,6 +240,9 @@ namespace {
                         desc_sets_.at(i)
                     )
                     .add_uniform_buffer(ubuf, desc_sets_.at(i))
+                    .add_combinded_image_sampler(
+                        dlight_shadowmap, shadow_map_sampler, desc_sets_.at(i)
+                    )
                     .apply_all(device.logi_device());
             }
         }
@@ -351,6 +356,7 @@ namespace {
             , overlay_man_(
                   init_width, init_height, desclayout_, tex_man_, device_
               )
+            , shadow_map_sampler_(device_)
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
             // This must be the first member variable right after vtable pointer
@@ -358,8 +364,17 @@ namespace {
 
             framesync_.init(device_.logi_device());
 
-            mirinae::SamplerBuilder sampler_builder;
-            texture_sampler_.reset(sampler_builder.build(device_));
+            {
+                mirinae::SamplerBuilder sampler_builder;
+                texture_sampler_.reset(sampler_builder.build(device_));
+            }
+
+            {
+                mirinae::SamplerBuilder sampler_builder;
+                sampler_builder.mag_filter_nearest();
+                sampler_builder.min_filter_nearest();
+                shadow_map_sampler_.reset(sampler_builder.build(device_));
+            }
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
@@ -482,17 +497,19 @@ namespace {
                 const auto view_dir = cam.view_.make_forward_dir();
 
                 dlight.transform_ = cam.view_;
-                dlight.transform_.pos_ = cam.view_.pos_;
+                dlight.transform_.pos_ = { 0, 0, 0 };
                 dlight.transform_.reset_rotation();
                 dlight.transform_.rotate(
                     sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
                 );
+                /*
                 dlight.transform_.rotate(
                     sung::TAngle<double>::from_rad(
                         SUNG_PI * -0.5 - std::atan2(view_dir.z, view_dir.x)
                     ),
                     { 0, 1, 0 }
                 );
+                */
 
                 dlight_light_mat = dlight.make_light_mat();
                 break;
@@ -529,7 +546,7 @@ namespace {
                 renderPassInfo.renderPass = rp.renderpass();
                 renderPassInfo.framebuffer = shadow_map_fbuf_;
                 renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = { 512, 512 };
+                renderPassInfo.renderArea.extent = shadow_map_->extent();
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
@@ -543,15 +560,15 @@ namespace {
                 VkViewport viewport{};
                 viewport.x = 0.0f;
                 viewport.y = 0.0f;
-                viewport.width = 512;
-                viewport.height = 512;
+                viewport.width = shadow_map_->width();
+                viewport.height = shadow_map_->height();
                 viewport.minDepth = 0.0f;
                 viewport.maxDepth = 1.0f;
                 vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
 
                 VkRect2D scissor{};
                 scissor.offset = { 0, 0 };
-                scissor.extent = fbuf_images_.extent();
+                scissor.extent = shadow_map_->extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
                 for (auto& pair : draw_sheet.static_pairs_) {
@@ -608,7 +625,7 @@ namespace {
                 renderPassInfo.renderPass = rp.renderpass();
                 renderPassInfo.framebuffer = shadow_map_fbuf_;
                 renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = { 512, 512 };
+                renderPassInfo.renderArea.extent = shadow_map_->extent();
                 renderPassInfo.clearValueCount = rp.clear_value_count();
                 renderPassInfo.pClearValues = rp.clear_values();
 
@@ -622,15 +639,15 @@ namespace {
                 VkViewport viewport{};
                 viewport.x = 0.0f;
                 viewport.y = 0.0f;
-                viewport.width = 512;
-                viewport.height = 512;
+                viewport.width = shadow_map_->width();
+                viewport.height = shadow_map_->height();
                 viewport.minDepth = 0.0f;
                 viewport.maxDepth = 1.0f;
                 vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
 
                 VkRect2D scissor{};
                 scissor.offset = { 0, 0 };
-                scissor.extent = fbuf_images_.extent();
+                scissor.extent = shadow_map_->extent();
                 vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
                 for (auto& pair : draw_sheet.skinned_pairs_) {
@@ -1276,16 +1293,8 @@ namespace {
                 device_
             );
 
-            rp_states_compo_.init(
-                desclayout_, fbuf_images_, texture_sampler_.get(), device_
-            );
-            rp_states_transp_.init(desclayout_, device_);
-            rp_states_fillscreen_.init(
-                desclayout_, fbuf_images_, texture_sampler_.get(), device_
-            );
-
             {
-                shadow_map_ = tex_man_.create_depth(512, 512);
+                shadow_map_ = tex_man_.create_depth(1024*4, 1024*4);
 
                 const std::vector<VkImageView> attachments{
                     shadow_map_->image_view()
@@ -1313,6 +1322,19 @@ namespace {
                     throw std::runtime_error("failed to create framebuffer!");
                 }
             }
+
+            rp_states_compo_.init(
+                desclayout_,
+                fbuf_images_,
+                shadow_map_->image_view(),
+                texture_sampler_.get(),
+                shadow_map_sampler_.get(),
+                device_
+            );
+            rp_states_transp_.init(desclayout_, device_);
+            rp_states_fillscreen_.init(
+                desclayout_, fbuf_images_, texture_sampler_.get(), device_
+            );
         }
 
         void destroy_swapchain_and_relatives() {
@@ -1471,9 +1493,11 @@ namespace {
             {
                 mirinae::U_CompoMain ubuf_data;
                 ubuf_data.set_proj_inv(glm::inverse(proj_mat));
+                ubuf_data.set_view_inv(glm::inverse(view_mat));
 
                 for (auto e : scene_.reg_.view<cpnt::DLight>()) {
                     const auto& light = scene_.reg_.get<cpnt::DLight>(e);
+                    ubuf_data.set_dlight_mat(light.make_light_mat());
                     ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat));
                     ubuf_data.set_dlight_color(light.color_);
                     break;
@@ -1524,6 +1548,7 @@ namespace {
 
         std::unique_ptr<mirinae::ITexture> shadow_map_;
         VkFramebuffer shadow_map_fbuf_;
+        mirinae::Sampler shadow_map_sampler_;
 
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;

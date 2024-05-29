@@ -33,7 +33,7 @@ namespace mirinae { namespace cpnt {
         };
 
         glm::dmat4 make_proj_mat() const {
-            auto p = glm::ortho<double>(-10, 10, -10, 10, -100, 100);
+            auto p = glm::ortho<double>(-50, 50, -50, 50, -100, 100);
             p[1][1] *= -1;
             return p;
         }

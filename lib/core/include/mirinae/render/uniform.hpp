@@ -44,9 +44,11 @@ namespace mirinae {
     class U_CompoMain {
 
     public:
-        void set_proj_inv(const glm::mat4& proj_inv) { proj_inv_ = proj_inv; }
+        void set_proj_inv(const glm::mat4& m) { proj_inv_ = m; }
+        void set_view_inv(const glm::mat4& m) { view_inv_ = m; }
 
         // It automatically normalize the input vector.
+        void set_dlight_mat(const glm::mat4& m) { dlight_mat_ = m; }
         void set_dlight_dir(const glm::vec3& dlight_dir) {
             const auto d = glm::normalize(dlight_dir);
             dlight_dir_.x = d.x;
@@ -104,8 +106,10 @@ namespace mirinae {
 
     private:
         glm::mat4 proj_inv_;
+        glm::mat4 view_inv_;
 
         // Directional light
+        glm::mat4 dlight_mat_;
         glm::vec4 dlight_dir_;
         glm::vec4 dlight_color_;
 
