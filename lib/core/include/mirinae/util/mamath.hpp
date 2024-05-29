@@ -24,6 +24,13 @@ namespace mirinae {
         void rotate(Angle angle, const glm::tvec3<T>& axis) {
             rot_ = rotate_quat(rot_, angle, axis);
         }
+        void reset_rotation() { rot_ = glm::quat(1, 0, 0, 0); }
+
+        glm::tvec3<T> make_forward_dir() const {
+            return glm::normalize(
+                glm::mat3_cast(rot_) * glm::tvec3<T>(0, 0, -1)
+            );
+        }
 
         glm::tmat4x4<T> make_model_mat() const {
             const auto rot_mat = glm::mat4_cast(rot_);

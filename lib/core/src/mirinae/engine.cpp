@@ -9,6 +9,7 @@
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/renderpass.hpp"
 #include "mirinae/scene/scene.hpp"
+#include "mirinae/util/glm_fmt.hpp"
 #include "mirinae/util/mamath.hpp"
 #include "mirinae/util/script.hpp"
 
@@ -478,7 +479,20 @@ namespace {
             glm::dmat4 dlight_light_mat{ 1 };
             for (auto& l : scene_.reg_.view<mirinae::cpnt::DLight>()) {
                 auto& dlight = scene_.reg_.get<mirinae::cpnt::DLight>(l);
+                const auto view_dir = cam.view_.make_forward_dir();
+
                 dlight.transform_ = cam.view_;
+                dlight.transform_.pos_ = cam.view_.pos_;
+                dlight.transform_.reset_rotation();
+                dlight.transform_.rotate(
+                    sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
+                );
+                dlight.transform_.rotate(
+                    sung::TAngle<double>::from_rad(
+                        SUNG_PI * -0.5 - std::atan2(view_dir.z, view_dir.x)
+                    ),
+                    { 0, 1, 0 }
+                );
 
                 dlight_light_mat = dlight.make_light_mat();
                 break;
