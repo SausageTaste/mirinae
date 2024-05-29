@@ -29,6 +29,25 @@ namespace {
             );
         }
 
+        ImageView(
+            VkImageView color_img,
+            VkImageView mask_img,
+            VkSampler sampler,
+            mirinae::DesclayoutManager& desclayout,
+            mirinae::TextureManager& tex_man,
+            mirinae::VulkanDevice& device
+        ) {
+            auto& overlay = render_units_.emplace_back(device);
+            overlay.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                color_img,
+                mask_img,
+                sampler,
+                desclayout,
+                tex_man
+            );
+        }
+
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
             for (auto& overlay : render_units_) {
                 auto desc_main = overlay.get_desc_set(udata.frame_index_);
@@ -397,6 +416,22 @@ namespace mirinae {
 
     WidgetManager const& OverlayManager::widgets() const {
         return pimpl_->widgets_;
+    }
+
+    void OverlayManager::create_image_view(VkImageView img_view) {
+        auto w = std::make_unique<ImageView>(
+            img_view,
+            pimpl_->tex_man_.request("asset/textures/white.png", true)
+                ->image_view(),
+            pimpl_->sampler_.get(),
+            pimpl_->desclayout_,
+            pimpl_->tex_man_,
+            pimpl_->device_
+        );
+        w->pos_ = { 10, 10 };
+        w->size_ = { 256, 256 };
+        w->update_content(pimpl_->win_dim_);
+        this->widgets().add_widget(std::move(w));
     }
 
 }  // namespace mirinae

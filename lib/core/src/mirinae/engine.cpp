@@ -496,11 +496,10 @@ namespace {
                 auto& dlight = scene_.reg_.get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
 
-                dlight.transform_ = cam.view_;
-                dlight.transform_.pos_ = { 0, 0, 0 };
+                dlight.transform_.pos_ = cam.view_.pos_;
                 dlight.transform_.reset_rotation();
                 dlight.transform_.rotate(
-                    sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
+                    sung::TAngle<double>::from_deg(-90), { 1, 0, 0 }
                 );
                 /*
                 dlight.transform_.rotate(
@@ -1294,7 +1293,10 @@ namespace {
             );
 
             {
-                shadow_map_ = tex_man_.create_depth(1024*4, 1024*4);
+                if (!shadow_map_) {
+                    shadow_map_ = tex_man_.create_depth(1024 * 4, 1024 * 4);
+                    overlay_man_.create_image_view(shadow_map_->image_view());
+                }
 
                 const std::vector<VkImageView> attachments{
                     shadow_map_->image_view()
