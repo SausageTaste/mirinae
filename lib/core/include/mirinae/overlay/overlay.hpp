@@ -50,6 +50,8 @@ namespace mirinae {
         WidgetManager& widgets();
         WidgetManager const& widgets() const;
 
+        void create_image_view(VkImageView img_view);
+
     private:
         class Impl;
         std::unique_ptr<Impl> pimpl_;
