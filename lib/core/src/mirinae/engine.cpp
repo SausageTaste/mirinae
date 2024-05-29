@@ -411,6 +411,13 @@ namespace {
                                  -0.035994972955897 };
             }
 
+            // DLight
+            {
+                const auto entt = scene_.reg_.create();
+                auto& d = scene_.reg_.emplace<mirinae::cpnt::DLight>(entt);
+                d.color_ = glm::vec3{ 5, 5, 5 };
+            }
+
             // Script
             {
                 const auto contents = device_.filesys().read_file_to_vector(
@@ -467,6 +474,15 @@ namespace {
 
             auto draw_sheet = ::make_draw_sheet(scene_);
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
+
+            glm::dmat4 dlight_light_mat{ 1 };
+            for (auto& l : scene_.reg_.view<mirinae::cpnt::DLight>()) {
+                auto& dlight = scene_.reg_.get<mirinae::cpnt::DLight>(l);
+                dlight.transform_ = cam.view_;
+
+                dlight_light_mat = dlight.make_light_mat();
+                break;
+            }
 
             // Begin recording
             {
@@ -546,17 +562,10 @@ namespace {
                                 nullptr
                             );
 
-                            const auto& m = actor.model_mat_;
-                            const auto v = glm::lookAt<double>(
-                                cam.view_.pos_,
-                                cam.view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
-                                glm::dvec3{ 0, 1, 0 }
-                            );
-                            auto p = glm::ortho<double>(-1, 1, -1, 1, -10, 10);
-                            p[1][1] *= -1;
-
                             mirinae::U_ShadowPushConst push_const;
-                            push_const.pvm_ = p * v * m;
+                            push_const.pvm_ = dlight_light_mat *
+                                              actor.model_mat_;
+
                             vkCmdPushConstants(
                                 cur_cmd_buf,
                                 rp.pipeline_layout(),
@@ -632,17 +641,10 @@ namespace {
                                 nullptr
                             );
 
-                            const auto& m = actor.model_mat_;
-                            const auto v = glm::lookAt<double>(
-                                cam.view_.pos_,
-                                cam.view_.pos_ + glm::dvec3{ 0, -1, 0.001 },
-                                glm::dvec3{ 0, 1, 0 }
-                            );
-                            auto p = glm::ortho<double>(-1, 1, -1, 1, -10, 10);
-                            p[1][1] *= -1;
-
                             mirinae::U_ShadowPushConst push_const;
-                            push_const.pvm_ = p * v * m;
+                            push_const.pvm_ = dlight_light_mat *
+                                              actor.model_mat_;
+
                             vkCmdPushConstants(
                                 cur_cmd_buf,
                                 rp.pipeline_layout(),
@@ -1455,11 +1457,14 @@ namespace {
             {
                 mirinae::U_CompoMain ubuf_data;
                 ubuf_data.set_proj_inv(glm::inverse(proj_mat));
-                ubuf_data.set_dlight_dir(
-                    view_mat *
-                    glm::dvec4{ std::cos(t * 0.2), 1, std::sin(t * 0.2), 0 }
-                );
-                ubuf_data.set_dlight_color(5);
+
+                for (auto e : scene_.reg_.view<cpnt::DLight>()) {
+                    const auto& light = scene_.reg_.get<cpnt::DLight>(e);
+                    ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat));
+                    ubuf_data.set_dlight_color(light.color_);
+                    break;
+                }
+
                 ubuf_data.set_slight_pos(glm::dvec3{ 0, 0, 0 });
                 ubuf_data.set_slight_dir(glm::dvec3{ 0, 0, -1 });
                 ubuf_data.set_slight_color(flashlight_on_ ? 5.f : 0.f);
