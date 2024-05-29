@@ -1765,7 +1765,8 @@ namespace { namespace compo {
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // albedo
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // normal
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // material
-            .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompoMain
+            .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_CompoMain
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);   // dlight shadowmap
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 

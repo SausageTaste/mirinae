@@ -14,8 +14,10 @@ layout(set = 0, binding = 3) uniform sampler2D u_material_map;
 
 layout(set = 0, binding = 4) uniform U_CompoMain {
     mat4 proj_inv;
+    mat4 view_inv;
 
     // Directional light
+    mat4 dlight_mat;
     vec4 dlight_dir;
     vec4 dlight_color;
 
@@ -24,6 +26,8 @@ layout(set = 0, binding = 4) uniform U_CompoMain {
     vec4 slight_dir_n_outer_angle;
     vec4 slight_color_n_max_dist;
 } u_comp_main;
+
+layout(set = 0, binding = 5) uniform sampler2D u_dlight_shadow_map;
 
 
 vec3 calc_frag_pos(float depth) {
@@ -50,10 +54,21 @@ void main() {
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
     const float frag_distance = length(frag_pos);
 
+    bool in_shadow = false;
+    const vec4 world_pos = u_comp_main.view_inv * vec4(frag_pos, 1);
+    const vec4 frag_pos_in_dlight = u_comp_main.dlight_mat * world_pos;
+    const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
+    if (proj_coords.z <= 1.0) {
+        const vec2 sample_coord = proj_coords.xy * 0.5 + 0.5;
+        const float closestDepth = texture(u_dlight_shadow_map, sample_coord).r;
+        const float currentDepth = proj_coords.z;
+        in_shadow = currentDepth > closestDepth;
+    }
+
     vec3 light = albedo_texel.rgb * 0.4;
 
     // Directional light
-    {
+    if (!in_shadow) {
         light += calc_pbr_illumination(
             roughness,
             metallic,
