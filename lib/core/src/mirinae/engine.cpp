@@ -479,13 +479,13 @@ namespace {
                 auto& dlight = scene_.reg_.get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
 
-                dlight.transform_.pos_ = cam.view_.pos_ + dlight.transform_.make_forward_dir() * (-10.0);
+                dlight.transform_.pos_ = cam.view_.pos_;
                 dlight.transform_.reset_rotation();
                 dlight.transform_.rotate(
                     sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
                 );
                 dlight.transform_.rotate(
-                    sung::TAngle<double>::from_deg(-90), { 0, 1, 0 }
+                    sung::TAngle<double>::from_deg(-85), { 0, 1, 0 }
                 );
                 /*
                 dlight.transform_.rotate(

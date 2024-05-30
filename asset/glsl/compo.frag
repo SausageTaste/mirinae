@@ -1,6 +1,7 @@
 #version 450
 
 #include "utils/lighting.glsl"
+#include "utils/shadow.glsl"
 
 layout(location = 0) in vec2 v_uv_coord;
 
@@ -50,36 +51,24 @@ void main() {
     const float roughness = material_texel.x;
     const float metallic = material_texel.y;
 
+    const vec3 world_pos = (u_comp_main.view_inv * vec4(frag_pos, 1)).xyz;
     const vec3 view_direc = normalize(frag_pos);
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
     const float frag_distance = length(frag_pos);
 
-    bool in_shadow = false;
-    const vec4 world_pos = u_comp_main.view_inv * vec4(frag_pos, 1);
-    const vec4 frag_pos_in_dlight = u_comp_main.dlight_mat * world_pos;
-    const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
-    if (proj_coords.z <= 1.0) {
-        const vec2 sample_coord = proj_coords.xy * 0.5 + 0.5;
-        const float closestDepth = texture(u_dlight_shadow_map, sample_coord).r;
-        const float currentDepth = proj_coords.z;
-        in_shadow = currentDepth > closestDepth;
-    }
-
     vec3 light = albedo_texel.rgb * 0.4;
 
     // Directional light
-    if (!in_shadow) {
-        light += calc_pbr_illumination(
-            roughness,
-            metallic,
-            albedo,
-            normal,
-            F0,
-            -view_direc,
-            u_comp_main.dlight_dir.xyz,
-            u_comp_main.dlight_color.rgb
-        );
-    }
+    light += calc_pbr_illumination(
+        roughness,
+        metallic,
+        albedo,
+        normal,
+        F0,
+        -view_direc,
+        u_comp_main.dlight_dir.xyz,
+        u_comp_main.dlight_color.rgb
+    ) * how_much_not_in_shadow_pcf_bilinear(world_pos, u_comp_main.dlight_mat, u_dlight_shadow_map);
 
     // Flashlight
     {
