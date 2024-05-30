@@ -31,7 +31,7 @@ layout(set = 0, binding = 5) uniform sampler2D u_dlight_shadow_map;
 
 
 vec3 calc_frag_pos(float depth) {
-    vec4 clip_pos = vec4(v_uv_coord * 2 - 1, depth * 2 - 1, 1);
+    vec4 clip_pos = vec4(v_uv_coord * 2 - 1, depth, 1);
     vec4 frag_pos = u_comp_main.proj_inv * clip_pos;
     frag_pos /= frag_pos.w;
     return frag_pos.xyz;
