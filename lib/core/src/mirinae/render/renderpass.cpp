@@ -1380,7 +1380,7 @@ namespace { namespace shadowmap {
         const auto viewport_state = ::create_info_viewport_state();
 
         const auto rasterizer = ::create_info_rasterizer(
-            VK_CULL_MODE_NONE, false, 0, 0, false
+            VK_CULL_MODE_NONE, true, 80, 8, device.has_supp_depth_clamp()
         );
 
         const auto multisampling = ::create_info_multisampling();
@@ -1626,7 +1626,7 @@ namespace { namespace shadowmap_skin {
         const auto viewport_state = ::create_info_viewport_state();
 
         const auto rasterizer = ::create_info_rasterizer(
-            VK_CULL_MODE_NONE, false, 0, 0, false
+            VK_CULL_MODE_NONE, true, 80, 8, device.has_supp_depth_clamp()
         );
 
         const auto multisampling = ::create_info_multisampling();

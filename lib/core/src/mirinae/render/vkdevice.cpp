@@ -284,6 +284,10 @@ namespace {
             return this->features_.samplerAnisotropy;
         }
 
+        bool is_depth_clamp_supported() const {
+            return features_.depthClamp;
+        }
+
         auto max_sampler_anisotropy() const { return properties_.limits.maxSamplerAnisotropy; }
 
         std::vector<VkExtensionProperties> get_extensions() const {
@@ -759,6 +763,10 @@ namespace mirinae {
 
     VkFormat VulkanDevice::select_first_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const {
         return pimpl_->phys_device_.select_first_supported_format(candidates, tiling, features);
+    }
+
+    bool VulkanDevice::has_supp_depth_clamp() const {
+        return pimpl_->phys_device_.is_depth_clamp_supported();
     }
 
     VulkanMemoryAllocator VulkanDevice::mem_alloc() {

@@ -42,6 +42,7 @@ namespace mirinae {
             VkImageTiling tiling,
             VkFormatFeatureFlags features
         ) const;
+        bool has_supp_depth_clamp() const;
 
         // Misc
         VulkanMemoryAllocator mem_alloc();

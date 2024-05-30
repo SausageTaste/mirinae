@@ -499,7 +499,10 @@ namespace {
                 dlight.transform_.pos_ = cam.view_.pos_;
                 dlight.transform_.reset_rotation();
                 dlight.transform_.rotate(
-                    sung::TAngle<double>::from_deg(-90), { 1, 0, 0 }
+                    sung::TAngle<double>::from_deg(-80), { 1, 0, 0 }
+                );
+                dlight.transform_.rotate(
+                    sung::TAngle<double>::from_deg(t), { 0, 1, 0 }
                 );
                 /*
                 dlight.transform_.rotate(
