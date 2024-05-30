@@ -1348,7 +1348,6 @@ namespace {
             vkDestroyFramebuffer(
                 device_.logi_device(), shadow_map_fbuf_, nullptr
             );
-            shadow_map_.reset();
 
             rp_states_fillscreen_.destroy(device_);
             rp_states_transp_.destroy(device_);
