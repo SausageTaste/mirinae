@@ -26,21 +26,11 @@ namespace mirinae { namespace cpnt {
          * @param view_mat View matrix of camera
          * @return glm::vec3
          */
-        glm::vec3 calc_to_light_dir(const glm::dmat4 view_mat) const {
-            const auto v = view_mat * transform_.make_model_mat() *
-                           glm::dvec4(0, 0, 1, 0);
-            return glm::normalize(glm::vec3(v));
-        };
+        glm::vec3 calc_to_light_dir(const glm::dmat4 view_mat) const;
 
-        glm::dmat4 make_proj_mat() const {
-            auto p = glm::ortho<double>(-2.5, 2.5, -2.5, 2.5, -50, 50);
-            //p[1][1] *= -1;
-            return p;
-        }
-        glm::dmat4 make_view_mat() const { return transform_.make_view_mat(); }
-        glm::dmat4 make_light_mat() const {
-            return make_proj_mat() * make_view_mat();
-        }
+        glm::dmat4 make_proj_mat() const;
+        glm::dmat4 make_view_mat() const;
+        glm::dmat4 make_light_mat() const;
 
         Transform transform_;
         glm::vec3 color_;
