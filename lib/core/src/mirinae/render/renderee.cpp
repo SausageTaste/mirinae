@@ -793,41 +793,40 @@ namespace mirinae {
         const U_GbufModel& ubuf_data,
         VkImageView albedo_map,
         VkImageView normal_map,
-        VkSampler texture_sampler,
         CommandPool& cmd_pool,
         DesclayoutManager& desclayouts,
-        VulkanDevice& vulkan_device
+        VulkanDevice& device
     ) {
-        desc_pool_.init(max_flight_count * 4, vulkan_device.logi_device());
+        desc_pool_.init(max_flight_count * 4, device.logi_device());
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("gbuf:model"),
-            vulkan_device.logi_device()
+            device.logi_device()
         );
 
-        uniform_buf_.init_ubuf(sizeof(U_GbufModel), vulkan_device.mem_alloc());
+        uniform_buf_.init_ubuf(sizeof(U_GbufModel), device.mem_alloc());
         uniform_buf_.set_data(
-            &ubuf_data, sizeof(U_GbufModel), vulkan_device.mem_alloc()
+            &ubuf_data, sizeof(U_GbufModel), device.mem_alloc()
         );
 
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
             builder.add_uniform_buffer(uniform_buf_, desc_sets_.at(i))
                 .add_combinded_image_sampler(
-                    albedo_map, texture_sampler, desc_sets_.at(i)
+                    albedo_map, device.samplers().get_linear(), desc_sets_.at(i)
                 )
                 .add_combinded_image_sampler(
-                    normal_map, texture_sampler, desc_sets_.at(i)
+                    normal_map, device.samplers().get_linear(), desc_sets_.at(i)
                 )
-                .apply_all(vulkan_device.logi_device());
+                .apply_all(device.logi_device());
         }
 
         vert_index_pair_.init(
             vertices,
             cmd_pool,
-            vulkan_device.mem_alloc(),
-            vulkan_device.graphics_queue(),
-            vulkan_device.logi_device()
+            device.mem_alloc(),
+            device.graphics_queue(),
+            device.logi_device()
         );
     }
 
@@ -863,41 +862,40 @@ namespace mirinae {
         const U_GbufModel& ubuf_data,
         VkImageView albedo_map,
         VkImageView normal_map,
-        VkSampler texture_sampler,
         CommandPool& cmd_pool,
         DesclayoutManager& desclayouts,
-        VulkanDevice& vulkan_device
+        VulkanDevice& device
     ) {
-        desc_pool_.init(max_flight_count * 4, vulkan_device.logi_device());
+        desc_pool_.init(max_flight_count * 4, device.logi_device());
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("gbuf:model"),
-            vulkan_device.logi_device()
+            device.logi_device()
         );
 
-        uniform_buf_.init_ubuf(sizeof(U_GbufModel), vulkan_device.mem_alloc());
+        uniform_buf_.init_ubuf(sizeof(U_GbufModel), device.mem_alloc());
         uniform_buf_.set_data(
-            &ubuf_data, sizeof(U_GbufModel), vulkan_device.mem_alloc()
+            &ubuf_data, sizeof(U_GbufModel), device.mem_alloc()
         );
 
         for (size_t i = 0; i < max_flight_count; i++) {
             DescWriteInfoBuilder builder;
             builder.add_uniform_buffer(uniform_buf_, desc_sets_.at(i))
                 .add_combinded_image_sampler(
-                    albedo_map, texture_sampler, desc_sets_.at(i)
+                    albedo_map, device.samplers().get_linear(), desc_sets_.at(i)
                 )
                 .add_combinded_image_sampler(
-                    normal_map, texture_sampler, desc_sets_.at(i)
+                    normal_map, device.samplers().get_linear(), desc_sets_.at(i)
                 )
-                .apply_all(vulkan_device.logi_device());
+                .apply_all(device.logi_device());
         }
 
         vert_index_pair_.init(
             vertices,
             cmd_pool,
-            vulkan_device.mem_alloc(),
-            vulkan_device.graphics_queue(),
-            vulkan_device.logi_device()
+            device.mem_alloc(),
+            device.graphics_queue(),
+            device.logi_device()
         );
     }
 
@@ -1022,10 +1020,7 @@ namespace mirinae {
     class ModelManager::Pimpl {
 
     public:
-        Pimpl(VulkanDevice& device)
-            : device_(device), texture_sampler_(device) {
-            SamplerBuilder sampler_builder;
-            texture_sampler_.reset(sampler_builder.build(device_));
+        Pimpl(VulkanDevice& device) : device_(device) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -1105,7 +1100,6 @@ namespace mirinae {
                     mat_res.model_ubuf_,
                     mat_res.albedo_map_->image_view(),
                     mat_res.normal_map_->image_view(),
-                    texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
                     device_
@@ -1139,7 +1133,6 @@ namespace mirinae {
                     mat_res.model_ubuf_,
                     mat_res.albedo_map_->image_view(),
                     mat_res.normal_map_->image_view(),
-                    texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
                     device_
@@ -1230,7 +1223,6 @@ namespace mirinae {
                     mat_res.model_ubuf_,
                     mat_res.albedo_map_->image_view(),
                     mat_res.normal_map_->image_view(),
-                    texture_sampler_.get(),
                     cmd_pool_,
                     desclayouts,
                     device_
@@ -1246,7 +1238,6 @@ namespace mirinae {
 
     private:
         VulkanDevice& device_;
-        Sampler texture_sampler_;
         CommandPool cmd_pool_;
 
         std::map<respath_t, std::shared_ptr<RenderModel>> models_;

@@ -753,6 +753,140 @@ namespace {
 }  // namespace
 
 
+// Samplers
+namespace {
+
+    class SamplerRaii {
+
+    public:
+        SamplerRaii(::LogiDevice& logi_d) : logi_d_(logi_d) {}
+
+        ~SamplerRaii() { this->reset(); }
+
+        void reset(VkSampler sampler = VK_NULL_HANDLE) {
+            this->destroy();
+            handle_ = sampler;
+        }
+
+        void destroy() {
+            if (VK_NULL_HANDLE != handle_) {
+                vkDestroySampler(logi_d_.get(), handle_, nullptr);
+                handle_ = VK_NULL_HANDLE;
+            }
+        }
+
+        VkSampler get() const { return handle_; }
+
+    private:
+        ::LogiDevice& logi_d_;
+        VkSampler handle_ = VK_NULL_HANDLE;
+    };
+
+
+    class SamplerBuilder {
+
+    public:
+        SamplerBuilder() : cinfo_({}) {
+            cinfo_.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            cinfo_.magFilter = VK_FILTER_LINEAR;
+            cinfo_.minFilter = VK_FILTER_LINEAR;
+            cinfo_.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            cinfo_.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            cinfo_.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            cinfo_.anisotropyEnable = VK_FALSE;
+            cinfo_.maxAnisotropy = 0;
+            cinfo_.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+            cinfo_.unnormalizedCoordinates = VK_FALSE;
+            cinfo_.compareEnable = VK_FALSE;
+            cinfo_.compareOp = VK_COMPARE_OP_ALWAYS;
+            cinfo_.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            cinfo_.mipLodBias = 0;
+            cinfo_.minLod = 0;
+            cinfo_.maxLod = VK_LOD_CLAMP_NONE;
+        }
+
+        VkSampler build(const ::PhysDevice& pd, ::LogiDevice& ld) {
+            cinfo_.anisotropyEnable = pd.is_anisotropic_filtering_supported();
+            cinfo_.maxAnisotropy = pd.max_sampler_anisotropy();
+
+            VkSampler output = VK_NULL_HANDLE;
+            const auto result = vkCreateSampler(
+                ld.get(), &cinfo_, nullptr, &output
+            );
+
+            if (VK_SUCCESS == result)
+                return output;
+            else
+                return VK_NULL_HANDLE;
+        }
+
+        SamplerBuilder& mag_filter(VkFilter filter) {
+            cinfo_.magFilter = filter;
+            return *this;
+        }
+        SamplerBuilder& mag_filter_nearest() {
+            return this->mag_filter(VK_FILTER_NEAREST);
+        }
+        SamplerBuilder& mag_filter_linear() {
+            return this->mag_filter(VK_FILTER_LINEAR);
+        }
+
+        SamplerBuilder& min_filter(VkFilter filter) {
+            cinfo_.minFilter = filter;
+            return *this;
+        }
+        SamplerBuilder& min_filter_nearest() {
+            return this->min_filter(VK_FILTER_NEAREST);
+        }
+        SamplerBuilder& min_filter_linear() {
+            return this->min_filter(VK_FILTER_LINEAR);
+        }
+
+    private:
+        VkSamplerCreateInfo cinfo_;
+    };
+
+
+    class SamplerManager : public mirinae::ISamplerManager {
+
+    public:
+        void init(const ::PhysDevice& pd, ::LogiDevice& ld) {
+            {
+                ::SamplerBuilder sampler_builder;
+                linear_ = sampler_builder.build(pd, ld);
+            }
+
+            {
+                ::SamplerBuilder sampler_builder;
+                sampler_builder.mag_filter_nearest();
+                sampler_builder.min_filter_nearest();
+                nearest_ = sampler_builder.build(pd, ld);
+            }
+        }
+
+        void destroy(::LogiDevice& ld) {
+            if (VK_NULL_HANDLE != linear_) {
+                vkDestroySampler(ld.get(), linear_, nullptr);
+                linear_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != nearest_) {
+                vkDestroySampler(ld.get(), nearest_, nullptr);
+                nearest_ = VK_NULL_HANDLE;
+            }
+        }
+
+        VkSampler get_linear() override { return linear_; }
+        VkSampler get_nearest() override { return nearest_; }
+
+    private:
+        VkSampler linear_;
+        VkSampler nearest_;
+    };
+
+}  // namespace
+
+
 // Free functions
 namespace mirinae {
 
@@ -834,9 +968,13 @@ namespace mirinae {
             if (!swapchain_details.is_complete()) {
                 throw std::runtime_error{ "The swapchain is not complete" };
             }
+
+            samplers_.init(phys_device_, logi_device_);
         }
 
         ~Pimpl() {
+            samplers_.destroy(logi_device_);
+
             mirinae::destroy_vma_allocator(mem_allocator_);
             mem_allocator_ = nullptr;
 
@@ -849,6 +987,7 @@ namespace mirinae {
         ::VulkanInstance instance_;
         ::PhysDevice phys_device_;
         ::LogiDevice logi_device_;
+        ::SamplerManager samplers_;
         mirinae::VulkanMemoryAllocator mem_allocator_;
         mirinae::EngineCreateInfo create_info_;
         VkSurfaceKHR surface_ = VK_NULL_HANDLE;
@@ -894,6 +1033,8 @@ namespace mirinae {
     bool VulkanDevice::has_supp_depth_clamp() const {
         return pimpl_->phys_device_.is_depth_clamp_supported();
     }
+
+    ISamplerManager& VulkanDevice::samplers() { return pimpl_->samplers_; }
 
     VulkanMemoryAllocator VulkanDevice::mem_alloc() {
         return pimpl_->mem_allocator_;
@@ -1026,68 +1167,6 @@ namespace mirinae {
             default:
                 return std::nullopt;
         }
-    }
-
-}  // namespace mirinae
-
-
-// Sampler
-namespace mirinae {
-
-    Sampler::~Sampler() { this->destroy(); }
-
-    void Sampler::reset(VkSampler sampler) {
-        this->destroy();
-        handle_ = sampler;
-    }
-
-    void Sampler::destroy() {
-        if (VK_NULL_HANDLE != handle_) {
-            vkDestroySampler(device_.logi_device(), handle_, nullptr);
-            handle_ = VK_NULL_HANDLE;
-        }
-    }
-
-}  // namespace mirinae
-
-
-// SamplerBuilder
-namespace mirinae {
-
-    SamplerBuilder::SamplerBuilder() : create_info_({}) {
-        create_info_.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        create_info_.magFilter = VK_FILTER_LINEAR;
-        create_info_.minFilter = VK_FILTER_LINEAR;
-        create_info_.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        create_info_.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        create_info_.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        create_info_.anisotropyEnable = VK_FALSE;
-        create_info_.maxAnisotropy = 0;
-        create_info_.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        create_info_.unnormalizedCoordinates = VK_FALSE;
-        create_info_.compareEnable = VK_FALSE;
-        create_info_.compareOp = VK_COMPARE_OP_ALWAYS;
-        create_info_.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        create_info_.mipLodBias = 0;
-        create_info_.minLod = 0;
-        create_info_.maxLod = VK_LOD_CLAMP_NONE;
-    }
-
-    VkSampler SamplerBuilder::build(VulkanDevice& device) {
-        create_info_.anisotropyEnable =
-            device.pimpl_->phys_device_.is_anisotropic_filtering_supported()
-                ? VK_TRUE
-                : VK_FALSE;
-        create_info_.maxAnisotropy =
-            device.pimpl_->phys_device_.max_sampler_anisotropy();
-
-        VkSampler output = VK_NULL_HANDLE;
-        if (vkCreateSampler(
-                device.logi_device(), &create_info_, nullptr, &output
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create texture sampler!");
-        }
-        return output;
     }
 
 }  // namespace mirinae

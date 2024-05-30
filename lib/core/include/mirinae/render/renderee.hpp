@@ -70,7 +70,6 @@ namespace mirinae {
             const U_GbufModel& ubuf_data,
             VkImageView albedo_map,
             VkImageView normal_map,
-            VkSampler texture_sampler,
             CommandPool& cmd_pool,
             DesclayoutManager& desclayouts,
             VulkanDevice& vulkan_device
@@ -98,7 +97,6 @@ namespace mirinae {
             const U_GbufModel& ubuf_data,
             VkImageView albedo_map,
             VkImageView normal_map,
-            VkSampler texture_sampler,
             CommandPool& cmd_pool,
             DesclayoutManager& desclayouts,
             VulkanDevice& vulkan_device

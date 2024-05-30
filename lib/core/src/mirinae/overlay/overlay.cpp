@@ -13,7 +13,6 @@ namespace {
 
     public:
         ImageView(
-            VkSampler sampler,
             mirinae::DesclayoutManager& desclayout,
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
@@ -23,7 +22,7 @@ namespace {
                 mirinae::MAX_FRAMES_IN_FLIGHT,
                 tex_man.request("asset/textures/black.png", true)->image_view(),
                 tex_man.request("asset/textures/white.png", true)->image_view(),
-                sampler,
+                device.samplers().get_linear(),
                 desclayout,
                 tex_man
             );
@@ -32,7 +31,6 @@ namespace {
         ImageView(
             VkImageView color_img,
             VkImageView mask_img,
-            VkSampler sampler,
             mirinae::DesclayoutManager& desclayout,
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
@@ -42,7 +40,7 @@ namespace {
                 mirinae::MAX_FRAMES_IN_FLIGHT,
                 color_img,
                 mask_img,
-                sampler,
+                device.samplers().get_linear(),
                 desclayout,
                 tex_man
             );
@@ -99,13 +97,12 @@ namespace {
 
     public:
         LineEdit(
-            VkSampler sampler,
             mirinae::TextRenderData& text_render_data,
             mirinae::DesclayoutManager& desclayout,
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
         )
-            : bg_img_(sampler, desclayout, tex_man, device)
+            : bg_img_(desclayout, tex_man, device)
             , text_box_(text_render_data) {
             text_box_.replace_osio(device.osio());
         }
@@ -165,7 +162,6 @@ namespace {
 
     public:
         DevConsole(
-            VkSampler sampler,
             mirinae::TextRenderData& text_render_data,
             mirinae::DesclayoutManager& desclayout,
             mirinae::TextureManager& tex_man,
@@ -175,7 +171,7 @@ namespace {
             : script_(script) {
             {
                 auto w = widgets_.emplace_back<LineEdit>(
-                    sampler, text_render_data, desclayout, tex_man, device
+                    text_render_data, desclayout, tex_man, device
                 );
                 w->pos_ = { 10, 415 };
                 w->size_ = { 500, text_render_data.text_height() };
@@ -193,7 +189,7 @@ namespace {
 
             {
                 auto w = widgets_.emplace_back<ImageView>(
-                    sampler, desclayout, tex_man, device
+                    desclayout, tex_man, device
                 );
                 w->pos_ = { 10, 10 };
                 w->size_ = { 500, 400 };
@@ -298,7 +294,6 @@ namespace {
 namespace mirinae {
 
     std::unique_ptr<IDevConsole> create_dev_console(
-        VkSampler sampler,
         mirinae::TextRenderData& text_render_data,
         mirinae::DesclayoutManager& desclayout,
         mirinae::TextureManager& tex_man,
@@ -306,7 +301,7 @@ namespace mirinae {
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<::DevConsole>(
-            sampler, text_render_data, desclayout, tex_man, script, device
+            text_render_data, desclayout, tex_man, script, device
         );
     }
 
@@ -324,18 +319,14 @@ namespace mirinae {
             : device_(device)
             , tex_man_(tex_man)
             , desclayout_(desclayout)
-            , sampler_(device)
             , font_lib_(device.filesys())
             , text_render_data_(device)
-            , win_dim_(win_width, win_height, 1) {
-            SamplerBuilder sampler_builder;
-            sampler_.reset(sampler_builder.build(device_));
-        }
+            , win_dim_(win_width, win_height, 1) {}
 
         TextRenderData& ascii_ren_data() {
             if (!text_render_data_.is_ready()) {
                 text_render_data_.init_ascii(
-                    sampler_.get(), font_lib_, desclayout_, tex_man_, device_
+                    font_lib_, desclayout_, tex_man_, device_
                 );
             }
 
@@ -347,7 +338,6 @@ namespace mirinae {
         DesclayoutManager& desclayout_;
 
         WindowDimInfo win_dim_;
-        Sampler sampler_;
         FontLibrary font_lib_;
 
         key::EventAnalyzer key_states_;
@@ -402,8 +392,6 @@ namespace mirinae {
         return pimpl_->widgets_.on_mouse_event(e);
     }
 
-    VkSampler OverlayManager::sampler() const { return pimpl_->sampler_.get(); }
-
     const WindowDimInfo& OverlayManager::win_dim() const {
         return pimpl_->win_dim_;
     }
@@ -423,7 +411,6 @@ namespace mirinae {
             img_view,
             pimpl_->tex_man_.request("asset/textures/white.png", true)
                 ->image_view(),
-            pimpl_->sampler_.get(),
             pimpl_->desclayout_,
             pimpl_->tex_man_,
             pimpl_->device_
