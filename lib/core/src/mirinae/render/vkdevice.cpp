@@ -584,8 +584,10 @@ namespace {
 
             VkPhysicalDeviceFeatures deviceFeatures{};
             {
-                if (phys_device.is_anisotropic_filtering_supported())
-                    deviceFeatures.samplerAnisotropy = VK_TRUE;
+                deviceFeatures.samplerAnisotropy =
+                    phys_device.is_anisotropic_filtering_supported();
+                deviceFeatures.depthClamp =
+                    phys_device.is_depth_clamp_supported();
             }
 
             const auto char_extension = ::make_char_vec(extensions);
