@@ -28,7 +28,6 @@ namespace mirinae {
         TextRenderData(VulkanDevice& device);
 
         void init_ascii(
-            VkSampler sampler,
             FontLibrary& fonts,
             mirinae::DesclayoutManager& desclayout,
             mirinae::TextureManager& tex_man,

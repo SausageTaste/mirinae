@@ -200,8 +200,6 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             mirinae::FbufImageBundle& fbufs,
             VkImageView dlight_shadowmap,
-            VkSampler texture_sampler,
-            VkSampler shadow_map_sampler,
             mirinae::VulkanDevice& device
         ) {
             desc_pool_.init(10, device.logi_device());
@@ -221,27 +219,29 @@ namespace {
                 builder
                     .add_combinded_image_sampler(
                         fbufs.depth().image_view(),
-                        texture_sampler,
+                        device.samplers().get_linear(),
                         desc_sets_.at(i)
                     )
                     .add_combinded_image_sampler(
                         fbufs.albedo().image_view(),
-                        texture_sampler,
+                        device.samplers().get_linear(),
                         desc_sets_.at(i)
                     )
                     .add_combinded_image_sampler(
                         fbufs.normal().image_view(),
-                        texture_sampler,
+                        device.samplers().get_linear(),
                         desc_sets_.at(i)
                     )
                     .add_combinded_image_sampler(
                         fbufs.material().image_view(),
-                        texture_sampler,
+                        device.samplers().get_linear(),
                         desc_sets_.at(i)
                     )
                     .add_uniform_buffer(ubuf, desc_sets_.at(i))
                     .add_combinded_image_sampler(
-                        dlight_shadowmap, shadow_map_sampler, desc_sets_.at(i)
+                        dlight_shadowmap,
+                        device.samplers().get_nearest(),
+                        desc_sets_.at(i)
                     )
                     .apply_all(device.logi_device());
             }
@@ -305,7 +305,6 @@ namespace {
         void init(
             mirinae::DesclayoutManager& desclayouts,
             mirinae::FbufImageBundle& fbufs,
-            VkSampler texture_sampler,
             mirinae::VulkanDevice& device
         ) {
             desc_pool_.init(10, device.logi_device());
@@ -320,7 +319,7 @@ namespace {
                 builder
                     .add_combinded_image_sampler(
                         fbufs.compo().image_view(),
-                        texture_sampler,
+                        device.samplers().get_linear(),
                         desc_sets_.at(i)
                     )
                     .apply_all(device.logi_device());
@@ -352,29 +351,15 @@ namespace {
             , tex_man_(device_)
             , model_man_(device_)
             , desclayout_(device_)
-            , texture_sampler_(device_)
             , overlay_man_(
                   init_width, init_height, desclayout_, tex_man_, device_
               )
-            , shadow_map_sampler_(device_)
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
             // This must be the first member variable right after vtable pointer
             static_assert(offsetof(EngineGlfw, device_) == sizeof(void*));
 
             framesync_.init(device_.logi_device());
-
-            {
-                mirinae::SamplerBuilder sampler_builder;
-                texture_sampler_.reset(sampler_builder.build(device_));
-            }
-
-            {
-                mirinae::SamplerBuilder sampler_builder;
-                sampler_builder.mag_filter_nearest();
-                sampler_builder.min_filter_nearest();
-                shadow_map_sampler_.reset(sampler_builder.build(device_));
-            }
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
@@ -397,7 +382,6 @@ namespace {
                 script_.replace_output_buf(dev_console_output_);
 
                 auto w = mirinae::create_dev_console(
-                    overlay_man_.sampler(),
                     overlay_man_.text_render_data(),
                     desclayout_,
                     tex_man_,
@@ -1329,17 +1313,10 @@ namespace {
             }
 
             rp_states_compo_.init(
-                desclayout_,
-                fbuf_images_,
-                shadow_map_->image_view(),
-                texture_sampler_.get(),
-                shadow_map_sampler_.get(),
-                device_
+                desclayout_, fbuf_images_, shadow_map_->image_view(), device_
             );
             rp_states_transp_.init(desclayout_, device_);
-            rp_states_fillscreen_.init(
-                desclayout_, fbuf_images_, texture_sampler_.get(), device_
-            );
+            rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
         }
 
         void destroy_swapchain_and_relatives() {
@@ -1544,7 +1521,6 @@ namespace {
         ::FrameSync framesync_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
-        mirinae::Sampler texture_sampler_;
         mirinae::syst::NoclipController camera_controller_;
         mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;
@@ -1552,7 +1528,6 @@ namespace {
 
         std::unique_ptr<mirinae::ITexture> shadow_map_;
         VkFramebuffer shadow_map_fbuf_;
-        mirinae::Sampler shadow_map_sampler_;
 
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;

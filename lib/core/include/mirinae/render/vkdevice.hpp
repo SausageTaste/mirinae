@@ -23,6 +23,13 @@ namespace mirinae {
     );
 
 
+    struct ISamplerManager {
+        virtual ~ISamplerManager() = default;
+        virtual VkSampler get_linear() = 0;
+        virtual VkSampler get_nearest() = 0;
+    };
+
+
     class VulkanDevice {
 
     public:
@@ -43,6 +50,9 @@ namespace mirinae {
             VkFormatFeatureFlags features
         ) const;
         bool has_supp_depth_clamp() const;
+
+        // Sub-systems
+        ISamplerManager& samplers();
 
         // Misc
         VulkanMemoryAllocator mem_alloc();
@@ -88,57 +98,6 @@ namespace mirinae {
         std::vector<VkImageView> views_;
         VkFormat format_;
         VkExtent2D extent_;
-    };
-
-
-    class Sampler {
-
-    public:
-        Sampler(VulkanDevice& device) : device_(device) {}
-        ~Sampler();
-
-        void reset(VkSampler sampler = VK_NULL_HANDLE);
-        void destroy();
-
-        VkSampler get() { return handle_; }
-
-    private:
-        VulkanDevice& device_;
-        VkSampler handle_ = VK_NULL_HANDLE;
-    };
-
-
-    class SamplerBuilder {
-
-    public:
-        SamplerBuilder();
-
-        SamplerBuilder& mag_filter(VkFilter filter) {
-            create_info_.magFilter = filter;
-            return *this;
-        }
-        SamplerBuilder& mag_filter_nearest() {
-            return this->mag_filter(VK_FILTER_NEAREST);
-        }
-        SamplerBuilder& mag_filter_linear() {
-            return this->mag_filter(VK_FILTER_LINEAR);
-        }
-
-        SamplerBuilder& min_filter(VkFilter filter) {
-            create_info_.minFilter = filter;
-            return *this;
-        }
-        SamplerBuilder& min_filter_nearest() {
-            return this->min_filter(VK_FILTER_NEAREST);
-        }
-        SamplerBuilder& min_filter_linear() {
-            return this->min_filter(VK_FILTER_LINEAR);
-        }
-
-        VkSampler build(VulkanDevice& device);
-
-    private:
-        VkSamplerCreateInfo create_info_;
     };
 
 }  // namespace mirinae

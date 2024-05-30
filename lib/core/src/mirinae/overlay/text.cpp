@@ -58,7 +58,6 @@ namespace mirinae {
         : render_unit_(device) {}
 
     void TextRenderData::init_ascii(
-        VkSampler sampler,
         FontLibrary& fonts,
         mirinae::DesclayoutManager& desclayout,
         mirinae::TextureManager& tex_man,
@@ -86,7 +85,7 @@ namespace mirinae {
             mirinae::MAX_FRAMES_IN_FLIGHT,
             tex_man.request("asset/textures/white.png", false)->image_view(),
             texture_->image_view(),
-            sampler,
+            device.samplers().get_linear(),
             desclayout,
             tex_man
         );

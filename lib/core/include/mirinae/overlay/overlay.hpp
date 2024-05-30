@@ -14,7 +14,6 @@ namespace mirinae {
     };
 
     std::unique_ptr<IDevConsole> create_dev_console(
-        VkSampler sampler,
         mirinae::TextRenderData& text_render_data,
         mirinae::DesclayoutManager& desclayout,
         mirinae::TextureManager& tex_man,
@@ -43,7 +42,6 @@ namespace mirinae {
         bool on_text_event(char32_t c) override;
         bool on_mouse_event(const mouse::Event& e) override;
 
-        VkSampler sampler() const;
         const WindowDimInfo& win_dim() const;
         TextRenderData& text_render_data();
 
