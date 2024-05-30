@@ -462,7 +462,6 @@ namespace {
                 swapchain_.width(), swapchain_.height()
             );
             const auto view_mat = cam.view_.make_view_mat();
-            this->update_ubufs(proj_mat, view_mat);
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -472,7 +471,7 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            auto draw_sheet = ::make_draw_sheet(scene_);
+            const auto draw_sheet = ::make_draw_sheet(scene_);
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
 
             glm::dmat4 dlight_light_mat{ 1 };
@@ -500,6 +499,8 @@ namespace {
                 dlight_light_mat = dlight.make_light_mat();
                 break;
             }
+
+            this->update_ubufs(proj_mat, view_mat);
 
             // Begin recording
             {
