@@ -607,8 +607,13 @@ namespace {
 
             for (auto& l : scene_.reg_.view<mirinae::cpnt::SLight>()) {
                 auto& slight = scene_.reg_.get<mirinae::cpnt::SLight>(l);
-                slight.transform_.pos_ = cam.view_.pos_ + glm::dvec3{ 0, -0.5, 0 };
+                slight.transform_.pos_ = cam.view_.pos_ +
+                                         glm::dvec3{ 0, -0.1, 0 };
                 slight.transform_.rot_ = cam.view_.rot_;
+                slight.transform_.rotate(
+                    sung::TAngle<double>::from_deg(std::atan(0.1 / 5.0)),
+                    cam.view_.make_right_dir()
+                );
 
                 shadow_maps_.at(1).mat_ = slight.make_light_mat();
                 break;

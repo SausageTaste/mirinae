@@ -31,6 +31,16 @@ namespace mirinae {
                 glm::mat3_cast(rot_) * glm::tvec3<T>(0, 0, -1)
             );
         }
+        glm::tvec3<T> make_up_dir() const {
+            return glm::normalize(
+                glm::mat3_cast(rot_) * glm::tvec3<T>(0, 1, 0)
+            );
+        }
+        glm::tvec3<T> make_right_dir() const {
+            return glm::normalize(
+                glm::mat3_cast(rot_) * glm::tvec3<T>(1, 0, 0)
+            );
+        }
 
         glm::tmat4x4<T> make_model_mat() const {
             const auto rot_mat = glm::mat4_cast(rot_);
