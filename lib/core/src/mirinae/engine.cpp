@@ -125,7 +125,7 @@ namespace {
             return shadow_maps_.at(index).tex_->image_view();
         }
 
-        bool add(
+        void add(
             mirinae::IRenderPassBundle& rp,
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
@@ -290,6 +290,7 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             mirinae::FbufImageBundle& fbufs,
             VkImageView dlight_shadowmap,
+            VkImageView slight_shadowmap,
             mirinae::VulkanDevice& device
         ) {
             desc_pool_.init(10, device.logi_device());
@@ -330,6 +331,11 @@ namespace {
                     .add_uniform_buffer(ubuf, desc_sets_.at(i))
                     .add_combinded_image_sampler(
                         dlight_shadowmap,
+                        device.samplers().get_nearest(),
+                        desc_sets_.at(i)
+                    )
+                    .add_combinded_image_sampler(
+                        slight_shadowmap,
                         device.samplers().get_nearest(),
                         desc_sets_.at(i)
                     )
@@ -508,6 +514,16 @@ namespace {
                 d.color_ = glm::vec3{ 5, 5, 5 };
             }
 
+            // SLight
+            {
+                const auto entt = scene_.reg_.create();
+                auto& s = scene_.reg_.emplace<mirinae::cpnt::SLight>(entt);
+                s.transform_.pos_ = { 0, 2, 0 };
+                s.color_ = glm::vec3{ 5, 5, 5 };
+                s.inner_angle_.set_deg(10);
+                s.outer_angle_.set_deg(25);
+            }
+
             // Script
             {
                 const auto contents = device_.filesys().read_file_to_vector(
@@ -586,6 +602,15 @@ namespace {
                 */
 
                 shadow_maps_.at(0).mat_ = dlight.make_light_mat();
+                break;
+            }
+
+            for (auto& l : scene_.reg_.view<mirinae::cpnt::SLight>()) {
+                auto& slight = scene_.reg_.get<mirinae::cpnt::SLight>(l);
+                slight.transform_.pos_ = cam.view_.pos_ + glm::dvec3{ 0, -0.5, 0 };
+                slight.transform_.rot_ = cam.view_.rot_;
+
+                shadow_maps_.at(1).mat_ = slight.make_light_mat();
                 break;
             }
 
@@ -1379,13 +1404,14 @@ namespace {
             );
 
             shadow_maps_.recreate_fbufs(*rp_.shadowmap_, device_);
-            if (shadow_maps_.size() < 1)
+            while (shadow_maps_.size() < 2)
                 shadow_maps_.add(*rp_.shadowmap_, tex_man_, device_);
 
             rp_states_compo_.init(
                 desclayout_,
                 fbuf_images_,
                 shadow_maps_.get_img_view_at(0),
+                shadow_maps_.get_img_view_at(1),
                 device_
             );
             rp_states_transp_.init(desclayout_, device_);
@@ -1554,12 +1580,17 @@ namespace {
                     break;
                 }
 
-                ubuf_data.set_slight_pos(glm::dvec3{ 0, 0, 0 });
-                ubuf_data.set_slight_dir(glm::dvec3{ 0, 0, -1 });
-                ubuf_data.set_slight_color(flashlight_on_ ? 5.f : 0.f);
-                ubuf_data.set_slight_inner_angle(mirinae::Angle::from_deg(10));
-                ubuf_data.set_slight_outer_angle(mirinae::Angle::from_deg(25));
-                ubuf_data.set_slight_max_dist(10);
+                for (auto e : scene_.reg_.view<cpnt::SLight>()) {
+                    const auto& l = scene_.reg_.get<cpnt::SLight>(e);
+                    ubuf_data.set_slight_mat(l.make_light_mat());
+                    ubuf_data.set_slight_pos(l.calc_view_space_pos(view_mat));
+                    ubuf_data.set_slight_dir(l.calc_to_light_dir(view_mat));
+                    ubuf_data.set_slight_color(l.color_);
+                    ubuf_data.set_slight_inner_angle(l.inner_angle_);
+                    ubuf_data.set_slight_outer_angle(l.outer_angle_);
+                    ubuf_data.set_slight_max_dist(l.max_distance_);
+                    break;
+                }
 
                 rp_states_compo_.ubufs_.at(framesync_.get_frame_index().get())
                     .set_data(

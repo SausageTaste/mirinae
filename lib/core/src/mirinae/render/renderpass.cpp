@@ -1761,12 +1761,13 @@ namespace { namespace compo {
     ) {
         DescLayoutBuilder builder{ "compo:main" };
         builder
-            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // depth
-            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // albedo
-            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // normal
-            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)    // material
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // depth
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // albedo
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // normal
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // material
             .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_CompoMain
-            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);   // dlight shadowmap
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // dlight shadowmap
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // slight shadowmap
         return builder.build_in_place(desclayouts, device.logi_device());
     }
 
@@ -1774,9 +1775,7 @@ namespace { namespace compo {
         VkFormat compo_format, VkDevice logi_device
     ) {
         ::AttachmentDescBuilder attachments;
-        attachments.add(
-            compo_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        );
+        attachments.add(compo_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
         color_attachment_refs.add(
@@ -2414,8 +2413,7 @@ namespace { namespace transp_skin {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/transp_skin_vert.spv",
-                                    device };
+        ::ShaderModule vert_shader{ "asset/spv/transp_skin_vert.spv", device };
         ::ShaderModule frag_shader{ "asset/spv/transp_frag.spv", device };
         const auto shader_stages = ::create_info_shader_stages_pair(
             vert_shader, frag_shader
@@ -3132,10 +3130,9 @@ namespace mirinae {
         transp_ = std::make_unique<::transp::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        transp_skin_ =
-            std::make_unique<::transp_skin::RenderPassBundle>(
-                width, height, fbuf_bundle, desclayouts, swapchain, device
-            );
+        transp_skin_ = std::make_unique<::transp_skin::RenderPassBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
         fillscreen_ = std::make_unique<::fillscreen::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );

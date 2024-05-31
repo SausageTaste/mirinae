@@ -71,6 +71,7 @@ namespace mirinae {
             dlight_color_.z = dlight_color.b;
         }
 
+        void set_slight_mat(const glm::mat4& m) { slight_mat_ = m; }
         void set_slight_pos(const glm::vec3& pos) {
             slight_pos_n_inner_angle.x = pos.x;
             slight_pos_n_inner_angle.y = pos.y;
@@ -82,10 +83,10 @@ namespace mirinae {
             slight_dir_n_outer_angle.y = d.y;
             slight_dir_n_outer_angle.z = d.z;
         }
-        void set_slight_color(float r, float g, float b) {
-            slight_color_n_max_dist.x = r;
-            slight_color_n_max_dist.y = g;
-            slight_color_n_max_dist.z = b;
+        void set_slight_color(const glm::vec3& v) {
+            slight_color_n_max_dist.x = v.r;
+            slight_color_n_max_dist.y = v.g;
+            slight_color_n_max_dist.z = v.b;
         }
         void set_slight_color(float v) {
             slight_color_n_max_dist.x = v;
@@ -114,6 +115,7 @@ namespace mirinae {
         glm::vec4 dlight_color_;
 
         // Spotlight
+        glm::mat4 slight_mat_;
         glm::vec4 slight_pos_n_inner_angle;
         glm::vec4 slight_dir_n_outer_angle;
         glm::vec4 slight_color_n_max_dist;
