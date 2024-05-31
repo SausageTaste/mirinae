@@ -105,6 +105,96 @@ namespace {
         FrameIndex cur_frame_{ 0 };
     };
 
+
+    class ShadowMapPool {
+
+    public:
+        struct Item {
+            std::unique_ptr<mirinae::ITexture> tex_;
+            VkFramebuffer fbuf_;
+            glm::dmat4 mat_;
+        };
+
+        size_t size() const { return shadow_maps_.size(); }
+
+        auto begin() { return shadow_maps_.begin(); }
+        auto end() { return shadow_maps_.end(); }
+
+        Item& at(size_t index) { return shadow_maps_.at(index); }
+        VkImageView get_img_view_at(size_t index) const {
+            return shadow_maps_.at(index).tex_->image_view();
+        }
+
+        bool add(
+            mirinae::IRenderPassBundle& rp,
+            mirinae::TextureManager& tex_man,
+            mirinae::VulkanDevice& device
+        ) {
+            auto& added = shadow_maps_.emplace_back();
+            added.tex_ = tex_man.create_depth(1024 * 4, 1024 * 4);
+
+            const auto img_view = added.tex_->image_view();
+
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = rp.renderpass();
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments = &img_view;
+            framebufferInfo.width = added.tex_->width();
+            framebufferInfo.height = added.tex_->height();
+            framebufferInfo.layers = 1;
+
+            const auto result = vkCreateFramebuffer(
+                device.logi_device(), &framebufferInfo, nullptr, &added.fbuf_
+            );
+            if (VK_SUCCESS != result) {
+                throw std::runtime_error("failed to create framebuffer!");
+            }
+        }
+
+        void recreate_fbufs(
+            mirinae::IRenderPassBundle& rp, mirinae::VulkanDevice& device
+        ) {
+            for (auto& x : shadow_maps_) {
+                if (VK_NULL_HANDLE != x.fbuf_)
+                    vkDestroyFramebuffer(
+                        device.logi_device(), x.fbuf_, nullptr
+                    );
+
+                const auto img_view = x.tex_->image_view();
+
+                VkFramebufferCreateInfo framebufferInfo{};
+                framebufferInfo.sType =
+                    VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                framebufferInfo.renderPass = rp.renderpass();
+                framebufferInfo.attachmentCount = 1;
+                framebufferInfo.pAttachments = &img_view;
+                framebufferInfo.width = x.tex_->width();
+                framebufferInfo.height = x.tex_->height();
+                framebufferInfo.layers = 1;
+
+                const auto result = vkCreateFramebuffer(
+                    device.logi_device(), &framebufferInfo, nullptr, &x.fbuf_
+                );
+                if (VK_SUCCESS != result) {
+                    throw std::runtime_error("failed to create framebuffer!");
+                }
+            }
+        }
+
+        void destroy_fbufs(mirinae::VulkanDevice& device) {
+            for (auto& x : shadow_maps_) {
+                if (VK_NULL_HANDLE != x.fbuf_)
+                    vkDestroyFramebuffer(
+                        device.logi_device(), x.fbuf_, nullptr
+                    );
+            }
+        }
+
+    private:
+        std::vector<Item> shadow_maps_;
+    };
+
 }  // namespace
 
 
@@ -474,7 +564,6 @@ namespace {
             const auto draw_sheet = ::make_draw_sheet(scene_);
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
 
-            glm::dmat4 dlight_light_mat{ 1 };
             for (auto& l : scene_.reg_.view<mirinae::cpnt::DLight>()) {
                 auto& dlight = scene_.reg_.get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
@@ -496,7 +585,7 @@ namespace {
                 );
                 */
 
-                dlight_light_mat = dlight.make_light_mat();
+                shadow_maps_.at(0).mat_ = dlight.make_light_mat();
                 break;
             }
 
@@ -528,158 +617,167 @@ namespace {
             {
                 auto& rp = *rp_.shadowmap_;
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow_map_fbuf_;
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow_map_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                for (auto& shadow : shadow_maps_) {
+                    VkRenderPassBeginInfo renderPassInfo{};
+                    renderPassInfo.sType =
+                        VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                    renderPassInfo.renderPass = rp.renderpass();
+                    renderPassInfo.framebuffer = shadow.fbuf_;
+                    renderPassInfo.renderArea.offset = { 0, 0 };
+                    renderPassInfo.renderArea.extent = shadow.tex_->extent();
+                    renderPassInfo.clearValueCount = rp.clear_value_count();
+                    renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
-                vkCmdBindPipeline(
-                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-                );
+                    vkCmdBeginRenderPass(
+                        cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                    );
+                    vkCmdBindPipeline(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline()
+                    );
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = shadow_map_->width();
-                viewport.height = shadow_map_->height();
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                    VkViewport viewport{};
+                    viewport.x = 0.0f;
+                    viewport.y = 0.0f;
+                    viewport.width = shadow.tex_->width();
+                    viewport.height = shadow.tex_->height();
+                    viewport.minDepth = 0.0f;
+                    viewport.maxDepth = 1.0f;
+                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
 
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = shadow_map_->extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                    VkRect2D scissor{};
+                    scissor.offset = { 0, 0 };
+                    scissor.extent = shadow.tex_->extent();
+                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& pair : draw_sheet.static_pairs_) {
-                    for (auto& unit : pair.model_->render_units_) {
-                        auto unit_desc = unit.get_desc_set(
-                            framesync_.get_frame_index().get()
-                        );
-                        unit.record_bind_vert_buf(cur_cmd_buf);
-
-                        for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor.actor_->get_desc_set(
+                    for (auto& pair : draw_sheet.static_pairs_) {
+                        for (auto& unit : pair.model_->render_units_) {
+                            auto unit_desc = unit.get_desc_set(
                                 framesync_.get_frame_index().get()
                             );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &actor_desc,
-                                0,
-                                nullptr
-                            );
+                            unit.record_bind_vert_buf(cur_cmd_buf);
 
-                            mirinae::U_ShadowPushConst push_const;
-                            push_const.pvm_ = dlight_light_mat *
-                                              actor.model_mat_;
+                            for (auto& actor : pair.actors_) {
+                                auto actor_desc = actor.actor_->get_desc_set(
+                                    framesync_.get_frame_index().get()
+                                );
+                                vkCmdBindDescriptorSets(
+                                    cur_cmd_buf,
+                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    rp.pipeline_layout(),
+                                    0,
+                                    1,
+                                    &actor_desc,
+                                    0,
+                                    nullptr
+                                );
 
-                            vkCmdPushConstants(
-                                cur_cmd_buf,
-                                rp.pipeline_layout(),
-                                VK_SHADER_STAGE_VERTEX_BIT,
-                                0,
-                                sizeof(push_const),
-                                &push_const
-                            );
+                                mirinae::U_ShadowPushConst push_const;
+                                push_const.pvm_ = shadow.mat_ *
+                                                  actor.model_mat_;
 
-                            vkCmdDrawIndexed(
-                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                            );
+                                vkCmdPushConstants(
+                                    cur_cmd_buf,
+                                    rp.pipeline_layout(),
+                                    VK_SHADER_STAGE_VERTEX_BIT,
+                                    0,
+                                    sizeof(push_const),
+                                    &push_const
+                                );
+
+                                vkCmdDrawIndexed(
+                                    cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                                );
+                            }
                         }
                     }
+                    vkCmdEndRenderPass(cur_cmd_buf);
                 }
-
-                vkCmdEndRenderPass(cur_cmd_buf);
             }
 
             // Shader: Shadowmap Skin
             {
                 auto& rp = *rp_.shadowmap_skin_;
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow_map_fbuf_;
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow_map_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                for (auto& shadow : shadow_maps_) {
+                    VkRenderPassBeginInfo renderPassInfo{};
+                    renderPassInfo.sType =
+                        VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                    renderPassInfo.renderPass = rp.renderpass();
+                    renderPassInfo.framebuffer = shadow.fbuf_;
+                    renderPassInfo.renderArea.offset = { 0, 0 };
+                    renderPassInfo.renderArea.extent = shadow.tex_->extent();
+                    renderPassInfo.clearValueCount = rp.clear_value_count();
+                    renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
-                vkCmdBindPipeline(
-                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-                );
+                    vkCmdBeginRenderPass(
+                        cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                    );
+                    vkCmdBindPipeline(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline()
+                    );
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = shadow_map_->width();
-                viewport.height = shadow_map_->height();
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                    VkViewport viewport{};
+                    viewport.x = 0.0f;
+                    viewport.y = 0.0f;
+                    viewport.width = shadow.tex_->width();
+                    viewport.height = shadow.tex_->height();
+                    viewport.minDepth = 0.0f;
+                    viewport.maxDepth = 1.0f;
+                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
 
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = shadow_map_->extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                    VkRect2D scissor{};
+                    scissor.offset = { 0, 0 };
+                    scissor.extent = shadow.tex_->extent();
+                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
-                for (auto& pair : draw_sheet.skinned_pairs_) {
-                    for (auto& unit : pair.model_->runits_) {
-                        auto unit_desc = unit.get_desc_set(
-                            framesync_.get_frame_index().get()
-                        );
-                        unit.record_bind_vert_buf(cur_cmd_buf);
-
-                        for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor.actor_->get_desc_set(
+                    for (auto& pair : draw_sheet.skinned_pairs_) {
+                        for (auto& unit : pair.model_->runits_) {
+                            auto unit_desc = unit.get_desc_set(
                                 framesync_.get_frame_index().get()
                             );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &actor_desc,
-                                0,
-                                nullptr
-                            );
+                            unit.record_bind_vert_buf(cur_cmd_buf);
 
-                            mirinae::U_ShadowPushConst push_const;
-                            push_const.pvm_ = dlight_light_mat *
-                                              actor.model_mat_;
+                            for (auto& actor : pair.actors_) {
+                                auto actor_desc = actor.actor_->get_desc_set(
+                                    framesync_.get_frame_index().get()
+                                );
+                                vkCmdBindDescriptorSets(
+                                    cur_cmd_buf,
+                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    rp.pipeline_layout(),
+                                    0,
+                                    1,
+                                    &actor_desc,
+                                    0,
+                                    nullptr
+                                );
 
-                            vkCmdPushConstants(
-                                cur_cmd_buf,
-                                rp.pipeline_layout(),
-                                VK_SHADER_STAGE_VERTEX_BIT,
-                                0,
-                                sizeof(push_const),
-                                &push_const
-                            );
+                                mirinae::U_ShadowPushConst push_const;
+                                push_const.pvm_ = shadow.mat_ *
+                                                  actor.model_mat_;
 
-                            vkCmdDrawIndexed(
-                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                            );
+                                vkCmdPushConstants(
+                                    cur_cmd_buf,
+                                    rp.pipeline_layout(),
+                                    VK_SHADER_STAGE_VERTEX_BIT,
+                                    0,
+                                    sizeof(push_const),
+                                    &push_const
+                                );
+
+                                vkCmdDrawIndexed(
+                                    cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                                );
+                            }
                         }
                     }
-                }
 
-                vkCmdEndRenderPass(cur_cmd_buf);
+                    vkCmdEndRenderPass(cur_cmd_buf);
+                }
             }
 
             // Shader: Gbuf
@@ -1280,41 +1378,15 @@ namespace {
                 device_
             );
 
-            {
-                if (!shadow_map_) {
-                    shadow_map_ = tex_man_.create_depth(1024 * 4, 1024 * 4);
-                    overlay_man_.create_image_view(shadow_map_->image_view());
-                }
-
-                const std::vector<VkImageView> attachments{
-                    shadow_map_->image_view()
-                };
-
-                VkFramebufferCreateInfo framebufferInfo{};
-                framebufferInfo.sType =
-                    VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                framebufferInfo.renderPass = rp_.shadowmap_->renderpass();
-                framebufferInfo.attachmentCount = static_cast<uint32_t>(
-                    attachments.size()
-                );
-                framebufferInfo.pAttachments = attachments.data();
-                framebufferInfo.width = shadow_map_->width();
-                framebufferInfo.height = shadow_map_->height();
-                framebufferInfo.layers = 1;
-
-                const auto result = vkCreateFramebuffer(
-                    device_.logi_device(),
-                    &framebufferInfo,
-                    nullptr,
-                    &shadow_map_fbuf_
-                );
-                if (VK_SUCCESS != result) {
-                    throw std::runtime_error("failed to create framebuffer!");
-                }
-            }
+            shadow_maps_.recreate_fbufs(*rp_.shadowmap_, device_);
+            if (shadow_maps_.size() < 1)
+                shadow_maps_.add(*rp_.shadowmap_, tex_man_, device_);
 
             rp_states_compo_.init(
-                desclayout_, fbuf_images_, shadow_map_->image_view(), device_
+                desclayout_,
+                fbuf_images_,
+                shadow_maps_.get_img_view_at(0),
+                device_
             );
             rp_states_transp_.init(desclayout_, device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
@@ -1323,10 +1395,7 @@ namespace {
         void destroy_swapchain_and_relatives() {
             device_.wait_idle();
 
-            vkDestroyFramebuffer(
-                device_.logi_device(), shadow_map_fbuf_, nullptr
-            );
-
+            shadow_maps_.destroy_fbufs(device_);
             rp_states_fillscreen_.destroy(device_);
             rp_states_transp_.destroy(device_);
             rp_states_compo_.destroy(device_);
@@ -1520,15 +1589,13 @@ namespace {
         ::RpStatesFillscreen rp_states_fillscreen_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
+        ::ShadowMapPool shadow_maps_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::syst::NoclipController camera_controller_;
         mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;
         std::shared_ptr<mirinae::ITextData> dev_console_output_;
-
-        std::unique_ptr<mirinae::ITexture> shadow_map_;
-        VkFramebuffer shadow_map_fbuf_;
 
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;
