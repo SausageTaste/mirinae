@@ -126,30 +126,14 @@ namespace {
         }
 
         void add(
+            uint32_t width,
+            uint32_t height,
             mirinae::IRenderPassBundle& rp,
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
         ) {
             auto& added = shadow_maps_.emplace_back();
-            added.tex_ = tex_man.create_depth(1024 * 4, 1024 * 4);
-
-            const auto img_view = added.tex_->image_view();
-
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = rp.renderpass();
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = &img_view;
-            framebufferInfo.width = added.tex_->width();
-            framebufferInfo.height = added.tex_->height();
-            framebufferInfo.layers = 1;
-
-            const auto result = vkCreateFramebuffer(
-                device.logi_device(), &framebufferInfo, nullptr, &added.fbuf_
-            );
-            if (VK_SUCCESS != result) {
-                throw std::runtime_error("failed to create framebuffer!");
-            }
+            added.tex_ = tex_man.create_depth(width, height);
         }
 
         void recreate_fbufs(
@@ -456,6 +440,9 @@ namespace {
             static_assert(offsetof(EngineGlfw, device_) == sizeof(void*));
 
             framesync_.init(device_.logi_device());
+
+            shadow_maps_.add(2048, 2048, *rp_.shadowmap_, tex_man_, device_);
+            shadow_maps_.add(256, 256, *rp_.shadowmap_, tex_man_, device_);
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
@@ -1409,8 +1396,6 @@ namespace {
             );
 
             shadow_maps_.recreate_fbufs(*rp_.shadowmap_, device_);
-            while (shadow_maps_.size() < 2)
-                shadow_maps_.add(*rp_.shadowmap_, tex_man_, device_);
 
             rp_states_compo_.init(
                 desclayout_,
