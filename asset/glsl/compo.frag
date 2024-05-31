@@ -23,12 +23,14 @@ layout(set = 0, binding = 4) uniform U_CompoMain {
     vec4 dlight_color;
 
     // Spotlight
+    mat4 slight_mat;
     vec4 slight_pos_n_inner_angle;
     vec4 slight_dir_n_outer_angle;
     vec4 slight_color_n_max_dist;
 } u_comp_main;
 
 layout(set = 0, binding = 5) uniform sampler2D u_dlight_shadow_map;
+layout(set = 0, binding = 6) uniform sampler2D u_slight_shadow_map;
 
 
 vec3 calc_frag_pos(float depth) {
@@ -74,16 +76,20 @@ void main() {
     {
         const vec3 light_pos = u_comp_main.slight_pos_n_inner_angle.xyz;
         const vec3 to_light = normalize(light_pos - frag_pos);
-        const vec3 light_dir = u_comp_main.slight_dir_n_outer_angle.xyz;
+        const vec3 to_light_dir = u_comp_main.slight_dir_n_outer_angle.xyz;
 
         const float attenuation = calc_slight_attenuation(
             frag_pos,
             light_pos,
-            light_dir,
+            -to_light_dir,
             u_comp_main.slight_pos_n_inner_angle.w,
             u_comp_main.slight_dir_n_outer_angle.w
         ) * calc_attenuation(
             frag_distance, u_comp_main.slight_color_n_max_dist.w
+        );
+
+        const float not_shadow = how_much_not_in_shadow_pcf_bilinear(
+            world_pos, u_comp_main.slight_mat, u_slight_shadow_map
         );
 
         light += calc_pbr_illumination(
@@ -95,7 +101,7 @@ void main() {
             -view_direc,
             to_light,
             u_comp_main.slight_color_n_max_dist.xyz
-        ) * attenuation;
+        ) * attenuation * not_shadow;
     }
 
     f_color = vec4(light, 1);

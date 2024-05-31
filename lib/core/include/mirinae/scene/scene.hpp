@@ -37,6 +37,22 @@ namespace mirinae { namespace cpnt {
     };
 
 
+    struct SLight {
+        glm::vec3 calc_view_space_pos(const glm::dmat4 view_mat) const;
+        glm::vec3 calc_to_light_dir(const glm::dmat4 view_mat) const;
+
+        glm::dmat4 make_proj_mat() const;
+        glm::dmat4 make_view_mat() const;
+        glm::dmat4 make_light_mat() const;
+
+        Transform transform_;
+        glm::vec3 color_;
+        sung::TAngle<double> inner_angle_;
+        sung::TAngle<double> outer_angle_;
+        double max_distance_ = 100;
+    };
+
+
     struct StandardCamera {
         mirinae::cpnt::Transform view_;
         mirinae::PerspectiveCamera<double> proj_;
