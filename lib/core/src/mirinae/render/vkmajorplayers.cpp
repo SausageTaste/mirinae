@@ -12,7 +12,8 @@ namespace mirinae {
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-        if (vkCreateSemaphore(logi_device, &semaphoreInfo, nullptr, &handle_) != VK_SUCCESS) {
+        if (vkCreateSemaphore(logi_device, &semaphoreInfo, nullptr, &handle_) !=
+            VK_SUCCESS) {
             throw std::runtime_error("failed to create semaphores!");
         }
     }
@@ -24,7 +25,7 @@ namespace mirinae {
         }
     }
 
-}
+}  // namespace mirinae
 
 
 // Fence
@@ -37,7 +38,8 @@ namespace mirinae {
         if (init_signaled)
             fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        if (vkCreateFence(logi_device, &fenceInfo, nullptr, &handle_) != VK_SUCCESS) {
+        if (vkCreateFence(logi_device, &fenceInfo, nullptr, &handle_) !=
+            VK_SUCCESS) {
             throw std::runtime_error("failed to create semaphores!");
         }
     }
@@ -67,7 +69,7 @@ namespace mirinae {
         vkResetFences(logi_device, 1, &handle_);
     }
 
-}
+}  // namespace mirinae
 
 
 // CommandPool
@@ -79,7 +81,8 @@ namespace mirinae {
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         poolInfo.queueFamilyIndex = graphics_queue;
 
-        if (vkCreateCommandPool(logi_device, &poolInfo, nullptr, &handle_) != VK_SUCCESS) {
+        if (vkCreateCommandPool(logi_device, &poolInfo, nullptr, &handle_) !=
+            VK_SUCCESS) {
             throw std::runtime_error("failed to create command pool!");
         }
     }
@@ -99,7 +102,8 @@ namespace mirinae {
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
-        if (vkAllocateCommandBuffers(logi_device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
+        if (vkAllocateCommandBuffers(logi_device, &allocInfo, &commandBuffer) !=
+            VK_SUCCESS) {
             throw std::runtime_error("failed to allocate command buffers!");
         }
 
@@ -129,7 +133,9 @@ namespace mirinae {
         return commandBuffer;
     }
 
-    void CommandPool::end_single_time(VkCommandBuffer cmdbuf, VkQueue graphics_q, VkDevice logi_device) {
+    void CommandPool::end_single_time(
+        VkCommandBuffer cmdbuf, VkQueue graphics_q, VkDevice logi_device
+    ) {
         vkEndCommandBuffer(cmdbuf);
 
         VkSubmitInfo submitInfo{};
@@ -143,4 +149,40 @@ namespace mirinae {
         vkFreeCommandBuffers(logi_device, handle_, 1, &cmdbuf);
     }
 
-}
+}  // namespace mirinae
+
+
+// Fbuf
+namespace mirinae {
+
+    Fbuf::~Fbuf() {
+        if (VK_NULL_HANDLE != handle_) {
+            spdlog::warn("Fbuf object is being destroyed without being reset");
+        }
+    }
+
+    void Fbuf::init(
+        const VkFramebufferCreateInfo& cinfo, VkDevice logi_device
+    ) {
+        this->destroy(logi_device);
+        const auto result = vkCreateFramebuffer(
+            logi_device, &cinfo, nullptr, &handle_
+        );
+        if (result != VK_SUCCESS) {
+            throw std::runtime_error("failed to create framebuffer!");
+        }
+    }
+
+    void Fbuf::reset(VkFramebuffer handle, VkDevice logi_device) {
+        this->destroy(logi_device);
+        handle_ = handle;
+    }
+
+    void Fbuf::destroy(VkDevice logi_device) {
+        if (VK_NULL_HANDLE != handle_) {
+            vkDestroyFramebuffer(logi_device, handle_, nullptr);
+            handle_ = VK_NULL_HANDLE;
+        }
+    }
+
+}  // namespace mirinae
