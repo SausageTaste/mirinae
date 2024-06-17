@@ -275,47 +275,25 @@ namespace {
                 device.logi_device()
             );
 
+            const auto sam_lin = device.samplers().get_linear();
+            const auto sam_nea = device.samplers().get_nearest();
+            mirinae::DescWriteInfoBuilder builder;
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& ubuf = ubufs_.emplace_back();
                 ubuf.init_ubuf(
                     sizeof(mirinae::U_CompoMain), device.mem_alloc()
                 );
 
-                mirinae::DescWriteInfoBuilder builder;
-                builder
-                    .add_combinded_image_sampler(
-                        fbufs.depth().image_view(),
-                        device.samplers().get_linear(),
-                        desc_sets_.at(i)
-                    )
-                    .add_combinded_image_sampler(
-                        fbufs.albedo().image_view(),
-                        device.samplers().get_linear(),
-                        desc_sets_.at(i)
-                    )
-                    .add_combinded_image_sampler(
-                        fbufs.normal().image_view(),
-                        device.samplers().get_linear(),
-                        desc_sets_.at(i)
-                    )
-                    .add_combinded_image_sampler(
-                        fbufs.material().image_view(),
-                        device.samplers().get_linear(),
-                        desc_sets_.at(i)
-                    )
-                    .add_uniform_buffer(ubuf, desc_sets_.at(i))
-                    .add_combinded_image_sampler(
-                        dlight_shadowmap,
-                        device.samplers().get_nearest(),
-                        desc_sets_.at(i)
-                    )
-                    .add_combinded_image_sampler(
-                        slight_shadowmap,
-                        device.samplers().get_nearest(),
-                        desc_sets_.at(i)
-                    )
-                    .apply_all(device.logi_device());
+                builder.set_descset(desc_sets_.at(i))
+                    .add_img_sampler(fbufs.depth().image_view(), sam_lin)
+                    .add_img_sampler(fbufs.albedo().image_view(), sam_lin)
+                    .add_img_sampler(fbufs.normal().image_view(), sam_lin)
+                    .add_img_sampler(fbufs.material().image_view(), sam_lin)
+                    .add_ubuf(ubuf)
+                    .add_img_sampler(dlight_shadowmap, sam_nea)
+                    .add_img_sampler(slight_shadowmap, sam_nea);
             }
+            builder.apply_all(device.logi_device());
         }
 
         void destroy(mirinae::VulkanDevice& device) {
@@ -345,16 +323,16 @@ namespace {
                 device.logi_device()
             );
 
+            mirinae::DescWriteInfoBuilder builder;
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& ubuf = ubufs_.emplace_back();
                 ubuf.init_ubuf(
                     sizeof(mirinae::U_TranspFrame), device.mem_alloc()
                 );
 
-                mirinae::DescWriteInfoBuilder builder;
-                builder.add_uniform_buffer(ubuf, desc_sets_.at(i))
-                    .apply_all(device.logi_device());
+                builder.set_descset(desc_sets_.at(i)).add_ubuf(ubuf);
             }
+            builder.apply_all(device.logi_device());
         }
 
         void destroy(mirinae::VulkanDevice& device) {
@@ -385,16 +363,15 @@ namespace {
                 device.logi_device()
             );
 
+            mirinae::DescWriteInfoBuilder builder;
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                mirinae::DescWriteInfoBuilder builder;
-                builder
-                    .add_combinded_image_sampler(
+                builder.set_descset(desc_sets_.at(i))
+                    .add_img_sampler(
                         fbufs.compo().image_view(),
-                        device.samplers().get_linear(),
-                        desc_sets_.at(i)
-                    )
-                    .apply_all(device.logi_device());
+                        device.samplers().get_linear()
+                    );
             }
+            builder.apply_all(device.logi_device());
         }
 
         void destroy(mirinae::VulkanDevice& device) {

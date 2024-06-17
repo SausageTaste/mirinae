@@ -809,17 +809,14 @@ namespace mirinae {
             &ubuf_data, sizeof(U_GbufModel), device.mem_alloc()
         );
 
+        DescWriteInfoBuilder builder;
         for (size_t i = 0; i < max_flight_count; i++) {
-            DescWriteInfoBuilder builder;
-            builder.add_uniform_buffer(uniform_buf_, desc_sets_.at(i))
-                .add_combinded_image_sampler(
-                    albedo_map, device.samplers().get_linear(), desc_sets_.at(i)
-                )
-                .add_combinded_image_sampler(
-                    normal_map, device.samplers().get_linear(), desc_sets_.at(i)
-                )
-                .apply_all(device.logi_device());
+            builder.set_descset(desc_sets_.at(i))
+                .add_ubuf(uniform_buf_)
+                .add_img_sampler(albedo_map, device.samplers().get_linear())
+                .add_img_sampler(normal_map, device.samplers().get_linear());
         }
+        builder.apply_all(device.logi_device());
 
         vert_index_pair_.init(
             vertices,
@@ -878,17 +875,14 @@ namespace mirinae {
             &ubuf_data, sizeof(U_GbufModel), device.mem_alloc()
         );
 
+        DescWriteInfoBuilder builder;
         for (size_t i = 0; i < max_flight_count; i++) {
-            DescWriteInfoBuilder builder;
-            builder.add_uniform_buffer(uniform_buf_, desc_sets_.at(i))
-                .add_combinded_image_sampler(
-                    albedo_map, device.samplers().get_linear(), desc_sets_.at(i)
-                )
-                .add_combinded_image_sampler(
-                    normal_map, device.samplers().get_linear(), desc_sets_.at(i)
-                )
-                .apply_all(device.logi_device());
+            builder.set_descset(desc_sets_.at(i))
+                .add_ubuf(uniform_buf_)
+                .add_img_sampler(albedo_map, device.samplers().get_linear())
+                .add_img_sampler(normal_map, device.samplers().get_linear());
         }
+        builder.apply_all(device.logi_device());
 
         vert_index_pair_.init(
             vertices,
@@ -950,17 +944,14 @@ namespace mirinae {
             ubuf.init_ubuf(sizeof(U_OverlayMain), device_.mem_alloc());
         }
 
+        DescWriteInfoBuilder builder;
         for (size_t i = 0; i < max_flight_count; i++) {
-            DescWriteInfoBuilder builder;
-            builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i))
-                .add_combinded_image_sampler(
-                    color_view, sampler, desc_sets_.at(i)
-                )
-                .add_combinded_image_sampler(
-                    mask_view, sampler, desc_sets_.at(i)
-                )
-                .apply_all(device_.logi_device());
+            builder.set_descset(desc_sets_.at(i))
+                .add_ubuf(uniform_buf_.at(i))
+                .add_img_sampler(color_view, sampler)
+                .add_img_sampler(mask_view, sampler);
         }
+        builder.apply_all(device_.logi_device());
     }
 
     void OverlayRenderUnit::destroy() {
@@ -1287,11 +1278,11 @@ namespace mirinae {
             ubuf.init_ubuf(sizeof(U_GbufActor), device_.mem_alloc());
         }
 
+        DescWriteInfoBuilder builder;
         for (size_t i = 0; i < max_flight_count; i++) {
-            DescWriteInfoBuilder builder;
-            builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i))
-                .apply_all(device_.logi_device());
+            builder.set_descset(desc_sets_.at(i)).add_ubuf(uniform_buf_.at(i));
         }
+        builder.apply_all(device_.logi_device());
     }
 
     void RenderActor::destroy() {
@@ -1333,11 +1324,11 @@ namespace mirinae {
             ubuf.init_ubuf(sizeof(U_GbufActorSkinned), device_.mem_alloc());
         }
 
+        DescWriteInfoBuilder builder;
         for (size_t i = 0; i < max_flight_count; i++) {
-            DescWriteInfoBuilder builder;
-            builder.add_uniform_buffer(uniform_buf_.at(i), desc_sets_.at(i))
-                .apply_all(device_.logi_device());
+            builder.set_descset(desc_sets_.at(i)).add_ubuf(uniform_buf_.at(i));
         }
+        builder.apply_all(device_.logi_device());
     }
 
     void RenderActorSkinned::destroy() {

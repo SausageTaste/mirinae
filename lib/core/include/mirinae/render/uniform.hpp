@@ -171,15 +171,12 @@ namespace mirinae {
     class DescWriteInfoBuilder {
 
     public:
-        DescWriteInfoBuilder& add_uniform_buffer(
-            const mirinae::Buffer& buffer, VkDescriptorSet descset
-        );
-        DescWriteInfoBuilder& add_combinded_image_sampler(
-            VkImageView image_view, VkSampler sampler, VkDescriptorSet descset
-        );
-        DescWriteInfoBuilder& add_input_attachment(
-            VkImageView image_view, VkDescriptorSet descset
-        );
+        DescWriteInfoBuilder& set_descset(VkDescriptorSet descset);
+
+        DescWriteInfoBuilder& add_ubuf(const mirinae::Buffer& buffer);
+        // Combinded image sampler
+        DescWriteInfoBuilder& add_img_sampler(VkImageView img, VkSampler sam);
+        DescWriteInfoBuilder& add_input_attach(VkImageView image_view);
 
         void apply_all(VkDevice logi_device);
 
@@ -187,6 +184,8 @@ namespace mirinae {
         std::vector<VkWriteDescriptorSet> data_;
         std::list<VkDescriptorBufferInfo> buffer_info_;
         std::list<VkDescriptorImageInfo> image_info_;
+        VkDescriptorSet descset_ = VK_NULL_HANDLE;
+        uint32_t binding_index_ = 0;
     };
 
 
