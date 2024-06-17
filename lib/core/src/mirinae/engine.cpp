@@ -140,10 +140,12 @@ namespace {
             mirinae::IRenderPassBundle& rp, mirinae::VulkanDevice& device
         ) {
             for (auto& x : shadow_maps_) {
-                if (VK_NULL_HANDLE != x.fbuf_)
+                if (VK_NULL_HANDLE != x.fbuf_) {
                     vkDestroyFramebuffer(
                         device.logi_device(), x.fbuf_, nullptr
                     );
+                    x.fbuf_ = VK_NULL_HANDLE;
+                }
 
                 const auto img_view = x.tex_->image_view();
 
@@ -168,10 +170,12 @@ namespace {
 
         void destroy_fbufs(mirinae::VulkanDevice& device) {
             for (auto& x : shadow_maps_) {
-                if (VK_NULL_HANDLE != x.fbuf_)
+                if (VK_NULL_HANDLE != x.fbuf_) {
                     vkDestroyFramebuffer(
                         device.logi_device(), x.fbuf_, nullptr
                     );
+                    x.fbuf_ = VK_NULL_HANDLE;
+                }
             }
         }
 
