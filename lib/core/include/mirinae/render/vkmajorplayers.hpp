@@ -63,4 +63,21 @@ namespace mirinae {
         VkCommandPool handle_ = VK_NULL_HANDLE;
     };
 
+
+    class Fbuf {
+
+    public:
+        Fbuf() = default;
+        ~Fbuf();
+
+        void init(const VkFramebufferCreateInfo& cinfo, VkDevice logi_device);
+        void reset(VkFramebuffer handle, VkDevice logi_device);
+        void destroy(VkDevice logi_device);
+
+        VkFramebuffer get() { return handle_; }
+
+    private:
+        VkFramebuffer handle_ = VK_NULL_HANDLE;
+    };
+
 }  // namespace mirinae

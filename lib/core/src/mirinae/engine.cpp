@@ -110,8 +110,12 @@ namespace {
 
     public:
         struct Item {
+            float width() const { return tex_->width(); }
+            float height() const { return tex_->height(); }
+            VkFramebuffer fbuf() { return fbuf_.get(); }
+
             std::unique_ptr<mirinae::ITexture> tex_;
-            VkFramebuffer fbuf_;
+            mirinae::Fbuf fbuf_;
             glm::dmat4 mat_;
         };
 
@@ -140,13 +144,6 @@ namespace {
             mirinae::IRenderPassBundle& rp, mirinae::VulkanDevice& device
         ) {
             for (auto& x : shadow_maps_) {
-                if (VK_NULL_HANDLE != x.fbuf_) {
-                    vkDestroyFramebuffer(
-                        device.logi_device(), x.fbuf_, nullptr
-                    );
-                    x.fbuf_ = VK_NULL_HANDLE;
-                }
-
                 const auto img_view = x.tex_->image_view();
 
                 VkFramebufferCreateInfo framebufferInfo{};
@@ -159,23 +156,13 @@ namespace {
                 framebufferInfo.height = x.tex_->height();
                 framebufferInfo.layers = 1;
 
-                const auto result = vkCreateFramebuffer(
-                    device.logi_device(), &framebufferInfo, nullptr, &x.fbuf_
-                );
-                if (VK_SUCCESS != result) {
-                    throw std::runtime_error("failed to create framebuffer!");
-                }
+                x.fbuf_.init(framebufferInfo, device.logi_device());
             }
         }
 
         void destroy_fbufs(mirinae::VulkanDevice& device) {
             for (auto& x : shadow_maps_) {
-                if (VK_NULL_HANDLE != x.fbuf_) {
-                    vkDestroyFramebuffer(
-                        device.logi_device(), x.fbuf_, nullptr
-                    );
-                    x.fbuf_ = VK_NULL_HANDLE;
-                }
+                x.fbuf_.destroy(device.logi_device());
             }
         }
 
@@ -281,7 +268,7 @@ namespace {
             VkImageView slight_shadowmap,
             mirinae::VulkanDevice& device
         ) {
-            desc_pool_.init(10, device.logi_device());
+            desc_pool_.init(20, device.logi_device());
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
                 desclayouts.get("compo:main"),
@@ -643,7 +630,7 @@ namespace {
                     renderPassInfo.sType =
                         VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                     renderPassInfo.renderPass = rp.renderpass();
-                    renderPassInfo.framebuffer = shadow.fbuf_;
+                    renderPassInfo.framebuffer = shadow.fbuf();
                     renderPassInfo.renderArea.offset = { 0, 0 };
                     renderPassInfo.renderArea.extent = shadow.tex_->extent();
                     renderPassInfo.clearValueCount = rp.clear_value_count();
@@ -661,8 +648,8 @@ namespace {
                     VkViewport viewport{};
                     viewport.x = 0.0f;
                     viewport.y = 0.0f;
-                    viewport.width = shadow.tex_->width();
-                    viewport.height = shadow.tex_->height();
+                    viewport.width = shadow.width();
+                    viewport.height = shadow.height();
                     viewport.minDepth = 0.0f;
                     viewport.maxDepth = 1.0f;
                     vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
@@ -726,7 +713,7 @@ namespace {
                     renderPassInfo.sType =
                         VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                     renderPassInfo.renderPass = rp.renderpass();
-                    renderPassInfo.framebuffer = shadow.fbuf_;
+                    renderPassInfo.framebuffer = shadow.fbuf();
                     renderPassInfo.renderArea.offset = { 0, 0 };
                     renderPassInfo.renderArea.extent = shadow.tex_->extent();
                     renderPassInfo.clearValueCount = rp.clear_value_count();
@@ -744,8 +731,8 @@ namespace {
                     VkViewport viewport{};
                     viewport.x = 0.0f;
                     viewport.y = 0.0f;
-                    viewport.width = shadow.tex_->width();
-                    viewport.height = shadow.tex_->height();
+                    viewport.width = shadow.width();
+                    viewport.height = shadow.height();
                     viewport.minDepth = 0.0f;
                     viewport.maxDepth = 1.0f;
                     vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
