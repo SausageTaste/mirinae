@@ -13,11 +13,7 @@ namespace mirinae {
 
     public:
         Item(const std::string& name, VkDescriptorSetLayout handle)
-            : name_(name)
-            , handle_(handle)
-        {
-
-        }
+            : name_(name), handle_(handle) {}
 
         void destroy(VkDevice logi_device) {
             vkDestroyDescriptorSetLayout(logi_device, handle_, nullptr);
@@ -27,19 +23,20 @@ namespace mirinae {
 
         std::string name_;
         VkDescriptorSetLayout handle_;
-
     };
 
 
-    DesclayoutManager::DesclayoutManager(VulkanDevice& device) : device_(device) {}
+    DesclayoutManager::DesclayoutManager(VulkanDevice& device)
+        : device_(device) {}
 
     DesclayoutManager::~DesclayoutManager() {
-        for (auto& item : data_)
-            item.destroy(device_.logi_device());
+        for (auto& item : data_) item.destroy(device_.logi_device());
         data_.clear();
     }
 
-    void DesclayoutManager::add(const std::string& name, VkDescriptorSetLayout handle) {
+    void DesclayoutManager::add(
+        const std::string& name, VkDescriptorSetLayout handle
+    ) {
         data_.emplace_back(name, handle);
     }
 
@@ -49,16 +46,20 @@ namespace mirinae {
                 return item.handle_;
         }
 
-        throw std::runtime_error{ fmt::format("Failed to find descriptor set layout: {}", name) };
+        throw std::runtime_error{
+            fmt::format("Failed to find descriptor set layout: {}", name)
+        };
     }
 
-}
+}  // namespace mirinae
 
 
 // DescWriteInfoBuilder
 namespace mirinae {
 
-    DescWriteInfoBuilder& DescWriteInfoBuilder::add_uniform_buffer(const mirinae::Buffer& buffer, VkDescriptorSet descset) {
+    DescWriteInfoBuilder& DescWriteInfoBuilder::add_uniform_buffer(
+        const mirinae::Buffer& buffer, VkDescriptorSet descset
+    ) {
         auto& buffer_info = buffer_info_.emplace_back();
         buffer_info.buffer = buffer.buffer();
         buffer_info.offset = 0;
@@ -76,7 +77,9 @@ namespace mirinae {
         return *this;
     }
 
-    DescWriteInfoBuilder& DescWriteInfoBuilder::add_combinded_image_sampler(VkImageView image_view, VkSampler sampler, VkDescriptorSet descset) {
+    DescWriteInfoBuilder& DescWriteInfoBuilder::add_combinded_image_sampler(
+        VkImageView image_view, VkSampler sampler, VkDescriptorSet descset
+    ) {
         auto& image_info = image_info_.emplace_back();
         image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         image_info.imageView = image_view;
@@ -94,7 +97,9 @@ namespace mirinae {
         return *this;
     }
 
-    DescWriteInfoBuilder& DescWriteInfoBuilder::add_input_attachment(VkImageView image_view, VkDescriptorSet descset) {
+    DescWriteInfoBuilder& DescWriteInfoBuilder::add_input_attachment(
+        VkImageView image_view, VkDescriptorSet descset
+    ) {
         auto& image_info = image_info_.emplace_back();
         image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         image_info.imageView = image_view;
@@ -113,16 +118,18 @@ namespace mirinae {
     }
 
     void DescWriteInfoBuilder::apply_all(VkDevice logi_device) {
-        vkUpdateDescriptorSets(logi_device, data_.size(), data_.data(), 0, nullptr);
+        vkUpdateDescriptorSets(
+            logi_device, data_.size(), data_.data(), 0, nullptr
+        );
     }
 
-}
+}  // namespace mirinae
 
 
 // DescriptorPool
 namespace mirinae {
 
-    //basic implementation for DescriptorPool methods
+    // basic implementation for DescriptorPool methods
     void DescriptorPool::init(uint32_t alloc_size, VkDevice logi_device) {
         this->destroy(logi_device);
 
@@ -144,7 +151,8 @@ namespace mirinae {
         poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = alloc_size;
 
-        if (vkCreateDescriptorPool(logi_device, &poolInfo, nullptr, &handle_) != VK_SUCCESS) {
+        if (vkCreateDescriptorPool(logi_device, &poolInfo, nullptr, &handle_) !=
+            VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
     }
@@ -157,7 +165,9 @@ namespace mirinae {
         }
     }
 
-    std::vector<VkDescriptorSet> DescriptorPool::alloc(uint32_t count, VkDescriptorSetLayout desclayout, VkDevice logi_device) {
+    std::vector<VkDescriptorSet> DescriptorPool::alloc(
+        uint32_t count, VkDescriptorSetLayout desclayout, VkDevice logi_device
+    ) {
         std::vector<VkDescriptorSetLayout> layouts(count, desclayout);
 
         VkDescriptorSetAllocateInfo allocInfo{};
@@ -167,11 +177,12 @@ namespace mirinae {
         allocInfo.pSetLayouts = layouts.data();
 
         std::vector<VkDescriptorSet> output(count);
-        if (vkAllocateDescriptorSets(logi_device, &allocInfo, output.data()) != VK_SUCCESS) {
+        if (vkAllocateDescriptorSets(logi_device, &allocInfo, output.data()) !=
+            VK_SUCCESS) {
             throw std::runtime_error("failed to allocate descriptor set!");
         }
 
         return output;
     }
 
-}
+}  // namespace mirinae
