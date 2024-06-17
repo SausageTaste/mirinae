@@ -12,6 +12,6 @@ layout(set = 0, binding = 0) uniform sampler2D u_compo_image;
 
 void main() {
     vec4 compo_texel = texture(u_compo_image, v_uv_coord);
-    vec3 mapped = aces_approx(compo_texel.xyz);
+    vec3 mapped = khronos_pbr_neutral(compo_texel.xyz);
     f_color = vec4(mapped.xyz, 1);
 }
