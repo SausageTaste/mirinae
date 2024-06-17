@@ -7,4 +7,4 @@ namespace mirinae { namespace windows {
 
     void create_minidump(EXCEPTION_POINTERS* pep);
 
-}}
+}}  // namespace mirinae::windows
