@@ -4,19 +4,19 @@ include(FetchContent)
 FetchContent_Declare(
     fetch_spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog
-    GIT_TAG        v1.12.0
+    GIT_TAG        v1.14.1
 )
 
 FetchContent_Declare(
     fetch_vma
     GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-    GIT_TAG        v3.0.1
+    GIT_TAG        v3.1.0
 )
 
 FetchContent_Declare(
     fetch_stb
     GIT_REPOSITORY    https://github.com/nothings/stb
-    GIT_TAG           f4a71b13373436a2866c5d68f8f80ac6f0bc1ffe
+    GIT_TAG           013ac3beddff3dbffafd5177e7972067cd2b5083
     CONFIGURE_COMMAND ""
     BUILD_COMMAND     ""
 )
