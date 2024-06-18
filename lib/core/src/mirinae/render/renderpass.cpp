@@ -153,96 +153,6 @@ namespace {
     }
 
 
-    class DescLayoutBuilder {
-
-    public:
-        DescLayoutBuilder(const char* name) : name_{ name } {}
-
-        // Add uniform buffer
-        DescLayoutBuilder& add_ubuf(
-            VkShaderStageFlagBits stage_flags, uint32_t count
-        ) {
-            auto& binding = bindings_.emplace_back();
-            binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            binding.descriptorCount = count;
-            binding.stageFlags = stage_flags;
-            binding.pImmutableSamplers = nullptr;
-
-            ++uniform_buffer_count_;
-            return *this;
-        }
-
-        // Add combined image sampler
-        DescLayoutBuilder& add_img(
-            VkShaderStageFlagBits stage_flags, uint32_t count
-        ) {
-            auto& binding = bindings_.emplace_back();
-            binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            binding.descriptorCount = count;
-            binding.stageFlags = stage_flags;
-            binding.pImmutableSamplers = nullptr;
-
-            ++combined_image_sampler_count_;
-            return *this;
-        }
-
-        // Add input attachment
-        DescLayoutBuilder& add_input_att(
-            VkShaderStageFlagBits stage_flags, uint32_t count
-        ) {
-            auto& binding = bindings_.emplace_back();
-            binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-            binding.descriptorCount = count;
-            binding.stageFlags = stage_flags;
-            binding.pImmutableSamplers = nullptr;
-
-            ++input_attachment_count_;
-            return *this;
-        }
-
-        VkDescriptorSetLayout build(VkDevice logi_device) const {
-            VkDescriptorSetLayoutCreateInfo create_info = {};
-            create_info.sType =
-                VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = static_cast<uint32_t>(bindings_.size());
-            create_info.pBindings = bindings_.data();
-
-            VkDescriptorSetLayout handle;
-            if (vkCreateDescriptorSetLayout(
-                    logi_device, &create_info, nullptr, &handle
-                ) != VK_SUCCESS) {
-                throw std::runtime_error{ fmt::format(
-                    "Failed to create descriptor set layout: {}", name_
-                ) };
-            }
-
-            return handle;
-        }
-
-        VkDescriptorSetLayout build_in_place(
-            mirinae::DesclayoutManager& desclayouts, VkDevice logi_device
-        ) {
-            auto handle = this->build(logi_device);
-            desclayouts.add(name_, handle);
-            return handle;
-        }
-
-        auto& name() const { return name_; }
-        auto ubuf_count() const { return uniform_buffer_count_; }
-        auto img_sampler_count() const { return combined_image_sampler_count_; }
-
-    public:
-        std::string name_;
-        std::vector<VkDescriptorSetLayoutBinding> bindings_;
-        size_t uniform_buffer_count_ = 0;
-        size_t combined_image_sampler_count_ = 0;
-        size_t input_attachment_count_ = 0;
-    };
-
-
     class AttachmentDescBuilder {
 
     public:
@@ -662,20 +572,20 @@ namespace { namespace gbuf {
     VkDescriptorSetLayout create_desclayout_model(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "gbuf:model" };
+        mirinae::DescLayoutBuilder builder{ "gbuf:model" };
         builder
             .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_GbufModel
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // Albedo map
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Normal map
-        return builder.build_in_place(desclayouts, device.logi_device());
+        return desclayouts.build_add(builder, device.logi_device());
     }
 
     VkDescriptorSetLayout create_desclayout_actor(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "gbuf:actor" };
+        mirinae::DescLayoutBuilder builder{ "gbuf:actor" };
         builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActor
-        return builder.build_in_place(desclayouts, device.logi_device());
+        return desclayouts.build_add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(
@@ -968,9 +878,10 @@ namespace { namespace gbuf_skin {
     VkDescriptorSetLayout create_desclayout_actor(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "gbuf:actor_skinned" };
+        mirinae::DescLayoutBuilder builder{ "gbuf:actor_skinned" };
         builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActorSkinned
-        return builder.build_in_place(desclayouts, device.logi_device());
+        return desclayouts.build_add(builder, device.logi_device());
+
     }
 
     VkRenderPass create_renderpass(
@@ -1759,7 +1670,7 @@ namespace { namespace compo {
     VkDescriptorSetLayout create_desclayout_main(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "compo:main" };
+        mirinae::DescLayoutBuilder builder{ "compo:main" };
         builder
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // depth
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // albedo
@@ -1768,7 +1679,7 @@ namespace { namespace compo {
             .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_CompoMain
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // dlight shadowmap
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // slight shadowmap
-        return builder.build_in_place(desclayouts, device.logi_device());
+        return desclayouts.build_add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(
@@ -2018,9 +1929,9 @@ namespace { namespace transp {
     VkDescriptorSetLayout create_desclayout_frame(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "transp:frame" };
+        mirinae::DescLayoutBuilder builder{ "transp:frame" };
         builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompoMain
-        return builder.build_in_place(desclayouts, device.logi_device());
+        return desclayouts.build_add(builder, device.logi_device());
     }
 
     VkDescriptorSetLayout create_desclayout_model(
@@ -2595,9 +2506,9 @@ namespace { namespace fillscreen {
     VkDescriptorSetLayout create_desclayout_main(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "fillscreen:main" };
+        mirinae::DescLayoutBuilder builder{ "fillscreen:main" };
         builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // compo
-        return builder.build_in_place(desclayouts, device.logi_device());
+        return desclayouts.build_add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {
@@ -2843,12 +2754,12 @@ namespace { namespace overlay {
     VkDescriptorSetLayout create_desclayout_main(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        DescLayoutBuilder builder{ "overlay:main" };
+        mirinae::DescLayoutBuilder builder{ "overlay:main" };
         builder
             .add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1)    // U_OverlayMain
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // color
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // mask
-        return builder.build_in_place(desclayouts, device.logi_device());
+        return desclayouts.build_add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {

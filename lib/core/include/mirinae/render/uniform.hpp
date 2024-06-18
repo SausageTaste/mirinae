@@ -151,6 +151,35 @@ namespace mirinae {
     };
     static_assert(sizeof(U_OverlayMain) == 16);
 
+}  // namespace mirinae
+
+
+namespace mirinae {
+
+    class DescLayoutBuilder {
+
+    public:
+        explicit DescLayoutBuilder(const char* name);
+
+        // Uniform buffer
+        DescLayoutBuilder& add_ubuf(VkShaderStageFlagBits, uint32_t cnt);
+        // Combined image sampler
+        DescLayoutBuilder& add_img(VkShaderStageFlagBits, uint32_t cnt);
+        // Input attachment
+        DescLayoutBuilder& add_input_att(VkShaderStageFlagBits, uint32_t cnt);
+
+        VkDescriptorSetLayout build(VkDevice logi_device) const;
+
+        auto& name() const { return name_; }
+
+    public:
+        std::string name_;
+        std::vector<VkDescriptorSetLayoutBinding> bindings_;
+        size_t uniform_buffer_count_ = 0;
+        size_t combined_image_sampler_count_ = 0;
+        size_t input_attachment_count_ = 0;
+    };
+
 
     class DesclayoutManager {
 
@@ -159,6 +188,15 @@ namespace mirinae {
         ~DesclayoutManager();
 
         void add(const std::string& name, VkDescriptorSetLayout handle);
+
+        VkDescriptorSetLayout build_add(
+            DescLayoutBuilder builder, VkDevice logi_device
+        ) {
+            const auto handle = builder.build(logi_device);
+            this->add(builder.name(), handle);
+            return handle;
+        }
+
         VkDescriptorSetLayout get(const std::string& name);
 
     private:
