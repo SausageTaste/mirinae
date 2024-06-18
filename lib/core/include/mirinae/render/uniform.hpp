@@ -189,6 +189,34 @@ namespace mirinae {
     };
 
 
+    class DescLayout {
+
+    public:
+        DescLayout(
+            const std::string& name,
+            const DescSizeInfo& size_info,
+            VkDescriptorSetLayout layout
+        )
+            : size_info_(size_info), name_(name), layout_(layout) {}
+
+        void destroy(VkDevice logi_device) {
+            if (layout_ != VK_NULL_HANDLE) {
+                vkDestroyDescriptorSetLayout(logi_device, layout_, nullptr);
+                layout_ = VK_NULL_HANDLE;
+            }
+        }
+
+        const DescSizeInfo& size_info() const { return size_info_; }
+        const std::string& name() const { return name_; }
+        VkDescriptorSetLayout layout() const { return layout_; }
+
+    private:
+        DescSizeInfo size_info_;
+        std::string name_;
+        VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
+    };
+
+
     class DescLayoutBuilder {
 
     public:
@@ -223,12 +251,10 @@ namespace mirinae {
             const DescLayoutBuilder& builder, VkDevice logi_device
         );
 
-        VkDescriptorSetLayout get(const std::string& name);
-        const DescSizeInfo& get_size_info(const std::string& name) const;
+        const DescLayout& get(const std::string& name) const;
 
     private:
-        class Item;
-        std::vector<Item> data_;
+        std::vector<DescLayout> data_;
         VulkanDevice& device_;
     };
 

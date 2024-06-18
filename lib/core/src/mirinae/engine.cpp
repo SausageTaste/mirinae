@@ -267,14 +267,15 @@ namespace {
             VkImageView slight_shadowmap,
             mirinae::VulkanDevice& device
         ) {
+            auto& desclayout = desclayouts.get("compo:main");
             desc_pool_.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayouts.get_size_info("compo:main"),
+                desclayout.size_info(),
                 device.logi_device()
             );
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayouts.get("compo:main"),
+                desclayout.layout(),
                 device.logi_device()
             );
 
@@ -319,14 +320,15 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         ) {
+            auto& desclayout = desclayouts.get("transp:frame");
             desc_pool_.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayouts.get_size_info("transp:frame"),
+                desclayout.size_info(),
                 device.logi_device()
             );
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayouts.get("transp:frame"),
+                desclayout.layout(),
                 device.logi_device()
             );
 
@@ -363,14 +365,15 @@ namespace {
             mirinae::FbufImageBundle& fbufs,
             mirinae::VulkanDevice& device
         ) {
+            auto& desclayout = desclayouts.get("fillscreen:main");
             desc_pool_.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayouts.get_size_info("fillscreen:main"),
+                desclayout.size_info(),
                 device.logi_device()
             );
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayouts.get("fillscreen:main"),
+                desclayout.layout(),
                 device.logi_device()
             );
 

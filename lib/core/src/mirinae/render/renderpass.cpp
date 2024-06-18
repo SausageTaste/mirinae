@@ -860,7 +860,7 @@ namespace { namespace gbuf_skin {
     VkDescriptorSetLayout create_desclayout_model(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:model");
+        return desclayouts.get("gbuf:model").layout();
     }
 
     VkDescriptorSetLayout create_desclayout_actor(
@@ -1157,7 +1157,7 @@ namespace { namespace shadowmap {
     VkDescriptorSetLayout create_desclayout_actor(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:actor");
+        return desclayouts.get("gbuf:actor").layout();
     }
 
     VkRenderPass create_renderpass(VkFormat depth, VkDevice logi_device) {
@@ -1391,7 +1391,7 @@ namespace { namespace shadowmap_skin {
     VkDescriptorSetLayout create_desclayout_actor(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:actor_skinned");
+        return desclayouts.get("gbuf:actor_skinned").layout();
     }
 
     VkRenderPass create_renderpass(VkFormat depth, VkDevice logi_device) {
@@ -1883,13 +1883,13 @@ namespace { namespace transp {
     VkDescriptorSetLayout create_desclayout_model(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:model");
+        return desclayouts.get("gbuf:model").layout();
     }
 
     VkDescriptorSetLayout create_desclayout_actor(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:actor");
+        return desclayouts.get("gbuf:actor").layout();
     }
 
     VkRenderPass create_renderpass(
@@ -2154,19 +2154,19 @@ namespace { namespace transp_skin {
     VkDescriptorSetLayout create_desclayout_frame(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("transp:frame");
+        return desclayouts.get("transp:frame").layout();
     }
 
     VkDescriptorSetLayout create_desclayout_model(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:model");
+        return desclayouts.get("gbuf:model").layout();
     }
 
     VkDescriptorSetLayout create_desclayout_actor(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:actor_skinned");
+        return desclayouts.get("gbuf:actor_skinned").layout();
     }
 
     VkRenderPass create_renderpass(

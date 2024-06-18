@@ -117,21 +117,6 @@ namespace mirinae {
 // DesclayoutManager
 namespace mirinae {
 
-    class DesclayoutManager::Item {
-
-    public:
-        void destroy(VkDevice logi_device) {
-            vkDestroyDescriptorSetLayout(logi_device, handle_, nullptr);
-            handle_ = VK_NULL_HANDLE;
-            name_.clear();
-        }
-
-        DescSizeInfo size_info_;
-        std::string name_;
-        VkDescriptorSetLayout handle_;
-    };
-
-
     DesclayoutManager::DesclayoutManager(VulkanDevice& device)
         : device_(device) {}
 
@@ -143,34 +128,19 @@ namespace mirinae {
     VkDescriptorSetLayout DesclayoutManager::add(
         const DescLayoutBuilder& builder, VkDevice logi_device
     ) {
-        auto& item = data_.emplace_back();
-        item.size_info_ = builder.size_info();
-        item.name_ = builder.name();
-        item.handle_ = builder.build(logi_device);
-        return item.handle_;
+        return data_.emplace_back(
+            builder.name(), builder.size_info(), builder.build(logi_device)
+        ).layout();
     }
 
-    VkDescriptorSetLayout DesclayoutManager::get(const std::string& name) {
+    const DescLayout& DesclayoutManager::get(const std::string& name) const {
         for (auto& item : data_) {
-            if (item.name_ == name)
-                return item.handle_;
+            if (item.name() == name)
+                return item;
         }
 
         throw std::runtime_error{
             fmt::format("Failed to find descriptor set layout: {}", name)
-        };
-    }
-
-    const DescSizeInfo& DesclayoutManager::get_size_info(
-        const std::string& desc_name
-    ) const {
-        for (const auto& item : data_) {
-            if (item.name_ == desc_name)
-                return item.size_info_;
-        }
-
-        throw std::runtime_error{
-            fmt::format("Failed to find descriptor set layout: {}", desc_name)
         };
     }
 
