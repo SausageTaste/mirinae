@@ -176,6 +176,10 @@ namespace mirinae {
             return *this;
         }
 
+        void multiply_counts(uint32_t factor);
+
+        std::vector<VkDescriptorPoolSize> create_arr() const;
+
     private:
         uint32_t get(VkDescriptorType type) const;
         void set(VkDescriptorType type, uint32_t cnt);
@@ -253,7 +257,12 @@ namespace mirinae {
     class DescPool {
 
     public:
-        void init(uint32_t pool_size, VkDevice logi_device);
+        void init(
+            const uint32_t max_sets,
+            const DescSizeInfo& size_info,
+            const VkDevice logi_device
+        );
+
         void destroy(VkDevice logi_device);
 
         std::vector<VkDescriptorSet> alloc(
@@ -264,6 +273,7 @@ namespace mirinae {
 
     private:
         VkDescriptorPool handle_ = VK_NULL_HANDLE;
+        DescSizeInfo size_info_;
     };
 
 }  // namespace mirinae

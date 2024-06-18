@@ -267,7 +267,11 @@ namespace {
             VkImageView slight_shadowmap,
             mirinae::VulkanDevice& device
         ) {
-            desc_pool_.init(20, device.logi_device());
+            desc_pool_.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                desclayouts.get_size_info("compo:main"),
+                device.logi_device()
+            );
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
                 desclayouts.get("compo:main"),
@@ -315,7 +319,11 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         ) {
-            desc_pool_.init(10, device.logi_device());
+            desc_pool_.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                desclayouts.get_size_info("transp:frame"),
+                device.logi_device()
+            );
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
                 desclayouts.get("transp:frame"),
@@ -355,7 +363,11 @@ namespace {
             mirinae::FbufImageBundle& fbufs,
             mirinae::VulkanDevice& device
         ) {
-            desc_pool_.init(10, device.logi_device());
+            desc_pool_.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                desclayouts.get_size_info("fillscreen:main"),
+                device.logi_device()
+            );
             desc_sets_ = desc_pool_.alloc(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
                 desclayouts.get("fillscreen:main"),

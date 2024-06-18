@@ -797,7 +797,11 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
-        desc_pool_.init(max_flight_count * 4, device.logi_device());
+        desc_pool_.init(
+            max_flight_count,
+            desclayouts.get_size_info("gbuf:model"),
+            device.logi_device()
+        );
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("gbuf:model"),
@@ -863,7 +867,11 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
-        desc_pool_.init(max_flight_count * 4, device.logi_device());
+        desc_pool_.init(
+            max_flight_count,
+            desclayouts.get_size_info("gbuf:model"),
+            device.logi_device()
+        );
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("gbuf:model"),
@@ -932,7 +940,11 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         TextureManager& tex_man
     ) {
-        desc_pool_.init(max_flight_count * 2, device_.logi_device());
+        desc_pool_.init(
+            max_flight_count,
+            desclayouts.get_size_info("overlay:main"),
+            device_.logi_device()
+        );
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("overlay:main"),
@@ -1266,7 +1278,11 @@ namespace mirinae {
     void RenderActor::init(
         uint32_t max_flight_count, DesclayoutManager& desclayouts
     ) {
-        desc_pool_.init(max_flight_count, device_.logi_device());
+        desc_pool_.init(
+            max_flight_count,
+            desclayouts.get_size_info("gbuf:actor"),
+            device_.logi_device()
+        );
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("gbuf:actor"),
@@ -1312,7 +1328,11 @@ namespace mirinae {
     void RenderActorSkinned::init(
         uint32_t max_flight_count, DesclayoutManager& desclayouts
     ) {
-        desc_pool_.init(max_flight_count, device_.logi_device());
+        desc_pool_.init(
+            max_flight_count,
+            desclayouts.get_size_info("gbuf:actor_skinned"),
+            device_.logi_device()
+        );
         desc_sets_ = desc_pool_.alloc(
             max_flight_count,
             desclayouts.get("gbuf:actor_skinned"),
