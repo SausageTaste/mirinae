@@ -1,6 +1,7 @@
 #pragma once
 
 #include <list>
+#include <map>
 
 #include <sung/general/angle.hpp>
 
@@ -156,6 +157,34 @@ namespace mirinae {
 
 namespace mirinae {
 
+    class DescSizeInfo {
+
+    public:
+        // Uniform buffer
+        DescSizeInfo& add_ubuf(uint32_t cnt) {
+            this->add(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, cnt);
+            return *this;
+        }
+        // Combined image sampler
+        DescSizeInfo& add_img(uint32_t cnt) {
+            this->add(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, cnt);
+            return *this;
+        }
+        // Input attachment
+        DescSizeInfo& add_input_att(uint32_t cnt) {
+            this->add(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, cnt);
+            return *this;
+        }
+
+    private:
+        uint32_t get(VkDescriptorType type) const;
+        void set(VkDescriptorType type, uint32_t cnt);
+        void add(VkDescriptorType type, uint32_t cnt);
+
+        std::map<VkDescriptorType, uint32_t> data_;
+    };
+
+
     class DescLayoutBuilder {
 
     public:
@@ -175,9 +204,7 @@ namespace mirinae {
     public:
         std::string name_;
         std::vector<VkDescriptorSetLayoutBinding> bindings_;
-        size_t uniform_buffer_count_ = 0;
-        size_t combined_image_sampler_count_ = 0;
-        size_t input_attachment_count_ = 0;
+        DescSizeInfo size_info_;
     };
 
 
