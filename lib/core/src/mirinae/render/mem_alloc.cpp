@@ -30,9 +30,7 @@ namespace mirinae {
             cinfo.instance = instance;
             cinfo.pVulkanFunctions = &vma_vulkan_funcs;
 
-            if (vmaCreateAllocator(&cinfo, &allocator_) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create VMA allocator");
-            }
+            VK_CHECK(vmaCreateAllocator(&cinfo, &allocator_));
         }
 
         ~VulkanMemoryAllocator_T() { this->destroy(); }
@@ -328,16 +326,14 @@ namespace mirinae {
         VmaAllocationCreateInfo alloc_info = {};
         alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-        if (VK_SUCCESS != vmaCreateImage(
-                              allocator->get(),
-                              &img_info_,
-                              &alloc_info,
-                              &image_,
-                              &allocation_,
-                              nullptr
-                          )) {
-            throw std::runtime_error("failed to create VMA image");
-        }
+        VK_CHECK(vmaCreateImage(
+            allocator->get(),
+            &img_info_,
+            &alloc_info,
+            &image_,
+            &allocation_,
+            nullptr
+        ));
 
         assert(image_ != VK_NULL_HANDLE);
         assert(allocation_ != VK_NULL_HANDLE);

@@ -11,11 +11,9 @@ namespace mirinae {
     void Semaphore::init(VkDevice logi_device) {
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        if (vkCreateSemaphore(logi_device, &semaphoreInfo, nullptr, &handle_) !=
-            VK_SUCCESS) {
-            throw std::runtime_error("failed to create semaphores!");
-        }
+        VK_CHECK(
+            vkCreateSemaphore(logi_device, &semaphoreInfo, nullptr, &handle_)
+        );
     }
 
     void Semaphore::destroy(VkDevice logi_device) {
@@ -38,10 +36,7 @@ namespace mirinae {
         if (init_signaled)
             fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        if (vkCreateFence(logi_device, &fenceInfo, nullptr, &handle_) !=
-            VK_SUCCESS) {
-            throw std::runtime_error("failed to create semaphores!");
-        }
+        VK_CHECK(vkCreateFence(logi_device, &fenceInfo, nullptr, &handle_));
     }
 
     void Fence::destroy(VkDevice logi_device) {
@@ -80,11 +75,7 @@ namespace mirinae {
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         poolInfo.queueFamilyIndex = graphics_queue;
-
-        if (vkCreateCommandPool(logi_device, &poolInfo, nullptr, &handle_) !=
-            VK_SUCCESS) {
-            throw std::runtime_error("failed to create command pool!");
-        }
+        VK_CHECK(vkCreateCommandPool(logi_device, &poolInfo, NULL, &handle_));
     }
 
     void CommandPool::destroy(VkDevice logi_device) {
@@ -102,10 +93,9 @@ namespace mirinae {
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
-        if (vkAllocateCommandBuffers(logi_device, &allocInfo, &commandBuffer) !=
-            VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate command buffers!");
-        }
+        VK_CHECK(
+            vkAllocateCommandBuffers(logi_device, &allocInfo, &commandBuffer)
+        );
 
         return commandBuffer;
     }
@@ -165,12 +155,7 @@ namespace mirinae {
         const VkFramebufferCreateInfo& cinfo, VkDevice logi_device
     ) {
         this->destroy(logi_device);
-        const auto result = vkCreateFramebuffer(
-            logi_device, &cinfo, nullptr, &handle_
-        );
-        if (result != VK_SUCCESS) {
-            throw std::runtime_error("failed to create framebuffer!");
-        }
+        VK_CHECK(vkCreateFramebuffer(logi_device, &cinfo, nullptr, &handle_));
     }
 
     void Fbuf::reset(VkFramebuffer handle, VkDevice logi_device) {

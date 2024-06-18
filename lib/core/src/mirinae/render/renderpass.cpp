@@ -143,11 +143,9 @@ namespace {
         framebufferInfo.layers = 1;
 
         VkFramebuffer output = VK_NULL_HANDLE;
-        if (vkCreateFramebuffer(
-                logi_device, &framebufferInfo, nullptr, &output
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create framebuffer!");
-        }
+        VK_CHECK(
+            vkCreateFramebuffer(logi_device, &framebufferInfo, nullptr, &output)
+        );
 
         return output;
     }
@@ -631,10 +629,7 @@ namespace { namespace gbuf {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS !=
-            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -662,14 +657,9 @@ namespace { namespace gbuf {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(
-                device.logi_device(),
-                &pipelineLayoutInfo,
-                nullptr,
-                &pipelineLayout
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        VK_CHECK(vkCreatePipelineLayout(
+            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
+        ));
 
         return pipelineLayout;
     }
@@ -738,16 +728,14 @@ namespace { namespace gbuf {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(
-                device.logi_device(),
-                VK_NULL_HANDLE,
-                1,
-                &pipeline_info,
-                nullptr,
-                &graphics_pipeline
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        VK_CHECK(vkCreateGraphicsPipelines(
+            device.logi_device(),
+            VK_NULL_HANDLE,
+            1,
+            &pipeline_info,
+            nullptr,
+            &graphics_pipeline
+        ));
 
         return graphics_pipeline;
     }
@@ -881,7 +869,6 @@ namespace { namespace gbuf_skin {
         mirinae::DescLayoutBuilder builder{ "gbuf:actor_skinned" };
         builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActorSkinned
         return desclayouts.add(builder, device.logi_device());
-
     }
 
     VkRenderPass create_renderpass(
@@ -939,10 +926,7 @@ namespace { namespace gbuf_skin {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS !=
-            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -970,12 +954,9 @@ namespace { namespace gbuf_skin {
         }
 
         VkPipelineLayout pipelineLayout;
-        const auto result = vkCreatePipelineLayout(
+        VK_CHECK(vkCreatePipelineLayout(
             device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        ));
 
         return pipelineLayout;
     }
@@ -1044,17 +1025,14 @@ namespace { namespace gbuf_skin {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        const auto result = vkCreateGraphicsPipelines(
+        VK_CHECK(vkCreateGraphicsPipelines(
             device.logi_device(),
             VK_NULL_HANDLE,
             1,
             &pipeline_info,
             nullptr,
             &graphics_pipeline
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        ));
 
         return graphics_pipeline;
     }
@@ -1214,12 +1192,7 @@ namespace { namespace shadowmap {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        const auto result = vkCreateRenderPass(
-            logi_device, &create_info, nullptr, &output
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -1251,12 +1224,9 @@ namespace { namespace shadowmap {
         }
 
         VkPipelineLayout pipelineLayout;
-        const auto result = vkCreatePipelineLayout(
+        VK_CHECK(vkCreatePipelineLayout(
             device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        ));
 
         return pipelineLayout;
     }
@@ -1322,17 +1292,14 @@ namespace { namespace shadowmap {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        const auto result = vkCreateGraphicsPipelines(
+        VK_CHECK(vkCreateGraphicsPipelines(
             device.logi_device(),
             VK_NULL_HANDLE,
             1,
             &pipeline_info,
             nullptr,
             &graphics_pipeline
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        ));
 
         return graphics_pipeline;
     }
@@ -1460,12 +1427,7 @@ namespace { namespace shadowmap_skin {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        const auto result = vkCreateRenderPass(
-            logi_device, &create_info, nullptr, &output
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -1497,12 +1459,9 @@ namespace { namespace shadowmap_skin {
         }
 
         VkPipelineLayout pipelineLayout;
-        const auto result = vkCreatePipelineLayout(
+        VK_CHECK(vkCreatePipelineLayout(
             device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        ));
 
         return pipelineLayout;
     }
@@ -1568,17 +1527,14 @@ namespace { namespace shadowmap_skin {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        const auto result = vkCreateGraphicsPipelines(
+        VK_CHECK(vkCreateGraphicsPipelines(
             device.logi_device(),
             VK_NULL_HANDLE,
             1,
             &pipeline_info,
             nullptr,
             &graphics_pipeline
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        ));
 
         return graphics_pipeline;
     }
@@ -1712,10 +1668,7 @@ namespace { namespace compo {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS !=
-            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -1740,14 +1693,9 @@ namespace { namespace compo {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(
-                device.logi_device(),
-                &pipelineLayoutInfo,
-                nullptr,
-                &pipelineLayout
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        VK_CHECK(vkCreatePipelineLayout(
+            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
+        ));
 
         return pipelineLayout;
     }
@@ -1810,16 +1758,14 @@ namespace { namespace compo {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(
-                device.logi_device(),
-                VK_NULL_HANDLE,
-                1,
-                &pipeline_info,
-                nullptr,
-                &graphics_pipeline
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        VK_CHECK(vkCreateGraphicsPipelines(
+            device.logi_device(),
+            VK_NULL_HANDLE,
+            1,
+            &pipeline_info,
+            nullptr,
+            &graphics_pipeline
+        ));
 
         return graphics_pipeline;
     }
@@ -1987,10 +1933,7 @@ namespace { namespace transp {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS !=
-            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -2020,14 +1963,9 @@ namespace { namespace transp {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(
-                device.logi_device(),
-                &pipelineLayoutInfo,
-                nullptr,
-                &pipelineLayout
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        VK_CHECK(vkCreatePipelineLayout(
+            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
+        ));
 
         return pipelineLayout;
     }
@@ -2094,16 +2032,14 @@ namespace { namespace transp {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(
-                device.logi_device(),
-                VK_NULL_HANDLE,
-                1,
-                &pipeline_info,
-                nullptr,
-                &graphics_pipeline
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        VK_CHECK(vkCreateGraphicsPipelines(
+            device.logi_device(),
+            VK_NULL_HANDLE,
+            1,
+            &pipeline_info,
+            nullptr,
+            &graphics_pipeline
+        ));
 
         return graphics_pipeline;
     }
@@ -2274,10 +2210,7 @@ namespace { namespace transp_skin {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS !=
-            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -2307,14 +2240,9 @@ namespace { namespace transp_skin {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(
-                device.logi_device(),
-                &pipelineLayoutInfo,
-                nullptr,
-                &pipelineLayout
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        VK_CHECK(vkCreatePipelineLayout(
+            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
+        ));
 
         return pipelineLayout;
     }
@@ -2381,17 +2309,14 @@ namespace { namespace transp_skin {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        const auto result = vkCreateGraphicsPipelines(
+        VK_CHECK(vkCreateGraphicsPipelines(
             device.logi_device(),
             VK_NULL_HANDLE,
             1,
             &pipeline_info,
             nullptr,
             &graphics_pipeline
-        );
-        if (VK_SUCCESS != result) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        ));
 
         return graphics_pipeline;
     }
@@ -2537,10 +2462,7 @@ namespace { namespace fillscreen {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS !=
-            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -2565,14 +2487,9 @@ namespace { namespace fillscreen {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(
-                device.logi_device(),
-                &pipelineLayoutInfo,
-                nullptr,
-                &pipelineLayout
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        VK_CHECK(vkCreatePipelineLayout(
+            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
+        ));
 
         return pipelineLayout;
     }
@@ -2635,16 +2552,14 @@ namespace { namespace fillscreen {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(
-                device.logi_device(),
-                VK_NULL_HANDLE,
-                1,
-                &pipeline_info,
-                nullptr,
-                &graphics_pipeline
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        VK_CHECK(vkCreateGraphicsPipelines(
+            device.logi_device(),
+            VK_NULL_HANDLE,
+            1,
+            &pipeline_info,
+            nullptr,
+            &graphics_pipeline
+        ));
 
         return graphics_pipeline;
     }
@@ -2793,10 +2708,7 @@ namespace { namespace overlay {
         create_info.pDependencies = dependency.data();
 
         VkRenderPass output = VK_NULL_HANDLE;
-        if (VK_SUCCESS !=
-            vkCreateRenderPass(logi_device, &create_info, nullptr, &output)) {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
     }
@@ -2829,14 +2741,9 @@ namespace { namespace overlay {
         }
 
         VkPipelineLayout pipelineLayout;
-        if (vkCreatePipelineLayout(
-                device.logi_device(),
-                &pipelineLayoutInfo,
-                nullptr,
-                &pipelineLayout
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create pipeline layout");
-        }
+        VK_CHECK(vkCreatePipelineLayout(
+            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
+        ));
 
         return pipelineLayout;
     }
@@ -2899,16 +2806,14 @@ namespace { namespace overlay {
         pipeline_info.basePipelineIndex = -1;
 
         VkPipeline graphics_pipeline;
-        if (vkCreateGraphicsPipelines(
-                device.logi_device(),
-                VK_NULL_HANDLE,
-                1,
-                &pipeline_info,
-                nullptr,
-                &graphics_pipeline
-            ) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create graphics pipeline");
-        }
+        VK_CHECK(vkCreateGraphicsPipelines(
+            device.logi_device(),
+            VK_NULL_HANDLE,
+            1,
+            &pipeline_info,
+            nullptr,
+            &graphics_pipeline
+        ));
 
         return graphics_pipeline;
     }
