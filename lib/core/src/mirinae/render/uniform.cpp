@@ -243,11 +243,11 @@ namespace mirinae {
 }  // namespace mirinae
 
 
-// DescriptorPool
+// DescPool
 namespace mirinae {
 
-    // basic implementation for DescriptorPool methods
-    void DescriptorPool::init(uint32_t alloc_size, VkDevice logi_device) {
+    // basic implementation for DescPool methods
+    void DescPool::init(uint32_t alloc_size, VkDevice logi_device) {
         this->destroy(logi_device);
 
         std::vector<VkDescriptorPoolSize> poolSizes;
@@ -275,14 +275,14 @@ namespace mirinae {
     }
 
     // For rest of methods too
-    void DescriptorPool::destroy(VkDevice logi_device) {
+    void DescPool::destroy(VkDevice logi_device) {
         if (handle_ != VK_NULL_HANDLE) {
             vkDestroyDescriptorPool(logi_device, handle_, nullptr);
             handle_ = VK_NULL_HANDLE;
         }
     }
 
-    std::vector<VkDescriptorSet> DescriptorPool::alloc(
+    std::vector<VkDescriptorSet> DescPool::alloc(
         uint32_t count, VkDescriptorSetLayout desclayout, VkDevice logi_device
     ) {
         std::vector<VkDescriptorSetLayout> layouts(count, desclayout);

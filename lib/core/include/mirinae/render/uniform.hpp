@@ -250,7 +250,7 @@ namespace mirinae {
     };
 
 
-    class DescriptorPool {
+    class DescPool {
 
     public:
         void init(uint32_t pool_size, VkDevice logi_device);

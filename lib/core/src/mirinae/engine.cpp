@@ -303,7 +303,7 @@ namespace {
             ubufs_.clear();
         }
 
-        mirinae::DescriptorPool desc_pool_;
+        mirinae::DescPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
         std::vector<mirinae::Buffer> ubufs_;
     };
@@ -342,7 +342,7 @@ namespace {
             ubufs_.clear();
         }
 
-        mirinae::DescriptorPool desc_pool_;
+        mirinae::DescPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
         std::vector<mirinae::Buffer> ubufs_;
     };
@@ -378,7 +378,7 @@ namespace {
             desc_pool_.destroy(device.logi_device());
         }
 
-        mirinae::DescriptorPool desc_pool_;
+        mirinae::DescPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
     };
 
