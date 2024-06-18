@@ -200,8 +200,9 @@ namespace mirinae {
         VkDescriptorSetLayout build(VkDevice logi_device) const;
 
         auto& name() const { return name_; }
+        auto& size_info() const { return size_info_; }
 
-    public:
+    private:
         std::string name_;
         std::vector<VkDescriptorSetLayoutBinding> bindings_;
         DescSizeInfo size_info_;
@@ -214,17 +215,12 @@ namespace mirinae {
         DesclayoutManager(VulkanDevice& device);
         ~DesclayoutManager();
 
-        void add(const std::string& name, VkDescriptorSetLayout handle);
-
-        VkDescriptorSetLayout build_add(
-            DescLayoutBuilder builder, VkDevice logi_device
-        ) {
-            const auto handle = builder.build(logi_device);
-            this->add(builder.name(), handle);
-            return handle;
-        }
+        VkDescriptorSetLayout add(
+            const DescLayoutBuilder& builder, VkDevice logi_device
+        );
 
         VkDescriptorSetLayout get(const std::string& name);
+        const DescSizeInfo& get_size_info(const std::string& name) const;
 
     private:
         class Item;

@@ -577,7 +577,7 @@ namespace { namespace gbuf {
             .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_GbufModel
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // Albedo map
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Normal map
-        return desclayouts.build_add(builder, device.logi_device());
+        return desclayouts.add(builder, device.logi_device());
     }
 
     VkDescriptorSetLayout create_desclayout_actor(
@@ -585,7 +585,7 @@ namespace { namespace gbuf {
     ) {
         mirinae::DescLayoutBuilder builder{ "gbuf:actor" };
         builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActor
-        return desclayouts.build_add(builder, device.logi_device());
+        return desclayouts.add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(
@@ -880,7 +880,7 @@ namespace { namespace gbuf_skin {
     ) {
         mirinae::DescLayoutBuilder builder{ "gbuf:actor_skinned" };
         builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActorSkinned
-        return desclayouts.build_add(builder, device.logi_device());
+        return desclayouts.add(builder, device.logi_device());
 
     }
 
@@ -1679,7 +1679,7 @@ namespace { namespace compo {
             .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_CompoMain
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // dlight shadowmap
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // slight shadowmap
-        return desclayouts.build_add(builder, device.logi_device());
+        return desclayouts.add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(
@@ -1931,7 +1931,7 @@ namespace { namespace transp {
     ) {
         mirinae::DescLayoutBuilder builder{ "transp:frame" };
         builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompoMain
-        return desclayouts.build_add(builder, device.logi_device());
+        return desclayouts.add(builder, device.logi_device());
     }
 
     VkDescriptorSetLayout create_desclayout_model(
@@ -2508,7 +2508,7 @@ namespace { namespace fillscreen {
     ) {
         mirinae::DescLayoutBuilder builder{ "fillscreen:main" };
         builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // compo
-        return desclayouts.build_add(builder, device.logi_device());
+        return desclayouts.add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {
@@ -2759,7 +2759,7 @@ namespace { namespace overlay {
             .add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1)    // U_OverlayMain
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // color
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // mask
-        return desclayouts.build_add(builder, device.logi_device());
+        return desclayouts.add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {
