@@ -64,16 +64,24 @@ namespace mirinae {
     class IRenderPassBundle {
 
     public:
+        IRenderPassBundle(mirinae::VulkanDevice& device) : device_(device) {}
+
         virtual ~IRenderPassBundle() = default;
         virtual void destroy() = 0;
 
-        virtual VkRenderPass renderpass() = 0;
-        virtual VkPipeline pipeline() = 0;
-        virtual VkPipelineLayout pipeline_layout() = 0;
         virtual VkFramebuffer fbuf_at(uint32_t index) = 0;
-
         virtual const VkClearValue* clear_values() const = 0;
         virtual uint32_t clear_value_count() const = 0;
+
+        VkRenderPass renderpass() { return renderpass_; }
+        VkPipeline pipeline() { return pipeline_; }
+        VkPipelineLayout pipeline_layout() { return layout_; }
+
+    protected:
+        mirinae::VulkanDevice& device_;
+        VkRenderPass renderpass_ = VK_NULL_HANDLE;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout layout_ = VK_NULL_HANDLE;
     };
 
 

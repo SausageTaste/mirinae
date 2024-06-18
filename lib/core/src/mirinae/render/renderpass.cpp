@@ -752,7 +752,7 @@ namespace { namespace gbuf {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 fbuf_bundle.depth().format(),
                 fbuf_bundle.albedo().format(),
@@ -823,12 +823,6 @@ namespace { namespace gbuf {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
         }
@@ -842,10 +836,6 @@ namespace { namespace gbuf {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 4> formats_;
         std::array<VkClearValue, 4> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
@@ -1049,7 +1039,7 @@ namespace { namespace gbuf_skin {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 fbuf_bundle.depth().format(),
                 fbuf_bundle.albedo().format(),
@@ -1120,12 +1110,6 @@ namespace { namespace gbuf_skin {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
         }
@@ -1139,10 +1123,6 @@ namespace { namespace gbuf_skin {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 4> formats_;
         std::array<VkClearValue, 4> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
@@ -1316,7 +1296,7 @@ namespace { namespace shadowmap {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 fbuf_bundle.depth().format(),
             };
@@ -1355,12 +1335,6 @@ namespace { namespace shadowmap {
             }
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return VK_NULL_HANDLE;
         }
@@ -1374,10 +1348,6 @@ namespace { namespace shadowmap {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 1> formats_;
         std::array<VkClearValue, 1> clear_values_;
     };
@@ -1551,7 +1521,7 @@ namespace { namespace shadowmap_skin {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 fbuf_bundle.depth().format(),
             };
@@ -1590,12 +1560,6 @@ namespace { namespace shadowmap_skin {
             }
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return VK_NULL_HANDLE;
         }
@@ -1609,10 +1573,6 @@ namespace { namespace shadowmap_skin {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 1> formats_;
         std::array<VkClearValue, 1> clear_values_;
     };
@@ -1782,7 +1742,7 @@ namespace { namespace compo {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 fbuf_bundle.compo().format(),
             };
@@ -1838,12 +1798,6 @@ namespace { namespace compo {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
         }
@@ -1857,10 +1811,6 @@ namespace { namespace compo {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 1> formats_;
         std::array<VkClearValue, 1> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
@@ -2056,7 +2006,7 @@ namespace { namespace transp {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 fbuf_bundle.compo().format(),
                 fbuf_bundle.depth().format(),
@@ -2117,12 +2067,6 @@ namespace { namespace transp {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
         }
@@ -2136,10 +2080,6 @@ namespace { namespace transp {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 2> formats_;
         std::array<VkClearValue, 2> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
@@ -2333,7 +2273,7 @@ namespace { namespace transp_skin {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 fbuf_bundle.compo().format(),
                 fbuf_bundle.depth().format(),
@@ -2394,12 +2334,6 @@ namespace { namespace transp_skin {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
         }
@@ -2413,10 +2347,6 @@ namespace { namespace transp_skin {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 2> formats_;
         std::array<VkClearValue, 2> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
@@ -2576,7 +2506,7 @@ namespace { namespace fillscreen {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 swapchain.format(),
             };
@@ -2632,12 +2562,6 @@ namespace { namespace fillscreen {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
         }
@@ -2651,10 +2575,6 @@ namespace { namespace fillscreen {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 1> formats_;
         std::array<VkClearValue, 1> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
@@ -2830,7 +2750,7 @@ namespace { namespace overlay {
             mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
         )
-            : device_(device) {
+            : IRenderPassBundle(device) {
             formats_ = {
                 swapchain.format(),
             };
@@ -2886,12 +2806,6 @@ namespace { namespace overlay {
             fbufs_.clear();
         }
 
-        VkRenderPass renderpass() override { return renderpass_; }
-
-        VkPipeline pipeline() override { return pipeline_; }
-
-        VkPipelineLayout pipeline_layout() override { return layout_; }
-
         VkFramebuffer fbuf_at(uint32_t index) override {
             return fbufs_.at(index);
         }
@@ -2905,10 +2819,6 @@ namespace { namespace overlay {
         }
 
     private:
-        mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
         std::array<VkFormat, 1> formats_;
         std::array<VkClearValue, 1> clear_values_;
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
