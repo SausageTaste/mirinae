@@ -81,7 +81,7 @@ namespace mirinae {
         uint32_t vertex_count() const;
 
     private:
-        DescriptorPool desc_pool_;
+        DescPool desc_pool_;
         VertexIndexPair vert_index_pair_;
         Buffer uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
@@ -108,7 +108,7 @@ namespace mirinae {
         uint32_t vertex_count() const;
 
     private:
-        DescriptorPool desc_pool_;
+        DescPool desc_pool_;
         VertexIndexPair vert_index_pair_;
         Buffer uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
@@ -140,7 +140,7 @@ namespace mirinae {
 
     private:
         VulkanDevice& device_;
-        DescriptorPool desc_pool_;
+        DescPool desc_pool_;
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
     };
@@ -217,7 +217,7 @@ namespace mirinae {
         VkDescriptorSet get_desc_set(size_t index);
 
     private:
-        DescriptorPool desc_pool_;
+        DescPool desc_pool_;
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;
@@ -242,7 +242,7 @@ namespace mirinae {
         VkDescriptorSet get_desc_set(size_t index);
 
     private:
-        DescriptorPool desc_pool_;
+        DescPool desc_pool_;
         std::vector<Buffer> uniform_buf_;
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;
