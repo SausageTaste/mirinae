@@ -6,6 +6,32 @@
 #include <spdlog/spdlog.h>
 
 
+// DescSizeInfo
+namespace mirinae {
+
+    uint32_t DescSizeInfo::get(VkDescriptorType type) const {
+        const auto it = data_.find(type);
+        if (it == data_.end())
+            return 0;
+        else
+            return it->second;
+    }
+
+    void DescSizeInfo::set(VkDescriptorType type, uint32_t cnt) {
+        data_[type] = cnt;
+    }
+
+    void DescSizeInfo::add(VkDescriptorType type, uint32_t cnt) {
+        const auto it = data_.find(type);
+        if (it == data_.end())
+            data_[type] = cnt;
+        else
+            it->second += cnt;
+    }
+
+}  // namespace mirinae
+
+
 // DescLayoutBuilder
 namespace mirinae {
 
@@ -21,7 +47,7 @@ namespace mirinae {
         binding.stageFlags = stage_flags;
         binding.pImmutableSamplers = nullptr;
 
-        ++uniform_buffer_count_;
+        size_info_.add_ubuf(count);
         return *this;
     }
 
@@ -35,7 +61,7 @@ namespace mirinae {
         binding.stageFlags = stage_flags;
         binding.pImmutableSamplers = nullptr;
 
-        ++combined_image_sampler_count_;
+        size_info_.add_img(count);
         return *this;
     }
 
@@ -49,7 +75,7 @@ namespace mirinae {
         binding.stageFlags = stage_flags;
         binding.pImmutableSamplers = nullptr;
 
-        ++input_attachment_count_;
+        size_info_.add_input_att(count);
         return *this;
     }
 
