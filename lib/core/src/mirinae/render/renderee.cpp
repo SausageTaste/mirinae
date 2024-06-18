@@ -797,15 +797,12 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
+        auto& desclayout = desclayouts.get("gbuf:model");
         desc_pool_.init(
-            max_flight_count,
-            desclayouts.get_size_info("gbuf:model"),
-            device.logi_device()
+            max_flight_count, desclayout.size_info(), device.logi_device()
         );
         desc_sets_ = desc_pool_.alloc(
-            max_flight_count,
-            desclayouts.get("gbuf:model"),
-            device.logi_device()
+            max_flight_count, desclayout.layout(), device.logi_device()
         );
 
         uniform_buf_.init_ubuf(sizeof(U_GbufModel), device.mem_alloc());
@@ -867,15 +864,12 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
+        auto& desclayout = desclayouts.get("gbuf:model");
         desc_pool_.init(
-            max_flight_count,
-            desclayouts.get_size_info("gbuf:model"),
-            device.logi_device()
+            max_flight_count, desclayout.size_info(), device.logi_device()
         );
         desc_sets_ = desc_pool_.alloc(
-            max_flight_count,
-            desclayouts.get("gbuf:model"),
-            device.logi_device()
+            max_flight_count, desclayout.layout(), device.logi_device()
         );
 
         uniform_buf_.init_ubuf(sizeof(U_GbufModel), device.mem_alloc());
@@ -940,15 +934,12 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         TextureManager& tex_man
     ) {
+        auto& desclayout = desclayouts.get("overlay:main");
         desc_pool_.init(
-            max_flight_count,
-            desclayouts.get_size_info("overlay:main"),
-            device_.logi_device()
+            max_flight_count, desclayout.size_info(), device_.logi_device()
         );
         desc_sets_ = desc_pool_.alloc(
-            max_flight_count,
-            desclayouts.get("overlay:main"),
-            device_.logi_device()
+            max_flight_count, desclayout.layout(), device_.logi_device()
         );
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
@@ -1278,15 +1269,12 @@ namespace mirinae {
     void RenderActor::init(
         uint32_t max_flight_count, DesclayoutManager& desclayouts
     ) {
+        auto& desclayout = desclayouts.get("gbuf:actor");
         desc_pool_.init(
-            max_flight_count,
-            desclayouts.get_size_info("gbuf:actor"),
-            device_.logi_device()
+            max_flight_count, desclayout.size_info(), device_.logi_device()
         );
         desc_sets_ = desc_pool_.alloc(
-            max_flight_count,
-            desclayouts.get("gbuf:actor"),
-            device_.logi_device()
+            max_flight_count, desclayout.layout(), device_.logi_device()
         );
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
@@ -1328,15 +1316,12 @@ namespace mirinae {
     void RenderActorSkinned::init(
         uint32_t max_flight_count, DesclayoutManager& desclayouts
     ) {
+        auto& desclayout = desclayouts.get("gbuf:actor_skinned");
         desc_pool_.init(
-            max_flight_count,
-            desclayouts.get_size_info("gbuf:actor_skinned"),
-            device_.logi_device()
+            max_flight_count, desclayout.size_info(), device_.logi_device()
         );
         desc_sets_ = desc_pool_.alloc(
-            max_flight_count,
-            desclayouts.get("gbuf:actor_skinned"),
-            device_.logi_device()
+            max_flight_count, desclayout.layout(), device_.logi_device()
         );
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
