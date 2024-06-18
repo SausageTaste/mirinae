@@ -9,6 +9,20 @@
 // DescSizeInfo
 namespace mirinae {
 
+    void DescSizeInfo::multiply_counts(uint32_t factor) {
+        for (auto& [type, cnt] : data_) cnt *= factor;
+    }
+
+    std::vector<VkDescriptorPoolSize> DescSizeInfo::create_arr() const {
+        std::vector<VkDescriptorPoolSize> output;
+        for (const auto& [type, cnt] : data_) {
+            auto& pool_size = output.emplace_back();
+            pool_size.type = type;
+            pool_size.descriptorCount = cnt;
+        }
+        return output;
+    }
+
     uint32_t DescSizeInfo::get(VkDescriptorType type) const {
         const auto it = data_.find(type);
         if (it == data_.end())
@@ -247,30 +261,24 @@ namespace mirinae {
 namespace mirinae {
 
     // basic implementation for DescPool methods
-    void DescPool::init(uint32_t alloc_size, VkDevice logi_device) {
+    void DescPool::init(
+        const uint32_t max_sets,
+        const DescSizeInfo& size_info,
+        const VkDevice logi_device
+    ) {
         this->destroy(logi_device);
 
-        std::vector<VkDescriptorPoolSize> poolSizes;
-        {
-            auto& poolSize = poolSizes.emplace_back();
-            poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            poolSize.descriptorCount = alloc_size;
-        }
-        {
-            auto& poolSize = poolSizes.emplace_back();
-            poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            poolSize.descriptorCount = alloc_size;
-        }
+        size_info_ = size_info;
+        size_info_.multiply_counts(max_sets);
+        const auto pool_sizes = size_info_.create_arr();
 
-        VkDescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-        poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = alloc_size;
+        VkDescriptorPoolCreateInfo cinfo{};
+        cinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        cinfo.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+        cinfo.pPoolSizes = pool_sizes.data();
+        cinfo.maxSets = max_sets;
 
-        VK_CHECK(
-            vkCreateDescriptorPool(logi_device, &poolInfo, nullptr, &handle_)
-        );
+        VK_CHECK(vkCreateDescriptorPool(logi_device, &cinfo, NULL, &handle_));
     }
 
     // For rest of methods too
