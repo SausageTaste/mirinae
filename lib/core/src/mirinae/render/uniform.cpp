@@ -268,10 +268,9 @@ namespace mirinae {
         poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = alloc_size;
 
-        if (vkCreateDescriptorPool(logi_device, &poolInfo, nullptr, &handle_) !=
-            VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor pool!");
-        }
+        VK_CHECK(
+            vkCreateDescriptorPool(logi_device, &poolInfo, nullptr, &handle_)
+        );
     }
 
     // For rest of methods too
@@ -294,10 +293,9 @@ namespace mirinae {
         allocInfo.pSetLayouts = layouts.data();
 
         std::vector<VkDescriptorSet> output(count);
-        if (vkAllocateDescriptorSets(logi_device, &allocInfo, output.data()) !=
-            VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor set!");
-        }
+        VK_CHECK(
+            vkAllocateDescriptorSets(logi_device, &allocInfo, output.data())
+        );
 
         return output;
     }

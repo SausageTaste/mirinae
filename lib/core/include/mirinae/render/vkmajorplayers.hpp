@@ -5,8 +5,6 @@
 #include <string>
 #include <vector>
 
-#include <vulkan/vulkan.h>
-
 #include "mirinae/util/image.hpp"
 #include "mirinae/util/lightweights.hpp"
 

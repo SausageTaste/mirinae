@@ -483,9 +483,7 @@ namespace {
                 cinfo_.pNext = nullptr;
 
             VkInstance instance;
-            if (VK_SUCCESS != vkCreateInstance(&cinfo_, nullptr, &instance))
-                throw std::runtime_error("failed to create instance!");
-
+            VK_CHECK(vkCreateInstance(&cinfo_, nullptr, &instance));
             return instance;
         }
 
@@ -704,11 +702,9 @@ namespace {
             createInfo.enabledExtensionCount = char_extension.size();
             createInfo.pEnabledFeatures = &deviceFeatures;
 
-            if (vkCreateDevice(
-                    phys_dev.get(), &createInfo, nullptr, &device_
-                ) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create logical device!");
-            }
+            VK_CHECK(
+                vkCreateDevice(phys_dev.get(), &createInfo, nullptr, &device_)
+            );
 
             vkGetDeviceQueue(
                 device_,
@@ -909,8 +905,7 @@ namespace mirinae {
         cinfo.subresourceRange.layerCount = 1;
 
         VkImageView imgview;
-        if (VK_SUCCESS != vkCreateImageView(device, &cinfo, nullptr, &imgview))
-            throw std::runtime_error("Failed to create image view");
+        VK_CHECK(vkCreateImageView(device, &cinfo, nullptr, &imgview));
         return imgview;
     }
 
@@ -1094,10 +1089,7 @@ namespace mirinae {
             }
         }
 
-        if (VK_SUCCESS !=
-            vkCreateSwapchainKHR(logi_device, &cinfo, nullptr, &swapchain_)) {
-            throw std::runtime_error("Failed to create swapchain");
-        }
+        VK_CHECK(vkCreateSwapchainKHR(logi_device, &cinfo, NULL, &swapchain_));
 
         // Store some data
         {

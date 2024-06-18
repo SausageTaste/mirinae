@@ -1,7 +1,6 @@
 #include "mirinae/engine.hpp"
 
 #include <spdlog/spdlog.h>
-#include <vulkan/vulkan.h>
 
 #include <daltools/util.h>
 #include <sung/general/time.hpp>
@@ -578,19 +577,13 @@ namespace {
 
             // Begin recording
             {
-                vkResetCommandBuffer(cur_cmd_buf, 0);
+                VK_CHECK(vkResetCommandBuffer(cur_cmd_buf, 0));
 
                 VkCommandBufferBeginInfo beginInfo{};
                 beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                 beginInfo.flags = 0;
                 beginInfo.pInheritanceInfo = nullptr;
-
-                if (vkBeginCommandBuffer(cur_cmd_buf, &beginInfo) !=
-                    VK_SUCCESS) {
-                    throw std::runtime_error(
-                        "failed to begin recording command buffer!"
-                    );
-                }
+                VK_CHECK(vkBeginCommandBuffer(cur_cmd_buf, &beginInfo));
 
                 std::array<VkClearValue, 3> clear_values;
                 clear_values[0].depthStencil = { 1.f, 0 };
@@ -1241,9 +1234,7 @@ namespace {
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
 
-            if (vkEndCommandBuffer(cur_cmd_buf) != VK_SUCCESS) {
-                throw std::runtime_error("failed to record a command buffer!");
-            }
+            VK_CHECK(vkEndCommandBuffer(cur_cmd_buf));
 
             // Submit and present
             {
@@ -1268,17 +1259,12 @@ namespace {
                 submitInfo.signalSemaphoreCount = 1;
                 submitInfo.pSignalSemaphores = signalSemaphores;
 
-                const auto result = vkQueueSubmit(
+                VK_CHECK(vkQueueSubmit(
                     device_.graphics_queue(),
                     1,
                     &submitInfo,
                     framesync_.get_cur_in_flight_fence().get()
-                );
-                if (VK_SUCCESS != result) {
-                    throw std::runtime_error(
-                        "failed to submit draw command buffer!"
-                    );
-                }
+                ));
 
                 std::array<uint32_t, 1> swapchain_indices{ image_index.get() };
                 std::array<VkSwapchainKHR, 1> swapchains{ swapchain_.get() };
@@ -1294,7 +1280,9 @@ namespace {
                 presentInfo.pImageIndices = swapchain_indices.data();
                 presentInfo.pResults = nullptr;
 
-                vkQueuePresentKHR(device_.present_queue(), &presentInfo);
+                VK_CHECK(
+                    vkQueuePresentKHR(device_.present_queue(), &presentInfo)
+                );
             }
 
             framesync_.increase_frame_index();
