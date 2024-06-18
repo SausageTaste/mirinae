@@ -5,8 +5,8 @@
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
-#include <vk_mem_alloc.h>
 #include <fmt/format.h>
+#include <vk_mem_alloc.h>
 
 
 // VulkanMemoryAllocator_T
@@ -15,7 +15,11 @@ namespace mirinae {
     class VulkanMemoryAllocator_T {
 
     public:
-        VulkanMemoryAllocator_T(VkInstance instance, VkPhysicalDevice phys_device, VkDevice logi_device) {
+        VulkanMemoryAllocator_T(
+            VkInstance instance,
+            VkPhysicalDevice phys_device,
+            VkDevice logi_device
+        ) {
             VmaVulkanFunctions vma_vulkan_funcs = {};
             vma_vulkan_funcs.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
             vma_vulkan_funcs.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
@@ -31,9 +35,7 @@ namespace mirinae {
             }
         }
 
-        ~VulkanMemoryAllocator_T() {
-            this->destroy();
-        }
+        ~VulkanMemoryAllocator_T() { this->destroy(); }
 
         void destroy() {
             if (allocator_ != VK_NULL_HANDLE) {
@@ -42,22 +44,21 @@ namespace mirinae {
             }
         }
 
-        VmaAllocator get() {
-            return allocator_;
-        }
+        VmaAllocator get() { return allocator_; }
 
     private:
         VmaAllocator allocator_ = VK_NULL_HANDLE;
-
     };
 
-}
+}  // namespace mirinae
 
 
 // VulkanMemoryAllocator
 namespace mirinae {
 
-    VulkanMemoryAllocator create_vma_allocator(VkInstance instance, VkPhysicalDevice phys_device, VkDevice logi_device) {
+    VulkanMemoryAllocator create_vma_allocator(
+        VkInstance instance, VkPhysicalDevice phys_device, VkDevice logi_device
+    ) {
         return new VulkanMemoryAllocator_T(instance, phys_device, logi_device);
     }
 
@@ -65,13 +66,15 @@ namespace mirinae {
         delete allocator;
     }
 
-}
+}  // namespace mirinae
 
 
 // Buffer
 namespace mirinae {
 
-    void Buffer::init_staging(VkDeviceSize size, VulkanMemoryAllocator allocator) {
+    void Buffer::init_staging(
+        VkDeviceSize size, VulkanMemoryAllocator allocator
+    ) {
         this->destroy(allocator);
 
         VkBufferCreateInfo buffer_info = {};
@@ -81,10 +84,20 @@ namespace mirinae {
 
         VmaAllocationCreateInfo alloc_info = {};
         alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
-        alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        alloc_info.flags =
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-        if (VK_SUCCESS != vmaCreateBuffer(allocator->get(), &buffer_info, &alloc_info, &buffer_, &allocation_, nullptr)) {
-            throw std::runtime_error("failed to create VMA buffer as staging buffer");
+        if (VK_SUCCESS != vmaCreateBuffer(
+                              allocator->get(),
+                              &buffer_info,
+                              &alloc_info,
+                              &buffer_,
+                              &allocation_,
+                              nullptr
+                          )) {
+            throw std::runtime_error(
+                "failed to create VMA buffer as staging buffer"
+            );
         }
 
         data_size_ = size;
@@ -96,52 +109,87 @@ namespace mirinae {
         VkBufferCreateInfo buffer_info = {};
         buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_info.size = size;
-        buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                            VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
         VmaAllocationCreateInfo alloc_info = {};
         alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
-        alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        alloc_info.flags =
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-        if (VK_SUCCESS != vmaCreateBuffer(allocator->get(), &buffer_info, &alloc_info, &buffer_, &allocation_, nullptr)) {
-            throw std::runtime_error("failed to create VMA buffer as uniform buffer");
+        if (VK_SUCCESS != vmaCreateBuffer(
+                              allocator->get(),
+                              &buffer_info,
+                              &alloc_info,
+                              &buffer_,
+                              &allocation_,
+                              nullptr
+                          )) {
+            throw std::runtime_error(
+                "failed to create VMA buffer as uniform buffer"
+            );
         }
 
         data_size_ = size;
     }
 
-    void Buffer::init_vertices(VkDeviceSize size, VulkanMemoryAllocator allocator) {
+    void Buffer::init_vertices(
+        VkDeviceSize size, VulkanMemoryAllocator allocator
+    ) {
         this->destroy(allocator);
 
         VkBufferCreateInfo buffer_info = {};
         buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_info.size = size;
-        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         VmaAllocationCreateInfo alloc_info = {};
         alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
 
-        if (VK_SUCCESS != vmaCreateBuffer(allocator->get(), &buffer_info, &alloc_info, &buffer_, &allocation_, nullptr)) {
-            throw std::runtime_error("failed to create VMA buffer as vertex buffer");
+        if (VK_SUCCESS != vmaCreateBuffer(
+                              allocator->get(),
+                              &buffer_info,
+                              &alloc_info,
+                              &buffer_,
+                              &allocation_,
+                              nullptr
+                          )) {
+            throw std::runtime_error(
+                "failed to create VMA buffer as vertex buffer"
+            );
         }
 
         data_size_ = size;
     }
 
-    void Buffer::init_indices(VkDeviceSize size, VulkanMemoryAllocator allocator) {
+    void Buffer::init_indices(
+        VkDeviceSize size, VulkanMemoryAllocator allocator
+    ) {
         this->destroy(allocator);
 
         VkBufferCreateInfo buffer_info = {};
         buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_info.size = size;
-        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                            VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         VmaAllocationCreateInfo alloc_info = {};
         alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
 
-        if (VK_SUCCESS != vmaCreateBuffer(allocator->get(), &buffer_info, &alloc_info, &buffer_, &allocation_, nullptr)) {
-            throw std::runtime_error("failed to create VMA buffer as index buffer");
+        if (VK_SUCCESS != vmaCreateBuffer(
+                              allocator->get(),
+                              &buffer_info,
+                              &alloc_info,
+                              &buffer_,
+                              &allocation_,
+                              nullptr
+                          )) {
+            throw std::runtime_error(
+                "failed to create VMA buffer as index buffer"
+            );
         }
 
         data_size_ = size;
@@ -154,18 +202,20 @@ namespace mirinae {
         }
     }
 
-    VkDeviceSize Buffer::size() const {
-        return data_size_;
-    }
+    VkDeviceSize Buffer::size() const { return data_size_; }
 
-    void Buffer::set_data(const void* data, size_t size, VulkanMemoryAllocator allocator) {
+    void Buffer::set_data(
+        const void* data, size_t size, VulkanMemoryAllocator allocator
+    ) {
         void* ptr;
         vmaMapMemory(allocator->get(), allocation_, &ptr);
         memcpy(ptr, data, std::min<size_t>(size, this->size()));
         vmaUnmapMemory(allocator->get(), allocation_);
     }
 
-    void Buffer::record_copy_cmd(const Buffer& src, VkCommandBuffer cmdbuf, VkDevice logi_device) {
+    void Buffer::record_copy_cmd(
+        const Buffer& src, VkCommandBuffer cmdbuf, VkDevice logi_device
+    ) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -180,7 +230,7 @@ namespace mirinae {
         vkEndCommandBuffer(cmdbuf);
     }
 
-}
+}  // namespace mirinae
 
 
 // ImageCreateInfo
@@ -195,7 +245,9 @@ namespace mirinae {
         info_.samples = VK_SAMPLE_COUNT_1_BIT;
     }
 
-    ImageCreateInfo& ImageCreateInfo::set_dimensions(uint32_t width, uint32_t height) {
+    ImageCreateInfo& ImageCreateInfo::set_dimensions(
+        uint32_t width, uint32_t height
+    ) {
         info_.extent.width = width;
         info_.extent.height = height;
         return *this;
@@ -212,23 +264,33 @@ namespace mirinae {
     }
 
     ImageCreateInfo& ImageCreateInfo::deduce_mip_levels() {
-        info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(info_.extent.width, info_.extent.height)))) + 1;
+        info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(
+                              info_.extent.width, info_.extent.height
+                          )))) +
+                          1;
         return *this;
     }
 
-    ImageCreateInfo& ImageCreateInfo::fetch_from_image(const IImage2D& img, bool srgb) {
+    ImageCreateInfo& ImageCreateInfo::fetch_from_image(
+        const IImage2D& img, bool srgb
+    ) {
         info_.extent.width = img.width();
         info_.extent.height = img.height();
 
-        if (img.channels() == 4 && img.value_type_size() == sizeof(uint8_t) && srgb)
+        if (img.channels() == 4 && img.value_type_size() == sizeof(uint8_t) &&
+            srgb)
             info_.format = VK_FORMAT_R8G8B8A8_SRGB;
-        else if (img.channels() == 4 && img.value_type_size() == sizeof(uint8_t) && !srgb)
+        else if (img.channels() == 4 &&
+                 img.value_type_size() == sizeof(uint8_t) && !srgb)
             info_.format = VK_FORMAT_R8G8B8A8_UNORM;
-        else if (img.channels() == 3 && img.value_type_size() == sizeof(uint8_t) && srgb)
+        else if (img.channels() == 3 &&
+                 img.value_type_size() == sizeof(uint8_t) && srgb)
             info_.format = VK_FORMAT_R8G8B8_SRGB;
-        else if (img.channels() == 3 && img.value_type_size() == sizeof(uint8_t) && !srgb)
+        else if (img.channels() == 3 &&
+                 img.value_type_size() == sizeof(uint8_t) && !srgb)
             info_.format = VK_FORMAT_R8G8B8_UNORM;
-        else if (img.channels() == 1 && img.value_type_size() == sizeof(uint8_t))
+        else if (img.channels() == 1 &&
+                 img.value_type_size() == sizeof(uint8_t))
             info_.format = VK_FORMAT_R8_UNORM;
         else if (img.channels() == 4 && img.value_type_size() == sizeof(float))
             info_.format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -237,21 +299,28 @@ namespace mirinae {
         else if (img.channels() == 1 && img.value_type_size() == sizeof(float))
             info_.format = VK_FORMAT_R32_SFLOAT;
         else {
-            const auto msg = fmt::format("Cannot determine image format for IImage2D{{ channel={}, value_type_size={}, sRGB={} }}",
-                img.channels(), img.value_type_size(), srgb);
+            const auto msg = fmt::format(
+                "Cannot determine image format for IImage2D{{ channel={}, "
+                "value_type_size={}, sRGB={} }}",
+                img.channels(),
+                img.value_type_size(),
+                srgb
+            );
             throw std::runtime_error(msg);
         }
 
         return *this;
     }
 
-}
+}  // namespace mirinae
 
 
 // Image
 namespace mirinae {
 
-    void Image::init(const VkImageCreateInfo& create_info, VulkanMemoryAllocator allocator) {
+    void Image::init(
+        const VkImageCreateInfo& create_info, VulkanMemoryAllocator allocator
+    ) {
         this->destroy(allocator);
 
         img_info_ = create_info;
@@ -259,7 +328,14 @@ namespace mirinae {
         VmaAllocationCreateInfo alloc_info = {};
         alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-        if (VK_SUCCESS != vmaCreateImage(allocator->get(), &img_info_, &alloc_info, &image_, &allocation_, nullptr)) {
+        if (VK_SUCCESS != vmaCreateImage(
+                              allocator->get(),
+                              &img_info_,
+                              &alloc_info,
+                              &image_,
+                              &allocation_,
+                              nullptr
+                          )) {
             throw std::runtime_error("failed to create VMA image");
         }
 
@@ -277,4 +353,4 @@ namespace mirinae {
         }
     }
 
-}
+}  // namespace mirinae
