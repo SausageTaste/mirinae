@@ -6,6 +6,74 @@
 #include <spdlog/spdlog.h>
 
 
+// DescLayoutBuilder
+namespace mirinae {
+
+    DescLayoutBuilder::DescLayoutBuilder(const char* name) : name_(name) {}
+
+    DescLayoutBuilder& DescLayoutBuilder::add_ubuf(
+        VkShaderStageFlagBits stage_flags, uint32_t count
+    ) {
+        auto& binding = bindings_.emplace_back();
+        binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        binding.descriptorCount = count;
+        binding.stageFlags = stage_flags;
+        binding.pImmutableSamplers = nullptr;
+
+        ++uniform_buffer_count_;
+        return *this;
+    }
+
+    DescLayoutBuilder& DescLayoutBuilder::add_img(
+        VkShaderStageFlagBits stage_flags, uint32_t count
+    ) {
+        auto& binding = bindings_.emplace_back();
+        binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        binding.descriptorCount = count;
+        binding.stageFlags = stage_flags;
+        binding.pImmutableSamplers = nullptr;
+
+        ++combined_image_sampler_count_;
+        return *this;
+    }
+
+    DescLayoutBuilder& DescLayoutBuilder::add_input_att(
+        VkShaderStageFlagBits stage_flags, uint32_t count
+    ) {
+        auto& binding = bindings_.emplace_back();
+        binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        binding.descriptorCount = count;
+        binding.stageFlags = stage_flags;
+        binding.pImmutableSamplers = nullptr;
+
+        ++input_attachment_count_;
+        return *this;
+    }
+
+    VkDescriptorSetLayout DescLayoutBuilder::build(VkDevice logi_device) const {
+        VkDescriptorSetLayoutCreateInfo create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        create_info.bindingCount = static_cast<uint32_t>(bindings_.size());
+        create_info.pBindings = bindings_.data();
+
+        VkDescriptorSetLayout handle;
+        if (vkCreateDescriptorSetLayout(
+                logi_device, &create_info, nullptr, &handle
+            ) != VK_SUCCESS) {
+            throw std::runtime_error{
+                fmt::format("Failed to create descriptor set layout: {}", name_)
+            };
+        }
+
+        return handle;
+    }
+
+}  // namespace mirinae
+
+
 // DesclayoutManager
 namespace mirinae {
 
