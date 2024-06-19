@@ -431,6 +431,92 @@ namespace {
 // Pipeline builders
 namespace {
 
+    class ShaderStagesBuilder {
+
+    public:
+        ShaderStagesBuilder(mirinae::VulkanDevice& device)
+            : device_{ device } {}
+
+        ~ShaderStagesBuilder() {
+            for (auto& module : modules_) {
+                vkDestroyShaderModule(device_.logi_device(), module, nullptr);
+            }
+            modules_.clear();
+        }
+
+        ShaderStagesBuilder& add_vert(const mirinae::respath_t& spv_path) {
+            modules_.push_back(this->load_spv(spv_path, device_));
+            this->add_stage(VK_SHADER_STAGE_VERTEX_BIT, modules_.back());
+            return *this;
+        }
+
+        ShaderStagesBuilder& add_frag(const mirinae::respath_t& spv_path) {
+            modules_.push_back(this->load_spv(spv_path, device_));
+            this->add_stage(VK_SHADER_STAGE_FRAGMENT_BIT, modules_.back());
+            return *this;
+        }
+
+        const VkPipelineShaderStageCreateInfo* data() const {
+            return stages_.data();
+        }
+        uint32_t size() const { return static_cast<uint32_t>(stages_.size()); }
+
+    private:
+        void add_stage(VkShaderStageFlagBits stage, VkShaderModule module) {
+            auto& added = stages_.emplace_back();
+
+            added.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            added.stage = stage;
+            added.module = module;
+            added.pName = "main";
+        }
+
+        static VkShaderModule load_spv(
+            const mirinae::respath_t& spv_path, mirinae::VulkanDevice& device
+        ) {
+            const auto spv = device.filesys().read_file_to_vector(spv_path);
+            if (!spv) {
+                throw std::runtime_error{ fmt::format(
+                    "Failed to read a shader file: {}", spv_path.u8string()
+                ) };
+            }
+
+            const auto sha = create_shader_module(*spv, device.logi_device());
+            if (!sha) {
+                throw std::runtime_error{ fmt::format(
+                    "Failed to create shader module with given data: {}",
+                    spv_path.u8string()
+                ) };
+            }
+
+            return sha.value();
+        }
+
+        static std::optional<VkShaderModule> create_shader_module(
+            const std::vector<uint8_t>& spv, VkDevice logi_device
+        ) {
+            VkShaderModuleCreateInfo cinfo{};
+            cinfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            cinfo.codeSize = spv.size();
+            cinfo.pCode = reinterpret_cast<const uint32_t*>(spv.data());
+
+            VkShaderModule output = VK_NULL_HANDLE;
+            const auto result = vkCreateShaderModule(
+                logi_device, &cinfo, nullptr, &output
+            );
+
+            if (result != VK_SUCCESS)
+                return std::nullopt;
+            else
+                return output;
+        }
+
+        mirinae::VulkanDevice& device_;
+        std::vector<VkPipelineShaderStageCreateInfo> stages_;
+        std::vector<VkShaderModule> modules_;
+    };
+
+
     class ColorBlendStateBuilder {
 
     public:
@@ -695,11 +781,9 @@ namespace { namespace gbuf {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/gbuf_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/gbuf_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/gbuf_vert.spv");
+        shader_stages.add_frag("asset/spv/gbuf_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -946,11 +1030,9 @@ namespace { namespace gbuf_skin {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/gbuf_skin_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/gbuf_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/gbuf_skin_vert.spv");
+        shader_stages.add_frag("asset/spv/gbuf_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -1166,11 +1248,9 @@ namespace { namespace shadowmap {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/shadow_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/shadow_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/shadow_vert.spv");
+        shader_stages.add_frag("asset/spv/shadow_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -1357,11 +1437,9 @@ namespace { namespace shadowmap_skin {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/shadow_skin_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/shadow_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/shadow_skin_vert.spv");
+        shader_stages.add_frag("asset/spv/shadow_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -1554,11 +1632,9 @@ namespace { namespace compo {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/compo_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/compo_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/compo_vert.spv");
+        shader_stages.add_frag("asset/spv/compo_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -1779,11 +1855,9 @@ namespace { namespace transp {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/transp_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/transp_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/transp_vert.spv");
+        shader_stages.add_frag("asset/spv/transp_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -2010,11 +2084,9 @@ namespace { namespace transp_skin {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/transp_skin_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/transp_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/transp_skin_vert.spv");
+        shader_stages.add_frag("asset/spv/transp_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -2216,11 +2288,9 @@ namespace { namespace fillscreen {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/fill_screen_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/fill_screen_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/fill_screen_vert.spv");
+        shader_stages.add_frag("asset/spv/fill_screen_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -2422,11 +2492,9 @@ namespace { namespace overlay {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderModule vert_shader{ "asset/spv/overlay_vert.spv", device };
-        ::ShaderModule frag_shader{ "asset/spv/overlay_frag.spv", device };
-        const auto shader_stages = ::create_info_shader_stages_pair(
-            vert_shader, frag_shader
-        );
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert("asset/spv/overlay_vert.spv");
+        shader_stages.add_frag("asset/spv/overlay_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
