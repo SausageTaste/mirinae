@@ -10,120 +10,6 @@
 // Builders
 namespace {
 
-    VkVertexInputBindingDescription make_vertex_static_binding_description() {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(mirinae::VertexStatic);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        return bindingDescription;
-    }
-
-    auto make_vertex_static_attribute_descriptions() {
-        std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 0;
-            description.format = VK_FORMAT_R32G32B32_SFLOAT;
-            description.offset = offsetof(mirinae::VertexStatic, pos_);
-        }
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 1;
-            description.format = VK_FORMAT_R32G32B32_SFLOAT;
-            description.offset = offsetof(mirinae::VertexStatic, normal_);
-        }
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 2;
-            description.format = VK_FORMAT_R32G32B32_SFLOAT;
-            description.offset = offsetof(mirinae::VertexStatic, tangent_);
-        }
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 3;
-            description.format = VK_FORMAT_R32G32_SFLOAT;
-            description.offset = offsetof(mirinae::VertexStatic, texcoord_);
-        }
-
-        return attributeDescriptions;
-    }
-
-
-    VkVertexInputBindingDescription make_vertex_skinned_binding_description() {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(mirinae::VertexSkinned);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        return bindingDescription;
-    }
-
-    auto make_vertex_skinned_attribute_descriptions() {
-        std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 0;
-            description.format = VK_FORMAT_R32G32B32_SFLOAT;
-            description.offset = offsetof(mirinae::VertexSkinned, pos_);
-        }
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 1;
-            description.format = VK_FORMAT_R32G32B32_SFLOAT;
-            description.offset = offsetof(mirinae::VertexSkinned, normal_);
-        }
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 2;
-            description.format = VK_FORMAT_R32G32B32_SFLOAT;
-            description.offset = offsetof(mirinae::VertexSkinned, tangent_);
-        }
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 3;
-            description.format = VK_FORMAT_R32G32_SFLOAT;
-            description.offset = offsetof(mirinae::VertexSkinned, uv_);
-        }
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 4;
-            description.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-            description.offset = offsetof(
-                mirinae::VertexSkinned, joint_weights_
-            );
-        }
-
-        {
-            auto& description = attributeDescriptions.emplace_back();
-            description.binding = 0;
-            description.location = 5;
-            description.format = VK_FORMAT_R32G32B32A32_SINT;
-            description.offset = offsetof(
-                mirinae::VertexSkinned, joint_indices_
-            );
-        }
-
-        return attributeDescriptions;
-    }
-
-
     VkFramebuffer create_framebuffer(
         uint32_t width,
         uint32_t height,
@@ -459,6 +345,103 @@ namespace {
     };
 
 
+    class VertexInputStateBuilder {
+
+    public:
+        VkPipelineVertexInputStateCreateInfo build() const {
+            VkPipelineVertexInputStateCreateInfo output{};
+            output.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            output.vertexBindingDescriptionCount = bindings_.size();
+            output.pVertexBindingDescriptions = bindings_.data();
+            output.vertexAttributeDescriptionCount = attribs_.size();
+            output.pVertexAttributeDescriptions = attribs_.data();
+            return output;
+        }
+
+        VertexInputStateBuilder& set_static() {
+            this->set_binding_static();
+            this->set_attrib_static();
+            return *this;
+        }
+
+        VertexInputStateBuilder& set_skinned() {
+            this->set_binding_skinned();
+            this->set_attrib_skinned();
+            return *this;
+        }
+
+    private:
+        void add_attrib(VkFormat format, uint32_t offset) {
+            const auto location = static_cast<uint32_t>(attribs_.size());
+
+            auto& one = attribs_.emplace_back();
+            one.binding = 0;
+            one.location = location;
+            one.format = format;
+            one.offset = offset;
+        }
+
+        void add_attrib_vec2(uint32_t offset) {
+            this->add_attrib(VK_FORMAT_R32G32_SFLOAT, offset);
+        }
+
+        void add_attrib_vec3(uint32_t offset) {
+            this->add_attrib(VK_FORMAT_R32G32B32_SFLOAT, offset);
+        }
+
+        void add_attrib_vec4(uint32_t offset) {
+            this->add_attrib(VK_FORMAT_R32G32B32A32_SFLOAT, offset);
+        }
+
+        void add_attrib_ivec4(uint32_t offset) {
+            this->add_attrib(VK_FORMAT_R32G32B32A32_SINT, offset);
+        }
+
+        void set_binding_static() {
+            bindings_.clear();
+            auto& one = bindings_.emplace_back();
+
+            one.binding = 0;
+            one.stride = sizeof(mirinae::VertexStatic);
+            one.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        }
+
+        void set_binding_skinned() {
+            bindings_.clear();
+            auto& one = bindings_.emplace_back();
+
+            one.binding = 0;
+            one.stride = sizeof(mirinae::VertexSkinned);
+            one.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        }
+
+        void set_attrib_static() {
+            attribs_.clear();
+
+            this->add_attrib_vec3(offsetof(mirinae::VertexStatic, pos_));
+            this->add_attrib_vec3(offsetof(mirinae::VertexStatic, normal_));
+            this->add_attrib_vec3(offsetof(mirinae::VertexStatic, tangent_));
+            this->add_attrib_vec2(offsetof(mirinae::VertexStatic, texcoord_));
+        }
+
+        void set_attrib_skinned() {
+            using Vertex = mirinae::VertexSkinned;
+            attribs_.clear();
+
+            this->add_attrib_vec3(offsetof(Vertex, pos_));
+            this->add_attrib_vec3(offsetof(Vertex, normal_));
+            this->add_attrib_vec3(offsetof(Vertex, tangent_));
+            this->add_attrib_vec2(offsetof(Vertex, uv_));
+            this->add_attrib_vec4(offsetof(Vertex, joint_weights_));
+            this->add_attrib_ivec4(offsetof(Vertex, joint_indices_));
+        }
+
+        std::vector<VkVertexInputBindingDescription> bindings_;
+        std::vector<VkVertexInputAttributeDescription> attribs_;
+    };
+
+
     class ColorBlendStateBuilder {
 
     public:
@@ -520,22 +503,6 @@ namespace {
         output.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         output.dynamicStateCount = static_cast<uint32_t>(size);
         output.pDynamicStates = array;
-        return output;
-    }
-
-    auto create_info_vertex_input_states(
-        const VkVertexInputBindingDescription* binding_descriptions = nullptr,
-        size_t binding_count = 0,
-        const VkVertexInputAttributeDescription* attrib_descriptions = nullptr,
-        size_t attrib_count = 0
-    ) {
-        VkPipelineVertexInputStateCreateInfo output{};
-        output.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        output.vertexBindingDescriptionCount = binding_count;
-        output.pVertexBindingDescriptions = binding_descriptions;
-        output.vertexAttributeDescriptionCount = attrib_count;
-        output.pVertexAttributeDescriptions = attrib_descriptions;
         return output;
     }
 
@@ -712,11 +679,8 @@ namespace { namespace gbuf {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        auto binding_desc = ::make_vertex_static_binding_description();
-        auto attrib_desc = ::make_vertex_static_attribute_descriptions();
-        const auto vertex_input_info = ::create_info_vertex_input_states(
-            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
-        );
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.set_static().build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
@@ -961,11 +925,8 @@ namespace { namespace gbuf_skin {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        auto binding_desc = ::make_vertex_skinned_binding_description();
-        auto attrib_desc = ::make_vertex_skinned_attribute_descriptions();
-        const auto vertex_input_info = ::create_info_vertex_input_states(
-            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
-        );
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.set_skinned().build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
@@ -1179,11 +1140,8 @@ namespace { namespace shadowmap {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        auto binding_desc = ::make_vertex_static_binding_description();
-        auto attrib_desc = ::make_vertex_static_attribute_descriptions();
-        const auto vertex_input_info = ::create_info_vertex_input_states(
-            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
-        );
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.set_static().build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
@@ -1368,11 +1326,8 @@ namespace { namespace shadowmap_skin {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        auto binding_desc = ::make_vertex_skinned_binding_description();
-        auto attrib_desc = ::make_vertex_skinned_attribute_descriptions();
-        const auto vertex_input_info = ::create_info_vertex_input_states(
-            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
-        );
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.set_skinned().build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
@@ -1563,7 +1518,8 @@ namespace { namespace compo {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        const auto vertex_input_info = ::create_info_vertex_input_states();
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
@@ -1786,11 +1742,8 @@ namespace { namespace transp {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        auto binding_desc = ::make_vertex_static_binding_description();
-        auto attrib_desc = ::make_vertex_static_attribute_descriptions();
-        const auto vertex_input_info = ::create_info_vertex_input_states(
-            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
-        );
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.set_static().build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
@@ -2015,11 +1968,8 @@ namespace { namespace transp_skin {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        auto binding_desc = ::make_vertex_skinned_binding_description();
-        auto attrib_desc = ::make_vertex_skinned_attribute_descriptions();
-        const auto vertex_input_info = ::create_info_vertex_input_states(
-            &binding_desc, 1, attrib_desc.data(), attrib_desc.size()
-        );
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.set_skinned().build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
@@ -2219,7 +2169,8 @@ namespace { namespace fillscreen {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        const auto vertex_input_info = ::create_info_vertex_input_states();
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
@@ -2423,7 +2374,8 @@ namespace { namespace overlay {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        const auto vertex_input_info = ::create_info_vertex_input_states();
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.build();
 
         const auto input_assembly = ::create_info_input_assembly();
 
