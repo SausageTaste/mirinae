@@ -431,17 +431,10 @@ namespace {
 // Pipeline builders
 namespace {
 
-    class ColorBlendAttachmentStateBuilder {
+    class ColorBlendStateBuilder {
 
     public:
-        const VkPipelineColorBlendAttachmentState* data() const {
-            return data_.data();
-        }
-
-        uint32_t size() const { return static_cast<uint32_t>(data_.size()); }
-
-        template <bool TBlendingEnabled>
-        void add() {
+        ColorBlendStateBuilder& add(bool blend_enabled) {
             auto& added = data_.emplace_back();
             added.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
                                    VK_COLOR_COMPONENT_G_BIT |
@@ -452,7 +445,7 @@ namespace {
             added.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
             added.alphaBlendOp = VK_BLEND_OP_ADD;
 
-            if constexpr (TBlendingEnabled) {
+            if (blend_enabled) {
                 added.blendEnable = VK_TRUE;
                 added.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
                 added.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -461,6 +454,32 @@ namespace {
                 added.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
                 added.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
             }
+
+            return *this;
+        }
+
+        ColorBlendStateBuilder& add(bool blend_enabled, size_t count) {
+            if (count < 1)
+                return *this;
+
+            this->add(blend_enabled);
+            for (size_t i = 1; i < count; ++i) data_.push_back(data_.back());
+            return *this;
+        }
+
+        VkPipelineColorBlendStateCreateInfo build() const {
+            VkPipelineColorBlendStateCreateInfo output{};
+            output.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            output.logicOpEnable = VK_FALSE;
+            output.logicOp = VK_LOGIC_OP_COPY;
+            output.attachmentCount = static_cast<uint32_t>(data_.size());
+            output.pAttachments = data_.data();
+            output.blendConstants[0] = 0;
+            output.blendConstants[1] = 0;
+            output.blendConstants[2] = 0;
+            output.blendConstants[3] = 0;
+            return output;
         }
 
     private:
@@ -598,22 +617,6 @@ namespace {
         return output;
     }
 
-    auto create_info_color_blend(
-        const ::ColorBlendAttachmentStateBuilder& color_blend_attachments
-    ) {
-        VkPipelineColorBlendStateCreateInfo output{};
-        output.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        output.logicOpEnable = VK_FALSE;
-        output.logicOp = VK_LOGIC_OP_COPY;
-        output.attachmentCount = color_blend_attachments.size();
-        output.pAttachments = color_blend_attachments.data();
-        output.blendConstants[0] = 0;
-        output.blendConstants[1] = 0;
-        output.blendConstants[2] = 0;
-        output.blendConstants[3] = 0;
-        return output;
-    }
-
 }  // namespace
 
 
@@ -724,13 +727,8 @@ namespace { namespace gbuf {
 
         const auto depth_stencil = ::create_info_depth_stencil(true, true);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add<false>();
-        color_blend_attachment_states.add<false>();
-        color_blend_attachment_states.add<false>();
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.add(false, 3).build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -980,13 +978,8 @@ namespace { namespace gbuf_skin {
 
         const auto depth_stencil = ::create_info_depth_stencil(true, true);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add<false>();
-        color_blend_attachment_states.add<false>();
-        color_blend_attachment_states.add<false>();
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.add(false, 3).build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1205,10 +1198,8 @@ namespace { namespace shadowmap {
 
         const auto depth_stencil = ::create_info_depth_stencil(true, true);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1398,10 +1389,8 @@ namespace { namespace shadowmap_skin {
 
         const auto depth_stencil = ::create_info_depth_stencil(true, true);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1593,11 +1582,8 @@ namespace { namespace compo {
 
         const auto depth_stencil = ::create_info_depth_stencil(false, false);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add<false>();
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.add(false).build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1825,11 +1811,8 @@ namespace { namespace transp {
 
         const auto depth_stencil = ::create_info_depth_stencil(true, false);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add<true>();
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.add(true).build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -2059,11 +2042,8 @@ namespace { namespace transp_skin {
 
         const auto depth_stencil = ::create_info_depth_stencil(true, false);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add<true>();
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.add(true).build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -2264,11 +2244,8 @@ namespace { namespace fillscreen {
 
         const auto depth_stencil = ::create_info_depth_stencil(false, false);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add<false>();
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.add(false).build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -2473,11 +2450,8 @@ namespace { namespace overlay {
 
         const auto depth_stencil = ::create_info_depth_stencil(false, false);
 
-        ColorBlendAttachmentStateBuilder color_blend_attachment_states;
-        color_blend_attachment_states.add<true>();
-        const auto color_blending = ::create_info_color_blend(
-            color_blend_attachment_states
-        );
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.add(true).build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
