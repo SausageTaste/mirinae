@@ -315,6 +315,59 @@ namespace {
     };
 
 
+    class PipelineLayoutBuilder {
+
+    public:
+        PipelineLayoutBuilder& reset_stage_flags(VkShaderStageFlags flags) {
+            pc_stage_flags_ = 0;
+            return *this;
+        }
+
+        PipelineLayoutBuilder& add_vertex_flag() {
+            pc_stage_flags_ |= VK_SHADER_STAGE_VERTEX_BIT;
+            return *this;
+        }
+
+        PipelineLayoutBuilder& add_frag_flag() {
+            pc_stage_flags_ |= VK_SHADER_STAGE_FRAGMENT_BIT;
+            return *this;
+        }
+
+        PipelineLayoutBuilder& pc(uint32_t offset, uint32_t size) {
+            auto& added = pc_ranges_.emplace_back();
+            added.stageFlags = pc_stage_flags_;
+            added.offset = offset;
+            added.size = size;
+            return *this;
+        }
+
+        PipelineLayoutBuilder& desc(VkDescriptorSetLayout layout) {
+            desclayouts_.push_back(layout);
+            return *this;
+        }
+
+        VkPipelineLayout build(mirinae::VulkanDevice& device) {
+            VkPipelineLayoutCreateInfo create_info{};
+            create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            create_info.setLayoutCount = (uint32_t)desclayouts_.size();
+            create_info.pSetLayouts = desclayouts_.data();
+            create_info.pushConstantRangeCount = (uint32_t)pc_ranges_.size();
+            create_info.pPushConstantRanges = pc_ranges_.data();
+
+            VkPipelineLayout output = VK_NULL_HANDLE;
+            VK_CHECK(vkCreatePipelineLayout(
+                device.logi_device(), &create_info, nullptr, &output
+            ));
+            return output;
+        }
+
+    private:
+        std::vector<VkDescriptorSetLayout> desclayouts_;
+        std::vector<VkPushConstantRange> pc_ranges_;
+        VkShaderStageFlags pc_stage_flags_ = 0;
+    };
+
+
     class ShaderModule {
 
     public:
@@ -634,36 +687,6 @@ namespace { namespace gbuf {
         return output;
     }
 
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_model,
-        VkDescriptorSetLayout desclayout_actor,
-        mirinae::VulkanDevice& device
-    ) {
-        std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_model,
-            desclayout_actor,
-        };
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 0;
-            pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
-    }
-
     VkPipeline create_pipeline(
         VkRenderPass renderpass,
         VkPipelineLayout pipelineLayout,
@@ -772,11 +795,10 @@ namespace { namespace gbuf {
                 formats_.at(3),
                 device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_model(desclayouts, device),
-                create_desclayout_actor(desclayouts, device),
-                device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_model(desclayouts, device))
+                          .desc(create_desclayout_actor(desclayouts, device))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
@@ -921,36 +943,6 @@ namespace { namespace gbuf_skin {
         return output;
     }
 
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_model,
-        VkDescriptorSetLayout desclayout_actor,
-        mirinae::VulkanDevice& device
-    ) {
-        std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_model,
-            desclayout_actor,
-        };
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 0;
-            pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
-    }
-
     VkPipeline create_pipeline(
         VkRenderPass renderpass,
         VkPipelineLayout pipelineLayout,
@@ -1059,11 +1051,10 @@ namespace { namespace gbuf_skin {
                 formats_.at(3),
                 device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_model(desclayouts, device),
-                create_desclayout_actor(desclayouts, device),
-                device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_model(desclayouts, device))
+                          .desc(create_desclayout_actor(desclayouts, device))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
@@ -1177,40 +1168,6 @@ namespace { namespace shadowmap {
         return output;
     }
 
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_actor, mirinae::VulkanDevice& device
-    ) {
-        std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_actor,
-        };
-
-        VkPushConstantRange push_constant;
-        {
-            push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            push_constant.offset = 0;
-            push_constant.size = sizeof(mirinae::U_ShadowPushConst);
-        }
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 1;
-            pipelineLayoutInfo.pPushConstantRanges = &push_constant;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
-    }
-
     VkPipeline create_pipeline(
         VkRenderPass renderpass,
         VkPipelineLayout pipelineLayout,
@@ -1306,9 +1263,11 @@ namespace { namespace shadowmap {
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_actor(desclayouts, device), device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_actor(desclayouts, device))
+                          .add_vertex_flag()
+                          .pc(0, sizeof(mirinae::U_ShadowPushConst))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
@@ -1400,40 +1359,6 @@ namespace { namespace shadowmap_skin {
         VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
 
         return output;
-    }
-
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_actor, mirinae::VulkanDevice& device
-    ) {
-        std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_actor,
-        };
-
-        VkPushConstantRange push_constant;
-        {
-            push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            push_constant.offset = 0;
-            push_constant.size = sizeof(mirinae::U_ShadowPushConst);
-        }
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 1;
-            pipelineLayoutInfo.pPushConstantRanges = &push_constant;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
     }
 
     VkPipeline create_pipeline(
@@ -1531,9 +1456,11 @@ namespace { namespace shadowmap_skin {
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_actor(desclayouts, device), device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_actor(desclayouts, device))
+                          .add_vertex_flag()
+                          .pc(0, sizeof(mirinae::U_ShadowPushConst))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
@@ -1633,33 +1560,6 @@ namespace { namespace compo {
         return output;
     }
 
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_main, mirinae::VulkanDevice& device
-    ) {
-        const std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_main,
-        };
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 0;
-            pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
-    }
-
     VkPipeline create_pipeline(
         VkRenderPass renderpass,
         VkPipelineLayout pipelineLayout,
@@ -1752,9 +1652,9 @@ namespace { namespace compo {
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_main(desclayouts, device), device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_main(desclayouts, device))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
@@ -1888,38 +1788,6 @@ namespace { namespace transp {
         return output;
     }
 
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_frame,
-        VkDescriptorSetLayout desclayout_model,
-        VkDescriptorSetLayout desclayout_actor,
-        mirinae::VulkanDevice& device
-    ) {
-        std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_frame,
-            desclayout_model,
-            desclayout_actor,
-        };
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 0;
-            pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
-    }
-
     VkPipeline create_pipeline(
         VkRenderPass renderpass,
         VkPipelineLayout pipelineLayout,
@@ -2017,12 +1885,11 @@ namespace { namespace transp {
             renderpass_ = create_renderpass(
                 formats_.at(0), formats_.at(1), device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_frame(desclayouts, device),
-                create_desclayout_model(desclayouts, device),
-                create_desclayout_actor(desclayouts, device),
-                device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_frame(desclayouts, device))
+                          .desc(create_desclayout_model(desclayouts, device))
+                          .desc(create_desclayout_actor(desclayouts, device))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
@@ -2155,38 +2022,6 @@ namespace { namespace transp_skin {
         return output;
     }
 
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_frame,
-        VkDescriptorSetLayout desclayout_model,
-        VkDescriptorSetLayout desclayout_actor,
-        mirinae::VulkanDevice& device
-    ) {
-        std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_frame,
-            desclayout_model,
-            desclayout_actor,
-        };
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 0;
-            pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
-    }
-
     VkPipeline create_pipeline(
         VkRenderPass renderpass,
         VkPipelineLayout pipelineLayout,
@@ -2284,12 +2119,11 @@ namespace { namespace transp_skin {
             renderpass_ = create_renderpass(
                 formats_.at(0), formats_.at(1), device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_frame(desclayouts, device),
-                create_desclayout_model(desclayouts, device),
-                create_desclayout_actor(desclayouts, device),
-                device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_frame(desclayouts, device))
+                          .desc(create_desclayout_model(desclayouts, device))
+                          .desc(create_desclayout_actor(desclayouts, device))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
@@ -2397,33 +2231,6 @@ namespace { namespace fillscreen {
         return output;
     }
 
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_main, mirinae::VulkanDevice& device
-    ) {
-        std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_main,
-        };
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 0;
-            pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
-    }
-
     VkPipeline create_pipeline(
         VkRenderPass renderpass,
         VkPipelineLayout pipelineLayout,
@@ -2516,9 +2323,9 @@ namespace { namespace fillscreen {
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_main(desclayouts, device), device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_main(desclayouts, device))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
@@ -2633,41 +2440,6 @@ namespace { namespace overlay {
         return output;
     }
 
-    VkPipelineLayout create_pipeline_layout(
-        VkDescriptorSetLayout desclayout_main, mirinae::VulkanDevice& device
-    ) {
-        std::vector<VkDescriptorSetLayout> desclayouts{
-            desclayout_main,
-        };
-
-        VkPushConstantRange push_constant;
-        {
-            push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT |
-                                       VK_SHADER_STAGE_FRAGMENT_BIT;
-            push_constant.offset = 0;
-            push_constant.size = sizeof(mirinae::U_OverlayPushConst);
-        }
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        {
-            pipelineLayoutInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(
-                desclayouts.size()
-            );
-            pipelineLayoutInfo.pSetLayouts = desclayouts.data();
-            pipelineLayoutInfo.pushConstantRangeCount = 1;
-            pipelineLayoutInfo.pPushConstantRanges = &push_constant;
-        }
-
-        VkPipelineLayout pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(
-            device.logi_device(), &pipelineLayoutInfo, nullptr, &pipelineLayout
-        ));
-
-        return pipelineLayout;
-    }
-
     VkPipeline create_pipeline(
         VkRenderPass renderpass,
         VkPipelineLayout pipelineLayout,
@@ -2760,9 +2532,12 @@ namespace { namespace overlay {
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
             );
-            layout_ = create_pipeline_layout(
-                create_desclayout_main(desclayouts, device), device
-            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_main(desclayouts, device))
+                          .add_vertex_flag()
+                          .add_frag_flag()
+                          .pc(0, sizeof(mirinae::U_OverlayPushConst))
+                          .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
