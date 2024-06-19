@@ -367,64 +367,6 @@ namespace {
         VkShaderStageFlags pc_stage_flags_ = 0;
     };
 
-
-    class ShaderModule {
-
-    public:
-        ShaderModule(
-            const mirinae::respath_t& spv_path, mirinae::VulkanDevice& device
-        )
-            : device_{ device } {
-            if (auto spv = device.filesys().read_file_to_vector(spv_path)) {
-                if (auto shader = this->create_shader_module(
-                        *spv, device.logi_device()
-                    )) {
-                    handle_ = shader.value();
-                } else {
-                    throw std::runtime_error{ fmt::format(
-                        "Failed to create shader module with given data: {}",
-                        spv_path.u8string()
-                    ) };
-                }
-            } else {
-                throw std::runtime_error{ fmt::format(
-                    "Failed to read a shader file: {}", spv_path.u8string()
-                ) };
-            }
-        }
-
-        ~ShaderModule() {
-            if (VK_NULL_HANDLE != handle_) {
-                vkDestroyShaderModule(device_.logi_device(), handle_, nullptr);
-                handle_ = VK_NULL_HANDLE;
-            }
-        }
-
-        VkShaderModule get() const { return handle_; }
-
-    private:
-        static std::optional<VkShaderModule> create_shader_module(
-            const std::vector<uint8_t>& spv, VkDevice logi_device
-        ) {
-            VkShaderModuleCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            createInfo.codeSize = spv.size();
-            createInfo.pCode = reinterpret_cast<const uint32_t*>(spv.data());
-
-            VkShaderModule shaderModule;
-            if (vkCreateShaderModule(
-                    logi_device, &createInfo, nullptr, &shaderModule
-                ) != VK_SUCCESS) {
-                return std::nullopt;
-            }
-
-            return shaderModule;
-        }
-
-        mirinae::VulkanDevice& device_;
-        VkShaderModule handle_ = VK_NULL_HANDLE;
-    };
-
 }  // namespace
 
 
@@ -572,29 +514,6 @@ namespace {
         std::vector<VkPipelineColorBlendAttachmentState> data_;
     };
 
-
-    auto create_info_shader_stages_pair(
-        const ShaderModule& vertex, const ShaderModule& fragment
-    ) {
-        std::array<VkPipelineShaderStageCreateInfo, 2> output{};
-        {
-            auto& shader_info = output[0];
-            shader_info.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_info.module = vertex.get();
-            shader_info.pName = "main";
-        }
-        {
-            auto& shader_info = output[1];
-            shader_info.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_info.module = fragment.get();
-            shader_info.pName = "main";
-        }
-        return output;
-    }
 
     auto create_info_dynamic_states(const VkDynamicState* array, size_t size) {
         VkPipelineDynamicStateCreateInfo output{};
