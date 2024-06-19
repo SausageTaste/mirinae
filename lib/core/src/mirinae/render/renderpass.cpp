@@ -190,7 +190,7 @@ namespace {
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-            return View{ dependency };
+            return View{ data_.back() };
         }
 
         auto data() const { return data_.data(); }
@@ -352,9 +352,9 @@ namespace {
             VkPipelineVertexInputStateCreateInfo output{};
             output.sType =
                 VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            output.vertexBindingDescriptionCount = bindings_.size();
+            output.vertexBindingDescriptionCount = (uint32_t)bindings_.size();
             output.pVertexBindingDescriptions = bindings_.data();
-            output.vertexAttributeDescriptionCount = attribs_.size();
+            output.vertexAttributeDescriptionCount = (uint32_t)attribs_.size();
             output.pVertexAttributeDescriptions = attribs_.data();
             return output;
         }
