@@ -5,7 +5,7 @@
 
 #include <sung/general/angle.hpp>
 
-#include "mirinae/util/include_glm.hpp"
+#include "mirinae/math/include_glm.hpp"
 #include "vkmajorplayers.hpp"
 
 

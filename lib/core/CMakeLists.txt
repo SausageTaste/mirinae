@@ -14,7 +14,6 @@ add_library(mirinae_core STATIC
     ./src/mirinae/scene/transform.cpp
     ./src/mirinae/util/image.cpp
     ./src/mirinae/util/input_proc.cpp
-    ./src/mirinae/util/mamath.cpp
     ./src/mirinae/util/script.cpp
     ./src/mirinae/util/skin_anim.cpp
     ./src/mirinae/util/text_data.cpp

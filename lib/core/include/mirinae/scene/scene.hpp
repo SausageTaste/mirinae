@@ -4,7 +4,7 @@
 
 #include "mirinae/platform/filesys.hpp"
 #include "mirinae/scene/transform.hpp"
-#include "mirinae/util/mamath.hpp"
+#include "mirinae/math/mamath.hpp"
 #include "mirinae/util/script.hpp"
 #include "mirinae/util/skin_anim.hpp"
 
