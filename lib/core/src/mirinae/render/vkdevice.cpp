@@ -7,7 +7,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "mirinae/util/konsts.hpp"
+#include "mirinae/lightweight/konsts.hpp"
 
 
 namespace {

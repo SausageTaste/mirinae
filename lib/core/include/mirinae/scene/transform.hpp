@@ -1,7 +1,7 @@
 #pragma once
 
+#include "mirinae/math/mamath.hpp"
 #include "mirinae/platform/osio.hpp"
-#include "mirinae/util/mamath.hpp"
 #include "mirinae/util/input_proc.hpp"
 
 

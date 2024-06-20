@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-#include "mirinae/util/include_glm.hpp"
+#include "mirinae/math/include_glm.hpp"
 
 
 namespace mirinae {
