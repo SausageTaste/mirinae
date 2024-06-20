@@ -27,12 +27,8 @@ target_compile_features(mirinae_core PUBLIC cxx_std_17)
 target_link_libraries(mirinae_core
     PUBLIC
         Vulkan::Vulkan
-        spdlog
-        lua::lua
         uni-algo::uni-algo
-        EnTT::EnTT
-        mirinae::platform
-        sungtools::general
+        mirinae::cosmos
     PRIVATE
         VulkanMemoryAllocator
         dalbaragi::daltools
