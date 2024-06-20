@@ -66,4 +66,5 @@ add_subdirectory(../extern/SungToolsCpp  ${PROJECT_BINARY_DIR}/SungToolsCpp)
 add_subdirectory(../extern/DalbaragiTools  ${PROJECT_BINARY_DIR}/DalbaragiTools)
 
 add_subdirectory(platform)
+add_subdirectory(cosmos)
 add_subdirectory(core)
