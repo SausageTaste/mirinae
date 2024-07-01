@@ -173,7 +173,7 @@ namespace {
             VkSubpassDependency& dep_;
         };
 
-        View& add() {
+        View add() {
             auto& dependency = data_.emplace_back();
             dependency = {};
 
