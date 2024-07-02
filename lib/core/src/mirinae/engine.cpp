@@ -517,9 +517,10 @@ namespace {
         }
 
         void do_frame() override {
-            scene_.update_time();
-            const auto t = scene_.get_time().tp_;
-            const auto delta_time = scene_.get_time().dt_;
+            cosmos_.do_frame();
+            scene_.update_time(cosmos_.ftime());
+            const auto t = cosmos_.ftime().tp_;
+            const auto delta_time = cosmos_.ftime().dt_;
 
             auto& cam = scene_.reg_.get<mirinae::cpnt::StandardCamera>(
                 scene_.main_camera_
@@ -1480,7 +1481,7 @@ namespace {
             const glm::dmat4& proj_mat, const glm::dmat4& view_mat
         ) {
             namespace cpnt = mirinae::cpnt;
-            const auto t = scene_.get_time().tp_;
+            const auto t = cosmos_.ftime().tp_;
 
             // Update ubuf: U_GbufActor
             scene_.reg_.view<cpnt::Transform, cpnt::StaticActorVk>().each(
@@ -1510,13 +1511,13 @@ namespace {
                           auto& ren_pair,
                           auto& mactor) {
                     const auto model_m = transform.make_model_mat();
-                    mactor.anim_state_.update_tick(scene_.get_time());
+                    mactor.anim_state_.update_tick(cosmos_.ftime());
 
                     mirinae::U_GbufActorSkinned ubuf_data;
                     mactor.anim_state_.sample_anim(
                         ubuf_data.joint_transforms_,
                         mirinae::MAX_JOINTS,
-                        scene_.get_time()
+                        cosmos_.ftime()
                     );
                     ubuf_data.view_model = view_mat * model_m;
                     ubuf_data.pvm = proj_mat * view_mat * model_m;
