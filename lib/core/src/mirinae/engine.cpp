@@ -5,6 +5,7 @@
 #include <daltools/util.h>
 #include <sung/general/time.hpp>
 
+#include "mirinae/cosmos.hpp"
 #include "mirinae/math/glm_fmt.hpp"
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
@@ -478,15 +479,15 @@ namespace {
 
             // DLight
             {
-                const auto entt = scene_.reg_.create();
-                auto& d = scene_.reg_.emplace<mirinae::cpnt::DLight>(entt);
+                const auto entt = cosmos_.reg().create();
+                auto& d = cosmos_.reg().emplace<mirinae::cpnt::DLight>(entt);
                 d.color_ = glm::vec3{ 5, 5, 5 };
             }
 
             // SLight
             {
-                const auto entt = scene_.reg_.create();
-                auto& s = scene_.reg_.emplace<mirinae::cpnt::SLight>(entt);
+                const auto entt = cosmos_.reg().create();
+                auto& s = cosmos_.reg().emplace<mirinae::cpnt::SLight>(entt);
                 s.transform_.pos_ = { 0, 2, 0 };
                 s.color_ = glm::vec3{ 5, 5, 5 };
                 s.inner_angle_.set_deg(10);
@@ -549,8 +550,8 @@ namespace {
             const auto draw_sheet = ::make_draw_sheet(scene_);
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
 
-            for (auto& l : scene_.reg_.view<mirinae::cpnt::DLight>()) {
-                auto& dlight = scene_.reg_.get<mirinae::cpnt::DLight>(l);
+            for (auto& l : cosmos_.reg().view<mirinae::cpnt::DLight>()) {
+                auto& dlight = cosmos_.reg().get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
 
                 dlight.transform_.pos_ = cam.view_.pos_;
@@ -574,8 +575,8 @@ namespace {
                 break;
             }
 
-            for (auto& l : scene_.reg_.view<mirinae::cpnt::SLight>()) {
-                auto& slight = scene_.reg_.get<mirinae::cpnt::SLight>(l);
+            for (auto& l : cosmos_.reg().view<mirinae::cpnt::SLight>()) {
+                auto& slight = cosmos_.reg().get<mirinae::cpnt::SLight>(l);
                 slight.transform_.pos_ = cam.view_.pos_ +
                                          glm::dvec3{ 0, -0.1, 0 };
                 slight.transform_.rot_ = cam.view_.rot_;
@@ -1533,16 +1534,16 @@ namespace {
                 ubuf_data.set_proj_inv(glm::inverse(proj_mat));
                 ubuf_data.set_view_inv(glm::inverse(view_mat));
 
-                for (auto e : scene_.reg_.view<cpnt::DLight>()) {
-                    const auto& light = scene_.reg_.get<cpnt::DLight>(e);
+                for (auto e : cosmos_.reg().view<cpnt::DLight>()) {
+                    const auto& light = cosmos_.reg().get<cpnt::DLight>(e);
                     ubuf_data.set_dlight_mat(light.make_light_mat());
                     ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat));
                     ubuf_data.set_dlight_color(light.color_);
                     break;
                 }
 
-                for (auto e : scene_.reg_.view<cpnt::SLight>()) {
-                    const auto& l = scene_.reg_.get<cpnt::SLight>(e);
+                for (auto e : cosmos_.reg().view<cpnt::SLight>()) {
+                    const auto& l = cosmos_.reg().get<cpnt::SLight>(e);
                     ubuf_data.set_slight_mat(l.make_light_mat());
                     ubuf_data.set_slight_pos(l.calc_view_space_pos(view_mat));
                     ubuf_data.set_slight_dir(l.calc_to_light_dir(view_mat));
@@ -1569,6 +1570,7 @@ namespace {
         mirinae::VulkanDevice device_;
         mirinae::ScriptEngine script_;
 
+        mirinae::CosmosSimulator cosmos_;
         mirinae::Scene scene_;
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
