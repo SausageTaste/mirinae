@@ -17,7 +17,6 @@ add_library(mirinae_core STATIC
     ./src/mirinae/util/script.cpp
     ./src/mirinae/util/skin_anim.cpp
     ./src/mirinae/util/text_data.cpp
-    ./src/mirinae/util/time.cpp
     ./src/mirinae/engine.cpp
 )
 add_library(mirinae::core ALIAS mirinae_core)

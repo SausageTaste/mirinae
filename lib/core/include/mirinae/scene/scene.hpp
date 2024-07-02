@@ -41,7 +41,7 @@ namespace mirinae {
         Scene& operator=(const Scene&) = delete;
         Scene& operator=(Scene&&) = delete;
 
-        void update_time() { ftime_ = global_clock_.update(); }
+        void update_time(const FrameTime& ftime) { ftime_ = ftime; }
         const FrameTime& get_time() { return ftime_; }
 
     public:
@@ -54,7 +54,6 @@ namespace mirinae {
 
     private:
         ScriptEngine& script_;
-        GlobalClock global_clock_;
         FrameTime ftime_;
     };
 

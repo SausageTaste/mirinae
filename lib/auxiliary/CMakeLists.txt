@@ -1,4 +1,5 @@
 add_library(mirinae_aux STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lightweight/time.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/math/mamath.cpp
 )
 add_library(mirinae::aux ALIAS mirinae_aux)
