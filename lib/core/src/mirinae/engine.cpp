@@ -11,7 +11,6 @@
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/renderpass.hpp"
-#include "mirinae/scene/scene.hpp"
 
 
 namespace {
@@ -410,7 +409,7 @@ namespace {
             mirinae::EngineCreateInfo&& cinfo, int init_width, int init_height
         )
             : device_(std::move(cinfo))
-            , scene_(script_)
+            , cosmos_(script_)
             , tex_man_(device_)
             , model_man_(device_)
             , desclayout_(device_)
@@ -461,10 +460,10 @@ namespace {
 
             // Main Camera
             {
-                const auto entt = scene_.reg_.create();
-                scene_.main_camera_ = entt;
+                const auto entt = cosmos_.reg().create();
+                cosmos_.scene().main_camera_ = entt;
 
-                auto& d = scene_.reg_.emplace<mirinae::cpnt::StandardCamera>(
+                auto& d = cosmos_.reg().emplace<mirinae::cpnt::StandardCamera>(
                     entt
                 );
 
@@ -518,12 +517,11 @@ namespace {
 
         void do_frame() override {
             cosmos_.do_frame();
-            scene_.update_time(cosmos_.ftime());
             const auto t = cosmos_.ftime().tp_;
             const auto delta_time = cosmos_.ftime().dt_;
 
-            auto& cam = scene_.reg_.get<mirinae::cpnt::StandardCamera>(
-                scene_.main_camera_
+            auto& cam = cosmos_.reg().get<mirinae::cpnt::StandardCamera>(
+                cosmos_.scene().main_camera_
             );
             camera_controller_.apply(cam.view_, delta_time);
 
@@ -548,7 +546,7 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            const auto draw_sheet = ::make_draw_sheet(scene_);
+            const auto draw_sheet = ::make_draw_sheet(cosmos_.scene());
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
 
             for (auto& l : cosmos_.reg().view<mirinae::cpnt::DLight>()) {
@@ -1333,8 +1331,8 @@ namespace {
             if (input_mgrs_.on_mouse_event(e))
                 return true;
 
-            auto cam = scene_.reg_.try_get<mirinae::cpnt::StandardCamera>(
-                scene_.main_camera_
+            auto cam = cosmos_.reg().try_get<mirinae::cpnt::StandardCamera>(
+                cosmos_.scene().main_camera_
             );
             if (cam) {
                 constexpr auto FACTOR = 1.05;
@@ -1435,9 +1433,10 @@ namespace {
             using SrcSkinn = cpnt::SkinnedModelActor;
             using mirinae::RenderActorSkinned;
 
-            auto& reg = scene_.reg_;
+            auto& scene = cosmos_.scene();
+            auto& reg = cosmos_.reg();
 
-            for (auto eid : scene_.entt_without_model_) {
+            for (auto eid : scene.entt_without_model_) {
                 if (const auto src = reg.try_get<cpnt::StaticModelActor>(eid)) {
                     auto model = model_man_.request_static(
                         src->model_path_, desclayout_, tex_man_
@@ -1474,7 +1473,7 @@ namespace {
                 }
             }
 
-            scene_.entt_without_model_.clear();
+            scene.entt_without_model_.clear();
         }
 
         void update_ubufs(
@@ -1483,8 +1482,11 @@ namespace {
             namespace cpnt = mirinae::cpnt;
             const auto t = cosmos_.ftime().tp_;
 
+            auto& scene = cosmos_.scene();
+            auto& reg = cosmos_.reg();
+
             // Update ubuf: U_GbufActor
-            scene_.reg_.view<cpnt::Transform, cpnt::StaticActorVk>().each(
+            reg.view<cpnt::Transform, cpnt::StaticActorVk>().each(
                 [&](auto enttid, auto& transform, auto& ren_pair) {
                     const auto model_mat = transform.make_model_mat();
 
@@ -1501,11 +1503,10 @@ namespace {
             );
 
             // Update ubuf: U_GbufActorSkinned
-            scene_.reg_
-                .view<
-                    cpnt::Transform,
-                    cpnt::SkinnedActorVk,
-                    cpnt::SkinnedModelActor>()
+            reg.view<
+                   cpnt::Transform,
+                   cpnt::SkinnedActorVk,
+                   cpnt::SkinnedModelActor>()
                 .each([&](auto enttid,
                           auto& transform,
                           auto& ren_pair,
@@ -1572,7 +1573,6 @@ namespace {
         mirinae::ScriptEngine script_;
 
         mirinae::CosmosSimulator cosmos_;
-        mirinae::Scene scene_;
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DesclayoutManager desclayout_;
