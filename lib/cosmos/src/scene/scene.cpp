@@ -11,8 +11,10 @@
 
 namespace {
 
+    const char* const SCENE_PTR_NAME = "__mirinae_cosmos_scene_ptr";
+
     mirinae::Scene* find_scene_ptr(lua_State* const L) {
-        const auto usrptr = mirinae::find_global_ptr(L, "__mirinae_scene_ptr");
+        const auto usrptr = mirinae::find_global_ptr(L, SCENE_PTR_NAME);
         const auto scene = static_cast<mirinae::Scene*>(usrptr);
         if (!scene)
             return nullptr;
@@ -205,7 +207,7 @@ namespace { namespace scene {
             auto& self = *check_udata(L, 1);
             const auto anim_name = luaL_checkstring(L, 2);
 
-            self.select_anim_name(anim_name, scene.get_time());
+            self.select_anim_name(anim_name, scene.ftime());
             return 0;
         }
 
@@ -215,9 +217,9 @@ namespace { namespace scene {
             const auto anim_index = luaL_checkinteger(L, 2);
 
             if (anim_index < 0)
-                self.deselect_anim(scene.get_time());
+                self.deselect_anim(scene.ftime());
             else
-                self.select_anim_index((size_t)anim_index, scene.get_time());
+                self.select_anim_index((size_t)anim_index, scene.ftime());
 
             return 0;
         }
@@ -441,11 +443,68 @@ namespace { namespace scene {
 }}  // namespace ::scene
 
 
+// DLight
+namespace mirinae::cpnt {
+
+    glm::vec3 DLight::calc_to_light_dir(const glm::dmat4 view_mat) const {
+        const auto v = view_mat * transform_.make_model_mat() *
+                       glm::dvec4(0, 0, 1, 0);
+        return glm::normalize(glm::vec3(v));
+    };
+
+    glm::dmat4 DLight::make_proj_mat() const {
+        auto p = glm::orthoRH_ZO<double>(-10, 10, -10, 10, -50, 50);
+        return p;
+    }
+
+    glm::dmat4 DLight::make_view_mat() const {
+        return transform_.make_view_mat();
+    }
+
+    glm::dmat4 DLight::make_light_mat() const {
+        return make_proj_mat() * make_view_mat();
+    }
+
+}  // namespace mirinae::cpnt
+
+
+// SLight
+namespace mirinae::cpnt {
+
+    glm::vec3 SLight::calc_view_space_pos(const glm::dmat4 view_mat) const {
+        const auto v = view_mat * glm::dvec4(transform_.pos_, 1);
+        return glm::vec3(v);
+    }
+
+    glm::vec3 SLight::calc_to_light_dir(const glm::dmat4 view_mat) const {
+        const auto v = view_mat * transform_.make_model_mat() *
+                       glm::dvec4(0, 0, 1, 0);
+        return glm::normalize(glm::vec3(v));
+    };
+
+    glm::dmat4 SLight::make_proj_mat() const {
+        return glm::perspectiveRH_ZO(
+            outer_angle_.rad() * 2, 1.0, 0.1, max_distance_
+        );
+    }
+
+    glm::dmat4 SLight::make_view_mat() const {
+        return transform_.make_view_mat();
+    }
+
+    glm::dmat4 SLight::make_light_mat() const {
+        return make_proj_mat() * make_view_mat();
+    }
+
+}  // namespace mirinae::cpnt
+
+
+// Scene
 namespace mirinae {
 
     Scene::Scene(ScriptEngine& script) : script_(script) {
-        script_.register_global_ptr("__mirinae_scene_ptr", this);
-        script_.register_module("scene", ::scene::luaopen_scene);
+        script_.register_global_ptr(SCENE_PTR_NAME, this);
+        script_.register_module("scene", scene::luaopen_scene);
     }
 
 }  // namespace mirinae

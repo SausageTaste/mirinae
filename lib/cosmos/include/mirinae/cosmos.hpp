@@ -1,7 +1,6 @@
 #pragma once
 
-#include "mirinae/lightweight/time.hpp"
-#include "mirinae/scene_2/scene.hpp"
+#include "mirinae/scene/scene.hpp"
 
 
 namespace mirinae {
@@ -9,15 +8,18 @@ namespace mirinae {
     class CosmosSimulator {
 
     public:
-        void do_frame() { ftime_ = clock_.update(); }
+        CosmosSimulator(ScriptEngine& script)
+            : scene_(script) {}
 
+        void do_frame() { scene_.ftime_ = clock_.update(); }
+
+        auto& scene() { return scene_; }
         auto& reg() { return scene_.reg_; }
-        auto& ftime() const { return ftime_; }
+        auto& ftime() const { return scene_.ftime_; }
 
     private:
-        SceneMgr scene_;
+        Scene scene_;
         GlobalClock clock_;
-        FrameTime ftime_;
     };
 
 }  // namespace mirinae
