@@ -443,7 +443,6 @@ namespace {
             {
                 input_mgrs_.add(std::make_unique<DominantCommandProc>(device_));
                 input_mgrs_.add(&overlay_man_);
-                // input_mgrs_.add(&camera_controller_);
             }
 
             // Widget: Dev console
@@ -490,7 +489,6 @@ namespace {
             auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
                 cosmos_->scene().main_camera_
             );
-            // camera_controller_.apply(cam.view_, delta_time);
 
             this->update_unloaded_models();
 
@@ -1280,34 +1278,21 @@ namespace {
             if (input_mgrs_.on_key_event(e))
                 return true;
 
-            return true;
+            return false;
         }
 
         bool on_text_event(char32_t c) override {
             if (input_mgrs_.on_text_event(c))
                 return true;
 
-            return true;
+            return false;
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
-            // camera_controller_.osio_ = &device_.osio();
-
             if (input_mgrs_.on_mouse_event(e))
                 return true;
 
-            auto cam = cosmos_->reg().try_get<mirinae::cpnt::StandardCamera>(
-                cosmos_->scene().main_camera_
-            );
-            if (cam) {
-                constexpr auto FACTOR = 1.05;
-                if (e.action_ == mirinae::mouse::ActionType::mwheel_up)
-                    cam->proj_.multiply_fov(1.0 / FACTOR);
-                else if (e.action_ == mirinae::mouse::ActionType::mwheel_down)
-                    cam->proj_.multiply_fov(FACTOR);
-            }
-
-            return true;
+            return false;
         }
 
     private:
@@ -1552,7 +1537,6 @@ namespace {
         ::ShadowMapPool shadow_maps_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
-        // mirinae::syst::NoclipController camera_controller_;
         mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;
         std::shared_ptr<mirinae::ITextData> dev_console_output_;
