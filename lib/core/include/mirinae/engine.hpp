@@ -24,8 +24,6 @@ namespace mirinae {
     };
 
 
-    std::unique_ptr<IEngine> create_engine(
-        mirinae::EngineCreateInfo&& create_info
-    );
+    std::unique_ptr<IEngine> create_engine(EngineCreateInfo&& create_info);
 
 }  // namespace mirinae

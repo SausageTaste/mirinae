@@ -1,34 +1,50 @@
 #include "mirinae/engine.hpp"
 
+#include "mirinae/renderer.hpp"
 
-namespace mirinae {
 
-    class Engine : public IEngine {
+namespace {
+
+    class Engine : public mirinae::IEngine {
+
     public:
-        Engine(EngineCreateInfo&& create_info)
-            : create_info_(std::move(create_info)) {}
+        Engine(mirinae::EngineCreateInfo&& cinfo) {
+            renderer_ = mirinae::create_vk_renderer(std::move(cinfo));
+        }
 
         ~Engine() override {}
 
-        void do_frame() override {}
+        void do_frame() override { renderer_->do_frame(); }
 
         bool is_ongoing() override { return true; }
 
-        void notify_window_resize(uint32_t width, uint32_t height) override {}
+        void notify_window_resize(uint32_t width, uint32_t height) override {
+            renderer_->notify_window_resize(width, height);
+        }
+
+        bool on_key_event(const mirinae::key::Event& e) override {
+            return renderer_->on_key_event(e);
+        }
+
+        bool on_text_event(char32_t c) override {
+            return renderer_->on_text_event(c);
+        }
+
+        bool on_mouse_event(const mirinae::mouse::Event& e) override {
+            return renderer_->on_mouse_event(e);
+        }
 
     private:
-        EngineCreateInfo create_info_;
+        std::unique_ptr<mirinae::IRenderer> renderer_;
     };
 
-}  // namespace mirinae
+}  // namespace
 
 
 namespace mirinae {
 
-    std::unique_ptr<IEngine> create_engine(
-        mirinae::EngineCreateInfo&& create_info
-    ) {
-        return std::make_unique<Engine>(std::move(create_info));
+    std::unique_ptr<IEngine> create_engine(EngineCreateInfo&& cinfo) {
+        return std::make_unique<::Engine>(std::move(cinfo));
     }
 
 }  // namespace mirinae
