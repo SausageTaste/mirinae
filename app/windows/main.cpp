@@ -402,11 +402,13 @@ namespace {
         CombinedEngine() : window_(800, 600, "Mirinapp") {
             system("chcp 65001");
 
-            mirinae::EngineCreateInfo create_info;
-            create_info.filesys_ = mirinae::create_filesys_std(
+            auto filesys = mirinae::create_filesys_std(
                 ::get_windows_documents_path("Mirinapp")
             );
-            create_info.osio_ = std::make_unique<OsInputOutput>(window_);
+
+            mirinae::EngineCreateInfo create_info;
+            create_info.filesys_.reset(filesys.release());
+            create_info.osio_ = std::make_shared<OsInputOutput>(window_);
             create_info.instance_extensions_ = ::get_glfw_extensions();
             create_info.surface_creator_ = [this](void* instance) -> uint64_t {
                 auto surface = this->window_.create_surface(
