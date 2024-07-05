@@ -6,12 +6,12 @@
 #include <sung/general/time.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/lightweight/script.hpp"
 #include "mirinae/math/glm_fmt.hpp"
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/renderpass.hpp"
 #include "mirinae/scene/scene.hpp"
-#include "mirinae/util/script.hpp"
 
 
 namespace {

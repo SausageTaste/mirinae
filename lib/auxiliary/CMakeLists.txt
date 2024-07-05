@@ -1,4 +1,6 @@
 add_library(mirinae_aux STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lightweight/script.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lightweight/text_data.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lightweight/time.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/math/mamath.cpp
 )
@@ -7,6 +9,8 @@ target_include_directories(mirinae_aux PUBLIC ./include)
 target_compile_features(mirinae_aux PUBLIC cxx_std_17)
 target_link_libraries(mirinae_aux PUBLIC
     glm::glm
+    lua::lua
+    uni-algo::uni-algo
     spdlog
     sungtools::general
 )

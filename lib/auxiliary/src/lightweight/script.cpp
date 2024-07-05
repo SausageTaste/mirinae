@@ -1,4 +1,4 @@
-#include "mirinae/util/script.hpp"
+#include "mirinae/lightweight/script.hpp"
 
 #include <sstream>
 

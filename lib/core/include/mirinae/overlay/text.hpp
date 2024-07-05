@@ -2,8 +2,8 @@
 
 #include <stb_truetype.h>
 
+#include "mirinae/lightweight/text_data.hpp"
 #include "mirinae/overlay/iwidget.hpp"
-#include "mirinae/util/text_data.hpp"
 #include "mirinae/platform/osio.hpp"
 
 

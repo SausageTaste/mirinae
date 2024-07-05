@@ -1,8 +1,8 @@
 #pragma once
 
+#include "mirinae/lightweight/script.hpp"
 #include "mirinae/overlay/iwidget.hpp"
 #include "mirinae/overlay/text.hpp"
-#include "mirinae/util/script.hpp"
 
 
 namespace mirinae {

@@ -14,9 +14,7 @@ add_library(mirinae_core STATIC
     ./src/mirinae/scene/transform.cpp
     ./src/mirinae/util/image.cpp
     ./src/mirinae/util/input_proc.cpp
-    ./src/mirinae/util/script.cpp
     ./src/mirinae/util/skin_anim.cpp
-    ./src/mirinae/util/text_data.cpp
     ./src/mirinae/engine.cpp
 )
 add_library(mirinae::core ALIAS mirinae_core)
@@ -25,7 +23,6 @@ target_compile_features(mirinae_core PUBLIC cxx_std_17)
 target_link_libraries(mirinae_core
     PUBLIC
         Vulkan::Vulkan
-        uni-algo::uni-algo
         mirinae::cosmos
     PRIVATE
         VulkanMemoryAllocator
