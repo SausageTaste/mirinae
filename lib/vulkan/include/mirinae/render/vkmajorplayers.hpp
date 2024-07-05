@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 
-#include "mirinae/util/image.hpp"
-#include "mirinae/util/lightweights.hpp"
+#include "mirinae/lightweight/image.hpp"
+#include "mirinae/lightweight/lightweights.hpp"
 
 #include "meshdata.hpp"
 #include "vkdevice.hpp"

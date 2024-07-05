@@ -2,7 +2,7 @@
 
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/platform/osio.hpp"
-#include "mirinae/util/input_proc.hpp"
+#include "mirinae/lightweight/input_proc.hpp"
 
 
 namespace mirinae::cpnt {

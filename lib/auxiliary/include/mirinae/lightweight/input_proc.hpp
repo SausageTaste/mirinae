@@ -4,7 +4,7 @@
 #include <variant>
 #include <vector>
 
-#include "mirinae/util/uinput.hpp"
+#include "mirinae/lightweight/uinput.hpp"
 
 
 namespace mirinae {

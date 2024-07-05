@@ -5,7 +5,7 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
-#include "mirinae/util/image.hpp"
+#include "mirinae/lightweight/image.hpp"
 
 
 #define VK_CHECK(x)                \
