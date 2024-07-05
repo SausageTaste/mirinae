@@ -1,5 +1,5 @@
 add_library(mirinae_core STATIC
-    ./src/mirinae/engine.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/engine.cpp
 )
 add_library(mirinae::core ALIAS mirinae_core)
 target_include_directories(mirinae_core PUBLIC ./include)
