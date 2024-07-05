@@ -2,6 +2,7 @@
 
 #include <sung/general/aabb.hpp>
 
+#include "mirinae/lightweight/input_proc.hpp"
 #include "mirinae/render/renderee.hpp"
 
 

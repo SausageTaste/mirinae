@@ -3,8 +3,8 @@
 #include <memory>
 #include <optional>
 
-#include "mirinae/util/create_info.hpp"
-#include "mirinae/util/lightweights.hpp"
+#include "mirinae/lightweight/create_info.hpp"
+#include "mirinae/lightweight/lightweights.hpp"
 
 #include "mem_alloc.hpp"
 
