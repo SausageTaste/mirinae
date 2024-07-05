@@ -1,6 +1,8 @@
 add_library(mirinae_platform STATIC
-    ./src/filesys.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/filesys.cpp
 )
-add_library(mirinae::platform ALIAS mirinae_platform)
-target_include_directories(mirinae_platform PUBLIC ./include)
+target_include_directories(mirinae_platform PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 target_compile_features(mirinae_platform PUBLIC cxx_std_17)
+add_library(mirinae::platform ALIAS mirinae_platform)
