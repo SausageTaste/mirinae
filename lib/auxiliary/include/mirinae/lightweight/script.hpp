@@ -9,7 +9,7 @@ extern "C" {
 #include <lualib.h>
 }
 
-#include "mirinae/util/text_data.hpp"
+#include "mirinae/lightweight/text_data.hpp"
 
 
 namespace mirinae {

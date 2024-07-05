@@ -2,10 +2,10 @@
 
 #include <entt/entt.hpp>
 
+#include "mirinae/lightweight/script.hpp"
+#include "mirinae/math/mamath.hpp"
 #include "mirinae/platform/filesys.hpp"
 #include "mirinae/scene/transform.hpp"
-#include "mirinae/math/mamath.hpp"
-#include "mirinae/util/script.hpp"
 #include "mirinae/util/skin_anim.hpp"
 
 
