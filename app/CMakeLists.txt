@@ -15,3 +15,4 @@ FetchContent_MakeAvailable(
 
 
 add_subdirectory(windows)
+add_subdirectory(server)
