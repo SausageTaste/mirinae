@@ -468,14 +468,11 @@ namespace {
         ~RendererVulkan() {
             device_.wait_idle();
 
-        auto& reg = cosmos_->reg();
-        for (auto enttid : reg.view<mirinae::cpnt::StaticActorVk>()) {
-            reg.remove<mirinae::cpnt::StaticActorVk>(enttid);
-        }
-        for (auto& enttid : reg.view<mirinae::cpnt::SkinnedActorVk>()) {
-            reg.remove<mirinae::cpnt::SkinnedActorVk>(enttid);
-        }
-
+            auto& reg = cosmos_->reg();
+            for (auto enttid : reg.view<mirinae::cpnt::StaticActorVk>())
+                reg.remove<mirinae::cpnt::StaticActorVk>(enttid);
+            for (auto& enttid : reg.view<mirinae::cpnt::SkinnedActorVk>())
+                reg.remove<mirinae::cpnt::SkinnedActorVk>(enttid);
 
             cmd_pool_.destroy(device_.logi_device());
             this->destroy_swapchain_and_relatives();
