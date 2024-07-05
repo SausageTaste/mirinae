@@ -4,10 +4,10 @@
 
 #include <daltools/struct.h>
 
+#include "mirinae/lightweight/skin_anim.hpp"
 #include "mirinae/render/uniform.hpp"
 #include "mirinae/render/vkcomposition.hpp"
 #include "mirinae/scene/transform.hpp"
-#include "mirinae/util/skin_anim.hpp"
 
 
 namespace mirinae {
