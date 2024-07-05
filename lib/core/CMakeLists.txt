@@ -1,5 +1,4 @@
 add_library(mirinae_core STATIC
-    ./src/mirinae/scene/transform.cpp
     ./src/mirinae/engine.cpp
 )
 add_library(mirinae::core ALIAS mirinae_core)
