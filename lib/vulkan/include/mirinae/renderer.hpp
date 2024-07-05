@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/create_info.hpp"
 #include "mirinae/lightweight/input_proc.hpp"
 #include "mirinae/platform/filesys.hpp"
@@ -22,6 +23,10 @@ namespace mirinae {
     };
 
 
-    std::unique_ptr<IRenderer> create_vk_renderer(EngineCreateInfo&& cinfo);
+    std::unique_ptr<IRenderer> create_vk_renderer(
+        EngineCreateInfo&& cinfo,
+        std::shared_ptr<ScriptEngine>& script,
+        std::shared_ptr<CosmosSimulator>& cosmos
+    );
 
 }  // namespace mirinae

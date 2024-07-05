@@ -406,10 +406,15 @@ namespace {
 
     public:
         RendererVulkan(
-            mirinae::EngineCreateInfo&& cinfo, int init_width, int init_height
+            mirinae::EngineCreateInfo&& cinfo,
+            std::shared_ptr<mirinae::ScriptEngine>& script,
+            std::shared_ptr<mirinae::CosmosSimulator>& cosmos,
+            int init_width,
+            int init_height
         )
             : device_(std::move(cinfo))
-            , cosmos_(script_)
+            , script_(script)
+            , cosmos_(cosmos)
             , tex_man_(device_)
             , model_man_(device_)
             , desclayout_(device_)
@@ -444,64 +449,18 @@ namespace {
             // Widget: Dev console
             {
                 dev_console_output_ = mirinae::create_text_blocks();
-                script_.replace_output_buf(dev_console_output_);
+                script->replace_output_buf(dev_console_output_);
 
                 auto w = mirinae::create_dev_console(
                     overlay_man_.text_render_data(),
                     desclayout_,
                     tex_man_,
-                    script_,
+                    *script,
                     device_
                 );
                 w->replace_output_buf(dev_console_output_);
                 w->hide(true);
                 overlay_man_.widgets().add_widget(std::move(w));
-            }
-
-            // Main Camera
-            {
-                const auto entt = cosmos_.reg().create();
-                cosmos_.scene().main_camera_ = entt;
-
-                auto& d = cosmos_.reg().emplace<mirinae::cpnt::StandardCamera>(
-                    entt
-                );
-
-                d.view_.pos_ = glm::dvec3{ 0.14983922321477,
-                                           0.66663010560478,
-                                           -1.1615585516897 };
-                d.view_.rot_ = { 0.5263130886922,
-                                 0.022307853585388,
-                                 0.84923568828777,
-                                 -0.035994972955897 };
-            }
-
-            // DLight
-            {
-                const auto entt = cosmos_.reg().create();
-                auto& d = cosmos_.reg().emplace<mirinae::cpnt::DLight>(entt);
-                d.color_ = glm::vec3{ 5, 5, 5 };
-            }
-
-            // SLight
-            {
-                const auto entt = cosmos_.reg().create();
-                auto& s = cosmos_.reg().emplace<mirinae::cpnt::SLight>(entt);
-                s.transform_.pos_ = { 0, 2, 0 };
-                s.color_ = glm::vec3{ 5, 5, 5 };
-                s.inner_angle_.set_deg(10);
-                s.outer_angle_.set_deg(25);
-            }
-
-            // Script
-            {
-                const auto contents = device_.filesys().read_file_to_vector(
-                    "asset/script/startup.lua"
-                );
-                if (contents) {
-                    const std::string str{ contents->begin(), contents->end() };
-                    script_.exec(str.c_str());
-                }
             }
 
             fps_timer_.set_fps_cap(120);
@@ -510,18 +469,26 @@ namespace {
         ~RendererVulkan() {
             device_.wait_idle();
 
+        auto& reg = cosmos_->reg();
+        for (auto enttid : reg.view<mirinae::cpnt::StaticActorVk>()) {
+            reg.remove<mirinae::cpnt::StaticActorVk>(enttid);
+        }
+        for (auto& enttid : reg.view<mirinae::cpnt::SkinnedActorVk>()) {
+            reg.remove<mirinae::cpnt::SkinnedActorVk>(enttid);
+        }
+
+
             cmd_pool_.destroy(device_.logi_device());
             this->destroy_swapchain_and_relatives();
             framesync_.destroy(device_.logi_device());
         }
 
         void do_frame() override {
-            cosmos_.do_frame();
-            const auto t = cosmos_.ftime().tp_;
-            const auto delta_time = cosmos_.ftime().dt_;
+            const auto t = cosmos_->ftime().tp_;
+            const auto delta_time = cosmos_->ftime().dt_;
 
-            auto& cam = cosmos_.reg().get<mirinae::cpnt::StandardCamera>(
-                cosmos_.scene().main_camera_
+            auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
+                cosmos_->scene().main_camera_
             );
             // camera_controller_.apply(cam.view_, delta_time);
 
@@ -546,11 +513,11 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            const auto draw_sheet = ::make_draw_sheet(cosmos_.scene());
+            const auto draw_sheet = ::make_draw_sheet(cosmos_->scene());
             auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
 
-            for (auto& l : cosmos_.reg().view<mirinae::cpnt::DLight>()) {
-                auto& dlight = cosmos_.reg().get<mirinae::cpnt::DLight>(l);
+            for (auto& l : cosmos_->reg().view<mirinae::cpnt::DLight>()) {
+                auto& dlight = cosmos_->reg().get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
 
                 dlight.transform_.pos_ = cam.view_.pos_;
@@ -574,8 +541,8 @@ namespace {
                 break;
             }
 
-            for (auto& l : cosmos_.reg().view<mirinae::cpnt::SLight>()) {
-                auto& slight = cosmos_.reg().get<mirinae::cpnt::SLight>(l);
+            for (auto& l : cosmos_->reg().view<mirinae::cpnt::SLight>()) {
+                auto& slight = cosmos_->reg().get<mirinae::cpnt::SLight>(l);
                 slight.transform_.pos_ = cam.view_.pos_ +
                                          glm::dvec3{ 0, -0.1, 0 };
                 slight.transform_.rot_ = cam.view_.rot_;
@@ -1329,8 +1296,8 @@ namespace {
             if (input_mgrs_.on_mouse_event(e))
                 return true;
 
-            auto cam = cosmos_.reg().try_get<mirinae::cpnt::StandardCamera>(
-                cosmos_.scene().main_camera_
+            auto cam = cosmos_->reg().try_get<mirinae::cpnt::StandardCamera>(
+                cosmos_->scene().main_camera_
             );
             if (cam) {
                 constexpr auto FACTOR = 1.05;
@@ -1431,8 +1398,8 @@ namespace {
             using SrcSkinn = cpnt::SkinnedModelActor;
             using mirinae::RenderActorSkinned;
 
-            auto& scene = cosmos_.scene();
-            auto& reg = cosmos_.reg();
+            auto& scene = cosmos_->scene();
+            auto& reg = cosmos_->reg();
 
             for (auto eid : scene.entt_without_model_) {
                 if (const auto src = reg.try_get<cpnt::StaticModelActor>(eid)) {
@@ -1478,10 +1445,10 @@ namespace {
             const glm::dmat4& proj_mat, const glm::dmat4& view_mat
         ) {
             namespace cpnt = mirinae::cpnt;
-            const auto t = cosmos_.ftime().tp_;
+            const auto t = cosmos_->ftime().tp_;
 
-            auto& scene = cosmos_.scene();
-            auto& reg = cosmos_.reg();
+            auto& scene = cosmos_->scene();
+            auto& reg = cosmos_->reg();
 
             // Update ubuf: U_GbufActor
             reg.view<cpnt::Transform, cpnt::StaticActorVk>().each(
@@ -1510,13 +1477,13 @@ namespace {
                           auto& ren_pair,
                           auto& mactor) {
                     const auto model_m = transform.make_model_mat();
-                    mactor.anim_state_.update_tick(cosmos_.ftime());
+                    mactor.anim_state_.update_tick(cosmos_->ftime());
 
                     mirinae::U_GbufActorSkinned ubuf_data;
                     mactor.anim_state_.sample_anim(
                         ubuf_data.joint_transforms_,
                         mirinae::MAX_JOINTS,
-                        cosmos_.ftime()
+                        cosmos_->ftime()
                     );
                     ubuf_data.view_model = view_mat * model_m;
                     ubuf_data.pvm = proj_mat * view_mat * model_m;
@@ -1534,16 +1501,16 @@ namespace {
                 ubuf_data.set_proj_inv(glm::inverse(proj_mat));
                 ubuf_data.set_view_inv(glm::inverse(view_mat));
 
-                for (auto e : cosmos_.reg().view<cpnt::DLight>()) {
-                    const auto& light = cosmos_.reg().get<cpnt::DLight>(e);
+                for (auto e : cosmos_->reg().view<cpnt::DLight>()) {
+                    const auto& light = cosmos_->reg().get<cpnt::DLight>(e);
                     ubuf_data.set_dlight_mat(light.make_light_mat());
                     ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat));
                     ubuf_data.set_dlight_color(light.color_);
                     break;
                 }
 
-                for (auto e : cosmos_.reg().view<cpnt::SLight>()) {
-                    const auto& l = cosmos_.reg().get<cpnt::SLight>(e);
+                for (auto e : cosmos_->reg().view<cpnt::SLight>()) {
+                    const auto& l = cosmos_->reg().get<cpnt::SLight>(e);
                     ubuf_data.set_slight_mat(l.make_light_mat());
                     ubuf_data.set_slight_pos(l.calc_view_space_pos(view_mat));
                     ubuf_data.set_slight_dir(l.calc_to_light_dir(view_mat));
@@ -1568,9 +1535,9 @@ namespace {
 
         // This must be the first member variable
         mirinae::VulkanDevice device_;
-        mirinae::ScriptEngine script_;
+        std::shared_ptr<mirinae::ScriptEngine> script_;
+        std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
-        mirinae::CosmosSimulator cosmos_;
         mirinae::TextureManager tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DesclayoutManager desclayout_;
@@ -1602,10 +1569,16 @@ namespace {
 
 namespace mirinae {
 
-    std::unique_ptr<IRenderer> create_vk_renderer(EngineCreateInfo&& cinfo) {
+    std::unique_ptr<IRenderer> create_vk_renderer(
+        EngineCreateInfo&& cinfo,
+        std::shared_ptr<ScriptEngine>& script,
+        std::shared_ptr<CosmosSimulator>& cosmos
+    ) {
         const auto w = cinfo.init_width_;
         const auto h = cinfo.init_height_;
-        return std::make_unique<::RendererVulkan>(std::move(cinfo), w, h);
+        return std::make_unique<::RendererVulkan>(
+            std::move(cinfo), script, cosmos, w, h
+        );
     }
 
 }  // namespace mirinae
