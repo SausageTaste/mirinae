@@ -1,4 +1,4 @@
-#include "mirinae/util/skin_anim.hpp"
+#include "mirinae/lightweight/skin_anim.hpp"
 
 #include <algorithm>
 #include <unordered_map>

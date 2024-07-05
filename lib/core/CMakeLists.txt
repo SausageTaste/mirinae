@@ -14,7 +14,6 @@ add_library(mirinae_core STATIC
     ./src/mirinae/scene/transform.cpp
     ./src/mirinae/util/image.cpp
     ./src/mirinae/util/input_proc.cpp
-    ./src/mirinae/util/skin_anim.cpp
     ./src/mirinae/engine.cpp
 )
 add_library(mirinae::core ALIAS mirinae_core)
@@ -26,7 +25,6 @@ target_link_libraries(mirinae_core
         mirinae::cosmos
     PRIVATE
         VulkanMemoryAllocator
-        dalbaragi::daltools
 )
 
 if (WIN32)
