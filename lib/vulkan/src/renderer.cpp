@@ -402,10 +402,10 @@ namespace {
 // Engine
 namespace {
 
-    class EngineGlfw : public mirinae::IEngine {
+    class RendererVulkan : public mirinae::IRenderer {
 
     public:
-        EngineGlfw(
+        RendererVulkan(
             mirinae::EngineCreateInfo&& cinfo, int init_width, int init_height
         )
             : device_(std::move(cinfo))
@@ -419,7 +419,7 @@ namespace {
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
             // This must be the first member variable right after vtable pointer
-            static_assert(offsetof(EngineGlfw, device_) == sizeof(void*));
+            static_assert(offsetof(RendererVulkan, device_) == sizeof(void*));
 
             framesync_.init(device_.logi_device());
 
@@ -438,7 +438,7 @@ namespace {
             {
                 input_mgrs_.add(std::make_unique<DominantCommandProc>(device_));
                 input_mgrs_.add(&overlay_man_);
-                //input_mgrs_.add(&camera_controller_);
+                // input_mgrs_.add(&camera_controller_);
             }
 
             // Widget: Dev console
@@ -507,7 +507,7 @@ namespace {
             fps_timer_.set_fps_cap(120);
         }
 
-        ~EngineGlfw() {
+        ~RendererVulkan() {
             device_.wait_idle();
 
             cmd_pool_.destroy(device_.logi_device());
@@ -523,7 +523,7 @@ namespace {
             auto& cam = cosmos_.reg().get<mirinae::cpnt::StandardCamera>(
                 cosmos_.scene().main_camera_
             );
-            //camera_controller_.apply(cam.view_, delta_time);
+            // camera_controller_.apply(cam.view_, delta_time);
 
             this->update_unloaded_models();
 
@@ -1303,8 +1303,6 @@ namespace {
             framesync_.increase_frame_index();
         }
 
-        bool is_ongoing() override { return !quit_; }
-
         void notify_window_resize(uint32_t width, uint32_t height) override {
             fbuf_width_ = width;
             fbuf_height_ = height;
@@ -1326,7 +1324,7 @@ namespace {
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
-            //camera_controller_.osio_ = &device_.osio();
+            // camera_controller_.osio_ = &device_.osio();
 
             if (input_mgrs_.on_mouse_event(e))
                 return true;
@@ -1587,7 +1585,7 @@ namespace {
         ::ShadowMapPool shadow_maps_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
-        //mirinae::syst::NoclipController camera_controller_;
+        // mirinae::syst::NoclipController camera_controller_;
         mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;
         std::shared_ptr<mirinae::ITextData> dev_console_output_;
@@ -1604,14 +1602,10 @@ namespace {
 
 namespace mirinae {
 
-    std::unique_ptr<IEngine> create_engine(
-        mirinae::EngineCreateInfo&& create_info
-    ) {
-        const auto init_width = create_info.init_width_;
-        const auto init_height = create_info.init_height_;
-        return std::make_unique<EngineGlfw>(
-            std::move(create_info), init_width, init_height
-        );
+    std::unique_ptr<IRenderer> create_vk_renderer(EngineCreateInfo&& cinfo) {
+        const auto w = cinfo.init_width_;
+        const auto h = cinfo.init_height_;
+        return std::make_unique<::RendererVulkan>(std::move(cinfo), w, h);
     }
 
 }  // namespace mirinae
