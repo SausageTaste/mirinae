@@ -56,8 +56,8 @@ namespace {
 
             switch (event.type) {
                 case ENET_EVENT_TYPE_CONNECT:
-                    printf(
-                        "A new client connected from %x:%u.\n",
+                    spdlog::info(
+                        "A new client connected from {}:{}",
                         event.peer->address.host,
                         event.peer->address.port
                     );
@@ -68,13 +68,9 @@ namespace {
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
-                    printf(
-                        "A packet of length %u containing %s was received "
-                        "from %s on channel %u.\n",
-                        event.packet->dataLength,
-                        event.packet->data,
-                        event.peer->data,
-                        event.channelID
+                    spdlog::info(
+                        "A packet of length {} was received",
+                        event.packet->dataLength
                     );
 
                     /* Clean up the packet now that we're done using it. */
@@ -83,7 +79,7 @@ namespace {
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    printf("%s disconnected.\n", event.peer->data);
+                    spdlog::info("{} disconnected.\n", event.peer->data);
 
                     /* Reset the peer's client information. */
 
@@ -134,8 +130,8 @@ namespace {
 
             switch (event.type) {
                 case ENET_EVENT_TYPE_CONNECT:
-                    printf(
-                        "A new client connected from %x:%u.\n",
+                    spdlog::info(
+                        "A new client connected from {}:{}",
                         event.peer->address.host,
                         event.peer->address.port
                     );
@@ -146,13 +142,9 @@ namespace {
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
-                    printf(
-                        "A packet of length %u containing %s was received "
-                        "from %s on channel %u.\n",
-                        event.packet->dataLength,
-                        event.packet->data,
-                        event.peer->data,
-                        event.channelID
+                    spdlog::info(
+                        "A packet of length {} was received",
+                        event.packet->dataLength
                     );
 
                     /* Clean up the packet now that we're done using it. */
@@ -161,7 +153,7 @@ namespace {
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    printf("%s disconnected.\n", event.peer->data);
+                    spdlog::info("{} disconnected.\n", event.peer->data);
 
                     /* Reset the peer's client information. */
 
