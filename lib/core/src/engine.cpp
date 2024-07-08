@@ -1,5 +1,6 @@
 #include "mirinae/engine.hpp"
 
+#include "mirinae/lightweight/network.hpp"
 #include "mirinae/renderer.hpp"
 
 
@@ -154,6 +155,7 @@ namespace {
             auto filesys = cinfo.filesys_;
             camera_controller_.osio_ = cinfo.osio_;
 
+            client_ = mirinae::create_client();
             script_ = std::make_shared<mirinae::ScriptEngine>();
             cosmos_ = std::make_shared<mirinae::CosmosSimulator>(*script_);
             renderer_ = mirinae::create_vk_renderer(
@@ -212,11 +214,16 @@ namespace {
         void do_frame() override {
             const auto delta_time = delta_timer_.check_get_elapsed();
 
+            if (sec5_.check_if_elapsed(5)) {
+                client_->send();
+            }
+
             auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
                 cosmos_->scene().main_camera_
             );
             camera_controller_.apply(cam.view_, delta_time);
 
+            client_->do_frame();
             cosmos_->do_frame();
             renderer_->do_frame();
         }
@@ -261,11 +268,12 @@ namespace {
         }
 
     private:
+        std::unique_ptr<mirinae::INetworkClient> client_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
         std::unique_ptr<mirinae::IRenderer> renderer_;
 
-        sung::MonotonicClock delta_timer_;
+        sung::MonotonicClock delta_timer_, sec5_;
         ::NoclipController camera_controller_;
     };
 
