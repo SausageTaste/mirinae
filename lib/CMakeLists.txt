@@ -41,6 +41,12 @@ FetchContent_Declare(
     GIT_TAG         v3.13.2
 )
 
+FetchContent_Declare(
+    fetch_enet
+    GIT_REPOSITORY  https://github.com/lsalzman/enet
+    GIT_TAG         v1.3.18
+)
+
 FetchContent_MakeAvailable(
     fetch_spdlog
     fetch_vma
@@ -48,6 +54,7 @@ FetchContent_MakeAvailable(
     fetch_lua
     fetch_unialgo
     fetch_entt
+    fetch_enet
 )
 
 find_package(Vulkan REQUIRED)

@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/base_sink.h>
 #include <mirinae/engine.hpp>
+#include <spdlog/sinks/android_sink.h>
 
 #include "filesys.hpp"
 
@@ -65,10 +66,8 @@ namespace {
         CombinedEngine(android_app* const state) {
             // Logger
             {
-                std::vector<spdlog::sink_ptr> sinks;
-                sinks.emplace_back(std::make_shared<LogcatSink>());
-                auto logger = std::make_shared<spdlog::logger>("Mirinae", sinks.begin(), sinks.end());
-                spdlog::set_default_logger(logger);
+                auto android_logger = spdlog::android_logger_mt("android", "Mirinae");
+                spdlog::set_default_logger(android_logger);
             }
 
             create_info_.filesys_ = mirinapp::create_filesys_android_asset(state->activity->assetManager);
