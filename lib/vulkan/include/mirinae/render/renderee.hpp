@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <daltools/struct.h>
+#include <daltools/scene/struct.h>
 
 #include "mirinae/lightweight/skin_anim.hpp"
 #include "mirinae/render/uniform.hpp"
