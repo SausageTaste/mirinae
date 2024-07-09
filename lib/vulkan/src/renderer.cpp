@@ -2,7 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include <daltools/util.h>
+#include <daltools/common/util.h>
 #include <sung/general/time.hpp>
 
 #include "mirinae/cosmos.hpp"

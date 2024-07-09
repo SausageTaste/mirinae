@@ -2,7 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include <daltools/model_parser.h>
+#include <daltools/dmd/parser.h>
 
 
 namespace {

@@ -3,7 +3,7 @@
 #include <memory>
 #include <variant>
 
-#include <daltools/struct.h>
+#include <daltools/scene/struct.h>
 
 #include "mirinae/lightweight/time.hpp"
 
