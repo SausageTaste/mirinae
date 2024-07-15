@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fmt/format.h>
+#include <spdlog/fmt/fmt.h>
 #include <glm/vec3.hpp>
 
 
