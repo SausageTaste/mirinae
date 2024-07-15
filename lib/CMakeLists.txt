@@ -2,12 +2,6 @@ include(FetchContent)
 
 
 FetchContent_Declare(
-    fetch_spdlog
-    GIT_REPOSITORY https://github.com/gabime/spdlog
-    GIT_TAG        v1.14.1
-)
-
-FetchContent_Declare(
     fetch_vma
     GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
     GIT_TAG        v3.1.0
@@ -48,7 +42,6 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(
-    fetch_spdlog
     fetch_vma
     fetch_stb
     fetch_lua

@@ -14,10 +14,8 @@ target_include_directories(mirinae_aux PUBLIC
     ${fetch_enet_SOURCE_DIR}/include
 )
 target_link_libraries(mirinae_aux PUBLIC
-    glm::glm
     lua::lua
     uni-algo::uni-algo
-    spdlog
     enet
     dalbaragi::daltools
     sungtools::general
