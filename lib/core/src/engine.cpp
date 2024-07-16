@@ -1,5 +1,8 @@
 #include "mirinae/engine.hpp"
 
+#include <ktx.h>
+#include <spdlog/spdlog.h>
+
 #include "mirinae/lightweight/network.hpp"
 #include "mirinae/renderer.hpp"
 
@@ -143,6 +146,55 @@ namespace {
         bool owning_mouse_ = false;
     };
 
+
+    void test_ktx(mirinae::IFilesys& filesys) {
+        ktxTexture* texture;
+        KTX_error_code result;
+        ktx_size_t offset;
+        ktx_uint8_t* image;
+        ktx_uint32_t level, layer, faceSlice;
+
+        const auto img_data = filesys.read_file_to_vector(
+            "asset/textures/missing_texture.ktx"
+        );
+        if (!img_data) {
+            spdlog::error("Failed to read the image file.");
+            return;
+        }
+
+        const auto res = ktxTexture_CreateFromMemory(
+            img_data->data(),
+            img_data->size(),
+            KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+            &texture
+        );
+        if (res != KTX_SUCCESS) {
+            spdlog::error("Failed to create the texture from memory.");
+            return;
+        }
+
+        spdlog::info(
+            "KTX: levels={}, width={}, height={}",
+            texture->numLevels,
+            texture->baseWidth,
+            texture->baseHeight
+        );
+
+        // Retrieve a pointer to the image for a specific mip level, array layer
+        // & face or depth slice.
+        level = 1;
+        layer = 0;
+        faceSlice = 3;
+        result = ktxTexture_GetImageOffset(
+            texture, level, layer, faceSlice, &offset
+        );
+        image = ktxTexture_GetData(texture) + offset;
+        // ...
+        // Do something with the texture image.
+        // ...
+        ktxTexture_Destroy(texture);
+    }
+
 }  // namespace
 
 
@@ -152,7 +204,7 @@ namespace {
 
     public:
         Engine(mirinae::EngineCreateInfo&& cinfo) {
-            auto filesys = cinfo.filesys_;
+            filesys_ = cinfo.filesys_;
             camera_controller_.osio_ = cinfo.osio_;
 
             client_ = mirinae::create_client();
@@ -199,7 +251,7 @@ namespace {
 
             // Script
             {
-                const auto contents = filesys->read_file_to_vector(
+                const auto contents = filesys_->read_file_to_vector(
                     "asset/script/startup.lua"
                 );
                 if (contents) {
@@ -213,6 +265,14 @@ namespace {
 
         void do_frame() override {
             const auto delta_time = delta_timer_.check_get_elapsed();
+
+            {
+                static bool once = true;
+                if (once) {
+                    once = false;
+                    test_ktx(*filesys_);
+                }
+            }
 
             if (sec5_.check_if_elapsed(5)) {
                 client_->send();
@@ -268,6 +328,7 @@ namespace {
         }
 
     private:
+        std::shared_ptr<mirinae::IFilesys> filesys_;
         std::unique_ptr<mirinae::INetworkClient> client_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
