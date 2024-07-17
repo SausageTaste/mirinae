@@ -20,7 +20,7 @@ def find_root_dir() -> Optional[str]:
     cur_dir = "."
     for i in range(10):
         if _is_dir_root(cur_dir):
-            return os.path.normpath(cur_dir)
+            return os.path.abspath(cur_dir)
         else:
             cur_dir = os.path.join(cur_dir, "..")
 
