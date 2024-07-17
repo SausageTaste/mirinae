@@ -48,6 +48,8 @@ namespace mirinae {
         void init(uint32_t graphics_queue, VkDevice logi_device);
         void destroy(VkDevice logi_device);
 
+        VkCommandPool get() const { return handle_; }
+
         VkCommandBuffer alloc(VkDevice logi_device);
         void free(VkCommandBuffer cmdbuf, VkDevice logi_device);
 

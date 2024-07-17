@@ -430,6 +430,8 @@ namespace {
             return props.check_optimal_tiling_feature(common_texture_ops);
         }
 
+        auto& features() const { return features_; }
+
     private:
         VkPhysicalDevice handle_ = nullptr;
         VkPhysicalDeviceProperties properties_{};
@@ -1009,6 +1011,14 @@ namespace mirinae {
     }
 
     void VulkanDevice::wait_idle() { pimpl_->logi_device_.wait_idle(); }
+
+    VkPhysicalDevice VulkanDevice::phys_device() {
+        return pimpl_->phys_device_.get();
+    }
+
+    const VkPhysicalDeviceFeatures& VulkanDevice::phys_device_features() const {
+        return pimpl_->phys_device_.features();
+    }
 
     std::optional<uint32_t> VulkanDevice::graphics_queue_family_index() {
         return pimpl_->phys_device_.graphics_family_index();

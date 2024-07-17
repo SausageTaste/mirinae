@@ -1,6 +1,7 @@
 #include "mirinae/render/renderee.hpp"
 
 #include <daltools/dmd/parser.h>
+#include <ktxvulkan.h>
 #include <spdlog/spdlog.h>
 #include <daltools/img/backend/ktx.hpp>
 #include <daltools/img/backend/stb.hpp>
@@ -532,7 +533,16 @@ namespace {
 // TextureManager
 namespace mirinae {
 
-    class TextureData : public ITexture {
+    class ITextureData : public ITexture {
+    public:
+        virtual ~ITextureData() = default;
+
+        virtual void destroy() = 0;
+        virtual const std::string& id() const = 0;
+    };
+
+
+    class TextureData : public ITextureData {
 
     public:
         TextureData(VulkanDevice& device) : device_(device) {}
@@ -633,7 +643,7 @@ namespace mirinae {
             );
         }
 
-        void destroy() {
+        void destroy() override {
             texture_view_.destroy(device_.logi_device());
             texture_.destroy(device_.mem_alloc());
         }
@@ -645,13 +655,116 @@ namespace mirinae {
         uint32_t width() const override { return texture_.width(); }
         uint32_t height() const override { return texture_.height(); }
 
-        auto& id() const { return id_; }
+        const std::string& id() const override { return id_; }
 
     private:
         VulkanDevice& device_;
         Image texture_;
         ::ImageView texture_view_;
         std::string id_;
+    };
+
+
+    class KtxTextureData : public ITextureData {
+
+    public:
+        KtxTextureData(
+            const std::string& id,
+            ktxTexture& src,
+            ktxVulkanDeviceInfo& vdi,
+            VkImageTiling tiling,
+            VkImageUsageFlags usageFlags,
+            VkImageLayout finalLayout,
+            VulkanDevice& device
+        )
+            : device_(device), id_(id) {
+            if (ktxTexture_NeedsTranscoding(&src)) {
+                ktx_texture_transcode_fmt_e tf;
+
+                auto& deviceFeatures = device.phys_device_features();
+                const auto colorModel = ktxTexture2_GetColorModel_e(
+                    (ktxTexture2*)&src
+                );
+
+                if (colorModel == KHR_DF_MODEL_UASTC &&
+                    deviceFeatures.textureCompressionASTC_LDR) {
+                    tf = KTX_TTF_ASTC_4x4_RGBA;
+                } else if (colorModel == KHR_DF_MODEL_ETC1S &&
+                           deviceFeatures.textureCompressionETC2) {
+                    tf = KTX_TTF_ETC;
+                } else if (deviceFeatures.textureCompressionASTC_LDR) {
+                    tf = KTX_TTF_ASTC_4x4_RGBA;
+                } else if (deviceFeatures.textureCompressionETC2)
+                    tf = KTX_TTF_ETC2_RGBA;
+                else if (deviceFeatures.textureCompressionBC)
+                    tf = KTX_TTF_BC3_RGBA;
+                else {
+                    std::string message =
+                        "Vulkan implementation does not support any "
+                        "available transcode target.";
+                    throw std::runtime_error(message);
+                }
+
+                const auto res = ktxTexture2_TranscodeBasis(
+                    (ktxTexture2*)&src, tf, 0
+                );
+                if (KTX_SUCCESS != res) {
+                    spdlog::critical(
+                        "Failed to transcode KTX texture ({}): {}",
+                        static_cast<int>(res),
+                        id
+                    );
+                    throw std::runtime_error("Failed to transcode KTX texture");
+                }
+            }
+
+            data_ = ktxVulkanTexture{};
+            const auto res = ktxTexture_VkUploadEx(
+                &src, &vdi, &data_.value(), tiling, usageFlags, finalLayout
+            );
+            if (KTX_SUCCESS != res) {
+                spdlog::critical(
+                    "Failed to upload KTX texture ({}): {}",
+                    static_cast<int>(res),
+                    id
+                );
+                throw std::runtime_error("Failed to upload KTX texture");
+            }
+
+            texture_view_.init(
+                data_->image,
+                data_->levelCount,
+                data_->imageFormat,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                device_.logi_device()
+            );
+        }
+
+        ~KtxTextureData() { this->destroy(); }
+
+        void destroy() {
+            texture_view_.destroy(device_.logi_device());
+
+            if (data_) {
+                ktxVulkanTexture_Destruct(
+                    &data_.value(), device_.logi_device(), nullptr
+                );
+                data_.reset();
+            }
+        }
+
+        VkFormat format() const override { return data_->imageFormat; }
+        VkImageView image_view() override { return texture_view_.get(); }
+        uint32_t width() const override { return data_->width; }
+        uint32_t height() const override { return data_->height; }
+
+        const std::string& id() const override { return id_; }
+
+    private:
+        VulkanDevice& device_;
+        std::optional<ktxVulkanTexture> data_;
+        std::string id_;
+        ::ImageView texture_view_;
     };
 
 
@@ -663,16 +776,28 @@ namespace mirinae {
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
             );
+
+            const auto res = ktxVulkanDeviceInfo_Construct(
+                &ktx_device_,
+                device.phys_device(),
+                device.logi_device(),
+                device.graphics_queue(),
+                cmd_pool_.get(),
+                nullptr
+            );
+            if (KTX_SUCCESS != res) {
+                spdlog::critical("Failed to construct KTX device info");
+                throw std::runtime_error("Failed to construct KTX device info");
+            }
         }
 
         ~Pimpl() {
             this->destroy_all();
+            ktxVulkanDeviceInfo_Destruct(&ktx_device_);
             cmd_pool_.destroy(device_.logi_device());
         }
 
-        std::shared_ptr<TextureData> request(
-            const respath_t& res_id, bool srgb
-        ) {
+        std::shared_ptr<ITexture> request(const respath_t& res_id, bool srgb) {
             if (auto index = this->find_index(res_id))
                 return textures_.at(index.value());
 
@@ -685,24 +810,36 @@ namespace mirinae {
                 );
                 return nullptr;
             }
+            const auto id = res_id.u8string();
 
             dal::ImageParseInfo parse_info;
-            parse_info.file_path_ = res_id.u8string();
+            parse_info.file_path_ = id;
             parse_info.data_ = img_data->data();
             parse_info.size_ = img_data->size();
             parse_info.force_rgba_ = true;
             const auto img = dal::parse_img(parse_info);
 
             if (auto kts_img = dynamic_cast<dal::KtxImage*>(img.get())) {
-                spdlog::warn("KTX image not supported: {}", res_id.u8string());
-            } else if (auto raw_img = dynamic_cast<dal::IImage2D*>(img.get())) {
-                auto& out = textures_.emplace_back(new TextureData{ device_ });
-                out->init_iimage2d(
-                    res_id.u8string(), *raw_img, srgb, cmd_pool_
+                spdlog::info("KTX image loaded: {}", id);
+                auto out = std::make_shared<KtxTextureData>(
+                    id,
+                    *kts_img->texture_,
+                    ktx_device_,
+                    VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_SAMPLED_BIT,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    device_
                 );
+                textures_.push_back(out);
+                return out;
+            } else if (auto raw_img = dynamic_cast<dal::IImage2D*>(img.get())) {
+                spdlog::info("Raw image loaded: {}", id);
+                auto out = std::make_shared<TextureData>(device_);
+                out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
+                textures_.push_back(out);
                 return out;
             } else {
-                spdlog::warn("Unsupported image type: {}", res_id.u8string());
+                spdlog::warn("Unsupported image type: {}", id);
                 return nullptr;
             }
 
@@ -760,7 +897,8 @@ namespace mirinae {
 
         VulkanDevice& device_;
         CommandPool cmd_pool_;
-        std::vector<std::shared_ptr<TextureData>> textures_;
+        ktxVulkanDeviceInfo ktx_device_;
+        std::vector<std::shared_ptr<ITextureData>> textures_;
     };
 
 
