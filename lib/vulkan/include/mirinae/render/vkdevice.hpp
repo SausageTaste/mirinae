@@ -43,6 +43,8 @@ namespace mirinae {
         void wait_idle();
 
         // Physical device
+        VkPhysicalDevice phys_device();
+        const VkPhysicalDeviceFeatures& phys_device_features() const;
         std::optional<uint32_t> graphics_queue_family_index();
         VkFormat select_first_supported_format(
             const std::vector<VkFormat>& candidates,
