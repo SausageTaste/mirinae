@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <daltools/scene/struct.h>
+#include <daltools/img/img2d.hpp>
 
 #include "mirinae/lightweight/skin_anim.hpp"
 #include "mirinae/render/uniform.hpp"
@@ -43,7 +44,7 @@ namespace mirinae {
 
         std::shared_ptr<ITexture> request(const respath_t& res_id, bool srgb);
         std::unique_ptr<ITexture> create_image(
-            const std::string& id, const IImage2D& image, bool srgb
+            const std::string& id, const dal::IImage2D& image, bool srgb
         );
         std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height);
         std::unique_ptr<ITexture> create_attachment(

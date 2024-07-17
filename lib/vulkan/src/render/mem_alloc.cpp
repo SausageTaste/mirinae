@@ -270,7 +270,7 @@ namespace mirinae {
     }
 
     ImageCreateInfo& ImageCreateInfo::fetch_from_image(
-        const IImage2D& img, bool srgb
+        const dal::IImage2D& img, bool srgb
     ) {
         info_.extent.width = img.width();
         info_.extent.height = img.height();

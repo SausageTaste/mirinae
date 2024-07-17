@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stb_truetype.h>
+#include <daltools/img/img2d.hpp>
 
 #include "mirinae/lightweight/text_data.hpp"
 #include "mirinae/overlay/iwidget.hpp"
@@ -50,7 +51,7 @@ namespace mirinae {
 
         std::array<stbtt_bakedchar, END_CHAR - START_CHAR> char_baked_;
         std::unique_ptr<mirinae::ITexture> texture_;
-        mirinae::TImage2D<unsigned char> bitmap_;
+        dal::TImage2D<unsigned char> bitmap_;
         mirinae::OverlayRenderUnit render_unit_;
     };
 
