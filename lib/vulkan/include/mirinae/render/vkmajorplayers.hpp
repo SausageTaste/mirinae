@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "mirinae/lightweight/image.hpp"
 #include "mirinae/lightweight/lightweights.hpp"
 
 #include "meshdata.hpp"

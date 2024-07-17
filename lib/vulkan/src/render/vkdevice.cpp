@@ -625,8 +625,7 @@ namespace {
         }
 
         VkExtent2D choose_extent(uint32_t fbuf_w, uint32_t fbuf_h) const {
-            constexpr auto UINT32_MAX_V = std::numeric_limits<uint32_t>::max();
-            if (caps_.currentExtent.width != UINT32_MAX_V) {
+            if (caps_.currentExtent.width != UINT32_MAX) {
                 return caps_.currentExtent;
             } else {
                 VkExtent2D actualExtent{ fbuf_w, fbuf_h };

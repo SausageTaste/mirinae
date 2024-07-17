@@ -1,49 +1,47 @@
 include(FetchContent)
 
+set(FETCHCONTENT_QUIET FALSE)
+
 
 FetchContent_Declare(
     fetch_vma
-    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-    GIT_TAG        v3.1.0
-)
-
-FetchContent_Declare(
-    fetch_stb
-    GIT_REPOSITORY    https://github.com/nothings/stb
-    GIT_TAG           013ac3beddff3dbffafd5177e7972067cd2b5083
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND     ""
+    GIT_REPOSITORY  https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+    GIT_TAG         v3.1.0
+    GIT_PROGRESS    TRUE
 )
 
 FetchContent_Declare(
     fetch_lua
-    GIT_REPOSITORY    https://github.com/lua/lua
-    GIT_TAG           v5.4.6
+    GIT_REPOSITORY  https://github.com/lua/lua
+    GIT_TAG         v5.4.6
+    BUILD_COMMAND   ""
+    GIT_PROGRESS    TRUE
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND     ""
 )
 
 FetchContent_Declare(
     fetch_unialgo
     GIT_REPOSITORY  https://github.com/uni-algo/uni-algo
     GIT_TAG         v1.2.0
+    GIT_PROGRESS    TRUE
 )
 
 FetchContent_Declare(
     fetch_entt
     GIT_REPOSITORY  https://github.com/skypjack/entt
     GIT_TAG         v3.13.2
+    GIT_PROGRESS    TRUE
 )
 
 FetchContent_Declare(
     fetch_enet
     GIT_REPOSITORY  https://github.com/lsalzman/enet
     GIT_TAG         v1.3.18
+    GIT_PROGRESS    TRUE
 )
 
 FetchContent_MakeAvailable(
     fetch_vma
-    fetch_stb
     fetch_lua
     fetch_unialgo
     fetch_entt

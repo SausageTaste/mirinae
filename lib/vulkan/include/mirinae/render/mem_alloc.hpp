@@ -4,8 +4,7 @@
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
-
-#include "mirinae/lightweight/image.hpp"
+#include <daltools/img/img2d.hpp>
 
 
 #define VK_CHECK(x)                \
@@ -68,7 +67,7 @@ namespace mirinae {
         ImageCreateInfo& set_usage(VkImageUsageFlags usage);
 
         ImageCreateInfo& deduce_mip_levels();
-        ImageCreateInfo& fetch_from_image(const IImage2D& img, bool srgb);
+        ImageCreateInfo& fetch_from_image(const dal::IImage2D& img, bool srgb);
 
     private:
         VkImageCreateInfo info_ = {};

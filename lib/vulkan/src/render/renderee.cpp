@@ -1,8 +1,9 @@
 #include "mirinae/render/renderee.hpp"
 
-#include <spdlog/spdlog.h>
-
 #include <daltools/dmd/parser.h>
+#include <spdlog/spdlog.h>
+#include <daltools/img/backend/ktx.hpp>
+#include <daltools/img/backend/stb.hpp>
 
 
 namespace {
@@ -69,7 +70,7 @@ namespace {
             albedo_map_ = this->request_texture(
                 res_id,
                 src_material.albedo_map_,
-                "asset/textures/missing_texture.png",
+                "asset/textures/missing_texture.ktx",
                 true,
                 tex_man
             );
@@ -540,7 +541,7 @@ namespace mirinae {
 
         void init_iimage2d(
             const std::string& id,
-            const IImage2D& image,
+            const dal::IImage2D& image,
             bool srgb,
             CommandPool& cmd_pool
         ) {
@@ -685,16 +686,31 @@ namespace mirinae {
                 return nullptr;
             }
 
-            const auto image = mirinae::parse_image(
-                img_data->data(), img_data->size(), true
-            );
-            auto& output = textures_.emplace_back(new TextureData{ device_ });
-            output->init_iimage2d(res_id.u8string(), *image, srgb, cmd_pool_);
-            return output;
+            dal::ImageParseInfo parse_info;
+            parse_info.file_path_ = res_id.u8string();
+            parse_info.data_ = img_data->data();
+            parse_info.size_ = img_data->size();
+            parse_info.force_rgba_ = true;
+            const auto img = dal::parse_img(parse_info);
+
+            if (auto kts_img = dynamic_cast<dal::KtxImage*>(img.get())) {
+                spdlog::warn("KTX image not supported: {}", res_id.u8string());
+            } else if (auto raw_img = dynamic_cast<dal::IImage2D*>(img.get())) {
+                auto& out = textures_.emplace_back(new TextureData{ device_ });
+                out->init_iimage2d(
+                    res_id.u8string(), *raw_img, srgb, cmd_pool_
+                );
+                return out;
+            } else {
+                spdlog::warn("Unsupported image type: {}", res_id.u8string());
+                return nullptr;
+            }
+
+            return nullptr;
         }
 
         std::unique_ptr<ITexture> create_image(
-            const std::string& id, const IImage2D& image, bool srgb
+            const std::string& id, const dal::IImage2D& image, bool srgb
         ) {
             auto output = std::make_unique<TextureData>(device_);
             output->init_iimage2d(id, image, srgb, cmd_pool_);
@@ -760,7 +776,7 @@ namespace mirinae {
     }
 
     std::unique_ptr<ITexture> TextureManager::create_image(
-        const std::string& id, const IImage2D& image, bool srgb
+        const std::string& id, const dal::IImage2D& image, bool srgb
     ) {
         return pimpl_->create_image(id, image, srgb);
     }
