@@ -592,6 +592,13 @@ namespace mirinae {
                 VK_IMAGE_ASPECT_COLOR_BIT,
                 device_.logi_device()
             );
+
+            spdlog::debug(
+                "Raw texture loaded: size={}, format={}, path='{}'",
+                image.data_size(),
+                static_cast<int>(texture_.format()),
+                id
+            );
         }
 
         void init_depth(uint32_t width, uint32_t height) {
@@ -720,6 +727,11 @@ namespace mirinae {
                 device_.logi_device()
             );
 
+            spdlog::debug(
+                "KTX texture loaded: format={}, path='{}'",
+                static_cast<int>(data_->imageFormat),
+                id
+            );
             return true;
         }
 
@@ -824,7 +836,6 @@ namespace mirinae {
             const auto img = dal::parse_img(parse_info);
 
             if (auto kts_img = dynamic_cast<dal::KtxImage*>(img.get())) {
-                spdlog::info("KTX image loaded: {}", id);
                 auto out = std::make_shared<KtxTextureData>(device_);
                 if (out->init(id, *kts_img->texture_, ktx_device_)) {
                     textures_.push_back(out);
@@ -833,13 +844,12 @@ namespace mirinae {
                     return nullptr;
                 }
             } else if (auto raw_img = dynamic_cast<dal::IImage2D*>(img.get())) {
-                spdlog::info("Raw image loaded: {}", id);
                 auto out = std::make_shared<TextureData>(device_);
                 out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
                 textures_.push_back(out);
                 return out;
             } else {
-                spdlog::warn("Unsupported image type: {}", id);
+                spdlog::error("Unsupported image type: {}", id);
                 return nullptr;
             }
 
