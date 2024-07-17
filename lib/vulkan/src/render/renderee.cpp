@@ -668,67 +668,48 @@ namespace mirinae {
     class KtxTextureData : public ITextureData {
 
     public:
-        KtxTextureData(
-            const std::string& id,
-            ktxTexture& src,
-            ktxVulkanDeviceInfo& vdi,
-            VkImageTiling tiling,
-            VkImageUsageFlags usageFlags,
-            VkImageLayout finalLayout,
-            VulkanDevice& device
-        )
-            : device_(device), id_(id) {
+        KtxTextureData(VulkanDevice& device) : device_(device) {}
+
+        bool init(
+            const std::string& id, ktxTexture& src, ktxVulkanDeviceInfo& vdi
+        ) {
+            this->destroy();
+
+            id_ = id;
+
             if (ktxTexture_NeedsTranscoding(&src)) {
-                ktx_texture_transcode_fmt_e tf;
-
-                auto& deviceFeatures = device.phys_device_features();
-                const auto colorModel = ktxTexture2_GetColorModel_e(
-                    (ktxTexture2*)&src
-                );
-
-                if (colorModel == KHR_DF_MODEL_UASTC &&
-                    deviceFeatures.textureCompressionASTC_LDR) {
-                    tf = KTX_TTF_ASTC_4x4_RGBA;
-                } else if (colorModel == KHR_DF_MODEL_ETC1S &&
-                           deviceFeatures.textureCompressionETC2) {
-                    tf = KTX_TTF_ETC;
-                } else if (deviceFeatures.textureCompressionASTC_LDR) {
-                    tf = KTX_TTF_ASTC_4x4_RGBA;
-                } else if (deviceFeatures.textureCompressionETC2)
-                    tf = KTX_TTF_ETC2_RGBA;
-                else if (deviceFeatures.textureCompressionBC)
-                    tf = KTX_TTF_BC3_RGBA;
-                else {
-                    std::string message =
-                        "Vulkan implementation does not support any "
-                        "available transcode target.";
-                    throw std::runtime_error(message);
+                const auto tf = this->determine_transcode_format(src);
+                if (!tf) {
+                    spdlog::error("Failed to find transcode format: {}", id);
+                    return false;
                 }
 
-                const auto res = ktxTexture2_TranscodeBasis(
-                    (ktxTexture2*)&src, tf, 0
-                );
+                const auto tex2 = reinterpret_cast<ktxTexture2*>(&src);
+                const auto res = ktxTexture2_TranscodeBasis(tex2, *tf, 0);
                 if (KTX_SUCCESS != res) {
-                    spdlog::critical(
-                        "Failed to transcode KTX texture ({}): {}",
+                    spdlog::error(
+                        "Failed to transcode KTX ({}): {}",
                         static_cast<int>(res),
                         id
                     );
-                    throw std::runtime_error("Failed to transcode KTX texture");
+                    return false;
                 }
             }
 
             data_ = ktxVulkanTexture{};
             const auto res = ktxTexture_VkUploadEx(
-                &src, &vdi, &data_.value(), tiling, usageFlags, finalLayout
+                &src,
+                &vdi,
+                &data_.value(),
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             );
             if (KTX_SUCCESS != res) {
                 spdlog::critical(
-                    "Failed to upload KTX texture ({}): {}",
-                    static_cast<int>(res),
-                    id
+                    "Failed to upload KTX ({}): {}", static_cast<int>(res), id
                 );
-                throw std::runtime_error("Failed to upload KTX texture");
+                return false;
             }
 
             texture_view_.init(
@@ -738,11 +719,14 @@ namespace mirinae {
                 VK_IMAGE_ASPECT_COLOR_BIT,
                 device_.logi_device()
             );
+
+            return true;
         }
 
         ~KtxTextureData() { this->destroy(); }
 
         void destroy() {
+            id_.clear();
             texture_view_.destroy(device_.logi_device());
 
             if (data_) {
@@ -761,9 +745,29 @@ namespace mirinae {
         const std::string& id() const override { return id_; }
 
     private:
+        std::optional<ktx_texture_transcode_fmt_e> determine_transcode_format(
+            ktxTexture& src
+        ) {
+            auto& df = device_.phys_device_features();
+            const auto cm = ktxTexture2_GetColorModel_e((ktxTexture2*)&src);
+
+            if (cm == KHR_DF_MODEL_UASTC && df.textureCompressionASTC_LDR)
+                return KTX_TTF_ASTC_4x4_RGBA;
+            else if (cm == KHR_DF_MODEL_ETC1S && df.textureCompressionETC2)
+                return KTX_TTF_ETC;
+            else if (df.textureCompressionASTC_LDR)
+                return KTX_TTF_ASTC_4x4_RGBA;
+            else if (df.textureCompressionETC2)
+                return KTX_TTF_ETC2_RGBA;
+            else if (df.textureCompressionBC)
+                return KTX_TTF_BC3_RGBA;
+            else
+                return std::nullopt;
+        }
+
         VulkanDevice& device_;
-        std::optional<ktxVulkanTexture> data_;
         std::string id_;
+        std::optional<ktxVulkanTexture> data_;
         ::ImageView texture_view_;
     };
 
@@ -821,17 +825,13 @@ namespace mirinae {
 
             if (auto kts_img = dynamic_cast<dal::KtxImage*>(img.get())) {
                 spdlog::info("KTX image loaded: {}", id);
-                auto out = std::make_shared<KtxTextureData>(
-                    id,
-                    *kts_img->texture_,
-                    ktx_device_,
-                    VK_IMAGE_TILING_OPTIMAL,
-                    VK_IMAGE_USAGE_SAMPLED_BIT,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    device_
-                );
-                textures_.push_back(out);
-                return out;
+                auto out = std::make_shared<KtxTextureData>(device_);
+                if (out->init(id, *kts_img->texture_, ktx_device_)) {
+                    textures_.push_back(out);
+                    return out;
+                } else {
+                    return nullptr;
+                }
             } else if (auto raw_img = dynamic_cast<dal::IImage2D*>(img.get())) {
                 spdlog::info("Raw image loaded: {}", id);
                 auto out = std::make_shared<TextureData>(device_);
