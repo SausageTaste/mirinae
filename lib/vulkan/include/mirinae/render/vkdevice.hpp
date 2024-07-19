@@ -16,6 +16,7 @@ namespace mirinae {
 
     VkImageView create_image_view(
         VkImage image,
+        VkImageViewType view_type,
         uint32_t mip_levels,
         VkFormat format,
         VkImageAspectFlags aspect_flags,

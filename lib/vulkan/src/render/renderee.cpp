@@ -503,6 +503,7 @@ namespace {
     public:
         void init(
             VkImage image,
+            VkImageViewType view_type,
             uint32_t mip_levels,
             VkFormat format,
             VkImageAspectFlags aspect_flags,
@@ -510,7 +511,7 @@ namespace {
         ) {
             this->destroy(logi_device);
             this->handle_ = mirinae::create_image_view(
-                image, mip_levels, format, aspect_flags, logi_device
+                image, view_type, mip_levels, format, aspect_flags, logi_device
             );
         }
 
@@ -587,6 +588,7 @@ namespace mirinae {
 
             texture_view_.init(
                 texture_.image(),
+                VK_IMAGE_VIEW_TYPE_2D,
                 texture_.mip_levels(),
                 texture_.format(),
                 VK_IMAGE_ASPECT_COLOR_BIT,
@@ -622,6 +624,7 @@ namespace mirinae {
             texture_.init(img_info.get(), device_.mem_alloc());
             texture_view_.init(
                 texture_.image(),
+                VK_IMAGE_VIEW_TYPE_2D,
                 1,
                 depth_format,
                 VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -646,7 +649,12 @@ namespace mirinae {
                 .set_usage(usage_flag);
             texture_.init(img_info.get(), device_.mem_alloc());
             texture_view_.init(
-                texture_.image(), 1, format, aspect_mask, device_.logi_device()
+                texture_.image(),
+                VK_IMAGE_VIEW_TYPE_2D,
+                1,
+                format,
+                aspect_mask,
+                device_.logi_device()
             );
         }
 
@@ -721,6 +729,7 @@ namespace mirinae {
 
             texture_view_.init(
                 data_->image,
+                data_->viewType,
                 data_->levelCount,
                 data_->imageFormat,
                 VK_IMAGE_ASPECT_COLOR_BIT,
