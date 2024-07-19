@@ -889,6 +889,7 @@ namespace mirinae {
 
     VkImageView create_image_view(
         VkImage image,
+        VkImageViewType view_type,
         uint32_t mip_levels,
         VkFormat format,
         VkImageAspectFlags aspect_flags,
@@ -897,7 +898,7 @@ namespace mirinae {
         VkImageViewCreateInfo cinfo{};
         cinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         cinfo.image = image;
-        cinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        cinfo.viewType = view_type;
         cinfo.format = format;
         cinfo.subresourceRange.aspectMask = aspect_flags;
         cinfo.subresourceRange.baseMipLevel = 0;
@@ -1129,6 +1130,7 @@ namespace mirinae {
         for (size_t i = 0; i < images_.size(); i++) {
             views_.push_back(mirinae::create_image_view(
                 images_.at(i),
+                VK_IMAGE_VIEW_TYPE_2D,
                 1,
                 format_,
                 VK_IMAGE_ASPECT_COLOR_BIT,
