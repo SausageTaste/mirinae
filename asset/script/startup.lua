@@ -24,7 +24,7 @@ do
     bard = scene.create_skinned_actor("Sung/bard/bard_subset.dmd")
 
     local a = bard:get_anim_state()
-    a:set_anim_name("sc_groupdance_1")
+    a:set_anim_name("sc_groupdance_10")
 
     local t = bard:get_transform()
     t:set_pos(3, 0, 0.5)
@@ -37,7 +37,7 @@ do
     artist = scene.create_skinned_actor("Sung/artist/artist_subset.dmd")
 
     local a = artist:get_anim_state()
-    a:set_anim_name("sc_groupdance_1")
+    a:set_anim_name("sc_groupdance_10")
 
     local t = artist:get_transform()
     t:set_pos(3, 0, 0)
@@ -50,7 +50,7 @@ do
     slayer = scene.create_skinned_actor("Sung/slayer/slayer_subset.dmd")
 
     local a = slayer:get_anim_state()
-    a:set_anim_name("sc_groupdance_1")
+    a:set_anim_name("sc_groupdance_10")
 
     local t = slayer:get_transform()
     t:set_pos(3, 0, -0.5)
