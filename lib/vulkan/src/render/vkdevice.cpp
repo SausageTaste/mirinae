@@ -839,6 +839,25 @@ namespace {
             return this->min_filter(VK_FILTER_LINEAR);
         }
 
+        SamplerBuilder& address_mode(VkSamplerAddressMode mode) {
+            cinfo_.addressModeU = mode;
+            cinfo_.addressModeV = mode;
+            cinfo_.addressModeW = mode;
+            return *this;
+        }
+        SamplerBuilder& compare_enable(bool v) {
+            cinfo_.compareEnable = v ? VK_TRUE : VK_FALSE;
+            return *this;
+        }
+        SamplerBuilder& compare_op(VkCompareOp op) {
+            cinfo_.compareOp = op;
+            return *this;
+        }
+        SamplerBuilder& border_color(VkBorderColor color) {
+            cinfo_.borderColor = color;
+            return *this;
+        }
+
     private:
         VkSamplerCreateInfo cinfo_;
     };
@@ -850,35 +869,41 @@ namespace {
         void init(const ::PhysDevice& pd, ::LogiDevice& ld) {
             {
                 ::SamplerBuilder sampler_builder;
-                linear_ = sampler_builder.build(pd, ld);
+                data_.push_back(sampler_builder.build(pd, ld));
             }
 
             {
                 ::SamplerBuilder sampler_builder;
                 sampler_builder.mag_filter_nearest();
                 sampler_builder.min_filter_nearest();
-                nearest_ = sampler_builder.build(pd, ld);
+                data_.push_back(sampler_builder.build(pd, ld));
+            }
+
+            {
+                ::SamplerBuilder sampler_builder;
+                sampler_builder
+                    .address_mode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
+                    .compare_op(VK_COMPARE_OP_NEVER)
+                    .border_color(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+                data_.push_back(sampler_builder.build(pd, ld));
             }
         }
 
         void destroy(::LogiDevice& ld) {
-            if (VK_NULL_HANDLE != linear_) {
-                vkDestroySampler(ld.get(), linear_, nullptr);
-                linear_ = VK_NULL_HANDLE;
+            for (auto& sampler : data_) {
+                if (VK_NULL_HANDLE != sampler) {
+                    vkDestroySampler(ld.get(), sampler, nullptr);
+                }
             }
-
-            if (VK_NULL_HANDLE != nearest_) {
-                vkDestroySampler(ld.get(), nearest_, nullptr);
-                nearest_ = VK_NULL_HANDLE;
-            }
+            data_.clear();
         }
 
-        VkSampler get_linear() override { return linear_; }
-        VkSampler get_nearest() override { return nearest_; }
+        VkSampler get_linear() override { return data_[0]; }
+        VkSampler get_nearest() override { return data_[1]; }
+        VkSampler get_cubemap() override { return data_[2]; }
 
     private:
-        VkSampler linear_;
-        VkSampler nearest_;
+        std::vector<VkSampler> data_;
     };
 
 }  // namespace
