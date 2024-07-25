@@ -256,18 +256,54 @@ namespace mirinae {
         return *this;
     }
 
-    ImageCreateInfo& ImageCreateInfo::set_usage(VkImageUsageFlags usage) {
-        info_.usage = usage;
+    ImageCreateInfo& ImageCreateInfo::set_arr_layers(uint32_t arr_layers) {
+        info_.arrayLayers = arr_layers;
+        return *this;
+    }
+
+    // Usages
+
+    ImageCreateInfo& ImageCreateInfo::reset_usage() {
+        info_.usage = 0;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::add_usage(VkImageUsageFlags usage) {
+        info_.usage |= usage;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::add_usage_sampled() {
+        return this->add_usage(VK_IMAGE_USAGE_SAMPLED_BIT);
+    }
+
+    // Flags
+
+    ImageCreateInfo& ImageCreateInfo::reset_flags() {
+        info_.flags = 0;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::add_flag(VkImageCreateFlags flags) {
+        info_.flags |= flags;
+        return *this;
+    }
+
+    // Mip levels
+
+    ImageCreateInfo& ImageCreateInfo::set_mip_levels(uint32_t v) {
+        info_.mipLevels = v;
         return *this;
     }
 
     ImageCreateInfo& ImageCreateInfo::deduce_mip_levels() {
-        info_.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(
-                              info_.extent.width, info_.extent.height
-                          )))) +
-                          1;
+        const auto maxdim = (std::max)(info_.extent.width, info_.extent.height);
+        const auto log_val = std::floor(std::log2(maxdim));
+        info_.mipLevels = static_cast<uint32_t>(log_val) + 1;
         return *this;
     }
+
+    // Complex
 
     ImageCreateInfo& ImageCreateInfo::fetch_from_image(
         const dal::IImage2D& img, bool srgb
