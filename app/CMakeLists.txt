@@ -16,7 +16,8 @@ FetchContent_MakeAvailable(
 
 if (WIN32)
     add_subdirectory(windows)
-    add_subdirectory(server)
 elseif(UNIX AND NOT APPLE)
     add_subdirectory(linux)
 endif()
+
+add_subdirectory(server)
