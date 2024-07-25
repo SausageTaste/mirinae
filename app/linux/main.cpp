@@ -21,7 +21,7 @@ namespace {
         return std::filesystem::path(homedir);
     }
 
-    std::filesystem::path get_windows_documents_path(const char* app_name) {
+    std::filesystem::path get_documents_path(const char* app_name) {
         return ::get_home_path() / "Documents" / app_name;
     }
 
@@ -398,7 +398,7 @@ namespace {
     public:
         CombinedEngine() : window_(800, 600, "Mirinapp") {
             auto filesys = mirinae::create_filesys_std(
-                ::get_windows_documents_path("Mirinapp")
+                ::get_documents_path("Mirinapp")
             );
 
             mirinae::EngineCreateInfo create_info;
