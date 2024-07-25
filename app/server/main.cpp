@@ -1,8 +1,12 @@
+#include <sung/general/os_detect.hpp>
+
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/network.hpp"
 #include "mirinae/lightweight/script.hpp"
 
-#include "dump.hpp"
+#ifdef SUNG_OS_WINDOWS
+    #include "dump.hpp"
+#endif
 
 
 namespace {
@@ -39,12 +43,18 @@ namespace {
 
 
 int main() {
+#ifdef SUNG_OS_WINDOWS
     __try {
+#endif
+
         return ::start();
+
+#ifdef SUNG_OS_WINDOWS
     } __except (
         mirinae::windows::create_minidump(GetExceptionInformation()),
         EXCEPTION_EXECUTE_HANDLER
     ) {
         std::abort();
     }
+#endif
 }
