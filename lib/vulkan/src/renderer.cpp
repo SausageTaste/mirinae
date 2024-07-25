@@ -351,6 +351,190 @@ namespace {
             ubufs_.clear();
         }
 
+        void record_static(
+            const VkCommandBuffer cur_cmd_buf,
+            const VkExtent2D& fbuf_ext,
+            const ::DrawSheet& draw_sheet,
+            const ::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = *rp_pkg.transp_;
+
+            VkRenderPassBeginInfo renderPassInfo{};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = rp.renderpass();
+            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.renderArea.extent = fbuf_ext;
+            renderPassInfo.clearValueCount = rp.clear_value_count();
+            renderPassInfo.pClearValues = rp.clear_values();
+
+            vkCmdBeginRenderPass(
+                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+            );
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = static_cast<float>(fbuf_ext.width);
+            viewport.height = static_cast<float>(fbuf_ext.height);
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+            scissor.extent = fbuf_ext;
+            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+            auto desc_frame = desc_sets_.at(frame_index.get());
+            vkCmdBindDescriptorSets(
+                cur_cmd_buf,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                rp.pipeline_layout(),
+                0,
+                1,
+                &desc_frame,
+                0,
+                nullptr
+            );
+
+            for (auto& pair : draw_sheet.static_pairs_) {
+                for (auto& unit : pair.model_->render_units_alpha_) {
+                    auto unit_desc = unit.get_desc_set(frame_index.get());
+                    vkCmdBindDescriptorSets(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline_layout(),
+                        1,
+                        1,
+                        &unit_desc,
+                        0,
+                        nullptr
+                    );
+                    unit.record_bind_vert_buf(cur_cmd_buf);
+
+                    for (auto& actor : pair.actors_) {
+                        auto actor_desc = actor.actor_->get_desc_set(
+                            frame_index.get()
+                        );
+                        vkCmdBindDescriptorSets(
+                            cur_cmd_buf,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            rp.pipeline_layout(),
+                            2,
+                            1,
+                            &actor_desc,
+                            0,
+                            nullptr
+                        );
+
+                        vkCmdDrawIndexed(
+                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                        );
+                    }
+                }
+            }
+
+            vkCmdEndRenderPass(cur_cmd_buf);
+        }
+
+        void record_skinned(
+            const VkCommandBuffer cur_cmd_buf,
+            const VkExtent2D& fbuf_ext,
+            const ::DrawSheet& draw_sheet,
+            const ::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = *rp_pkg.transp_skin_;
+
+            VkRenderPassBeginInfo renderPassInfo{};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = rp.renderpass();
+            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.renderArea.extent = fbuf_ext;
+            renderPassInfo.clearValueCount = rp.clear_value_count();
+            renderPassInfo.pClearValues = rp.clear_values();
+
+            vkCmdBeginRenderPass(
+                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+            );
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = static_cast<float>(fbuf_ext.width);
+            viewport.height = static_cast<float>(fbuf_ext.height);
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+            scissor.extent = fbuf_ext;
+            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+            auto desc_frame = desc_sets_.at(frame_index.get());
+            vkCmdBindDescriptorSets(
+                cur_cmd_buf,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                rp.pipeline_layout(),
+                0,
+                1,
+                &desc_frame,
+                0,
+                nullptr
+            );
+
+            for (auto& pair : draw_sheet.skinned_pairs_) {
+                for (auto& unit : pair.model_->runits_alpha_) {
+                    auto unit_desc = unit.get_desc_set(frame_index.get());
+                    vkCmdBindDescriptorSets(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline_layout(),
+                        1,
+                        1,
+                        &unit_desc,
+                        0,
+                        nullptr
+                    );
+                    unit.record_bind_vert_buf(cur_cmd_buf);
+
+                    for (auto& actor : pair.actors_) {
+                        auto actor_desc = actor.actor_->get_desc_set(
+                            frame_index.get()
+                        );
+                        vkCmdBindDescriptorSets(
+                            cur_cmd_buf,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            rp.pipeline_layout(),
+                            2,
+                            1,
+                            &actor_desc,
+                            0,
+                            nullptr
+                        );
+
+                        vkCmdDrawIndexed(
+                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                        );
+                    }
+                }
+            }
+
+            vkCmdEndRenderPass(cur_cmd_buf);
+        }
+
         mirinae::DescPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
         std::vector<mirinae::Buffer> ubufs_;
@@ -995,184 +1179,24 @@ namespace {
             }
 
             // Shader: Transp
-            {
-                auto& rp = *rp_.transp_;
-
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = fbuf_images_.extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
-
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
-                vkCmdBindPipeline(
-                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-                );
-
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = static_cast<float>(fbuf_images_.width());
-                viewport.height = static_cast<float>(fbuf_images_.height());
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = fbuf_images_.extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
-
-                auto desc_frame = rp_states_transp_.desc_sets_.at(
-                    framesync_.get_frame_index().get()
-                );
-                vkCmdBindDescriptorSets(
-                    cur_cmd_buf,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    rp.pipeline_layout(),
-                    0,
-                    1,
-                    &desc_frame,
-                    0,
-                    nullptr
-                );
-
-                for (auto& pair : draw_sheet.static_pairs_) {
-                    for (auto& unit : pair.model_->render_units_alpha_) {
-                        auto unit_desc = unit.get_desc_set(
-                            framesync_.get_frame_index().get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            1,
-                            1,
-                            &unit_desc,
-                            0,
-                            nullptr
-                        );
-                        unit.record_bind_vert_buf(cur_cmd_buf);
-
-                        for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor.actor_->get_desc_set(
-                                framesync_.get_frame_index().get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                2,
-                                1,
-                                &actor_desc,
-                                0,
-                                nullptr
-                            );
-
-                            vkCmdDrawIndexed(
-                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                            );
-                        }
-                    }
-                }
-
-                vkCmdEndRenderPass(cur_cmd_buf);
-            }
+            rp_states_transp_.record_static(
+                cur_cmd_buf,
+                fbuf_images_.extent(),
+                draw_sheet,
+                framesync_.get_frame_index(),
+                image_index,
+                rp_
+            );
 
             // Shader: Transp skin
-            {
-                auto& rp = *rp_.transp_skin_;
-
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = fbuf_images_.extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
-
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
-                vkCmdBindPipeline(
-                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-                );
-
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = static_cast<float>(fbuf_images_.width());
-                viewport.height = static_cast<float>(fbuf_images_.height());
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = fbuf_images_.extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
-
-                auto desc_frame = rp_states_transp_.desc_sets_.at(
-                    framesync_.get_frame_index().get()
-                );
-                vkCmdBindDescriptorSets(
-                    cur_cmd_buf,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    rp.pipeline_layout(),
-                    0,
-                    1,
-                    &desc_frame,
-                    0,
-                    nullptr
-                );
-
-                for (auto& pair : draw_sheet.skinned_pairs_) {
-                    for (auto& unit : pair.model_->runits_alpha_) {
-                        auto unit_desc = unit.get_desc_set(
-                            framesync_.get_frame_index().get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            1,
-                            1,
-                            &unit_desc,
-                            0,
-                            nullptr
-                        );
-                        unit.record_bind_vert_buf(cur_cmd_buf);
-
-                        for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor.actor_->get_desc_set(
-                                framesync_.get_frame_index().get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                2,
-                                1,
-                                &actor_desc,
-                                0,
-                                nullptr
-                            );
-
-                            vkCmdDrawIndexed(
-                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                            );
-                        }
-                    }
-                }
-
-                vkCmdEndRenderPass(cur_cmd_buf);
-            }
+            rp_states_transp_.record_skinned(
+                cur_cmd_buf,
+                fbuf_images_.extent(),
+                draw_sheet,
+                framesync_.get_frame_index(),
+                image_index,
+                rp_
+            );
 
             // Shader: Fillscreen
             rp_states_fillscreen_.record(
