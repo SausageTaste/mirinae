@@ -284,14 +284,49 @@ namespace {
                     .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
                     .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
                 img_.init(cinfo.get(), device.mem_alloc());
+
+                VkImageViewCreateInfo v_cinfo{};
+                v_cinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                v_cinfo.image = VK_NULL_HANDLE;
+                v_cinfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+                v_cinfo.format = img_.format();
+                v_cinfo.components = { VK_COMPONENT_SWIZZLE_R };
+                v_cinfo.subresourceRange = {
+                    VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1
+                };
+                v_cinfo.subresourceRange.layerCount = 6;
+                v_cinfo.image = img_.image();
+                VK_CHECK(vkCreateImageView(
+                    device.logi_device(), &v_cinfo, nullptr, &cubemap_view_
+                ));
+
+                v_cinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                v_cinfo.subresourceRange.layerCount = 1;
+                for (uint32_t i = 0; i < 6; i++) {
+                    v_cinfo.subresourceRange.baseArrayLayer = i;
+                    VK_CHECK(vkCreateImageView(
+                        device.logi_device(), &v_cinfo, nullptr, &face_views_[i]
+                    ));
+                }
+
                 return true;
             }
 
             void destroy(mirinae::VulkanDevice& device) {
+                vkDestroyImageView(
+                    device.logi_device(), cubemap_view_, nullptr
+                );
+
+                for (auto& x : face_views_) {
+                    vkDestroyImageView(device.logi_device(), x, nullptr);
+                }
+
                 img_.destroy(device.mem_alloc());
             }
 
             mirinae::Image img_;
+            VkImageView cubemap_view_ = VK_NULL_HANDLE;
+            std::array<VkImageView, 6> face_views_;
         };
 
         std::vector<CubeMap> cube_map_;
