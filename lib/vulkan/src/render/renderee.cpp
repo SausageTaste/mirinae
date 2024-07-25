@@ -567,10 +567,9 @@ namespace mirinae {
             mirinae::ImageCreateInfo img_info;
             img_info.fetch_from_image(image, srgb)
                 .deduce_mip_levels()
-                .set_usage(
-                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-                );
+                .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                .add_usage_sampled();
             texture_.init(img_info.get(), device_.mem_alloc());
 
             ::copy_to_img_and_transition(
@@ -617,10 +616,8 @@ namespace mirinae {
             mirinae::ImageCreateInfo img_info;
             img_info.set_dimensions(width, height)
                 .set_format(depth_format)
-                .set_usage(
-                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                    VK_IMAGE_USAGE_SAMPLED_BIT
-                );
+                .add_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+                .add_usage_sampled();
             texture_.init(img_info.get(), device_.mem_alloc());
             texture_view_.init(
                 texture_.image(),
@@ -646,7 +643,7 @@ namespace mirinae {
             mirinae::ImageCreateInfo img_info;
             img_info.set_dimensions(width, height)
                 .set_format(format)
-                .set_usage(usage_flag);
+                .add_usage(usage_flag);
             texture_.init(img_info.get(), device_.mem_alloc());
             texture_view_.init(
                 texture_.image(),

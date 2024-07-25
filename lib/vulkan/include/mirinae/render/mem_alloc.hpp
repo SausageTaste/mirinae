@@ -64,9 +64,18 @@ namespace mirinae {
 
         ImageCreateInfo& set_dimensions(uint32_t width, uint32_t height);
         ImageCreateInfo& set_format(VkFormat format);
-        ImageCreateInfo& set_usage(VkImageUsageFlags usage);
+        ImageCreateInfo& set_arr_layers(uint32_t arr_layers);
 
+        ImageCreateInfo& reset_usage();
+        ImageCreateInfo& add_usage(VkImageUsageFlags usage);
+        ImageCreateInfo& add_usage_sampled();
+
+        ImageCreateInfo& reset_flags();
+        ImageCreateInfo& add_flag(VkImageCreateFlags flags);
+
+        ImageCreateInfo& set_mip_levels(uint32_t v);
         ImageCreateInfo& deduce_mip_levels();
+
         ImageCreateInfo& fetch_from_image(const dal::IImage2D& img, bool srgb);
 
     private:
