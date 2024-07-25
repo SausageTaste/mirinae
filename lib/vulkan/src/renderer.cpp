@@ -257,6 +257,47 @@ namespace {
 // Render pass states
 namespace {
 
+    class RpStatesEnvmap {
+
+    public:
+        void init(mirinae::VulkanDevice& device) {
+            auto& added = cube_map_.emplace_back();
+            added.init(device);
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            for (auto& x : cube_map_) x.destroy(device);
+            cube_map_.clear();
+        }
+
+    private:
+        class CubeMap {
+
+        public:
+            bool init(mirinae::VulkanDevice& device) {
+                mirinae::ImageCreateInfo cinfo;
+                cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
+                    .set_dimensions(512, 512)
+                    .set_mip_levels(1)
+                    .set_arr_layers(6)
+                    .add_usage_sampled()
+                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                    .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+                img_.init(cinfo.get(), device.mem_alloc());
+                return true;
+            }
+
+            void destroy(mirinae::VulkanDevice& device) {
+                img_.destroy(device.mem_alloc());
+            }
+
+            mirinae::Image img_;
+        };
+
+        std::vector<CubeMap> cube_map_;
+    };
+
+
     class RpStatesShadow {
 
     public:
@@ -1408,6 +1449,7 @@ namespace {
 
             rp_states_shadow_.pool().recreate_fbufs(*rp_.shadowmap_, device_);
 
+            rp_states_envmap_.init(device_);
             rp_states_compo_.init(
                 desclayout_,
                 fbuf_images_,
@@ -1423,9 +1465,11 @@ namespace {
             device_.wait_idle();
 
             rp_states_shadow_.pool().destroy_fbufs(device_);
+
             rp_states_fillscreen_.destroy(device_);
             rp_states_transp_.destroy(device_);
             rp_states_compo_.destroy(device_);
+            rp_states_envmap_.destroy(device_);
 
             rp_.destroy();
             swapchain_.destroy(device_.logi_device());
@@ -1620,6 +1664,7 @@ namespace {
         mirinae::OverlayManager overlay_man_;
         mirinae::RenderPassPackage rp_;
         ::RpStatesShadow rp_states_shadow_;
+        ::RpStatesEnvmap rp_states_envmap_;
         ::RpStatesGbuf rp_states_gbuf_;
         ::RpStatesCompo rp_states_compo_;
         ::RpStatesTransp rp_states_transp_;
