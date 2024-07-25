@@ -14,5 +14,9 @@ FetchContent_MakeAvailable(
 )
 
 
-add_subdirectory(windows)
-add_subdirectory(server)
+if (WIN32)
+    add_subdirectory(windows)
+    add_subdirectory(server)
+elseif(UNIX AND NOT APPLE)
+    add_subdirectory(linux)
+endif()

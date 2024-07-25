@@ -11,3 +11,9 @@ Years later, I found the code smells bad and I wanted to apply all my skills I'v
 So here I start a yet another game engine project!
 Not sure how long I'll be working on this one.
 But this time I'll do everything really carefully so it can grow larger and larger without overwelming my congnitive load limits.
+
+# Dependencies on Linux
+
+```
+sudo apt-get install -y libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+```
