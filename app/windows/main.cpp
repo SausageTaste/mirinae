@@ -12,7 +12,7 @@
 
 namespace {
 
-    std::filesystem::path get_windows_documents_path(const char* app_name) {
+    std::filesystem::path get_documents_path(const char* app_name) {
         if (auto pPath = getenv("USERPROFILE")) {
             auto path = std::filesystem::path(pPath) / "Documents" / app_name;
 
@@ -403,7 +403,7 @@ namespace {
             system("chcp 65001");
 
             auto filesys = mirinae::create_filesys_std(
-                ::get_windows_documents_path("Mirinapp")
+                ::get_documents_path("Mirinapp")
             );
 
             mirinae::EngineCreateInfo create_info;
