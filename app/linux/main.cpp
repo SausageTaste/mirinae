@@ -1,6 +1,9 @@
 #include "mirinae/engine.hpp"
 
 #include <filesystem>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -10,8 +13,16 @@
 
 namespace {
 
+    std::filesystem::path get_home_path() {
+        const char *homedir;
+        if ((homedir = getenv("HOME")) == NULL) {
+            homedir = getpwuid(getuid())->pw_dir;
+        }
+        return std::filesystem::path(homedir);
+    }
+
     std::filesystem::path get_windows_documents_path(const char* app_name) {
-        return "~/Documents";
+        return ::get_home_path() / "Documents" / app_name;
     }
 
     auto get_glfw_extensions() {
