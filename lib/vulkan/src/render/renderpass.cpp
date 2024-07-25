@@ -1475,7 +1475,7 @@ namespace { namespace cubemap {
         attach.add(color)
             .load_op(VK_ATTACHMENT_LOAD_OP_CLEAR)
             .store_op(VK_ATTACHMENT_STORE_OP_STORE)
-            .initial_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .initial_layout(VK_IMAGE_LAYOUT_UNDEFINED)
             .final_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;

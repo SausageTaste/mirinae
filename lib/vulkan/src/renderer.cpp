@@ -260,9 +260,13 @@ namespace {
     class RpStatesEnvmap {
 
     public:
-        void init(mirinae::VulkanDevice& device) {
+        void init(
+            mirinae::RenderPassPackage& rp_pkg,
+            mirinae::TextureManager& tex_man,
+            mirinae::VulkanDevice& device
+        ) {
             auto& added = cube_map_.emplace_back();
-            added.init(device);
+            added.init(rp_pkg, tex_man, device);
         }
 
         void destroy(mirinae::VulkanDevice& device) {
@@ -270,11 +274,102 @@ namespace {
             cube_map_.clear();
         }
 
+        void record(
+            const VkCommandBuffer cur_cmd_buf,
+            const ::DrawSheet& draw_sheet,
+            const ::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = *rp_pkg.cubemap_;
+
+            VkRenderPassBeginInfo renderPassInfo{};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = rp.renderpass();
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.renderArea.extent = { 512, 512 };
+            renderPassInfo.clearValueCount = rp.clear_value_count();
+            renderPassInfo.pClearValues = rp.clear_values();
+
+            for (auto& cube_map : cube_map_) {
+                for (int i = 0; i < 6; ++i) {
+                    renderPassInfo.framebuffer = cube_map.fbufs_[i].get();
+
+                    vkCmdBeginRenderPass(
+                        cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                    );
+                    vkCmdBindPipeline(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline()
+                    );
+
+                    VkViewport viewport{};
+                    viewport.x = 0.0f;
+                    viewport.y = 0.0f;
+                    viewport.width = 512;
+                    viewport.height = 512;
+                    viewport.minDepth = 0.0f;
+                    viewport.maxDepth = 1.0f;
+                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+                    VkRect2D scissor{};
+                    scissor.offset = { 0, 0 };
+                    scissor.extent = { 512, 512 };
+                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                    for (auto& pair : draw_sheet.static_pairs_) {
+                        for (auto& unit : pair.model_->render_units_) {
+                            auto unit_desc = unit.get_desc_set(frame_index.get()
+                            );
+                            vkCmdBindDescriptorSets(
+                                cur_cmd_buf,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                rp.pipeline_layout(),
+                                0,
+                                1,
+                                &unit_desc,
+                                0,
+                                nullptr
+                            );
+                            unit.record_bind_vert_buf(cur_cmd_buf);
+
+                            for (auto& actor : pair.actors_) {
+                                auto actor_desc = actor.actor_->get_desc_set(
+                                    frame_index.get()
+                                );
+                                vkCmdBindDescriptorSets(
+                                    cur_cmd_buf,
+                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    rp.pipeline_layout(),
+                                    1,
+                                    1,
+                                    &actor_desc,
+                                    0,
+                                    nullptr
+                                );
+
+                                vkCmdDrawIndexed(
+                                    cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                                );
+                            }
+                        }
+                    }
+
+                    vkCmdEndRenderPass(cur_cmd_buf);
+                }
+            }
+        }
+
     private:
         class CubeMap {
 
         public:
-            bool init(mirinae::VulkanDevice& device) {
+            bool init(
+                mirinae::RenderPassPackage& rp_pkg,
+                mirinae::TextureManager& tex_man,
+                mirinae::VulkanDevice& device
+            ) {
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
                     .set_dimensions(512, 512)
@@ -309,26 +404,53 @@ namespace {
                     ));
                 }
 
+                depth_map_ = tex_man.create_depth(CUBE_IMG_SIZE, CUBE_IMG_SIZE);
+
+                for (uint32_t i = 0; i < 6; i++) {
+                    const std::array<VkImageView, 2> attachments = {
+                        depth_map_->image_view(), face_views_[i]
+                    };
+
+                    VkFramebufferCreateInfo fbuf_cinfo = {};
+                    fbuf_cinfo.sType =
+                        VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                    fbuf_cinfo.renderPass = rp_pkg.cubemap_->renderpass();
+                    fbuf_cinfo.attachmentCount = static_cast<uint32_t>(
+                        attachments.size()
+                    );
+                    fbuf_cinfo.pAttachments = attachments.data();
+                    fbuf_cinfo.width = CUBE_IMG_SIZE;
+                    fbuf_cinfo.height = CUBE_IMG_SIZE;
+                    fbuf_cinfo.layers = 1;
+
+                    fbufs_[i].init(fbuf_cinfo, device.logi_device());
+                }
+
                 return true;
             }
 
             void destroy(mirinae::VulkanDevice& device) {
+                for (auto& x : fbufs_) x.destroy(device.logi_device());
+
                 vkDestroyImageView(
                     device.logi_device(), cubemap_view_, nullptr
                 );
 
-                for (auto& x : face_views_) {
+                for (auto& x : face_views_)
                     vkDestroyImageView(device.logi_device(), x, nullptr);
-                }
 
+                depth_map_.reset();
                 img_.destroy(device.mem_alloc());
             }
 
             mirinae::Image img_;
+            std::unique_ptr<mirinae::ITexture> depth_map_;
             VkImageView cubemap_view_ = VK_NULL_HANDLE;
             std::array<VkImageView, 6> face_views_;
+            std::array<mirinae::Fbuf, 6> fbufs_;
         };
 
+        constexpr static uint32_t CUBE_IMG_SIZE = 512;
         std::vector<CubeMap> cube_map_;
     };
 
@@ -1288,6 +1410,14 @@ namespace {
                 cur_cmd_buf, draw_sheet, framesync_.get_frame_index(), rp_
             );
 
+            rp_states_envmap_.record(
+                cur_cmd_buf,
+                draw_sheet,
+                framesync_.get_frame_index(),
+                image_index,
+                rp_
+            );
+
             rp_states_gbuf_.record_static(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
@@ -1484,7 +1614,7 @@ namespace {
 
             rp_states_shadow_.pool().recreate_fbufs(*rp_.shadowmap_, device_);
 
-            rp_states_envmap_.init(device_);
+            rp_states_envmap_.init(rp_, tex_man_, device_);
             rp_states_compo_.init(
                 desclayout_,
                 fbuf_images_,
