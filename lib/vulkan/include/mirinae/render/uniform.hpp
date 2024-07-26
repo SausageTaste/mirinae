@@ -21,6 +21,7 @@ namespace mirinae {
 
 
     struct U_GbufActor {
+        glm::mat4 model;
         glm::mat4 view_model;
         glm::mat4 pvm;
     };
@@ -42,11 +43,22 @@ namespace mirinae {
     };
 
 
+    struct U_EnvmapPushConst {
+        glm::mat4 proj_view_;
+    };
+
+
     class U_CompoMain {
 
     public:
-        void set_proj_inv(const glm::mat4& m) { proj_inv_ = m; }
-        void set_view_inv(const glm::mat4& m) { view_inv_ = m; }
+        void set_proj(const glm::mat4& m) {
+            proj_ = m;
+            proj_inv_ = glm::inverse(m);
+        }
+        void set_view(const glm::mat4& m) {
+            view_ = m;
+            view_inv_ = glm::inverse(m);
+        }
 
         // It automatically normalize the input vector.
         void set_dlight_mat(const glm::mat4& m) { dlight_mat_ = m; }
@@ -107,8 +119,10 @@ namespace mirinae {
         }
 
     private:
-        glm::mat4 proj_inv_;
+        glm::mat4 view_;
         glm::mat4 view_inv_;
+        glm::mat4 proj_;
+        glm::mat4 proj_inv_;
 
         // Directional light
         glm::mat4 dlight_mat_;

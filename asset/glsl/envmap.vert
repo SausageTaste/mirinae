@@ -11,19 +11,24 @@ layout(location = 4) out vec2 v_texcoord;
 
 
 layout(set = 1, binding = 0) uniform U_GbufActor {
+    mat4 model;
     mat4 view_model;
     mat4 pvm;
 } u_gbuf_model;
 
+layout(push_constant) uniform U_EnvmapPushConst {
+    mat4 proj_view;
+} u_push_const;
+
 
 void main() {
-    gl_Position = u_gbuf_model.pvm * vec4(i_pos, 1);
+    gl_Position = u_push_const.proj_view * u_gbuf_model.model * vec4(i_pos, 1);
     //v_tbn = mat3(u_gbuf_model.view_model) * mat3(i_tangent, normalize(cross(i_normal, i_tangent)), i_normal);
 
     vec3 normal = normalize(i_normal);
     vec3 to_light = normalize(vec3(1, 1, 1));
     float light_align = max(dot(normal, to_light), 0);
-    v_light = vec3(light_align);
+    v_light = vec3(light_align * 0.7 + 0.3);
 
     v_texcoord = i_texcoord;
 }

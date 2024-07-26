@@ -14,8 +14,10 @@ layout(set = 0, binding = 2) uniform sampler2D u_normal_map;
 layout(set = 0, binding = 3) uniform sampler2D u_material_map;
 
 layout(set = 0, binding = 4) uniform U_CompoMain {
-    mat4 proj_inv;
+    mat4 view;
     mat4 view_inv;
+    mat4 proj;
+    mat4 proj_inv;
 
     // Directional light
     mat4 dlight_mat;
@@ -31,6 +33,7 @@ layout(set = 0, binding = 4) uniform U_CompoMain {
 
 layout(set = 0, binding = 5) uniform sampler2D u_dlight_shadow_map;
 layout(set = 0, binding = 6) uniform sampler2D u_slight_shadow_map;
+layout(set = 0, binding = 7) uniform samplerCube u_envmap;
 
 
 vec3 calc_frag_pos(float depth) {
@@ -57,6 +60,9 @@ void main() {
     const vec3 view_direc = normalize(frag_pos);
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
     const float frag_distance = length(frag_pos);
+    const vec3 reflect_direc = reflect(view_direc, normal);
+    const vec3 world_reflect = (u_comp_main.view_inv * vec4(reflect_direc, 0)).xyz;
+    const vec3 envmap_texel = texture(u_envmap, world_reflect).xyz;
 
     vec3 light = albedo_texel.rgb * 0.4;
 
@@ -105,4 +111,5 @@ void main() {
     }
 
     f_color = vec4(light, 1);
+    f_color.xyz = mix(f_color.xyz, envmap_texel, 0.5);
 }

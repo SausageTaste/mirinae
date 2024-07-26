@@ -1599,6 +1599,8 @@ namespace { namespace cubemap {
             layout_ = ::PipelineLayoutBuilder{}
                           .desc(create_desclayout_model(desclayouts, device))
                           .desc(create_desclayout_actor(desclayouts, device))
+                          .add_vertex_flag()
+                          .pc(0, sizeof(mirinae::U_EnvmapPushConst))
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
@@ -1660,7 +1662,8 @@ namespace { namespace compo {
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // material
             .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_CompoMain
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // dlight shadowmap
-            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // slight shadowmap
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // slight shadowmap
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // envmap
         return desclayouts.add(builder, device.logi_device());
     }
 
