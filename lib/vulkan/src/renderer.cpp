@@ -267,6 +267,9 @@ namespace {
         ) {
             auto& added = cube_map_.emplace_back();
             added.init(rp_pkg, tex_man, device);
+            added.world_pos_ = { 0.14983922321477,
+                                 0.66663010560478,
+                                 -1.1615585516897 };
         }
 
         void destroy(mirinae::VulkanDevice& device) {
@@ -291,7 +294,46 @@ namespace {
             renderPassInfo.clearValueCount = rp.clear_value_count();
             renderPassInfo.pClearValues = rp.clear_values();
 
+            const auto proj_mat = glm::perspective(
+                glm::radians(90.0f), 1.0f, 0.1f, 1000.0f
+            );
+            std::array<glm::mat4, 6> view_mats;
+            view_mats[0] = glm::lookAt(
+                glm::dvec3(0.0),
+                glm::dvec3(1.0, 0.0, 0.0),
+                glm::dvec3(0.0, -1.0, 0.0)
+            );
+            view_mats[1] = glm::lookAt(
+                glm::dvec3(0.0),
+                glm::dvec3(-1.0, 0.0, 0.0),
+                glm::dvec3(0.0, -1.0, 0.0)
+            );
+            view_mats[2] = glm::lookAt(
+                glm::dvec3(0.0),
+                glm::dvec3(0.0, 1.0, 0.0),
+                glm::dvec3(0.0, 0.0, 1.0)
+            );
+            view_mats[3] = glm::lookAt(
+                glm::dvec3(0.0),
+                glm::dvec3(0.0, -1.0, 0.0),
+                glm::dvec3(0.0, 0.0, -1.0)
+            );
+            view_mats[4] = glm::lookAt(
+                glm::dvec3(0.0),
+                glm::dvec3(0.0, 0.0, 1.0),
+                glm::dvec3(0.0, -1.0, 0.0)
+            );
+            view_mats[5] = glm::lookAt(
+                glm::dvec3(0.0),
+                glm::dvec3(0.0, 0.0, -1.0),
+                glm::dvec3(0.0, -1.0, 0.0)
+            );
+
             for (auto& cube_map : cube_map_) {
+                const auto world_mat = glm::translate(
+                    glm::mat4(1.0), -cube_map.world_pos_
+                );
+
                 for (int i = 0; i < 6; ++i) {
                     renderPassInfo.framebuffer = cube_map.fbufs_[i].get();
 
@@ -349,6 +391,19 @@ namespace {
                                     nullptr
                                 );
 
+                                mirinae::U_EnvmapPushConst push_const;
+                                push_const.proj_view_ = proj_mat *
+                                                        view_mats[i] *
+                                                        world_mat;
+                                vkCmdPushConstants(
+                                    cur_cmd_buf,
+                                    rp.pipeline_layout(),
+                                    VK_SHADER_STAGE_VERTEX_BIT,
+                                    0,
+                                    sizeof(mirinae::U_EnvmapPushConst),
+                                    &push_const
+                                );
+
                                 vkCmdDrawIndexed(
                                     cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
                                 );
@@ -359,6 +414,10 @@ namespace {
                     vkCmdEndRenderPass(cur_cmd_buf);
                 }
             }
+        }
+
+        VkImageView get_view(size_t index) const {
+            return cube_map_.at(index).cubemap_view_;
         }
 
     private:
@@ -448,6 +507,7 @@ namespace {
             VkImageView cubemap_view_ = VK_NULL_HANDLE;
             std::array<VkImageView, 6> face_views_;
             std::array<mirinae::Fbuf, 6> fbufs_;
+            glm::vec3 world_pos_;
         };
 
         constexpr static uint32_t CUBE_IMG_SIZE = 512;
@@ -801,6 +861,7 @@ namespace {
             mirinae::FbufImageBundle& fbufs,
             VkImageView dlight_shadowmap,
             VkImageView slight_shadowmap,
+            VkImageView envmap,
             mirinae::VulkanDevice& device
         ) {
             auto& desclayout = desclayouts.get("compo:main");
@@ -831,7 +892,8 @@ namespace {
                     .add_img_sampler(fbufs.material().image_view(), sam_lin)
                     .add_ubuf(ubuf)
                     .add_img_sampler(dlight_shadowmap, sam_nea)
-                    .add_img_sampler(slight_shadowmap, sam_nea);
+                    .add_img_sampler(slight_shadowmap, sam_nea)
+                    .add_img_sampler(envmap, device.samplers().get_cubemap());
             }
             builder.apply_all(device.logi_device());
         }
@@ -1620,6 +1682,7 @@ namespace {
                 fbuf_images_,
                 rp_states_shadow_.pool().get_img_view_at(0),
                 rp_states_shadow_.pool().get_img_view_at(1),
+                rp_states_envmap_.get_view(0),
                 device_
             );
             rp_states_transp_.init(desclayout_, device_);
@@ -1740,6 +1803,7 @@ namespace {
                     const auto model_mat = transform.make_model_mat();
 
                     mirinae::U_GbufActor ubuf_data;
+                    ubuf_data.model = model_mat;
                     ubuf_data.view_model = view_mat * model_mat;
                     ubuf_data.pvm = proj_mat * view_mat * model_mat;
 
@@ -1782,8 +1846,8 @@ namespace {
             // Update ubuf: U_CompoMain
             {
                 mirinae::U_CompoMain ubuf_data;
-                ubuf_data.set_proj_inv(glm::inverse(proj_mat));
-                ubuf_data.set_view_inv(glm::inverse(view_mat));
+                ubuf_data.set_proj(proj_mat);
+                ubuf_data.set_view(view_mat);
 
                 for (auto e : cosmos_->reg().view<cpnt::DLight>()) {
                     const auto& light = cosmos_->reg().get<cpnt::DLight>(e);

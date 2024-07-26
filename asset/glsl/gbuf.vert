@@ -10,6 +10,7 @@ layout(location = 3) out vec2 v_texcoord;
 
 
 layout(set = 1, binding = 0) uniform U_GbufActor {
+    mat4 model;
     mat4 view_model;
     mat4 pvm;
 } u_gbuf_model;
