@@ -1518,8 +1518,8 @@ namespace { namespace cubemap {
         mirinae::VulkanDevice& device
     ) {
         ::ShaderStagesBuilder shader_stages{ device };
-        shader_stages.add_vert("asset/spv/gbuf_vert.spv");
-        shader_stages.add_frag("asset/spv/gbuf_frag.spv");
+        shader_stages.add_vert("asset/spv/envmap_vert.spv");
+        shader_stages.add_frag("asset/spv/envmap_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -1545,7 +1545,7 @@ namespace { namespace cubemap {
         const auto depth_stencil = ::create_info_depth_stencil(true, true);
 
         ::ColorBlendStateBuilder color_blend_builder;
-        const auto color_blending = color_blend_builder.add(false, 3).build();
+        const auto color_blending = color_blend_builder.add(false, 1).build();
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
