@@ -29,8 +29,8 @@ namespace mirinae {
         }
 
     private:
-        sung::MonotonicClock rt_clock_;
-        sung::MonotonicClock rt_timer_;
+        sung::MonotonicRealtimeTimer rt_clock_;
+        sung::MonotonicRealtimeTimer rt_timer_;
         double sim_time_ = 0;
         double time_scale_ = 1;
     };

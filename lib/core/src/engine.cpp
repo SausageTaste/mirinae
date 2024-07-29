@@ -276,7 +276,7 @@ namespace {
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
         std::unique_ptr<mirinae::IRenderer> renderer_;
 
-        sung::MonotonicClock delta_timer_, sec5_;
+        sung::MonotonicRealtimeTimer delta_timer_, sec5_;
         ::NoclipController camera_controller_;
     };
 

@@ -80,7 +80,7 @@ namespace { namespace lua { namespace global {
     }
 
     int time(lua_State* const L) {
-        const auto sec = sung::CalenderTime::from_now().to_total_seconds();
+        const auto sec = sung::get_time_unix();
         lua_pushnumber(L, sec);
         return 1;
     }

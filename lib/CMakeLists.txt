@@ -60,7 +60,6 @@ target_include_directories(liblua PUBLIC ${fetch_lua_SOURCE_DIR})
 # define global macro
 add_compile_definitions(_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
 
-add_subdirectory(../extern/SungToolsCpp  ${PROJECT_BINARY_DIR}/SungToolsCpp)
 add_subdirectory(../extern/DalbaragiTools  ${PROJECT_BINARY_DIR}/DalbaragiTools)
 
 add_subdirectory(auxiliary)

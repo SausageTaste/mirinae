@@ -1,6 +1,3 @@
 [submodule "extern/DalbaragiTools"]
 	path = extern/DalbaragiTools
 	url = https://github.com/SausageTaste/DalbaragiTools
-[submodule "extern/SungToolsCpp"]
-	path = extern/SungToolsCpp
-	url = https://github.com/SausageTaste/SungToolsCpp
