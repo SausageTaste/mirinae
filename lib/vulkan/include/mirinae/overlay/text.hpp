@@ -13,7 +13,7 @@ namespace mirinae {
     class FontLibrary {
 
     public:
-        FontLibrary(mirinae::IFilesys& filesys);
+        FontLibrary(dal::Filesystem& filesys);
 
         const unsigned char* data() const { return font_.data; }
 

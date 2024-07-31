@@ -1,13 +1,13 @@
 local scene = require('scene')
 
 do
-    local e = scene.create_static_actor("asset/models/sponza/sponza.dmd")
+    local e = scene.create_static_actor(":asset/models/sponza.dun/sponza.dmd")
     e:get_transform():set_scale(0.01, 0.01, 0.01)
     print("Static actor created:", e:get_id(), e:get_respath())
 end
 
 do
-    local e = scene.create_skinned_actor("ThinMatrix/Character Running.dmd")
+    local e = scene.create_skinned_actor("ThinMatrix/char_running.dun/Character Running.dmd")
 
     local a = e:get_anim_state()
     a:set_anim_idx(0)
@@ -21,7 +21,7 @@ do
 end
 
 do
-    bard = scene.create_skinned_actor("Sung/bard/bard_subset.dmd")
+    bard = scene.create_skinned_actor("Sung/bard.dun/bard_subset.dmd")
 
     local a = bard:get_anim_state()
     a:set_anim_name("sc_groupdance_10")
@@ -34,7 +34,7 @@ do
 end
 
 do
-    artist = scene.create_skinned_actor("Sung/artist/artist_subset.dmd")
+    artist = scene.create_skinned_actor("Sung/artist.dun/artist_subset.dmd")
 
     local a = artist:get_anim_state()
     a:set_anim_name("sc_groupdance_10")
@@ -47,7 +47,7 @@ do
 end
 
 do
-    slayer = scene.create_skinned_actor("Sung/slayer/slayer_subset.dmd")
+    slayer = scene.create_skinned_actor("Sung/slayer.dun/slayer_subset.dmd")
 
     local a = slayer:get_anim_state()
     a:set_anim_name("sc_groupdance_10")

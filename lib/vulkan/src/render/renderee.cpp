@@ -71,7 +71,7 @@ namespace {
             albedo_map_ = this->request_texture(
                 res_id,
                 src_material.albedo_map_,
-                "asset/textures/missing_texture.ktx",
+                ":asset/textures/missing_texture.ktx",
                 true,
                 tex_man
             );
@@ -79,7 +79,7 @@ namespace {
             normal_map_ = this->request_texture(
                 res_id,
                 src_material.normal_map_,
-                "asset/textures/null_normal_map.png",
+                ":asset/textures/null_normal_map.png",
                 false,
                 tex_man
             );
@@ -836,9 +836,7 @@ namespace mirinae {
             if (auto index = this->find_index(res_id))
                 return textures_.at(index.value());
 
-            const auto img_data = device_.filesys().read_file_to_vector(
-                res_id.c_str()
-            );
+            const auto img_data = device_.filesys().read_file(res_id.c_str());
             if (!img_data.has_value()) {
                 spdlog::warn(
                     "Failed to read image file: {}", res_id.u8string()
@@ -1215,7 +1213,7 @@ namespace mirinae {
             if (models_.end() != found)
                 return found->second;
 
-            const auto content = device_.filesys().read_file_to_vector(res_id);
+            const auto content = device_.filesys().read_file(res_id);
             if (!content.has_value()) {
                 spdlog::warn("Failed to read dmd file: {}", res_id.u8string());
                 return nullptr;
@@ -1329,7 +1327,7 @@ namespace mirinae {
             if (skin_models_.end() != found)
                 return found->second;
 
-            const auto content = device_.filesys().read_file_to_vector(res_id);
+            const auto content = device_.filesys().read_file(res_id);
             if (!content.has_value()) {
                 spdlog::warn("Failed to read dmd file: {}", res_id.u8string());
                 return nullptr;
