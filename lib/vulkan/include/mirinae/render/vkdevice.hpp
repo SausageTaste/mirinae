@@ -60,7 +60,7 @@ namespace mirinae {
 
         // Misc
         VulkanMemoryAllocator mem_alloc();
-        IFilesys& filesys();
+        dal::Filesystem& filesys();
         IOsIoFunctions& osio();
 
         class Pimpl;

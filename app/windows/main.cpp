@@ -12,6 +12,21 @@
 
 namespace {
 
+    std::filesystem::path find_asset_folder() {
+        std::filesystem::path cur_path = ".";
+
+        for (int i = 0; i < 10; ++i) {
+            const auto folder_path = cur_path / "asset";
+            if (std::filesystem::is_directory(folder_path)) {
+                return std::filesystem::absolute(folder_path);
+            } else {
+                cur_path /= "..";
+            }
+        }
+
+        throw std::runtime_error("Failed to find asset path");
+    }
+
     std::filesystem::path get_documents_path(const char* app_name) {
         if (auto pPath = getenv("USERPROFILE")) {
             auto path = std::filesystem::path(pPath) / "Documents" / app_name;
@@ -402,12 +417,16 @@ namespace {
         CombinedEngine() : window_(800, 600, "Mirinapp") {
             system("chcp 65001");
 
-            auto filesys = mirinae::create_filesys_std(
-                ::get_documents_path("Mirinapp")
-            );
-
             mirinae::EngineCreateInfo create_info;
-            create_info.filesys_.reset(filesys.release());
+
+            create_info.filesys_ = std::make_shared<dal::Filesystem>();
+            create_info.filesys_->add_subsys(dal::create_filesubsys_std(
+                ":asset", ::find_asset_folder(), *create_info.filesys_
+            ));
+            create_info.filesys_->add_subsys(dal::create_filesubsys_std(
+                "", ::get_documents_path("Mirinapp"), *create_info.filesys_
+            ));
+
             create_info.osio_ = std::make_shared<OsInputOutput>(window_);
             create_info.instance_extensions_ = ::get_glfw_extensions();
             create_info.surface_creator_ = [this](void* instance) -> uint64_t {

@@ -38,9 +38,9 @@ namespace {
 // FontLibrary
 namespace mirinae {
 
-    FontLibrary::FontLibrary(mirinae::IFilesys& filesys) {
-        const auto font_path = "asset/font/SeoulNamsanM.ttf";
-        if (!filesys.read_file_to_vector(font_path, file_data_))
+    FontLibrary::FontLibrary(dal::Filesystem& filesys) {
+        const auto font_path = ":asset/font/SeoulNamsanM.ttf";
+        if (!filesys.read_file(font_path, file_data_))
             throw std::runtime_error("failed to load font file");
 
         stbtt_InitFont(
@@ -83,7 +83,7 @@ namespace mirinae {
 
         render_unit_.init(
             mirinae::MAX_FRAMES_IN_FLIGHT,
-            tex_man.request("asset/textures/white.png", false)->image_view(),
+            tex_man.request(":asset/textures/white.png", false)->image_view(),
             texture_->image_view(),
             device.samplers().get_linear(),
             desclayout,

@@ -20,8 +20,8 @@ namespace {
             auto& overlay = render_units_.emplace_back(device);
             overlay.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                tex_man.request("asset/textures/black.png", true)->image_view(),
-                tex_man.request("asset/textures/white.png", true)->image_view(),
+                tex_man.request(":asset/textures/black.png", true)->image_view(),
+                tex_man.request(":asset/textures/white.png", true)->image_view(),
                 device.samplers().get_linear(),
                 desclayout,
                 tex_man
@@ -409,7 +409,7 @@ namespace mirinae {
     void OverlayManager::create_image_view(VkImageView img_view) {
         auto w = std::make_unique<ImageView>(
             img_view,
-            pimpl_->tex_man_.request("asset/textures/white.png", true)
+            pimpl_->tex_man_.request(":asset/textures/white.png", true)
                 ->image_view(),
             pimpl_->desclayout_,
             pimpl_->tex_man_,

@@ -201,8 +201,8 @@ namespace {
 
             // Script
             {
-                const auto contents = filesys_->read_file_to_vector(
-                    "asset/script/startup.lua"
+                const auto contents = filesys_->read_file(
+                    ":asset/script/startup.lua"
                 );
                 if (contents) {
                     const std::string str{ contents->begin(), contents->end() };
@@ -270,7 +270,7 @@ namespace {
         }
 
     private:
-        std::shared_ptr<mirinae::IFilesys> filesys_;
+        std::shared_ptr<dal::Filesystem> filesys_;
         std::unique_ptr<mirinae::INetworkClient> client_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;

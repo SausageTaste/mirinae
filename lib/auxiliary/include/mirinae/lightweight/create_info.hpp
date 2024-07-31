@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <daltools/filesys/filesys.hpp>
+
 #include "mirinae/platform/filesys.hpp"
 #include "mirinae/platform/osio.hpp"
 
@@ -15,7 +17,7 @@ namespace mirinae {
         // VkInstance -> VkSurfaceKHR
         using surface_creator_t = std::function<uint64_t(void*)>;
 
-        std::shared_ptr<IFilesys> filesys_;
+        std::shared_ptr<dal::Filesystem> filesys_;
         std::shared_ptr<IOsIoFunctions> osio_;
         std::vector<std::string> instance_extensions_;
         surface_creator_t surface_creator_;
