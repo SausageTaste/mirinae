@@ -174,24 +174,17 @@ void android_main(struct android_app *pApp) {
     // implemented in android_native_app_glue.c.
     android_app_set_motion_event_filter(pApp, motion_event_filter_func);
 
-    // This sets up a typical game/event loop. It will run until the app is destroyed.
-    int events;
-    android_poll_source *pSource;
     do {
-        // Process all pending events before running game logic.
-        if (ALooper_pollAll(0, nullptr, &events, (void **) &pSource) >= 0) {
-            if (pSource) {
-                pSource->process(pApp, pSource);
-            }
-        }
+        int events;
+        android_poll_source *pSource;
+        const auto poll_res = ALooper_pollOnce(0, nullptr, &events, (void **) &pSource);
+        if (pSource)
+            pSource->process(pApp, pSource);
 
-        // Check if any user data is associated. This is assigned in handle_cmd
         if (pApp->userData) {
-            auto engine = reinterpret_cast<::CombinedEngine*>(pApp->userData);
-
+            auto engine = reinterpret_cast<::CombinedEngine *>(pApp->userData);
             if (!engine->is_ongoing())
                 break;
-
             engine->do_frame();
         }
     } while (!pApp->destroyRequested);
