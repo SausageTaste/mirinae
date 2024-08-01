@@ -7,7 +7,7 @@ do
 end
 
 do
-    local e = scene.create_skinned_actor("ThinMatrix/char_running.dun/Character Running.dmd")
+    local e = scene.create_skinned_actor(":asset/models/Character Running.dun/Character Running.dmd")
 
     local a = e:get_anim_state()
     a:set_anim_idx(0)
