@@ -70,7 +70,10 @@ namespace {
                 spdlog::set_default_logger(android_logger);
             }
 
-            create_info_.filesys_ = mirinapp::create_filesys_android_asset(state->activity->assetManager);
+            create_info_.filesys_ = std::make_shared<dal::Filesystem>();
+            create_info_.filesys_->add_subsys(mirinapp::create_filesubsys_android_asset(
+                state->activity->assetManager, *create_info_.filesys_
+            ));
 
             create_info_.instance_extensions_ = std::vector<std::string>{
                     "VK_KHR_surface",
