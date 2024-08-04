@@ -317,7 +317,7 @@ namespace {
                 );
 
                 for (int i = 0; i < 6; ++i) {
-                    renderPassInfo.framebuffer = cube_map.fbufs_[i].get();
+                    renderPassInfo.framebuffer = cube_map.base_fbuf(i);
 
                     vkCmdBeginRenderPass(
                         cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
@@ -399,13 +399,11 @@ namespace {
         }
 
         VkImageView get_view(size_t index) const {
-            return cube_map_.at(index).cubemap_view_.get();
+            return cube_map_.at(index).base_view(index);
         }
 
     private:
-        class ColorCubeMap {};
-
-        class CubeMap {
+        class ColorCubeMap {
 
         public:
             bool init(
@@ -472,12 +470,55 @@ namespace {
                 img_.destroy(device.mem_alloc());
             }
 
+            VkFramebuffer fbuf(size_t index) { return fbufs_.at(index).get(); }
+            VkImageView view(size_t index) const {
+                return face_views_.at(index).get();
+            }
+
+        private:
             mirinae::Image img_;
             std::unique_ptr<mirinae::ITexture> depth_map_;
             mirinae::ImageView cubemap_view_;
             std::array<mirinae::ImageView, 6> face_views_;
             std::array<mirinae::Fbuf, 6> fbufs_;
+        };
+
+        class CubeMap {
+
+        public:
+            bool init(
+                mirinae::RenderPassPackage& rp_pkg,
+                mirinae::TextureManager& tex_man,
+                mirinae::VulkanDevice& device
+            ) {
+                if (!base_.init(rp_pkg, tex_man, device))
+                    return false;
+                if (!diffuse_.init(rp_pkg, tex_man, device))
+                    return false;
+                return true;
+            }
+
+            void destroy(mirinae::VulkanDevice& device) {
+                base_.destroy(device);
+                diffuse_.destroy(device);
+            }
+
+            VkFramebuffer base_fbuf(size_t index) { return base_.fbuf(index); }
+            VkFramebuffer diffuse_fbuf(size_t index) {
+                return diffuse_.fbuf(index);
+            }
+            VkImageView base_view(size_t index) const {
+                return base_.view(index);
+            }
+            VkImageView diffuse_view(size_t index) const {
+                return diffuse_.view(index);
+            }
+
             glm::dvec3 world_pos_;
+
+        private:
+            ColorCubeMap base_;
+            ColorCubeMap diffuse_;
         };
 
         constexpr static uint32_t CUBE_IMG_SIZE = 512;

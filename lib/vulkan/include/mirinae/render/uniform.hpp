@@ -48,6 +48,11 @@ namespace mirinae {
     };
 
 
+    struct U_EnvdiffusePushConst {
+        glm::mat4 proj_view_;
+    };
+
+
     class U_CompoMain {
 
     public:
