@@ -175,10 +175,10 @@ namespace {
 
             // SLight
             {
-                const auto entt = reg.create();
-                auto& s = reg.emplace<mirinae::cpnt::SLight>(entt);
+                flashlight_ = reg.create();
+                auto& s = reg.emplace<mirinae::cpnt::SLight>(flashlight_);
                 s.transform_.pos_ = { 0, 2, 0 };
-                s.color_ = glm::vec3{ 5, 5, 5 };
+                s.color_ = glm::vec3{ 0, 0, 0 };
                 s.inner_angle_.set_deg(10);
                 s.outer_angle_.set_deg(25);
             }
@@ -237,6 +237,18 @@ namespace {
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
+            if (e.key == mirinae::key::KeyCode::f) {
+                auto& reg = cosmos_->reg();
+                auto& slight = reg.get<mirinae::cpnt::SLight>(flashlight_);
+                if (e.action_type == mirinae::key::ActionType::down) {
+                    if (slight.color_.r == 0)
+                        slight.color_ = glm::vec3{ 5, 5, 5 };
+                    else
+                        slight.color_ = glm::vec3{ 0, 0, 0 };
+                }
+                return true;
+            }
+
             if (renderer_->on_key_event(e))
                 return true;
             if (camera_controller_.on_key_event(e))
@@ -278,6 +290,7 @@ namespace {
 
         sung::MonotonicRealtimeTimer delta_timer_, sec5_;
         ::NoclipController camera_controller_;
+        entt::entity flashlight_;
     };
 
 }  // namespace

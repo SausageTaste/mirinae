@@ -18,6 +18,8 @@ layout(set = 1, binding = 0) uniform U_GbufActor {
 
 layout(push_constant) uniform U_EnvmapPushConst {
     mat4 proj_view;
+    vec4 dlight_dir;
+    vec4 dlight_color;
 } u_push_const;
 
 
@@ -26,9 +28,8 @@ void main() {
     //v_tbn = mat3(u_gbuf_model.view_model) * mat3(i_tangent, normalize(cross(i_normal, i_tangent)), i_normal);
 
     vec3 normal = normalize(i_normal);
-    vec3 to_light = normalize(vec3(1, 1, 1));
-    float light_align = max(dot(normal, to_light), 0);
-    v_light = vec3(light_align * 0.7 + 0.3);
+    float light_align = max(dot(normal, -u_push_const.dlight_dir.xyz), 0);
+    v_light = light_align * u_push_const.dlight_color.xyz;
 
     v_texcoord = i_texcoord;
 }

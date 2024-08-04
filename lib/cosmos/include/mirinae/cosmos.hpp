@@ -15,6 +15,7 @@ namespace mirinae {
 
         auto& scene() { return scene_; }
         auto& reg() { return scene_.reg_; }
+        auto& reg() const { return scene_.reg_; }
         auto& ftime() const { return scene_.ftime_; }
 
     private:
