@@ -310,6 +310,10 @@ namespace mirinae {
 
         void destroy(VkDevice logi_device);
 
+        VkDescriptorSet alloc(
+            VkDescriptorSetLayout desclayout, VkDevice logi_device
+        );
+
         std::vector<VkDescriptorSet> alloc(
             uint32_t count,
             VkDescriptorSetLayout desclayout,

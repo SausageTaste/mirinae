@@ -57,12 +57,14 @@ void main() {
     const float metallic = material_texel.y;
 
     const vec3 world_pos = (u_comp_main.view_inv * vec4(frag_pos, 1)).xyz;
+    const vec3 world_normal = (u_comp_main.view_inv * vec4(normal, 0)).xyz;
     const vec3 view_direc = normalize(frag_pos);
+    const vec3 world_direc = (u_comp_main.view_inv * vec4(view_direc, 0)).xyz;
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
     const float frag_distance = length(frag_pos);
     const vec3 reflect_direc = reflect(view_direc, normal);
     const vec3 world_reflect = (u_comp_main.view_inv * vec4(reflect_direc, 0)).xyz;
-    const vec3 envmap_texel = texture(u_envmap, world_reflect).xyz;
+    const vec3 envmap_texel = texture(u_envmap, world_normal).xyz;
 
     vec3 light = albedo_texel.rgb * 0.4;
 
@@ -111,5 +113,5 @@ void main() {
     }
 
     f_color = vec4(light, 1);
-    f_color.xyz = mix(f_color.xyz, envmap_texel, 0.5);
+    f_color.xyz = texture(u_envmap, world_direc).xyz;
 }

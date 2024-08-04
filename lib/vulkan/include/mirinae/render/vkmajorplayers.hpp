@@ -120,7 +120,7 @@ namespace mirinae {
         void reset(VkFramebuffer handle, VkDevice logi_device);
         void destroy(VkDevice logi_device);
 
-        VkFramebuffer get() { return handle_; }
+        VkFramebuffer get() const { return handle_; }
 
     private:
         VkFramebuffer handle_ = VK_NULL_HANDLE;
