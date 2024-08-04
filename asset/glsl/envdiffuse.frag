@@ -17,7 +17,7 @@ void main() {
 
     vec3 irradiance = vec3(0);
     int num_samples = 0;
-    const float sample_delta = 0.2;
+    const float sample_delta = 0.1;
     for (float phi = 0.0; phi < 2.0 * PI; phi += sample_delta) {
         for (float theta = 0.0; theta < 0.5 * PI; theta += sample_delta) {
             const vec3 tangent_sample = vec3(sin(theta) * cos(phi),  sin(theta) * sin(phi), cos(theta));

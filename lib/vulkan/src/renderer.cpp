@@ -290,6 +290,8 @@ namespace {
             added.world_pos_ = { 0.14983922321477,
                                  0.66663010560478,
                                  -1.1615585516897 };
+
+            timer_.set_min();
         }
 
         void destroy(mirinae::VulkanDevice& device) {
@@ -298,200 +300,35 @@ namespace {
             desc_pool_.destroy(device.logi_device());
         }
 
-        void record_base(
+        void record(
             const VkCommandBuffer cur_cmd_buf,
             const ::DrawSheet& draw_sheet,
             const ::FrameIndex frame_index,
+            const mirinae::CosmosSimulator& cosmos,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.cubemap_;
-
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = { 512, 512 };
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
-
-            const auto proj_mat = glm::perspective<double>(
-                glm::radians(90.0), 1.0, 0.1, 1000.0
-            );
-
-            for (auto& cube_map : cube_map_) {
-                const auto world_mat = glm::translate<double>(
-                    glm::dmat4(1), -cube_map.world_pos_
+            if (timer_.check_if_elapsed(60)) {
+                record_base(
+                    cur_cmd_buf,
+                    draw_sheet,
+                    frame_index,
+                    cosmos,
+                    image_index,
+                    rp_pkg
                 );
-
-                for (int i = 0; i < 6; ++i) {
-                    renderPassInfo.framebuffer = cube_map.base().face_fbuf(i);
-
-                    vkCmdBeginRenderPass(
-                        cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                    );
-                    vkCmdBindPipeline(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline()
-                    );
-
-                    VkViewport viewport{};
-                    viewport.x = 0.0f;
-                    viewport.y = 0.0f;
-                    viewport.width = 512;
-                    viewport.height = 512;
-                    viewport.minDepth = 0.0f;
-                    viewport.maxDepth = 1.0f;
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-                    VkRect2D scissor{};
-                    scissor.offset = { 0, 0 };
-                    scissor.extent = { 512, 512 };
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
-
-                    for (auto& pair : draw_sheet.static_pairs_) {
-                        for (auto& unit : pair.model_->render_units_) {
-                            auto unit_desc = unit.get_desc_set(frame_index.get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &unit_desc,
-                                0,
-                                nullptr
-                            );
-                            unit.record_bind_vert_buf(cur_cmd_buf);
-
-                            for (auto& actor : pair.actors_) {
-                                auto actor_desc = actor.actor_->get_desc_set(
-                                    frame_index.get()
-                                );
-                                vkCmdBindDescriptorSets(
-                                    cur_cmd_buf,
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    rp.pipeline_layout(),
-                                    1,
-                                    1,
-                                    &actor_desc,
-                                    0,
-                                    nullptr
-                                );
-
-                                mirinae::U_EnvmapPushConst push_const;
-                                push_const.proj_view_ = proj_mat *
-                                                        CUBE_VIEW_MATS[i] *
-                                                        world_mat;
-                                vkCmdPushConstants(
-                                    cur_cmd_buf,
-                                    rp.pipeline_layout(),
-                                    VK_SHADER_STAGE_VERTEX_BIT,
-                                    0,
-                                    sizeof(mirinae::U_EnvmapPushConst),
-                                    &push_const
-                                );
-
-                                vkCmdDrawIndexed(
-                                    cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                                );
-                            }
-                        }
-                    }
-
-                    vkCmdEndRenderPass(cur_cmd_buf);
-                }
-            }
-        }
-
-        void record_diffuse(
-            const VkCommandBuffer cur_cmd_buf,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::RenderPassPackage& rp_pkg
-        ) {
-            auto& rp = *rp_pkg.envdiffuse_;
-
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.renderArea.extent = { 512, 512 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
-
-            const auto proj_mat = glm::perspective<double>(
-                glm::radians(90.0), 1.0, 0.01, 10.0
-            );
-
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = 512;
-            viewport.height = 512;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = { 512, 512 };
-
-            for (auto& cube_map : cube_map_) {
-                const auto world_mat = glm::translate<double>(
-                    glm::dmat4(1), -cube_map.world_pos_
+                record_diffuse(
+                    cur_cmd_buf, draw_sheet, frame_index, image_index, rp_pkg
                 );
-
-                for (int i = 0; i < 6; ++i) {
-                    rp_info.framebuffer = cube_map.diffuse().face_fbuf(i);
-                    vkCmdBeginRenderPass(
-                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                    );
-                    vkCmdBindPipeline(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline()
-                    );
-
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
-
-                    for (auto& pair : draw_sheet.static_pairs_) {
-                        const auto desc_set = cube_map.desc_set();
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            0,
-                            1,
-                            &desc_set,
-                            0,
-                            nullptr
-                        );
-
-                        mirinae::U_EnvdiffusePushConst push_const;
-                        push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
-                        vkCmdPushConstants(
-                            cur_cmd_buf,
-                            rp.pipeline_layout(),
-                            VK_SHADER_STAGE_VERTEX_BIT,
-                            0,
-                            sizeof(mirinae::U_EnvdiffusePushConst),
-                            &push_const
-                        );
-
-                        vkCmdDrawIndexed(cur_cmd_buf, 36, 1, 0, 0, 0);
-                    }
-
-                    vkCmdEndRenderPass(cur_cmd_buf);
-                }
             }
         }
 
         VkImageView base_cube_view(size_t index) const {
             return cube_map_.at(index).diffuse().cube_view();
+        }
+
+        glm::dvec3& envmap_pos(size_t index) {
+            return cube_map_.at(index).world_pos_;
         }
 
     private:
@@ -702,9 +539,213 @@ namespace {
             VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
         };
 
+        void record_base(
+            const VkCommandBuffer cur_cmd_buf,
+            const ::DrawSheet& draw_sheet,
+            const ::FrameIndex frame_index,
+            const mirinae::CosmosSimulator& cosmos,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = *rp_pkg.cubemap_;
+
+            VkRenderPassBeginInfo renderPassInfo{};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = rp.renderpass();
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.renderArea.extent = { 512, 512 };
+            renderPassInfo.clearValueCount = rp.clear_value_count();
+            renderPassInfo.pClearValues = rp.clear_values();
+
+            const auto proj_mat = glm::perspective<double>(
+                glm::radians(90.0), 1.0, 0.1, 1000.0
+            );
+
+            for (auto& cube_map : cube_map_) {
+                const auto world_mat = glm::translate<double>(
+                    glm::dmat4(1), -cube_map.world_pos_
+                );
+
+                for (int i = 0; i < 6; ++i) {
+                    renderPassInfo.framebuffer = cube_map.base().face_fbuf(i);
+
+                    vkCmdBeginRenderPass(
+                        cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                    );
+                    vkCmdBindPipeline(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline()
+                    );
+
+                    VkViewport viewport{};
+                    viewport.x = 0.0f;
+                    viewport.y = 0.0f;
+                    viewport.width = 512;
+                    viewport.height = 512;
+                    viewport.minDepth = 0.0f;
+                    viewport.maxDepth = 1.0f;
+                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+
+                    VkRect2D scissor{};
+                    scissor.offset = { 0, 0 };
+                    scissor.extent = { 512, 512 };
+                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                    mirinae::U_EnvmapPushConst push_const;
+                    for (auto e : cosmos.reg().view<mirinae::cpnt::DLight>()) {
+                        const auto& light =
+                            cosmos.reg().get<mirinae::cpnt::DLight>(e);
+                        push_const.dlight_dir_ = glm::vec4{
+                            light.calc_to_light_dir(glm::dmat4(1)), 0
+                        };
+                        push_const.dlight_color_ = glm::vec4{ light.color_, 0 };
+                        break;
+                    }
+
+                    for (auto& pair : draw_sheet.static_pairs_) {
+                        for (auto& unit : pair.model_->render_units_) {
+                            auto unit_desc = unit.get_desc_set(frame_index.get()
+                            );
+                            vkCmdBindDescriptorSets(
+                                cur_cmd_buf,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                rp.pipeline_layout(),
+                                0,
+                                1,
+                                &unit_desc,
+                                0,
+                                nullptr
+                            );
+                            unit.record_bind_vert_buf(cur_cmd_buf);
+
+                            for (auto& actor : pair.actors_) {
+                                auto actor_desc = actor.actor_->get_desc_set(
+                                    frame_index.get()
+                                );
+                                vkCmdBindDescriptorSets(
+                                    cur_cmd_buf,
+                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    rp.pipeline_layout(),
+                                    1,
+                                    1,
+                                    &actor_desc,
+                                    0,
+                                    nullptr
+                                );
+
+                                push_const.proj_view_ = proj_mat *
+                                                        CUBE_VIEW_MATS[i] *
+                                                        world_mat;
+                                vkCmdPushConstants(
+                                    cur_cmd_buf,
+                                    rp.pipeline_layout(),
+                                    VK_SHADER_STAGE_VERTEX_BIT,
+                                    0,
+                                    sizeof(mirinae::U_EnvmapPushConst),
+                                    &push_const
+                                );
+
+                                vkCmdDrawIndexed(
+                                    cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                                );
+                            }
+                        }
+                    }
+
+                    vkCmdEndRenderPass(cur_cmd_buf);
+                }
+            }
+        }
+
+        void record_diffuse(
+            const VkCommandBuffer cur_cmd_buf,
+            const ::DrawSheet& draw_sheet,
+            const ::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = *rp_pkg.envdiffuse_;
+
+            VkRenderPassBeginInfo rp_info{};
+            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rp_info.renderPass = rp.renderpass();
+            rp_info.renderArea.offset = { 0, 0 };
+            rp_info.renderArea.extent = { 512, 512 };
+            rp_info.clearValueCount = rp.clear_value_count();
+            rp_info.pClearValues = rp.clear_values();
+
+            const auto proj_mat = glm::perspective<double>(
+                glm::radians(90.0), 1.0, 0.01, 10.0
+            );
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = 512;
+            viewport.height = 512;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+            scissor.extent = { 512, 512 };
+
+            for (auto& cube_map : cube_map_) {
+                const auto world_mat = glm::translate<double>(
+                    glm::dmat4(1), -cube_map.world_pos_
+                );
+
+                for (int i = 0; i < 6; ++i) {
+                    rp_info.framebuffer = cube_map.diffuse().face_fbuf(i);
+                    vkCmdBeginRenderPass(
+                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
+                    );
+                    vkCmdBindPipeline(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline()
+                    );
+
+                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                    for (auto& pair : draw_sheet.static_pairs_) {
+                        const auto desc_set = cube_map.desc_set();
+                        vkCmdBindDescriptorSets(
+                            cur_cmd_buf,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            rp.pipeline_layout(),
+                            0,
+                            1,
+                            &desc_set,
+                            0,
+                            nullptr
+                        );
+
+                        mirinae::U_EnvdiffusePushConst push_const;
+                        push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+                        vkCmdPushConstants(
+                            cur_cmd_buf,
+                            rp.pipeline_layout(),
+                            VK_SHADER_STAGE_VERTEX_BIT,
+                            0,
+                            sizeof(mirinae::U_EnvdiffusePushConst),
+                            &push_const
+                        );
+
+                        vkCmdDrawIndexed(cur_cmd_buf, 36, 1, 0, 0, 0);
+                    }
+
+                    vkCmdEndRenderPass(cur_cmd_buf);
+                }
+            }
+        }
+
         constexpr static uint32_t CUBE_IMG_SIZE = 512;
         std::vector<CubeMap> cube_map_;
         mirinae::DescPool desc_pool_;
+        sung::MonotonicRealtimeTimer timer_;
     };
 
 
@@ -1657,10 +1698,11 @@ namespace {
                 clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
             }
 
-            rp_states_envmap_.record_base(
+            rp_states_envmap_.record(
                 cur_cmd_buf,
                 draw_sheet,
                 framesync_.get_frame_index(),
+                *cosmos_,
                 image_index,
                 rp_
             );
@@ -1671,14 +1713,6 @@ namespace {
 
             rp_states_shadow_.record_skinned(
                 cur_cmd_buf, draw_sheet, framesync_.get_frame_index(), rp_
-            );
-
-            rp_states_envmap_.record_diffuse(
-                cur_cmd_buf,
-                draw_sheet,
-                framesync_.get_frame_index(),
-                image_index,
-                rp_
             );
 
             rp_states_gbuf_.record_static(

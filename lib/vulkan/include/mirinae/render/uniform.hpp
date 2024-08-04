@@ -45,6 +45,8 @@ namespace mirinae {
 
     struct U_EnvmapPushConst {
         glm::mat4 proj_view_;
+        glm::vec4 dlight_dir_;
+        glm::vec4 dlight_color_;
     };
 
 

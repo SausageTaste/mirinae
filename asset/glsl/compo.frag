@@ -64,9 +64,16 @@ void main() {
     const float frag_distance = length(frag_pos);
     const vec3 reflect_direc = reflect(view_direc, normal);
     const vec3 world_reflect = (u_comp_main.view_inv * vec4(reflect_direc, 0)).xyz;
-    const vec3 envmap_texel = texture(u_envmap, world_normal).xyz;
 
-    vec3 light = albedo_texel.rgb * 0.4;
+    vec3 light = vec3(0);
+
+    {
+        float NdotV = dot(normal, view_direc);
+        vec3 kS = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
+        vec3 kD = vec3(1.0) - F0;
+        vec3 diffuse = texture(u_envmap, world_normal).xyz * albedo.xyz;
+        light += kD * diffuse;
+    }
 
     // Directional light
     light += calc_pbr_illumination(
@@ -113,5 +120,4 @@ void main() {
     }
 
     f_color = vec4(light, 1);
-    f_color.xyz = texture(u_envmap, world_direc).xyz;
 }
