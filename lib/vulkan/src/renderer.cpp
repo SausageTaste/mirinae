@@ -257,6 +257,19 @@ namespace {
 // Render pass states
 namespace {
 
+    const glm::dvec3 DVEC_ZERO{ 0, 0, 0 };
+    const glm::dvec3 DVEC_DOWN{ 0, -1, 0 };
+
+    const std::array<glm::dmat4, 6> CUBE_VIEW_MATS{
+        glm::lookAt(DVEC_ZERO, glm::dvec3(1, 0, 0), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(-1, 0, 0), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 1, 0), glm::dvec3(0, 0, 1)),
+        glm::lookAt(DVEC_ZERO, DVEC_DOWN, glm::dvec3(0, 0, -1)),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, 1), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, -1), DVEC_DOWN)
+    };
+
+
     class RpStatesEnvmap {
 
     public:
@@ -294,44 +307,13 @@ namespace {
             renderPassInfo.clearValueCount = rp.clear_value_count();
             renderPassInfo.pClearValues = rp.clear_values();
 
-            const auto proj_mat = glm::perspective(
-                glm::radians(90.0f), 1.0f, 0.1f, 1000.0f
-            );
-            std::array<glm::mat4, 6> view_mats;
-            view_mats[0] = glm::lookAt(
-                glm::dvec3(0.0),
-                glm::dvec3(1.0, 0.0, 0.0),
-                glm::dvec3(0.0, -1.0, 0.0)
-            );
-            view_mats[1] = glm::lookAt(
-                glm::dvec3(0.0),
-                glm::dvec3(-1.0, 0.0, 0.0),
-                glm::dvec3(0.0, -1.0, 0.0)
-            );
-            view_mats[2] = glm::lookAt(
-                glm::dvec3(0.0),
-                glm::dvec3(0.0, 1.0, 0.0),
-                glm::dvec3(0.0, 0.0, 1.0)
-            );
-            view_mats[3] = glm::lookAt(
-                glm::dvec3(0.0),
-                glm::dvec3(0.0, -1.0, 0.0),
-                glm::dvec3(0.0, 0.0, -1.0)
-            );
-            view_mats[4] = glm::lookAt(
-                glm::dvec3(0.0),
-                glm::dvec3(0.0, 0.0, 1.0),
-                glm::dvec3(0.0, -1.0, 0.0)
-            );
-            view_mats[5] = glm::lookAt(
-                glm::dvec3(0.0),
-                glm::dvec3(0.0, 0.0, -1.0),
-                glm::dvec3(0.0, -1.0, 0.0)
+            const auto proj_mat = glm::perspective<double>(
+                glm::radians(90.0), 1.0, 0.1, 1000.0
             );
 
             for (auto& cube_map : cube_map_) {
-                const auto world_mat = glm::translate(
-                    glm::mat4(1.0), -cube_map.world_pos_
+                const auto world_mat = glm::translate<double>(
+                    glm::dmat4(1), -cube_map.world_pos_
                 );
 
                 for (int i = 0; i < 6; ++i) {
@@ -393,7 +375,7 @@ namespace {
 
                                 mirinae::U_EnvmapPushConst push_const;
                                 push_const.proj_view_ = proj_mat *
-                                                        view_mats[i] *
+                                                        CUBE_VIEW_MATS[i] *
                                                         world_mat;
                                 vkCmdPushConstants(
                                     cur_cmd_buf,
@@ -507,7 +489,7 @@ namespace {
             VkImageView cubemap_view_ = VK_NULL_HANDLE;
             std::array<VkImageView, 6> face_views_;
             std::array<mirinae::Fbuf, 6> fbufs_;
-            glm::vec3 world_pos_;
+            glm::dvec3 world_pos_;
         };
 
         constexpr static uint32_t CUBE_IMG_SIZE = 512;
