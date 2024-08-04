@@ -128,9 +128,11 @@ namespace mirinae {
     VkDescriptorSetLayout DesclayoutManager::add(
         const DescLayoutBuilder& builder, VkDevice logi_device
     ) {
-        return data_.emplace_back(
-            builder.name(), builder.size_info(), builder.build(logi_device)
-        ).layout();
+        return data_
+            .emplace_back(
+                builder.name(), builder.size_info(), builder.build(logi_device)
+            )
+            .layout();
     }
 
     const DescLayout& DesclayoutManager::get(const std::string& name) const {
@@ -257,6 +259,25 @@ namespace mirinae {
             vkDestroyDescriptorPool(logi_device, handle_, nullptr);
             handle_ = VK_NULL_HANDLE;
         }
+    }
+
+    VkDescriptorSet DescPool::alloc(
+        VkDescriptorSetLayout desclayout, VkDevice logi_device
+    ) {
+        std::vector<VkDescriptorSetLayout> layouts(1, desclayout);
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = handle_;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &desclayout;
+
+        VkDescriptorSet output;
+        VK_CHECK(
+            vkAllocateDescriptorSets(logi_device, &allocInfo, &output)
+        );
+
+        return output;
     }
 
     std::vector<VkDescriptorSet> DescPool::alloc(

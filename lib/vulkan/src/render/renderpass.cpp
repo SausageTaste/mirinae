@@ -1719,7 +1719,7 @@ namespace { namespace envdiffuse {
         const auto viewport_state = ::create_info_viewport_state();
 
         const auto rasterizer = ::create_info_rasterizer(
-            VK_CULL_MODE_BACK_BIT, false, 0, 0, false
+            VK_CULL_MODE_NONE, false, 0, 0, false
         );
 
         const auto multisampling = ::create_info_multisampling();
