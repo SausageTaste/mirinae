@@ -399,10 +399,12 @@ namespace {
         }
 
         VkImageView get_view(size_t index) const {
-            return cube_map_.at(index).cubemap_view_;
+            return cube_map_.at(index).cubemap_view_.get();
         }
 
     private:
+        class ColorCubeMap {};
+
         class CubeMap {
 
         public:
@@ -421,35 +423,25 @@ namespace {
                     .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
                 img_.init(cinfo.get(), device.mem_alloc());
 
-                VkImageViewCreateInfo v_cinfo{};
-                v_cinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                v_cinfo.image = VK_NULL_HANDLE;
-                v_cinfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-                v_cinfo.format = img_.format();
-                v_cinfo.components = { VK_COMPONENT_SWIZZLE_R };
-                v_cinfo.subresourceRange = {
-                    VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1
-                };
-                v_cinfo.subresourceRange.layerCount = 6;
-                v_cinfo.image = img_.image();
-                VK_CHECK(vkCreateImageView(
-                    device.logi_device(), &v_cinfo, nullptr, &cubemap_view_
-                ));
+                mirinae::ImageViewBuilder iv_builder;
+                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
+                    .format(img_.format())
+                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .arr_layers(6)
+                    .image(img_.image());
+                cubemap_view_.reset(iv_builder, device);
 
-                v_cinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-                v_cinfo.subresourceRange.layerCount = 1;
+                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D).arr_layers(1);
                 for (uint32_t i = 0; i < 6; i++) {
-                    v_cinfo.subresourceRange.baseArrayLayer = i;
-                    VK_CHECK(vkCreateImageView(
-                        device.logi_device(), &v_cinfo, nullptr, &face_views_[i]
-                    ));
+                    iv_builder.base_arr_layer(i);
+                    face_views_[i].reset(iv_builder, device);
                 }
 
                 depth_map_ = tex_man.create_depth(CUBE_IMG_SIZE, CUBE_IMG_SIZE);
 
                 for (uint32_t i = 0; i < 6; i++) {
                     const std::array<VkImageView, 2> attachments = {
-                        depth_map_->image_view(), face_views_[i]
+                        depth_map_->image_view(), face_views_[i].get()
                     };
 
                     VkFramebufferCreateInfo fbuf_cinfo = {};
@@ -473,12 +465,8 @@ namespace {
             void destroy(mirinae::VulkanDevice& device) {
                 for (auto& x : fbufs_) x.destroy(device.logi_device());
 
-                vkDestroyImageView(
-                    device.logi_device(), cubemap_view_, nullptr
-                );
-
-                for (auto& x : face_views_)
-                    vkDestroyImageView(device.logi_device(), x, nullptr);
+                cubemap_view_.destroy(device);
+                for (auto& x : face_views_) x.destroy(device);
 
                 depth_map_.reset();
                 img_.destroy(device.mem_alloc());
@@ -486,8 +474,8 @@ namespace {
 
             mirinae::Image img_;
             std::unique_ptr<mirinae::ITexture> depth_map_;
-            VkImageView cubemap_view_ = VK_NULL_HANDLE;
-            std::array<VkImageView, 6> face_views_;
+            mirinae::ImageView cubemap_view_;
+            std::array<mirinae::ImageView, 6> face_views_;
             std::array<mirinae::Fbuf, 6> fbufs_;
             glm::dvec3 world_pos_;
         };
