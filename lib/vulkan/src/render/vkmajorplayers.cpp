@@ -142,6 +142,126 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// ImageViewBuilder
+namespace mirinae {
+
+    ImageViewBuilder::ImageViewBuilder() { this->reset(); }
+
+    void ImageViewBuilder::reset() {
+        cinfo_ = {};
+        cinfo_.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        cinfo_.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        cinfo_.format = VK_FORMAT_UNDEFINED;
+        cinfo_.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        cinfo_.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        cinfo_.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        cinfo_.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        cinfo_.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        cinfo_.subresourceRange.baseMipLevel = 0;
+        cinfo_.subresourceRange.levelCount = 1;
+        cinfo_.subresourceRange.baseArrayLayer = 0;
+        cinfo_.subresourceRange.layerCount = 1;
+    }
+
+    ImageViewBuilder& ImageViewBuilder::image(VkImage image) {
+        cinfo_.image = image;
+        return *this;
+    }
+
+    ImageViewBuilder& ImageViewBuilder::view_type(VkImageViewType view_type) {
+        cinfo_.viewType = view_type;
+        return *this;
+    }
+
+    ImageViewBuilder& ImageViewBuilder::format(VkFormat format) {
+        cinfo_.format = format;
+        return *this;
+    }
+
+    ImageViewBuilder& ImageViewBuilder::aspect_mask(
+        VkImageAspectFlags aspect_mask
+    ) {
+        cinfo_.subresourceRange.aspectMask = aspect_mask;
+        return *this;
+    }
+
+    ImageViewBuilder& ImageViewBuilder::base_mip_level(uint32_t value) {
+        cinfo_.subresourceRange.baseMipLevel = value;
+        return *this;
+    }
+
+    ImageViewBuilder& ImageViewBuilder::mip_levels(uint32_t value) {
+        cinfo_.subresourceRange.levelCount = value;
+        return *this;
+    }
+
+    ImageViewBuilder& ImageViewBuilder::base_arr_layer(uint32_t value) {
+        cinfo_.subresourceRange.baseArrayLayer = value;
+        return *this;
+    }
+
+    ImageViewBuilder& ImageViewBuilder::arr_layers(uint32_t value) {
+        cinfo_.subresourceRange.layerCount = value;
+        return *this;
+    }
+
+    VkImageView ImageViewBuilder::build(VulkanDevice& device) const {
+        VkImageView img_view;
+        const auto res = vkCreateImageView(
+            device.logi_device(), &cinfo_, nullptr, &img_view
+        );
+        return img_view;
+    }
+
+}  // namespace mirinae
+
+
+// ImageView
+namespace mirinae {
+
+    ImageView::ImageView(VkImageView handle, VulkanDevice& device) {
+        this->reset(handle, device);
+    }
+
+    ImageView::~ImageView() {
+        if (VK_NULL_HANDLE != handle_)
+            spdlog::warn(
+                "ImageView object is being destroyed without being reset"
+            );
+    }
+
+    ImageView::ImageView(ImageView&& other) noexcept {
+        std::swap(handle_, other.handle_);
+    }
+
+    ImageView& ImageView::operator=(ImageView&& other) noexcept {
+        std::swap(handle_, other.handle_);
+        return *this;
+    }
+
+    void ImageView::reset(VkImageView handle, VulkanDevice& device) {
+        if (VK_NULL_HANDLE != handle_) {
+            vkDestroyImageView(device.logi_device(), handle_, nullptr);
+        }
+        handle_ = handle;
+    }
+
+    void ImageView::reset(
+        const ImageViewBuilder& builder, VulkanDevice& device
+    ) {
+        this->reset(builder.build(device), device);
+    }
+
+    void ImageView::destroy(VulkanDevice& device) {
+        if (VK_NULL_HANDLE != handle_) {
+            vkDestroyImageView(device.logi_device(), handle_, nullptr);
+            handle_ = VK_NULL_HANDLE;
+        }
+    }
+
+}  // namespace mirinae
+
+
 // Fbuf
 namespace mirinae {
 

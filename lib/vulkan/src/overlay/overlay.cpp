@@ -9,10 +9,10 @@
 
 namespace {
 
-    class ImageView : public mirinae::IRectWidget {
+    class ImageViewWidget : public mirinae::IRectWidget {
 
     public:
-        ImageView(
+        ImageViewWidget(
             mirinae::DesclayoutManager& desclayout,
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
@@ -28,7 +28,7 @@ namespace {
             );
         }
 
-        ImageView(
+        ImageViewWidget(
             VkImageView color_img,
             VkImageView mask_img,
             mirinae::DesclayoutManager& desclayout,
@@ -153,7 +153,7 @@ namespace {
         }
 
     private:
-        ::ImageView bg_img_;
+        ::ImageViewWidget bg_img_;
         mirinae::TextBox text_box_;
     };
 
@@ -188,7 +188,7 @@ namespace {
             }
 
             {
-                auto w = widgets_.emplace_back<ImageView>(
+                auto w = widgets_.emplace_back<ImageViewWidget>(
                     desclayout, tex_man, device
                 );
                 w->pos_ = { 10, 10 };
@@ -407,7 +407,7 @@ namespace mirinae {
     }
 
     void OverlayManager::create_image_view(VkImageView img_view) {
-        auto w = std::make_unique<ImageView>(
+        auto w = std::make_unique<ImageViewWidget>(
             img_view,
             pimpl_->tex_man_.request(":asset/textures/white.png", true)
                 ->image_view(),

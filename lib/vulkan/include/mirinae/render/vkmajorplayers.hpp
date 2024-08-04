@@ -63,6 +63,53 @@ namespace mirinae {
     };
 
 
+    class ImageViewBuilder {
+
+    public:
+        ImageViewBuilder();
+        void reset();
+
+        ImageViewBuilder& image(VkImage image);
+        ImageViewBuilder& view_type(VkImageViewType view_type);
+        ImageViewBuilder& format(VkFormat format);
+
+        ImageViewBuilder& aspect_mask(VkImageAspectFlags aspect_mask);
+        ImageViewBuilder& base_mip_level(uint32_t value);
+        ImageViewBuilder& mip_levels(uint32_t value);
+        ImageViewBuilder& base_arr_layer(uint32_t value);
+        ImageViewBuilder& arr_layers(uint32_t value);
+
+        VkImageView build(VulkanDevice& device) const;
+
+    private:
+        VkImageViewCreateInfo cinfo_ = {};
+    };
+
+
+    class ImageView {
+
+    public:
+        ImageView() = default;
+        ImageView(VkImageView handle, VulkanDevice& device);
+        ~ImageView();
+
+        ImageView(const ImageView&) = delete;
+        ImageView& operator=(const ImageView&) = delete;
+        ImageView(ImageView&& other) noexcept;
+        ImageView& operator=(ImageView&& other) noexcept;
+
+        bool is_ready() const { return VK_NULL_HANDLE != handle_; }
+        VkImageView get() const { return handle_; }
+
+        void reset(VkImageView handle, VulkanDevice& device);
+        void reset(const ImageViewBuilder& builder, VulkanDevice& device);
+        void destroy(VulkanDevice& device);
+
+    private:
+        VkImageView handle_ = VK_NULL_HANDLE;
+    };
+
+
     class Fbuf {
 
     public:

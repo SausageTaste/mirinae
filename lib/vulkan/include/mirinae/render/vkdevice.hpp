@@ -14,16 +14,6 @@ namespace mirinae {
     constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
 
 
-    VkImageView create_image_view(
-        VkImage image,
-        VkImageViewType view_type,
-        uint32_t mip_levels,
-        VkFormat format,
-        VkImageAspectFlags aspect_flags,
-        VkDevice device
-    );
-
-
     struct ISamplerManager {
         virtual ~ISamplerManager() = default;
         virtual VkSampler get_linear() = 0;

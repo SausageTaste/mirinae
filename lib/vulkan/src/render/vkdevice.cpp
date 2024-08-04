@@ -8,6 +8,7 @@
 #include <spdlog/spdlog.h>
 
 #include "mirinae/lightweight/konsts.hpp"
+#include "mirinae/render/vkmajorplayers.hpp"
 
 
 namespace {
@@ -909,36 +910,6 @@ namespace {
 }  // namespace
 
 
-// Free functions
-namespace mirinae {
-
-    VkImageView create_image_view(
-        VkImage image,
-        VkImageViewType view_type,
-        uint32_t mip_levels,
-        VkFormat format,
-        VkImageAspectFlags aspect_flags,
-        VkDevice device
-    ) {
-        VkImageViewCreateInfo cinfo{};
-        cinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        cinfo.image = image;
-        cinfo.viewType = view_type;
-        cinfo.format = format;
-        cinfo.subresourceRange.aspectMask = aspect_flags;
-        cinfo.subresourceRange.baseMipLevel = 0;
-        cinfo.subresourceRange.levelCount = mip_levels;
-        cinfo.subresourceRange.baseArrayLayer = 0;
-        cinfo.subresourceRange.layerCount = 1;
-
-        VkImageView imgview;
-        VK_CHECK(vkCreateImageView(device, &cinfo, nullptr, &imgview));
-        return imgview;
-    }
-
-}  // namespace mirinae
-
-
 // VulkanDevice::Pimpl
 namespace mirinae {
 
@@ -1070,7 +1041,9 @@ namespace mirinae {
         return pimpl_->mem_allocator_;
     }
 
-    dal::Filesystem& VulkanDevice::filesys() { return *pimpl_->create_info_.filesys_; }
+    dal::Filesystem& VulkanDevice::filesys() {
+        return *pimpl_->create_info_.filesys_;
+    }
 
     IOsIoFunctions& VulkanDevice::osio() { return *pimpl_->create_info_.osio_; }
 
@@ -1152,15 +1125,11 @@ namespace mirinae {
         );
 
         // Create views
+        ImageViewBuilder iv_builder;
+        iv_builder.format(format_);
         for (size_t i = 0; i < images_.size(); i++) {
-            views_.push_back(mirinae::create_image_view(
-                images_.at(i),
-                VK_IMAGE_VIEW_TYPE_2D,
-                1,
-                format_,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                logi_device
-            ));
+            iv_builder.image(images_.at(i));
+            views_.push_back(iv_builder.build(vulkan_device));
         }
     }
 

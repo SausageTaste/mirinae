@@ -497,37 +497,6 @@ namespace {
         );
     }
 
-
-    class ImageView {
-
-    public:
-        void init(
-            VkImage image,
-            VkImageViewType view_type,
-            uint32_t mip_levels,
-            VkFormat format,
-            VkImageAspectFlags aspect_flags,
-            VkDevice logi_device
-        ) {
-            this->destroy(logi_device);
-            this->handle_ = mirinae::create_image_view(
-                image, view_type, mip_levels, format, aspect_flags, logi_device
-            );
-        }
-
-        void destroy(VkDevice logi_device) {
-            if (VK_NULL_HANDLE != handle_) {
-                vkDestroyImageView(logi_device, handle_, nullptr);
-                handle_ = VK_NULL_HANDLE;
-            }
-        }
-
-        VkImageView get() { return handle_; }
-
-    private:
-        VkImageView handle_ = VK_NULL_HANDLE;
-    };
-
 }  // namespace
 
 
@@ -604,14 +573,11 @@ namespace mirinae {
             );
             staging_buffer.destroy(device_.mem_alloc());
 
-            texture_view_.init(
-                texture_.image(),
-                VK_IMAGE_VIEW_TYPE_2D,
-                texture_.mip_levels(),
-                texture_.format(),
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                device_.logi_device()
-            );
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.format(texture_.format())
+                .mip_levels(texture_.mip_levels())
+                .image(texture_.image());
+            texture_view_.reset(iv_builder, device_);
 
             spdlog::debug(
                 "Raw texture loaded: size={}, format={}, path='{}'",
@@ -632,14 +598,12 @@ namespace mirinae {
                 .add_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
                 .add_usage_sampled();
             texture_.init(img_info.get(), device_.mem_alloc());
-            texture_view_.init(
-                texture_.image(),
-                VK_IMAGE_VIEW_TYPE_2D,
-                1,
-                depth_format,
-                VK_IMAGE_ASPECT_DEPTH_BIT,
-                device_.logi_device()
-            );
+
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.format(depth_format)
+                .aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .image(texture_.image());
+            texture_view_.reset(iv_builder, device_);
         }
 
         void init_attachment(
@@ -658,18 +622,16 @@ namespace mirinae {
                 .set_format(format)
                 .add_usage(usage_flag);
             texture_.init(img_info.get(), device_.mem_alloc());
-            texture_view_.init(
-                texture_.image(),
-                VK_IMAGE_VIEW_TYPE_2D,
-                1,
-                format,
-                aspect_mask,
-                device_.logi_device()
-            );
+
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.format(format)
+                .aspect_mask(aspect_mask)
+                .image(texture_.image());
+            texture_view_.reset(iv_builder, device_);
         }
 
         void destroy() override {
-            texture_view_.destroy(device_.logi_device());
+            texture_view_.destroy(device_);
             texture_.destroy(device_.mem_alloc());
         }
 
@@ -685,7 +647,7 @@ namespace mirinae {
     private:
         VulkanDevice& device_;
         Image texture_;
-        ::ImageView texture_view_;
+        mirinae::ImageView texture_view_;
         std::string id_;
     };
 
@@ -737,14 +699,11 @@ namespace mirinae {
                 return false;
             }
 
-            texture_view_.init(
-                data_->image,
-                data_->viewType,
-                data_->levelCount,
-                data_->imageFormat,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                device_.logi_device()
-            );
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.format(data_->imageFormat)
+                .mip_levels(data_->levelCount)
+                .image(data_->image);
+            texture_view_.reset(iv_builder, device_);
 
             spdlog::debug(
                 "KTX texture loaded: format={}, path='{}'",
@@ -758,7 +717,7 @@ namespace mirinae {
 
         void destroy() {
             id_.clear();
-            texture_view_.destroy(device_.logi_device());
+            texture_view_.destroy(device_);
 
             if (data_) {
                 ktxVulkanTexture_Destruct(
@@ -799,7 +758,7 @@ namespace mirinae {
         VulkanDevice& device_;
         std::string id_;
         std::optional<ktxVulkanTexture> data_;
-        ::ImageView texture_view_;
+        mirinae::ImageView texture_view_;
     };
 
 
