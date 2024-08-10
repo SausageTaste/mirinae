@@ -540,7 +540,7 @@ namespace mirinae {
 
         void init_iimage2d(
             const std::string& id,
-            const dal::IImage2D& image,
+            const dal::TDataImage2D<uint8_t>& image,
             bool srgb,
             CommandPool& cmd_pool
         ) {
@@ -811,15 +811,15 @@ namespace mirinae {
             parse_info.force_rgba_ = true;
             const auto img = dal::parse_img(parse_info);
 
-            if (auto kts_img = dynamic_cast<dal::KtxImage*>(img.get())) {
+            if (auto kts_img = img->as<dal::KtxImage>()) {
                 auto out = std::make_shared<KtxTextureData>(device_);
-                if (out->init(id, *kts_img->texture_, ktx_device_)) {
+                if (out->init(id, kts_img->ktx(), ktx_device_)) {
                     textures_.push_back(out);
                     return out;
                 } else {
                     return nullptr;
                 }
-            } else if (auto raw_img = dynamic_cast<dal::IImage2D*>(img.get())) {
+            } else if (auto raw_img = img->as<dal::TDataImage2D<uint8_t>>()) {
                 auto out = std::make_shared<TextureData>(device_);
                 out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
                 textures_.push_back(out);
@@ -835,9 +835,14 @@ namespace mirinae {
         std::unique_ptr<ITexture> create_image(
             const std::string& id, const dal::IImage2D& image, bool srgb
         ) {
-            auto output = std::make_unique<TextureData>(device_);
-            output->init_iimage2d(id, image, srgb, cmd_pool_);
-            return output;
+            if (auto img = image.as<dal::TDataImage2D<uint8_t>>()) {
+                auto output = std::make_unique<TextureData>(device_);
+                output->init_iimage2d(id, *img, srgb, cmd_pool_);
+                return output;
+            } else {
+                spdlog::error("Unsupported image type: {}", id);
+                return nullptr;
+            }
         }
 
         std::unique_ptr<ITexture> create_depth(
@@ -1314,6 +1319,16 @@ namespace mirinae {
             }
 
             for (const auto& src_unit : parsed_model.units_indexed_joint_) {
+                if (src_unit.mesh_.indices_.empty()) {
+                    spdlog::warn(
+                        "Skinned model '{}' has a render unit with no indices: "
+                        "'{}'",
+                        res_id.u8string(),
+                        src_unit.name_
+                    );
+                    continue;
+                }
+
                 VerticesSkinnedPair dst_vertices;
 
                 dst_vertices.indices_.assign(

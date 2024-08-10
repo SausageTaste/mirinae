@@ -51,7 +51,7 @@ namespace mirinae {
 
         std::array<stbtt_bakedchar, END_CHAR - START_CHAR> char_baked_;
         std::unique_ptr<mirinae::ITexture> texture_;
-        dal::TImage2D<unsigned char> bitmap_;
+        dal::TDataImage2D<unsigned char> bitmap_;
         mirinae::OverlayRenderUnit render_unit_;
     };
 
