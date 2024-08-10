@@ -2043,7 +2043,11 @@ namespace { namespace transp {
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
         mirinae::DescLayoutBuilder builder{ "transp:frame" };
-        builder.add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // U_CompoMain
+        builder
+            .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_CompoMain
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // dlight shadowmap
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // slight shadowmap
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // envmap
         return desclayouts.add(builder, device.logi_device());
     }
 

@@ -1205,6 +1205,9 @@ namespace {
     public:
         void init(
             mirinae::DesclayoutManager& desclayouts,
+            VkImageView dlight_shadowmap,
+            VkImageView slight_shadowmap,
+            VkImageView envmap,
             mirinae::VulkanDevice& device
         ) {
             auto& desclayout = desclayouts.get("transp:frame");
@@ -1219,6 +1222,8 @@ namespace {
                 device.logi_device()
             );
 
+            const auto sam_nea = device.samplers().get_nearest();
+
             mirinae::DescWriteInfoBuilder builder;
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& ubuf = ubufs_.emplace_back();
@@ -1226,7 +1231,12 @@ namespace {
                     sizeof(mirinae::U_TranspFrame), device.mem_alloc()
                 );
 
-                builder.set_descset(desc_sets_.at(i)).add_ubuf(ubuf);
+                builder.set_descset(desc_sets_.at(i))
+                    .add_ubuf(ubuf)
+                    .add_img_sampler(dlight_shadowmap, sam_nea)
+                    .add_img_sampler(slight_shadowmap, sam_nea)
+                    .add_img_sampler(envmap, device.samplers().get_cubemap());
+                ;
             }
             builder.apply_all(device.logi_device());
         }
@@ -1920,7 +1930,13 @@ namespace {
                 rp_states_envmap_.base_cube_view(0),
                 device_
             );
-            rp_states_transp_.init(desclayout_, device_);
+            rp_states_transp_.init(
+                desclayout_,
+                rp_states_shadow_.pool().get_img_view_at(0),
+                rp_states_shadow_.pool().get_img_view_at(1),
+                rp_states_envmap_.base_cube_view(0),
+                device_
+            );
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
         }
 
