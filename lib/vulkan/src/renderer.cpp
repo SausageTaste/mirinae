@@ -1585,6 +1585,11 @@ namespace {
                 input_mgrs_.add(&overlay_man_);
             }
 
+            const auto hdri = tex_man_.request(
+                ":asset/textures/kloofendal_48d_partly_cloudy_puresky_1k.hdr",
+                false
+            );
+
             // Widget: Dev console
             {
                 dev_console_output_ = mirinae::create_text_blocks();

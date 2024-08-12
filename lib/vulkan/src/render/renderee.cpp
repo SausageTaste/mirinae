@@ -587,6 +587,55 @@ namespace mirinae {
             );
         }
 
+        void init_iimage2d(
+            const std::string& id,
+            const dal::TDataImage2D<float>& image,
+            bool srgb,
+            CommandPool& cmd_pool
+        ) {
+            id_ = id;
+
+            Buffer staging_buffer;
+            staging_buffer.init_staging(image.data_size(), device_.mem_alloc());
+            staging_buffer.set_data(
+                image.data(), image.data_size(), device_.mem_alloc()
+            );
+
+            mirinae::ImageCreateInfo img_info;
+            img_info.fetch_from_image(image, srgb)
+                .deduce_mip_levels()
+                .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                .add_usage_sampled();
+            texture_.init(img_info.get(), device_.mem_alloc());
+
+            ::copy_to_img_and_transition(
+                texture_.image(),
+                texture_.width(),
+                texture_.height(),
+                texture_.mip_levels(),
+                texture_.format(),
+                staging_buffer.buffer(),
+                cmd_pool,
+                device_.graphics_queue(),
+                device_.logi_device()
+            );
+            staging_buffer.destroy(device_.mem_alloc());
+
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.format(texture_.format())
+                .mip_levels(texture_.mip_levels())
+                .image(texture_.image());
+            texture_view_.reset(iv_builder, device_);
+
+            spdlog::debug(
+                "Raw texture loaded: size={}, format={}, path='{}'",
+                image.data_size(),
+                static_cast<int>(texture_.format()),
+                id
+            );
+        }
+
         void init_depth(uint32_t width, uint32_t height) {
             id_ = "<depth>";
 
@@ -820,6 +869,11 @@ namespace mirinae {
                     return nullptr;
                 }
             } else if (auto raw_img = img->as<dal::TDataImage2D<uint8_t>>()) {
+                auto out = std::make_shared<TextureData>(device_);
+                out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
+                textures_.push_back(out);
+                return out;
+            } else if (auto raw_img = img->as<dal::TDataImage2D<float>>()) {
                 auto out = std::make_shared<TextureData>(device_);
                 out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
                 textures_.push_back(out);
