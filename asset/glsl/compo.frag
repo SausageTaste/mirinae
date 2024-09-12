@@ -33,7 +33,8 @@ layout(set = 0, binding = 4) uniform U_CompoMain {
 
 layout(set = 0, binding = 5) uniform sampler2D u_dlight_shadow_map;
 layout(set = 0, binding = 6) uniform sampler2D u_slight_shadow_map;
-layout(set = 0, binding = 7) uniform samplerCube u_envmap;
+layout(set = 0, binding = 7) uniform samplerCube u_env_diffuse;
+layout(set = 0, binding = 8) uniform samplerCube u_env_specular;
 
 
 vec3 calc_frag_pos(float depth) {
@@ -71,7 +72,7 @@ void main() {
         float NdotV = dot(normal, view_direc);
         vec3 kS = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
         vec3 kD = vec3(1.0) - F0;
-        vec3 diffuse = texture(u_envmap, world_normal).xyz * albedo.xyz;
+        vec3 diffuse = texture(u_env_diffuse, world_normal).xyz * albedo.xyz;
         light += kD * diffuse;
     }
 

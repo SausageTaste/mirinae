@@ -55,6 +55,12 @@ namespace mirinae {
     };
 
 
+    struct U_EnvSpecularPushConst {
+        glm::mat4 proj_view_;
+        float roughness_;
+    };
+
+
     class U_CompoMain {
 
     public:

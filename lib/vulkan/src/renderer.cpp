@@ -308,7 +308,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            if (timer_.check_if_elapsed(60)) {
+            if (timer_.check_if_elapsed(0)) {
                 record_base(
                     cur_cmd_buf,
                     draw_sheet,
@@ -320,11 +320,17 @@ namespace {
                 record_diffuse(
                     cur_cmd_buf, draw_sheet, frame_index, image_index, rp_pkg
                 );
+                record_specular(
+                    cur_cmd_buf, draw_sheet, frame_index, image_index, rp_pkg
+                );
             }
         }
 
-        VkImageView base_cube_view(size_t index) const {
+        VkImageView diffuse_view(size_t index) const {
             return cube_map_.at(index).diffuse().cube_view();
+        }
+        VkImageView specular_view(size_t index) const {
+            return cube_map_.at(index).specular().cube_view();
         }
 
         glm::dvec3& envmap_pos(size_t index) {
@@ -411,6 +417,104 @@ namespace {
             std::array<mirinae::Fbuf, 6> fbufs_;
         };
 
+        class ColorCubeMapWithMips {
+
+        public:
+            bool init(
+                mirinae::RenderPassPackage& rp_pkg,
+                mirinae::TextureManager& tex_man,
+                mirinae::VulkanDevice& device
+            ) {
+                mirinae::ImageCreateInfo cinfo;
+                cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
+                    .set_dimensions(512, 512)
+                    .deduce_mip_levels()
+                    .set_arr_layers(6)
+                    .add_usage_sampled()
+                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                    .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+                img_.init(cinfo.get(), device.mem_alloc());
+
+                mirinae::ImageViewBuilder iv_builder;
+                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
+                    .format(img_.format())
+                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .arr_layers(6)
+                    .mip_levels(img_.mip_levels())
+                    .image(img_.image());
+                cubemap_view_.reset(iv_builder, device);
+
+                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D)
+                    .arr_layers(1)
+                    .mip_levels(1);
+
+                mips_.resize(img_.mip_levels());
+                for (uint32_t lvl = 0; lvl < img_.mip_levels(); ++lvl) {
+                    iv_builder.base_mip_level(lvl);
+                    mips_[lvl].roughness_ = static_cast<float>(lvl) /
+                                            (img_.mip_levels() - 1);
+
+                    for (uint32_t face = 0; face < 6; ++face) {
+                        iv_builder.base_arr_layer(face);
+                        mips_[lvl].face_views_[face].reset(iv_builder, device);
+                    }
+
+                    for (uint32_t face = 0; face < 6; ++face) {
+                        const std::array<VkImageView, 1> attachments = {
+                            mips_[lvl].face_views_[face].get()
+                        };
+
+                        VkFramebufferCreateInfo fbuf_cinfo = {};
+                        fbuf_cinfo.sType =
+                            VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                        fbuf_cinfo.renderPass = rp_pkg.envdiffuse_->renderpass(
+                        );
+                        fbuf_cinfo.attachmentCount = static_cast<uint32_t>(
+                            attachments.size()
+                        );
+                        fbuf_cinfo.pAttachments = attachments.data();
+                        fbuf_cinfo.width = img_.width() >> lvl;
+                        fbuf_cinfo.height = img_.height() >> lvl;
+                        fbuf_cinfo.layers = 1;
+
+                        mips_[lvl].fbufs_[face].init(
+                            fbuf_cinfo, device.logi_device()
+                        );
+                    }
+                }
+
+                return true;
+            }
+
+            void destroy(mirinae::VulkanDevice& device) {
+                for (auto& mip : mips_) {
+                    for (auto& x : mip.fbufs_) x.destroy(device.logi_device());
+                    for (auto& x : mip.face_views_) x.destroy(device);
+                }
+
+                cubemap_view_.destroy(device);
+                img_.destroy(device.mem_alloc());
+            }
+
+            VkImageView cube_view() const { return cubemap_view_.get(); }
+
+            auto base_width() const { return img_.width(); }
+            auto base_height() const { return img_.height(); }
+
+            auto& mips() const { return mips_; }
+
+        private:
+            struct MipData {
+                std::array<mirinae::ImageView, 6> face_views_;
+                std::array<mirinae::Fbuf, 6> fbufs_;
+                float roughness_ = 0.0;
+            };
+
+            mirinae::Image img_;
+            mirinae::ImageView cubemap_view_;
+            std::vector<MipData> mips_;
+        };
+
         class ColorDepthCubeMap {
 
         public:
@@ -486,8 +590,11 @@ namespace {
             }
             VkImageView cube_view() const { return cubemap_view_.get(); }
 
-        private:
+        public:
             mirinae::Image img_;
+            mirinae::Semaphore semaphores_;
+
+        private:
             std::unique_ptr<mirinae::ITexture> depth_map_;
             mirinae::ImageView cubemap_view_;
             std::array<mirinae::ImageView, 6> face_views_;
@@ -508,6 +615,8 @@ namespace {
                     return false;
                 if (!diffuse_.init(rp_pkg, tex_man, device))
                     return false;
+                if (!specular_.init(rp_pkg, tex_man, device))
+                    return false;
 
                 desc_set_ = desc_pool.alloc(
                     desclayouts.get("envdiffuse:main").layout(),
@@ -525,10 +634,12 @@ namespace {
             void destroy(mirinae::VulkanDevice& device) {
                 base_.destroy(device);
                 diffuse_.destroy(device);
+                specular_.destroy(device);
             }
 
             const ColorDepthCubeMap& base() const { return base_; }
             const ColorCubeMap& diffuse() const { return diffuse_; }
+            const ColorCubeMapWithMips& specular() const { return specular_; }
             VkDescriptorSet desc_set() const { return desc_set_; }
 
             glm::dvec3 world_pos_;
@@ -536,6 +647,7 @@ namespace {
         private:
             ColorDepthCubeMap base_;
             ColorCubeMap diffuse_;
+            ColorCubeMapWithMips specular_;
             VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
         };
 
@@ -738,6 +850,109 @@ namespace {
                     }
 
                     vkCmdEndRenderPass(cur_cmd_buf);
+                }
+            }
+        }
+
+        void record_specular(
+            const VkCommandBuffer cur_cmd_buf,
+            const ::DrawSheet& draw_sheet,
+            const ::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = *rp_pkg.env_specular_;
+
+            VkRenderPassBeginInfo rp_info{};
+            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rp_info.renderPass = rp.renderpass();
+            rp_info.renderArea.offset = { 0, 0 };
+            rp_info.renderArea.extent = { 512, 512 };
+            rp_info.clearValueCount = rp.clear_value_count();
+            rp_info.pClearValues = rp.clear_values();
+
+            const auto proj_mat = glm::perspective<double>(
+                glm::radians(90.0), 1.0, 0.01, 10.0
+            );
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = 512;
+            viewport.height = 512;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+            scissor.extent = { 512, 512 };
+
+            for (auto& cube_map : cube_map_) {
+                auto& specular = cube_map.specular();
+                const auto world_mat = glm::translate<double>(
+                    glm::dmat4(1), -cube_map.world_pos_
+                );
+
+                viewport.width = specular.base_width();
+                viewport.height = specular.base_height();
+                scissor.extent.width = specular.base_width();
+                scissor.extent.height = specular.base_height();
+                rp_info.renderArea.extent.width = specular.base_width();
+                rp_info.renderArea.extent.height = specular.base_height();
+
+                for (auto& mip : specular.mips()) {
+                    for (int i = 0; i < 6; ++i) {
+                        rp_info.framebuffer = mip.fbufs_.at(i).get();
+                        vkCmdBeginRenderPass(
+                            cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
+                        );
+                        vkCmdBindPipeline(
+                            cur_cmd_buf,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            rp.pipeline()
+                        );
+
+                        vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                        vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                        for (auto& pair : draw_sheet.static_pairs_) {
+                            const auto desc_set = cube_map.desc_set();
+                            vkCmdBindDescriptorSets(
+                                cur_cmd_buf,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                rp.pipeline_layout(),
+                                0,
+                                1,
+                                &desc_set,
+                                0,
+                                nullptr
+                            );
+
+                            mirinae::U_EnvSpecularPushConst push_const;
+                            push_const.proj_view_ = proj_mat *
+                                                    CUBE_VIEW_MATS[i];
+                            push_const.roughness_ = mip.roughness_;
+                            vkCmdPushConstants(
+                                cur_cmd_buf,
+                                rp.pipeline_layout(),
+                                VK_SHADER_STAGE_VERTEX_BIT,
+                                0,
+                                sizeof(mirinae::U_EnvSpecularPushConst),
+                                &push_const
+                            );
+
+                            vkCmdDrawIndexed(cur_cmd_buf, 36, 1, 0, 0, 0);
+                        }
+
+                        vkCmdEndRenderPass(cur_cmd_buf);
+                    }
+
+                    viewport.width /= 2;
+                    viewport.height /= 2;
+                    scissor.extent.width /= 2;
+                    scissor.extent.height /= 2;
+                    rp_info.renderArea.extent.width /= 2;
+                    rp_info.renderArea.extent.height /= 2;
                 }
             }
         }
@@ -1095,7 +1310,8 @@ namespace {
             mirinae::FbufImageBundle& fbufs,
             VkImageView dlight_shadowmap,
             VkImageView slight_shadowmap,
-            VkImageView envmap,
+            VkImageView env_diffuse,
+            VkImageView env_specular,
             mirinae::VulkanDevice& device
         ) {
             auto& desclayout = desclayouts.get("compo:main");
@@ -1112,6 +1328,7 @@ namespace {
 
             const auto sam_lin = device.samplers().get_linear();
             const auto sam_nea = device.samplers().get_nearest();
+            const auto sam_cube = device.samplers().get_cubemap();
             mirinae::DescWriteInfoBuilder builder;
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& ubuf = ubufs_.emplace_back();
@@ -1127,7 +1344,8 @@ namespace {
                     .add_ubuf(ubuf)
                     .add_img_sampler(dlight_shadowmap, sam_nea)
                     .add_img_sampler(slight_shadowmap, sam_nea)
-                    .add_img_sampler(envmap, device.samplers().get_cubemap());
+                    .add_img_sampler(env_diffuse, sam_cube)
+                    .add_img_sampler(env_specular, sam_cube);
             }
             builder.apply_all(device.logi_device());
         }
@@ -1207,7 +1425,8 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             VkImageView dlight_shadowmap,
             VkImageView slight_shadowmap,
-            VkImageView envmap,
+            VkImageView env_diffuse,
+            VkImageView env_specular,
             mirinae::VulkanDevice& device
         ) {
             auto& desclayout = desclayouts.get("transp:frame");
@@ -1223,6 +1442,7 @@ namespace {
             );
 
             const auto sam_nea = device.samplers().get_nearest();
+            const auto sam_cube = device.samplers().get_cubemap();
 
             mirinae::DescWriteInfoBuilder builder;
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
@@ -1235,8 +1455,8 @@ namespace {
                     .add_ubuf(ubuf)
                     .add_img_sampler(dlight_shadowmap, sam_nea)
                     .add_img_sampler(slight_shadowmap, sam_nea)
-                    .add_img_sampler(envmap, device.samplers().get_cubemap());
-                ;
+                    .add_img_sampler(env_diffuse, sam_cube)
+                    .add_img_sampler(env_specular, sam_cube);
             }
             builder.apply_all(device.logi_device());
         }
@@ -1932,14 +2152,16 @@ namespace {
                 fbuf_images_,
                 rp_states_shadow_.pool().get_img_view_at(0),
                 rp_states_shadow_.pool().get_img_view_at(1),
-                rp_states_envmap_.base_cube_view(0),
+                rp_states_envmap_.diffuse_view(0),
+                rp_states_envmap_.specular_view(0),
                 device_
             );
             rp_states_transp_.init(
                 desclayout_,
                 rp_states_shadow_.pool().get_img_view_at(0),
                 rp_states_shadow_.pool().get_img_view_at(1),
-                rp_states_envmap_.base_cube_view(0),
+                rp_states_envmap_.diffuse_view(0),
+                rp_states_envmap_.specular_view(0),
                 device_
             );
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
