@@ -45,6 +45,11 @@ vec3 calc_frag_pos(float depth) {
     return frag_pos.xyz;
 }
 
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
 
 void main() {
     const float depth_texel = texture(u_depth_map, v_uv_coord).r;
@@ -55,7 +60,7 @@ void main() {
     const vec3 frag_pos = calc_frag_pos(depth_texel);
     const vec3 albedo = albedo_texel.rgb;
     const vec3 normal = normalize(normal_texel.xyz * 2 - 1);
-    const float roughness = material_texel.x;
+    const float roughness = 0.1;
     const float metallic = material_texel.y;
 
     const vec3 world_pos = (u_comp_main.view_inv * vec4(frag_pos, 1)).xyz;
@@ -70,12 +75,29 @@ void main() {
     vec3 light = vec3(0);
 
     {
-        float NdotV = dot(normal, view_direc);
-        vec3 kS = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
-        vec3 kD = vec3(1.0) - F0;
-        vec3 diffuse = texture(u_env_diffuse, world_normal).xyz * albedo.xyz;
-        light += kD * diffuse;
+        vec3 N = normalize(world_normal);
+        vec3 V = -normalize(world_direc);
+        vec3 R = reflect(-V, N);
+        float NoV = max(dot(N, V), 0.0);
+        vec3 F = FresnelSchlickRoughness(NoV, F0, roughness);
+
+        vec3 kS = F;
+        vec3 kD = 1.0 - kS;
+        kD *= 1.0 - metallic;
+
+        vec3 irradiance = texture(u_env_diffuse, N).rgb;
+        vec3 diffuse    = irradiance * albedo;
+
+        const float MAX_REFLECTION_LOD = 4.0;
+        vec3 prefilteredColor = textureLod(u_env_specular, R, roughness * MAX_REFLECTION_LOD).rgb;
+        vec2 envBRDF  = texture(u_env_lut, vec2(NoV, roughness)).rg;
+        vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+        vec3 ambient = (kD * diffuse + specular);
+        light += ambient;
     }
+
+    /*
 
     // Directional light
     light += calc_pbr_illumination(
@@ -120,6 +142,8 @@ void main() {
             u_comp_main.slight_color_n_max_dist.xyz
         ) * attenuation * not_shadow;
     }
+
+    */
 
     f_color = vec4(light, 1);
 }
