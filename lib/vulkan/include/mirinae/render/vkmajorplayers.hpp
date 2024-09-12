@@ -46,6 +46,13 @@ namespace mirinae {
 
     public:
         void init(uint32_t graphics_queue, VkDevice logi_device);
+        void init(VulkanDevice& device) {
+            this->init(
+                device.graphics_queue_family_index().value(),
+                device.logi_device()
+            );
+        }
+
         void destroy(VkDevice logi_device);
 
         VkCommandPool get() const { return handle_; }
@@ -54,9 +61,17 @@ namespace mirinae {
         void free(VkCommandBuffer cmdbuf, VkDevice logi_device);
 
         VkCommandBuffer begin_single_time(VkDevice logi_device);
+        VkCommandBuffer begin_single_time(VulkanDevice& device) {
+            return this->begin_single_time(device.logi_device());
+        }
         void end_single_time(
             VkCommandBuffer cmdbuf, VkQueue graphics_q, VkDevice logi_device
         );
+        void end_single_time(VkCommandBuffer cmdbuf, VulkanDevice& device) {
+            this->end_single_time(
+                cmdbuf, device.graphics_queue(), device.logi_device()
+            );
+        }
 
     private:
         VkCommandPool handle_ = VK_NULL_HANDLE;
