@@ -43,6 +43,12 @@ layout(set = 1, binding = 1) uniform sampler2D u_albedo_map;
 layout(set = 1, binding = 2) uniform sampler2D u_normal_map;
 
 
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+
 void main() {
     vec4 albedo_texel = texture(u_albedo_map, v_texcoord);
     vec4 normal_texel = texture(u_normal_map, v_texcoord);
@@ -56,17 +62,35 @@ void main() {
     const vec3 world_pos = (u_comp_main.view_inv * vec4(frag_pos, 1)).xyz;
     const vec3 world_normal = (u_comp_main.view_inv * vec4(normal, 0)).xyz;
     const vec3 view_direc = normalize(frag_pos);
+    const vec3 world_direc = (u_comp_main.view_inv * vec4(view_direc, 0)).xyz;
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
     const float frag_distance = length(frag_pos);
+    const vec3 reflect_direc = reflect(view_direc, normal);
+    const vec3 world_reflect = (u_comp_main.view_inv * vec4(reflect_direc, 0)).xyz;
 
     vec3 light = vec3(0);
 
     {
-        float NdotV = dot(normal, view_direc);
-        vec3 kS = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
-        vec3 kD = vec3(1.0) - F0;
-        vec3 diffuse = texture(u_env_diffuse, world_normal).xyz * albedo.xyz;
-        light += kD * diffuse;
+        vec3 N = normalize(world_normal);
+        vec3 V = -normalize(world_direc);
+        vec3 R = reflect(-V, N);
+        float NoV = max(dot(N, V), 0.0);
+        vec3 F = FresnelSchlickRoughness(NoV, F0, roughness);
+
+        vec3 kS = F;
+        vec3 kD = 1.0 - kS;
+        kD *= 1.0 - metallic;
+
+        vec3 irradiance = texture(u_env_diffuse, N).rgb;
+        vec3 diffuse    = irradiance * albedo;
+
+        const float MAX_REFLECTION_LOD = 4.0;
+        vec3 prefilteredColor = textureLod(u_env_specular, R, roughness * MAX_REFLECTION_LOD).rgb;
+        vec2 envBRDF  = texture(u_env_lut, vec2(NoV, roughness)).rg;
+        vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+        vec3 ambient = (kD * diffuse + specular);
+        light += ambient;
     }
 
     // Directional light

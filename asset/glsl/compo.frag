@@ -60,7 +60,7 @@ void main() {
     const vec3 frag_pos = calc_frag_pos(depth_texel);
     const vec3 albedo = albedo_texel.rgb;
     const vec3 normal = normalize(normal_texel.xyz * 2 - 1);
-    const float roughness = 0.1;
+    const float roughness = material_texel.x;
     const float metallic = material_texel.y;
 
     const vec3 world_pos = (u_comp_main.view_inv * vec4(frag_pos, 1)).xyz;
@@ -96,8 +96,6 @@ void main() {
         vec3 ambient = (kD * diffuse + specular);
         light += ambient;
     }
-
-    /*
 
     // Directional light
     light += calc_pbr_illumination(
@@ -142,8 +140,6 @@ void main() {
             u_comp_main.slight_color_n_max_dist.xyz
         ) * attenuation * not_shadow;
     }
-
-    */
 
     f_color = vec4(light, 1);
 }
