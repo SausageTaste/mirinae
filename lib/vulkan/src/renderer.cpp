@@ -310,7 +310,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            if (timer_.check_if_elapsed(0)) {
+            if (timer_.check_if_elapsed(10)) {
                 record_base(
                     cur_cmd_buf,
                     draw_sheet,
