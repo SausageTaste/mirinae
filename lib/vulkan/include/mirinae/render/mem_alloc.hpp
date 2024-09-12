@@ -97,6 +97,12 @@ namespace mirinae {
         uint32_t width() const { return img_info_.extent.width; }
         uint32_t height() const { return img_info_.extent.height; }
         uint32_t mip_levels() const { return img_info_.mipLevels; }
+        VkExtent2D extent2d() const {
+            VkExtent2D out;
+            out.width = img_info_.extent.width;
+            out.height = img_info_.extent.height;
+            return out;
+        }
 
     private:
         VkImageCreateInfo img_info_ = {};
