@@ -32,6 +32,7 @@ layout(set = 0, binding = 1) uniform sampler2D u_dlight_shadow_map;
 layout(set = 0, binding = 2) uniform sampler2D u_slight_shadow_map;
 layout(set = 0, binding = 3) uniform samplerCube u_env_diffuse;
 layout(set = 0, binding = 4) uniform samplerCube u_env_specular;
+layout(set = 0, binding = 5) uniform sampler2D u_env_lut;
 
 layout(set = 1, binding = 0) uniform U_GbufModel {
     float roughness;

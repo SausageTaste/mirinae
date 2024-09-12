@@ -291,6 +291,7 @@ namespace {
                                  0.66663010560478,
                                  -1.1615585516897 };
 
+            brdf_lut_.init(rp_pkg, device);
             timer_.set_min();
         }
 
@@ -298,6 +299,7 @@ namespace {
             for (auto& x : cube_map_) x.destroy(device);
             cube_map_.clear();
             desc_pool_.destroy(device.logi_device());
+            brdf_lut_.destroy(device);
         }
 
         void record(
@@ -332,6 +334,7 @@ namespace {
         VkImageView specular_view(size_t index) const {
             return cube_map_.at(index).specular().cube_view();
         }
+        VkImageView brdf_lut_view() const { return brdf_lut_.view(); }
 
         glm::dvec3& envmap_pos(size_t index) {
             return cube_map_.at(index).world_pos_;
@@ -651,6 +654,105 @@ namespace {
             VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
         };
 
+        class BrdfLut {
+
+        public:
+            bool init(
+                mirinae::RenderPassPackage& rp_pkg,
+                mirinae::VulkanDevice& device
+            ) {
+                mirinae::ImageCreateInfo cinfo;
+                cinfo.set_format(VK_FORMAT_R16G16_SFLOAT)
+                    .set_dimensions(512, 512)
+                    .set_mip_levels(1)
+                    .add_usage_sampled()
+                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+                img_.init(cinfo.get(), device.mem_alloc());
+
+                mirinae::ImageViewBuilder iv_builder;
+                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D)
+                    .format(img_.format())
+                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .image(img_.image());
+                view_.reset(iv_builder, device);
+
+                VkImageView attach = view_.get();
+
+                VkFramebufferCreateInfo fbuf_cinfo = {};
+                fbuf_cinfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                fbuf_cinfo.renderPass = rp_pkg.env_lut_->renderpass();
+                fbuf_cinfo.attachmentCount = 1;
+                fbuf_cinfo.pAttachments = &attach;
+                fbuf_cinfo.width = img_.width();
+                fbuf_cinfo.height = img_.height();
+                fbuf_cinfo.layers = 1;
+                fbuf_.init(fbuf_cinfo, device.logi_device());
+
+                mirinae::CommandPool pool;
+                pool.init(device);
+                const auto cmdbuf = pool.begin_single_time(device);
+                this->record_drawing(cmdbuf, rp_pkg);
+                pool.end_single_time(cmdbuf, device);
+                device.wait_idle();
+                pool.destroy(device.logi_device());
+
+                return true;
+            }
+
+            void destroy(mirinae::VulkanDevice& device) {
+                fbuf_.destroy(device.logi_device());
+                view_.destroy(device);
+                img_.destroy(device.mem_alloc());
+            }
+
+            VkImageView view() const { return view_.get(); }
+
+        private:
+            void record_drawing(
+                const VkCommandBuffer cmdbuf,
+                const mirinae::RenderPassPackage& rp_pkg
+            ) {
+                auto& rp = *rp_pkg.env_lut_;
+
+                VkRenderPassBeginInfo rp_info{};
+                rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                rp_info.renderPass = rp.renderpass();
+                rp_info.renderArea.offset = { 0, 0 };
+                rp_info.renderArea.extent = img_.extent2d();
+                rp_info.clearValueCount = rp.clear_value_count();
+                rp_info.pClearValues = rp.clear_values();
+
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = img_.width();
+                viewport.height = img_.height();
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = img_.extent2d();
+
+                rp_info.framebuffer = fbuf_.get();
+                vkCmdBeginRenderPass(
+                    cmdbuf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+
+                vkCmdSetViewport(cmdbuf, 0, 1, &viewport);
+                vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
+                vkCmdDraw(cmdbuf, 6, 1, 0, 0);
+                vkCmdEndRenderPass(cmdbuf);
+            }
+
+            mirinae::Image img_;
+            mirinae::ImageView view_;
+            mirinae::Fbuf fbuf_;
+        };
+
         void record_base(
             const VkCommandBuffer cur_cmd_buf,
             const ::DrawSheet& draw_sheet,
@@ -961,6 +1063,7 @@ namespace {
         std::vector<CubeMap> cube_map_;
         mirinae::DescPool desc_pool_;
         sung::MonotonicRealtimeTimer timer_;
+        BrdfLut brdf_lut_;
     };
 
 
@@ -1312,6 +1415,7 @@ namespace {
             VkImageView slight_shadowmap,
             VkImageView env_diffuse,
             VkImageView env_specular,
+            VkImageView env_lut,
             mirinae::VulkanDevice& device
         ) {
             auto& desclayout = desclayouts.get("compo:main");
@@ -1345,7 +1449,8 @@ namespace {
                     .add_img_sampler(dlight_shadowmap, sam_nea)
                     .add_img_sampler(slight_shadowmap, sam_nea)
                     .add_img_sampler(env_diffuse, sam_cube)
-                    .add_img_sampler(env_specular, sam_cube);
+                    .add_img_sampler(env_specular, sam_cube)
+                    .add_img_sampler(env_lut, sam_lin);
             }
             builder.apply_all(device.logi_device());
         }
@@ -1427,6 +1532,7 @@ namespace {
             VkImageView slight_shadowmap,
             VkImageView env_diffuse,
             VkImageView env_specular,
+            VkImageView env_lut,
             mirinae::VulkanDevice& device
         ) {
             auto& desclayout = desclayouts.get("transp:frame");
@@ -1442,6 +1548,7 @@ namespace {
             );
 
             const auto sam_nea = device.samplers().get_nearest();
+            const auto sam_lin = device.samplers().get_linear();
             const auto sam_cube = device.samplers().get_cubemap();
 
             mirinae::DescWriteInfoBuilder builder;
@@ -1456,7 +1563,8 @@ namespace {
                     .add_img_sampler(dlight_shadowmap, sam_nea)
                     .add_img_sampler(slight_shadowmap, sam_nea)
                     .add_img_sampler(env_diffuse, sam_cube)
-                    .add_img_sampler(env_specular, sam_cube);
+                    .add_img_sampler(env_specular, sam_cube)
+                    .add_img_sampler(env_lut, sam_lin);
             }
             builder.apply_all(device.logi_device());
         }
@@ -2154,6 +2262,7 @@ namespace {
                 rp_states_shadow_.pool().get_img_view_at(1),
                 rp_states_envmap_.diffuse_view(0),
                 rp_states_envmap_.specular_view(0),
+                rp_states_envmap_.brdf_lut_view(),
                 device_
             );
             rp_states_transp_.init(
@@ -2162,6 +2271,7 @@ namespace {
                 rp_states_shadow_.pool().get_img_view_at(1),
                 rp_states_envmap_.diffuse_view(0),
                 rp_states_envmap_.specular_view(0),
+                rp_states_envmap_.brdf_lut_view(),
                 device_
             );
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);

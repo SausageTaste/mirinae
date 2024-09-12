@@ -35,6 +35,7 @@ layout(set = 0, binding = 5) uniform sampler2D u_dlight_shadow_map;
 layout(set = 0, binding = 6) uniform sampler2D u_slight_shadow_map;
 layout(set = 0, binding = 7) uniform samplerCube u_env_diffuse;
 layout(set = 0, binding = 8) uniform samplerCube u_env_specular;
+layout(set = 0, binding = 9) uniform sampler2D u_env_lut;
 
 
 vec3 calc_frag_pos(float depth) {
