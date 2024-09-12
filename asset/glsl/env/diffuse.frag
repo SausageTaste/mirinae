@@ -1,13 +1,13 @@
 #version 450
 
+#include "../utils/konst.glsl"
+
+
 layout(location = 0) in vec3 v_local_pos;
 
 layout(location = 0) out vec4 f_color;
 
 layout(set = 0, binding = 0) uniform samplerCube u_envmap;
-
-
-const float PI = 3.14159265359;
 
 
 void main() {

@@ -14,20 +14,42 @@ ASSET_DIR = os.path.join(ROOT_DIR, "asset")
 GLSL_DIR = os.path.join(ROOT_DIR, "asset", "glsl")
 PROC_COUNT = psutil.cpu_count(logical=False) // 2
 
+INPUT_EXTENSIONS = {
+    ".vert",
+    ".frag",
+    ".comp",
+    ".geom",
+    ".tesc",
+    ".tese",
+}
+
 
 def __gen_glsl_file():
-    for item_name_ext in os.listdir(GLSL_DIR):
-        item_path = os.path.join(GLSL_DIR, item_name_ext)
-        if os.path.isfile(item_path):
-            yield item_name_ext
+    for loc, folders, files in os.walk(GLSL_DIR):
+        for file_name_ext in files:
+            file_path = os.path.join(loc, file_name_ext)
+            if not os.path.isfile(file_path):
+                continue
+
+            file_ext = os.path.splitext(file_name_ext)[-1]
+            if file_ext not in INPUT_EXTENSIONS:
+                continue
+
+            yield file_path
 
 
-def __compile_one(glsl_filename_ext):
-    glsl_filename, glsl_ext = os.path.splitext(glsl_filename_ext)
-    glsl_path = os.path.join(GLSL_DIR, glsl_filename_ext)
-    output_filename_ext = "{}_{}.spv".format(glsl_filename, glsl_ext.strip("."))
+def __compile_one(file_path):
+    loc, file_name_ext = os.path.split(file_path)
+    file_name, file_ext = os.path.splitext(file_name_ext)
+
+    rel_loc = os.path.relpath(loc, GLSL_DIR).strip(".")
+    rel_loc = rel_loc.replace("/", "_").replace("\\", "_")
+    if (rel_loc != ""):
+        rel_loc += "_"
+
+    output_filename_ext = "{}{}_{}.spv".format(rel_loc, file_name, file_ext.strip("."))
     output_path = os.path.join(ROOT_DIR, "asset", "spv", output_filename_ext)
-    cmd = f'{COMPILER_PATH} "{glsl_path}" -o "{output_path}"'
+    cmd = f'{COMPILER_PATH} "{file_path}" -o "{output_path}"'
     return 0 == os.system(cmd)
 
 

@@ -1518,8 +1518,8 @@ namespace { namespace cubemap {
         mirinae::VulkanDevice& device
     ) {
         ::ShaderStagesBuilder shader_stages{ device };
-        shader_stages.add_vert(":asset/spv/envmap_vert.spv");
-        shader_stages.add_frag(":asset/spv/envmap_frag.spv");
+        shader_stages.add_vert(":asset/spv/env_base_vert.spv");
+        shader_stages.add_frag(":asset/spv/env_base_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -1700,8 +1700,8 @@ namespace { namespace envdiffuse {
         mirinae::VulkanDevice& device
     ) {
         ::ShaderStagesBuilder shader_stages{ device };
-        shader_stages.add_vert(":asset/spv/envdiffuse_vert.spv");
-        shader_stages.add_frag(":asset/spv/envdiffuse_frag.spv");
+        shader_stages.add_vert(":asset/spv/env_diffuse_vert.spv");
+        shader_stages.add_frag(":asset/spv/env_diffuse_frag.spv");
 
         std::array<VkDynamicState, 2> dynamic_states{
             VK_DYNAMIC_STATE_VIEWPORT,
