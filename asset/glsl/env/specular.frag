@@ -1,5 +1,8 @@
 #version 450
 
+#include "../utils/konst.glsl"
+
+
 layout(location = 0) in vec3 v_local_pos;
 
 layout(location = 0) out vec4 f_color;
@@ -10,9 +13,6 @@ layout(push_constant) uniform U_EnvSpecularPushConst {
     mat4 proj_view;
     float roughness;
 } u_push_const;
-
-
-const float PI = 3.14159265359;
 
 
 float RadicalInverse_VdC(uint bits) {

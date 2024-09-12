@@ -1,4 +1,4 @@
-#define PI 3.14159265359
+#include "konst.glsl"
 
 
 float _distribution_GGX(const vec3 N, const vec3 H, const float roughness) {
