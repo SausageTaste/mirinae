@@ -43,9 +43,33 @@ layout(set = 1, binding = 1) uniform sampler2D u_albedo_map;
 layout(set = 1, binding = 2) uniform sampler2D u_normal_map;
 
 
-vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
-{
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+vec3 ibl(
+    const vec3 normal,
+    const vec3 view_direc,
+    const vec3 albedo,
+    const vec3 f0,
+    const float roughness,
+    const float metallic
+) {
+    const vec3 N = normalize(normal);
+    const vec3 V = -normalize(view_direc);
+    const vec3 R = reflect(-V, N);
+    const float NoV = max(dot(N, V), 0.0);
+    const vec3 F = fresnel_schlick_rughness(NoV, f0, roughness);
+
+    const vec3 kS = F;
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;
+
+    const vec3 diffuse = texture(u_env_diffuse, N).rgb * albedo;
+
+    const float MAX_REFLECTION_LOD = 4.0;
+    const float mip_lvl = roughness * MAX_REFLECTION_LOD;
+    const vec3 prefiltered_color = textureLod(u_env_specular, R, mip_lvl).rgb;
+    const vec2 env_brdf = texture(u_env_lut, vec2(NoV, roughness)).rg;
+    const vec3 specular = prefiltered_color * (F * env_brdf.x + env_brdf.y);
+
+    return kD * diffuse + specular;
 }
 
 
@@ -68,30 +92,9 @@ void main() {
     const vec3 reflect_direc = reflect(view_direc, normal);
     const vec3 world_reflect = (u_comp_main.view_inv * vec4(reflect_direc, 0)).xyz;
 
-    vec3 light = vec3(0);
-
-    {
-        vec3 N = normalize(world_normal);
-        vec3 V = -normalize(world_direc);
-        vec3 R = reflect(-V, N);
-        float NoV = max(dot(N, V), 0.0);
-        vec3 F = FresnelSchlickRoughness(NoV, F0, roughness);
-
-        vec3 kS = F;
-        vec3 kD = 1.0 - kS;
-        kD *= 1.0 - metallic;
-
-        vec3 irradiance = texture(u_env_diffuse, N).rgb;
-        vec3 diffuse    = irradiance * albedo;
-
-        const float MAX_REFLECTION_LOD = 4.0;
-        vec3 prefilteredColor = textureLod(u_env_specular, R, roughness * MAX_REFLECTION_LOD).rgb;
-        vec2 envBRDF  = texture(u_env_lut, vec2(NoV, roughness)).rg;
-        vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-
-        vec3 ambient = (kD * diffuse + specular);
-        light += ambient;
-    }
+    vec3 light = ibl(
+        world_normal, world_direc, albedo, F0, roughness, metallic
+    );
 
     // Directional light
     light += calc_pbr_illumination(
