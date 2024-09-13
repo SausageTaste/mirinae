@@ -291,7 +291,7 @@ namespace {
                                  0.66663010560478,
                                  -1.1615585516897 };
 
-            brdf_lut_.init(rp_pkg, device);
+            brdf_lut_.init(512, 512, rp_pkg, device);
             timer_.set_min();
         }
 
@@ -310,7 +310,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            if (timer_.check_if_elapsed(10)) {
+            if (timer_.check_if_elapsed(0)) {
                 record_base(
                     cur_cmd_buf,
                     draw_sheet,
@@ -345,13 +345,15 @@ namespace {
 
         public:
             bool init(
+                uint32_t width,
+                uint32_t height,
                 mirinae::RenderPassPackage& rp_pkg,
                 mirinae::TextureManager& tex_man,
                 mirinae::VulkanDevice& device
             ) {
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
-                    .set_dimensions(512, 512)
+                    .set_dimensions(width, height)
                     .set_mip_levels(1)
                     .set_arr_layers(6)
                     .add_usage_sampled()
@@ -386,8 +388,8 @@ namespace {
                         attachments.size()
                     );
                     fbuf_cinfo.pAttachments = attachments.data();
-                    fbuf_cinfo.width = CUBE_IMG_SIZE;
-                    fbuf_cinfo.height = CUBE_IMG_SIZE;
+                    fbuf_cinfo.width = img_.width();
+                    fbuf_cinfo.height = img_.height();
                     fbuf_cinfo.layers = 1;
 
                     fbufs_[i].init(fbuf_cinfo, device.logi_device());
@@ -404,6 +406,10 @@ namespace {
 
                 img_.destroy(device.mem_alloc());
             }
+
+            uint32_t width() const { return img_.width(); }
+            uint32_t height() const { return img_.height(); }
+            VkExtent2D extent2d() const { return img_.extent2d(); }
 
             VkFramebuffer face_fbuf(size_t index) const {
                 return fbufs_.at(index).get();
@@ -424,18 +430,24 @@ namespace {
 
         public:
             bool init(
+                uint32_t base_width,
+                uint32_t base_height,
                 mirinae::RenderPassPackage& rp_pkg,
                 mirinae::TextureManager& tex_man,
                 mirinae::VulkanDevice& device
             ) {
+                constexpr uint32_t MAX_MIP_LEVELS = 4;
+
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
-                    .set_dimensions(512, 512)
+                    .set_dimensions(base_width, base_height)
                     .deduce_mip_levels()
                     .set_arr_layers(6)
                     .add_usage_sampled()
                     .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
                     .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+                if (cinfo.mip_levels() > MAX_MIP_LEVELS)
+                    cinfo.set_mip_levels(MAX_MIP_LEVELS);
                 img_.init(cinfo.get(), device.mem_alloc());
 
                 mirinae::ImageViewBuilder iv_builder;
@@ -453,36 +465,34 @@ namespace {
 
                 mips_.resize(img_.mip_levels());
                 for (uint32_t lvl = 0; lvl < img_.mip_levels(); ++lvl) {
+                    auto& mip = mips_[lvl];
+
                     iv_builder.base_mip_level(lvl);
-                    mips_[lvl].roughness_ = static_cast<float>(lvl) /
-                                            (img_.mip_levels() - 1);
+                    mip.roughness_ = static_cast<float>(lvl) /
+                                     (img_.mip_levels() - 1);
+                    mip.width_ = img_.width() >> lvl;
+                    mip.height_ = img_.height() >> lvl;
 
-                    for (uint32_t face = 0; face < 6; ++face) {
-                        iv_builder.base_arr_layer(face);
-                        mips_[lvl].face_views_[face].reset(iv_builder, device);
-                    }
+                    for (uint32_t face_i = 0; face_i < 6; ++face_i) {
+                        auto& face = mip.faces_[face_i];
 
-                    for (uint32_t face = 0; face < 6; ++face) {
-                        const std::array<VkImageView, 1> attachments = {
-                            mips_[lvl].face_views_[face].get()
-                        };
+                        iv_builder.base_arr_layer(face_i);
+                        face.view_.reset(iv_builder, device);
+
+                        const auto attach = face.view_.get();
 
                         VkFramebufferCreateInfo fbuf_cinfo = {};
                         fbuf_cinfo.sType =
                             VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
                         fbuf_cinfo.renderPass = rp_pkg.envdiffuse_->renderpass(
                         );
-                        fbuf_cinfo.attachmentCount = static_cast<uint32_t>(
-                            attachments.size()
-                        );
-                        fbuf_cinfo.pAttachments = attachments.data();
-                        fbuf_cinfo.width = img_.width() >> lvl;
-                        fbuf_cinfo.height = img_.height() >> lvl;
+                        fbuf_cinfo.attachmentCount = 1;
+                        fbuf_cinfo.pAttachments = &attach;
+                        fbuf_cinfo.width = mip.width_;
+                        fbuf_cinfo.height = mip.height_;
                         fbuf_cinfo.layers = 1;
 
-                        mips_[lvl].fbufs_[face].init(
-                            fbuf_cinfo, device.logi_device()
-                        );
+                        face.fbuf_.init(fbuf_cinfo, device.logi_device());
                     }
                 }
 
@@ -490,10 +500,7 @@ namespace {
             }
 
             void destroy(mirinae::VulkanDevice& device) {
-                for (auto& mip : mips_) {
-                    for (auto& x : mip.fbufs_) x.destroy(device.logi_device());
-                    for (auto& x : mip.face_views_) x.destroy(device);
-                }
+                for (auto& mip : mips_) mip.destroy(device);
 
                 cubemap_view_.destroy(device);
                 img_.destroy(device.mem_alloc());
@@ -507,10 +514,32 @@ namespace {
             auto& mips() const { return mips_; }
 
         private:
+            struct FaceData {
+                void destroy(mirinae::VulkanDevice& device) {
+                    view_.destroy(device);
+                    fbuf_.destroy(device.logi_device());
+                }
+
+                mirinae::ImageView view_;
+                mirinae::Fbuf fbuf_;
+            };
+
             struct MipData {
-                std::array<mirinae::ImageView, 6> face_views_;
-                std::array<mirinae::Fbuf, 6> fbufs_;
+                void destroy(mirinae::VulkanDevice& device) {
+                    for (auto& x : faces_) x.destroy(device);
+                }
+
+                VkExtent2D extent2d() const {
+                    VkExtent2D out;
+                    out.width = width_;
+                    out.height = height_;
+                    return out;
+                }
+
+                std::array<FaceData, 6> faces_;
                 float roughness_ = 0.0;
+                uint32_t width_ = 0;
+                uint32_t height_ = 0;
             };
 
             mirinae::Image img_;
@@ -522,13 +551,15 @@ namespace {
 
         public:
             bool init(
+                uint32_t width,
+                uint32_t height,
                 mirinae::RenderPassPackage& rp_pkg,
                 mirinae::TextureManager& tex_man,
                 mirinae::VulkanDevice& device
             ) {
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
-                    .set_dimensions(512, 512)
+                    .set_dimensions(width, height)
                     .set_mip_levels(1)
                     .set_arr_layers(6)
                     .add_usage_sampled()
@@ -550,7 +581,7 @@ namespace {
                     face_views_[i].reset(iv_builder, device);
                 }
 
-                depth_map_ = tex_man.create_depth(CUBE_IMG_SIZE, CUBE_IMG_SIZE);
+                depth_map_ = tex_man.create_depth(img_.width(), img_.height());
 
                 for (uint32_t i = 0; i < 6; i++) {
                     const std::array<VkImageView, 2> attachments = {
@@ -565,8 +596,8 @@ namespace {
                         attachments.size()
                     );
                     fbuf_cinfo.pAttachments = attachments.data();
-                    fbuf_cinfo.width = CUBE_IMG_SIZE;
-                    fbuf_cinfo.height = CUBE_IMG_SIZE;
+                    fbuf_cinfo.width = img_.width();
+                    fbuf_cinfo.height = img_.height();
                     fbuf_cinfo.layers = 1;
 
                     fbufs_[i].init(fbuf_cinfo, device.logi_device());
@@ -584,6 +615,10 @@ namespace {
                 depth_map_.reset();
                 img_.destroy(device.mem_alloc());
             }
+
+            uint32_t width() const { return img_.width(); }
+            uint32_t height() const { return img_.height(); }
+            VkExtent2D extent2d() const { return img_.extent2d(); }
 
             VkFramebuffer face_fbuf(size_t index) const {
                 return fbufs_.at(index).get();
@@ -614,11 +649,11 @@ namespace {
                 mirinae::DesclayoutManager& desclayouts,
                 mirinae::VulkanDevice& device
             ) {
-                if (!base_.init(rp_pkg, tex_man, device))
+                if (!base_.init(256, 256, rp_pkg, tex_man, device))
                     return false;
-                if (!diffuse_.init(rp_pkg, tex_man, device))
+                if (!diffuse_.init(256, 256, rp_pkg, tex_man, device))
                     return false;
-                if (!specular_.init(rp_pkg, tex_man, device))
+                if (!specular_.init(128, 128, rp_pkg, tex_man, device))
                     return false;
 
                 desc_set_ = desc_pool.alloc(
@@ -658,12 +693,14 @@ namespace {
 
         public:
             bool init(
+                uint32_t width,
+                uint32_t height,
                 mirinae::RenderPassPackage& rp_pkg,
                 mirinae::VulkanDevice& device
             ) {
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_format(VK_FORMAT_R16G16_SFLOAT)
-                    .set_dimensions(512, 512)
+                    .set_dimensions(width, height)
                     .set_mip_levels(1)
                     .add_usage_sampled()
                     .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -763,48 +800,51 @@ namespace {
         ) {
             auto& rp = *rp_pkg.cubemap_;
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = { 512, 512 };
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            VkRenderPassBeginInfo rp_info{};
+            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rp_info.renderPass = rp.renderpass();
+            rp_info.renderArea.offset = { 0, 0 };
+            rp_info.clearValueCount = rp.clear_value_count();
+            rp_info.pClearValues = rp.clear_values();
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
 
             const auto proj_mat = glm::perspective<double>(
                 glm::radians(90.0), 1.0, 0.1, 1000.0
             );
 
             for (auto& cube_map : cube_map_) {
+                auto& base_cube = cube_map.base();
                 const auto world_mat = glm::translate<double>(
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
+                viewport.width = base_cube.width();
+                viewport.height = base_cube.height();
+                scissor.extent = base_cube.extent2d();
+                rp_info.renderArea.extent = base_cube.extent2d();
+
+                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
                 for (int i = 0; i < 6; ++i) {
-                    renderPassInfo.framebuffer = cube_map.base().face_fbuf(i);
+                    rp_info.framebuffer = cube_map.base().face_fbuf(i);
 
                     vkCmdBeginRenderPass(
-                        cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
                     );
                     vkCmdBindPipeline(
                         cur_cmd_buf,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
                         rp.pipeline()
                     );
-
-                    VkViewport viewport{};
-                    viewport.x = 0.0f;
-                    viewport.y = 0.0f;
-                    viewport.width = 512;
-                    viewport.height = 512;
-                    viewport.minDepth = 0.0f;
-                    viewport.maxDepth = 1.0f;
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-                    VkRect2D scissor{};
-                    scissor.offset = { 0, 0 };
-                    scissor.extent = { 512, 512 };
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
                     mirinae::U_EnvmapPushConst push_const;
                     for (auto e : cosmos.reg().view<mirinae::cpnt::DLight>()) {
@@ -885,7 +925,6 @@ namespace {
             rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             rp_info.renderPass = rp.renderpass();
             rp_info.renderArea.offset = { 0, 0 };
-            rp_info.renderArea.extent = { 512, 512 };
             rp_info.clearValueCount = rp.clear_value_count();
             rp_info.pClearValues = rp.clear_values();
 
@@ -896,22 +935,25 @@ namespace {
             VkViewport viewport{};
             viewport.x = 0.0f;
             viewport.y = 0.0f;
-            viewport.width = 512;
-            viewport.height = 512;
             viewport.minDepth = 0.0f;
             viewport.maxDepth = 1.0f;
 
             VkRect2D scissor{};
             scissor.offset = { 0, 0 };
-            scissor.extent = { 512, 512 };
 
             for (auto& cube_map : cube_map_) {
+                const auto& diffuse = cube_map.diffuse();
                 const auto world_mat = glm::translate<double>(
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
+                viewport.width = diffuse.width();
+                viewport.height = diffuse.height();
+                scissor.extent = diffuse.extent2d();
+                rp_info.renderArea.extent = diffuse.extent2d();
+
                 for (int i = 0; i < 6; ++i) {
-                    rp_info.framebuffer = cube_map.diffuse().face_fbuf(i);
+                    rp_info.framebuffer = diffuse.face_fbuf(i);
                     vkCmdBeginRenderPass(
                         cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
                     );
@@ -969,7 +1011,6 @@ namespace {
             rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             rp_info.renderPass = rp.renderpass();
             rp_info.renderArea.offset = { 0, 0 };
-            rp_info.renderArea.extent = { 512, 512 };
             rp_info.clearValueCount = rp.clear_value_count();
             rp_info.pClearValues = rp.clear_values();
 
@@ -980,14 +1021,11 @@ namespace {
             VkViewport viewport{};
             viewport.x = 0.0f;
             viewport.y = 0.0f;
-            viewport.width = 512;
-            viewport.height = 512;
             viewport.minDepth = 0.0f;
             viewport.maxDepth = 1.0f;
 
             VkRect2D scissor{};
             scissor.offset = { 0, 0 };
-            scissor.extent = { 512, 512 };
 
             for (auto& cube_map : cube_map_) {
                 auto& specular = cube_map.specular();
@@ -995,16 +1033,16 @@ namespace {
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
-                viewport.width = specular.base_width();
-                viewport.height = specular.base_height();
-                scissor.extent.width = specular.base_width();
-                scissor.extent.height = specular.base_height();
-                rp_info.renderArea.extent.width = specular.base_width();
-                rp_info.renderArea.extent.height = specular.base_height();
-
                 for (auto& mip : specular.mips()) {
+                    viewport.width = mip.width_;
+                    viewport.height = mip.height_;
+                    scissor.extent = mip.extent2d();
+                    rp_info.renderArea.extent = mip.extent2d();
+
                     for (int i = 0; i < 6; ++i) {
-                        rp_info.framebuffer = mip.fbufs_.at(i).get();
+                        auto& face = mip.faces_[i];
+
+                        rp_info.framebuffer = face.fbuf_.get();
                         vkCmdBeginRenderPass(
                             cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
                         );
@@ -1059,7 +1097,6 @@ namespace {
             }
         }
 
-        constexpr static uint32_t CUBE_IMG_SIZE = 512;
         std::vector<CubeMap> cube_map_;
         mirinae::DescPool desc_pool_;
         sung::MonotonicRealtimeTimer timer_;
