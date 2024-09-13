@@ -153,6 +153,12 @@ namespace mirinae {
     using U_TranspFrame = U_CompoMain;
 
 
+    struct U_DebugMeshPushConst {
+        glm::vec4 vertices_[3];
+        glm::vec4 color_;
+    };
+
+
     struct U_OverlayPushConst {
         glm::vec4 color{ 1, 1, 1, 1 };
         glm::vec2 pos_offset;
