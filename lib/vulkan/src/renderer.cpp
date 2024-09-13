@@ -1801,6 +1801,71 @@ namespace {
     };
 
 
+    class RpStatesDebugMesh {
+
+    public:
+        void init(mirinae::VulkanDevice& device) {}
+
+        void destroy(mirinae::VulkanDevice& device) {}
+
+        void record_static(
+            const VkCommandBuffer cmdbuf,
+            const VkExtent2D& fbuf_ext,
+            const ::DrawSheet& draw_sheet,
+            const ::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = *rp_pkg.debug_mesh_;
+
+            VkRenderPassBeginInfo rp_info{};
+            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rp_info.renderPass = rp.renderpass();
+            rp_info.framebuffer = rp.fbuf_at(image_index.get());
+            rp_info.renderArea.offset = { 0, 0 };
+            rp_info.renderArea.extent = fbuf_ext;
+            rp_info.clearValueCount = rp.clear_value_count();
+            rp_info.pClearValues = rp.clear_values();
+
+            vkCmdBeginRenderPass(cmdbuf, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = static_cast<float>(fbuf_ext.width);
+            viewport.height = static_cast<float>(fbuf_ext.height);
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport(cmdbuf, 0, 1, &viewport);
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+            scissor.extent = fbuf_ext;
+            vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
+
+            mirinae::U_DebugMeshPushConst pc;
+            pc.vertices_[0] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            pc.vertices_[1] = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+            pc.vertices_[2] = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+            pc.color_ = glm::vec4(1.0f, 0.0f, 0.0f, 0.5f);
+            vkCmdPushConstants(
+                cmdbuf,
+                rp.pipeline_layout(),
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(mirinae::U_DebugMeshPushConst),
+                &pc
+            );
+
+            vkCmdDraw(cmdbuf, 3, 1, 0, 0);
+            vkCmdEndRenderPass(cmdbuf);
+        }
+    };
+
+
     class RpStatesFillscreen {
 
     public:
@@ -2147,6 +2212,15 @@ namespace {
                 rp_
             );
 
+            rp_states_debug_mesh_.record_static(
+                cur_cmd_buf,
+                fbuf_images_.extent(),
+                draw_sheet,
+                framesync_.get_frame_index(),
+                image_index,
+                rp_
+            );
+
             rp_states_fillscreen_.record(
                 cur_cmd_buf,
                 swapchain_.extent(),
@@ -2319,6 +2393,7 @@ namespace {
                 rp_states_envmap_.brdf_lut_view(),
                 device_
             );
+            rp_states_debug_mesh_.init(device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
         }
 
@@ -2328,6 +2403,7 @@ namespace {
             rp_states_shadow_.pool().destroy_fbufs(device_);
 
             rp_states_fillscreen_.destroy(device_);
+            rp_states_debug_mesh_.destroy(device_);
             rp_states_transp_.destroy(device_);
             rp_states_compo_.destroy(device_);
             rp_states_envmap_.destroy(device_);
@@ -2532,6 +2608,7 @@ namespace {
         ::RpStatesGbuf rp_states_gbuf_;
         ::RpStatesCompo rp_states_compo_;
         ::RpStatesTransp rp_states_transp_;
+        ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;

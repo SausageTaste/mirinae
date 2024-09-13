@@ -110,6 +110,7 @@ namespace mirinae {
         std::unique_ptr<IRenderPassBundle> compo_;
         std::unique_ptr<IRenderPassBundle> transp_;
         std::unique_ptr<IRenderPassBundle> transp_skin_;
+        std::unique_ptr<IRenderPassBundle> debug_mesh_;
         std::unique_ptr<IRenderPassBundle> fillscreen_;
         std::unique_ptr<IRenderPassBundle> overlay_;
     };
