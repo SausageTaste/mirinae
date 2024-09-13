@@ -14,6 +14,26 @@ namespace mirinae {
         return glm::normalize(glm::angleAxis<T>(angle.rad(), axis) * q);
     }
 
+    template <typename T>
+    glm::tmat4x4<T> make_perspective(
+        sung::TAngle<T> fovy, T aspect, T zNear, T zFar
+    ) {
+        auto m = glm::perspectiveRH_ZO(fovy.rad(), aspect, zNear, zFar);
+        m[1][1] *= -1;
+        return m;
+    }
+
+    template <typename T>
+    glm::tmat4x4<T> make_perspective(
+        sung::TAngle<T> fovy, T width, T height, T zNear, T zFar
+    ) {
+        auto m = glm::perspectiveFovRH_ZO(
+            fovy.rad(), width, height, zNear, zFar
+        );
+        m[1][1] *= -1;
+        return m;
+    }
+
 
     template <typename T>
     class TransformQuat {
@@ -74,19 +94,11 @@ namespace mirinae {
         }
 
         glm::tmat4x4<T> make_proj_mat(T aspect_ratio) const {
-            auto m = glm::perspectiveRH_ZO(
-                fov_.rad(), aspect_ratio, near_, far_
-            );
-            m[1][1] *= -1;
-            return m;
+            return make_perspective(fov_, aspect_ratio, near_, far_);
         }
 
         glm::tmat4x4<T> make_proj_mat(T view_width, T view_height) const {
-            auto m = glm::perspectiveFovRH_ZO(
-                fov_.rad(), view_width, view_height, near_, far_
-            );
-            m[1][1] *= -1;
-            return m;
+            return make_perspective(fov_, view_width, view_height, near_, far_);
         }
 
         Angle fov_ = Angle::from_deg(60);
