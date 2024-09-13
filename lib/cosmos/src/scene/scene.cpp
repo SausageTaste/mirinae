@@ -1,5 +1,7 @@
 #include "mirinae/scene/scene.hpp"
 
+#include <sung/general/aabb.hpp>
+
 
 #define GET_SCENE_PTR()                                  \
     const auto scene_ptr = ::find_scene_ptr(L);          \
@@ -452,6 +454,7 @@ namespace mirinae::cpnt {
         return glm::normalize(glm::vec3(v));
     };
 
+    /*
     glm::dmat4 DLight::make_proj_mat() const {
         auto p = glm::orthoRH_ZO<double>(-10, 10, -10, 10, -50, 50);
         return p;
@@ -463,6 +466,31 @@ namespace mirinae::cpnt {
 
     glm::dmat4 DLight::make_light_mat() const {
         return make_proj_mat() * make_view_mat();
+    }*/
+
+    glm::dmat4 DLight::make_light_mat(const std::array<glm::dvec3, 8>& p
+    ) const {
+        const auto view_mat = transform_.make_view_mat();
+
+        sung::AABB3<double> aabb;
+        aabb.set(p[0].x, p[0].y, p[0].z);
+
+        for (auto& v : p) {
+            const auto v4 = view_mat * glm::dvec4(v, 1);
+            aabb.expand_to_span(v.x, v.y, v.z);
+        }
+
+        auto proj_mat = glm::orthoRH_ZO<double>(
+            aabb.x_min(),
+            aabb.x_max(),
+            aabb.y_mid(),
+            aabb.y_max(),
+            -2 * aabb.z_max() + aabb.z_min(),
+            -aabb.z_min()
+        );
+        proj_mat[1][1] *= -1;
+
+        return proj_mat * view_mat;
     }
 
 }  // namespace mirinae::cpnt

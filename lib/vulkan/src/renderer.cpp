@@ -35,6 +35,39 @@ namespace {
         );
     }
 
+    // Positions in world space
+    template <typename T>
+    std::array<glm::tvec3<T>, 8> make_frustum_vertices(
+        const T ratio,
+        const glm::tmat4x4<T>& view_inv,
+        const mirinae::PerspectiveCamera<T>& pers
+    ) {
+        const auto tan_half_angle_vertical = std::tan(pers.fov_.rad() * 0.5);
+        const auto tan_half_angle_horizontal = tan_half_angle_vertical * ratio;
+
+        const auto half_width_near = pers.near_ * tan_half_angle_horizontal;
+        const auto half_width_far = pers.far_ * tan_half_angle_horizontal;
+        const auto half_height_near = pers.near_ * tan_half_angle_vertical;
+        const auto half_height_far = pers.far_ * tan_half_angle_vertical;
+
+        std::array<glm::tvec3<T>, 8> out{
+            glm::tvec3<T>{ -half_width_near, -half_height_near, -pers.near_ },
+            glm::tvec3<T>{ half_width_near, -half_height_near, -pers.near_ },
+            glm::tvec3<T>{ -half_width_near, half_height_near, -pers.near_ },
+            glm::tvec3<T>{ half_width_near, half_height_near, -pers.near_ },
+            glm::tvec3<T>{ -half_width_far, -half_height_far, -pers.far_ },
+            glm::tvec3<T>{ half_width_far, -half_height_far, -pers.far_ },
+            glm::tvec3<T>{ -half_width_far, half_height_far, -pers.far_ },
+            glm::tvec3<T>{ half_width_far, half_height_far, -pers.far_ },
+        };
+
+        for (size_t i = 0; i < 8; ++i) {
+            out[i] = view_inv * glm::tvec4<T>{ out[i], 1 };
+        }
+
+        return out;
+    }
+
 
     class DominantCommandProc : public mirinae::IInputProcessor {
 
@@ -1903,6 +1936,10 @@ namespace {
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
+            overlay_man_.create_image_view(
+                rp_states_shadow_.pool().at(0).tex_->image_view()
+            );
+
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -1974,6 +2011,11 @@ namespace {
                 swapchain_.width(), swapchain_.height()
             );
             const auto view_mat = cam.view_.make_view_mat();
+            const auto view_inv = glm::inverse(view_mat);
+
+            const auto frustum_vertices = ::make_frustum_vertices<double>(
+                swapchain_.width() / swapchain_.height(), view_inv, cam.proj_
+            );
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -1990,7 +2032,7 @@ namespace {
                 auto& dlight = cosmos_->reg().get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
 
-                dlight.transform_.pos_ = cam.view_.pos_;
+                dlight.transform_.pos_ = glm::dvec3{ 0 };
                 dlight.transform_.reset_rotation();
                 dlight.transform_.rotate(
                     sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
@@ -2007,7 +2049,8 @@ namespace {
                 );
                 */
 
-                rp_states_shadow_.pool().at(0).mat_ = dlight.make_light_mat();
+                const auto light_mat = dlight.make_light_mat(frustum_vertices);
+                rp_states_shadow_.pool().at(0).mat_ = light_mat;
                 break;
             }
 
@@ -2025,7 +2068,7 @@ namespace {
                 break;
             }
 
-            this->update_ubufs(proj_mat, view_mat);
+            this->update_ubufs(proj_mat, view_mat, frustum_vertices);
 
             // Begin recording
             {
@@ -2379,7 +2422,9 @@ namespace {
         }
 
         void update_ubufs(
-            const glm::dmat4& proj_mat, const glm::dmat4& view_mat
+            const glm::dmat4& proj_mat,
+            const glm::dmat4& view_mat,
+            const std::array<glm::dvec3, 8>& frus_vert
         ) {
             namespace cpnt = mirinae::cpnt;
             const auto t = cosmos_->ftime().tp_;
@@ -2441,7 +2486,7 @@ namespace {
 
                 for (auto e : cosmos_->reg().view<cpnt::DLight>()) {
                     const auto& light = cosmos_->reg().get<cpnt::DLight>(e);
-                    ubuf_data.set_dlight_mat(light.make_light_mat());
+                    ubuf_data.set_dlight_mat(light.make_light_mat(frus_vert));
                     ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat));
                     ubuf_data.set_dlight_color(light.color_);
                     break;

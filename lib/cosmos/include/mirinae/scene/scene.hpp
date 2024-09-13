@@ -21,9 +21,10 @@ namespace mirinae::cpnt {
          */
         glm::vec3 calc_to_light_dir(const glm::dmat4 view_mat) const;
 
-        glm::dmat4 make_proj_mat() const;
-        glm::dmat4 make_view_mat() const;
-        glm::dmat4 make_light_mat() const;
+        // glm::dmat4 make_proj_mat() const;
+        // glm::dmat4 make_view_mat() const;
+        // glm::dmat4 make_light_mat() const;
+        glm::dmat4 make_light_mat(const std::array<glm::dvec3, 8>& p) const;
 
         TransformQuat<double> transform_;
         glm::vec3 color_;
