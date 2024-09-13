@@ -477,14 +477,15 @@ namespace mirinae::cpnt {
 
         for (auto& v : p) {
             const auto v4 = view_mat * glm::dvec4(v, 1);
-            aabb.expand_to_span(v.x, v.y, v.z);
+            aabb.expand_to_span(v4.x, v4.y, v4.z);
         }
 
+        // Why the hell???
         auto proj_mat = glm::orthoRH_ZO<double>(
             aabb.x_min(),
             aabb.x_max(),
-            aabb.y_mid(),
-            aabb.y_max(),
+            -aabb.y_max(),
+            -aabb.y_min(),
             -2 * aabb.z_max() + aabb.z_min(),
             -aabb.z_min()
         );
