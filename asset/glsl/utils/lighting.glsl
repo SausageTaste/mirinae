@@ -1,7 +1,7 @@
 #include "konst.glsl"
 
 
-float _distribution_GGX(const vec3 N, const vec3 H, const float roughness) {
+float distribution_ggx(const vec3 N, const vec3 H, const float roughness) {
     const float a = roughness*roughness;
     const float a2 = a*a;
     const float NdotH = max(dot(N, H), 0.0);
@@ -15,7 +15,7 @@ float _distribution_GGX(const vec3 N, const vec3 H, const float roughness) {
 }
 
 
-float _geometry_SchlickGGX(const float NdotV, const float roughness) {
+float geometry_schlick_ggx(const float NdotV, const float roughness) {
     const float r = (roughness + 1.0);
     const float k = (r*r) / 8.0;
 
@@ -26,17 +26,48 @@ float _geometry_SchlickGGX(const float NdotV, const float roughness) {
 }
 
 
-float _geometry_Smith(const vec3 N, const vec3 V, const vec3 L, const float roughness) {
+float geometry_smith(
+    const vec3 N,
+    const vec3 V,
+    const vec3 L,
+    const float roughness
+) {
     const float NdotV = max(dot(N, V), 0.0);
     const float NdotL = max(dot(N, L), 0.0);
-    const float ggx2 = _geometry_SchlickGGX(NdotV, roughness);
-    const float ggx1 = _geometry_SchlickGGX(NdotL, roughness);
+    const float ggx2 = geometry_schlick_ggx(NdotV, roughness);
+    const float ggx1 = geometry_schlick_ggx(NdotL, roughness);
 
     return ggx1 * ggx2;
 }
 
 
-vec3 _fresnel_Schlick(const float cosTheta, const vec3 F0) {
+float geometry_schlick_ggx_ibl(const float NdotV, const float roughness) {
+    const float a = roughness;
+    const float k = (a * a) / 2.0;
+
+    const float nom   = NdotV;
+    const float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+
+float geometry_smith_ibl(
+    const vec3 N,
+    const vec3 V,
+    const vec3 L,
+    const float roughness
+) {
+    const float NdotV = max(dot(N, V), 0.0);
+    const float NdotL = max(dot(N, L), 0.0);
+    const float ggx2 = geometry_schlick_ggx_ibl(NdotV, roughness);
+    const float ggx1 = geometry_schlick_ggx_ibl(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+
+vec3 fresnel_schlick(const float cosTheta, const vec3 F0) {
     return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
 
@@ -82,20 +113,19 @@ vec3 calc_pbr_illumination(
     const vec3 L = frag_to_light_direc;
     const vec3 H = normalize(view_direc + L);
     const vec3 radiance = light_color;
+    const float NdotL = max(dot(normal, L), 0.0);
 
-    const float NDF = _distribution_GGX(normal, H, roughness);
-    const float G = _geometry_Smith(normal, view_direc, L, roughness);
-    const vec3 F = _fresnel_Schlick(clamp(dot(H, view_direc), 0.0, 1.0), F0);
+    const float NDF = distribution_ggx(normal, H, roughness);
+    const float G = geometry_smith(normal, view_direc, L, roughness);
+    const vec3 F = fresnel_schlick(clamp(dot(H, view_direc), 0.0, 1.0), F0);
 
     const vec3 nominator = NDF * G * F;
-    const float denominator = 4 * max(dot(normal, view_direc), 0.0) * max(dot(normal, L), 0.0);
+    const float denominator = 4 * max(dot(normal, view_direc), 0.0) * NdotL;
     const vec3 specular = nominator / max(denominator, 0.00001);
 
     const vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
     kD *= 1.0 - metallic;
-
-    const float NdotL = max(dot(normal, L), 0.0);
 
     return (kD * albedo / PI + specular) * radiance * NdotL;
 }
