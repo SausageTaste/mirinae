@@ -79,6 +79,10 @@ namespace mirinae {
         auto height() const { return extent_.height; }
         auto& extent() const { return extent_; }
 
+        double calc_ratio() const {
+            return static_cast<double>(extent_.width) / extent_.height;
+        }
+
         std::optional<ShainImageIndex> acquire_next_image(
             VkSemaphore img_avaiable_semaphore, VkDevice logi_device
         );
