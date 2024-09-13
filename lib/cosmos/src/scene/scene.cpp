@@ -483,8 +483,8 @@ namespace mirinae::cpnt {
     };
 
     glm::dmat4 SLight::make_proj_mat() const {
-        return glm::perspectiveRH_ZO(
-            outer_angle_.rad() * 2, 1.0, 0.1, max_distance_
+        return mirinae::make_perspective<double>(
+            outer_angle_ * 2, 1.0, 0.1, max_distance_
         );
     }
 
