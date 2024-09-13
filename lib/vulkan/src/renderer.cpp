@@ -1808,11 +1808,9 @@ namespace {
 
         void destroy(mirinae::VulkanDevice& device) {}
 
-        void record_static(
+        void begin_record(
             const VkCommandBuffer cmdbuf,
             const VkExtent2D& fbuf_ext,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -1845,15 +1843,25 @@ namespace {
             scissor.offset = { 0, 0 };
             scissor.extent = fbuf_ext;
             vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
+        }
 
+        void draw(
+            const VkCommandBuffer cmdbuf,
+            const glm::vec3& p0,
+            const glm::vec3& p1,
+            const glm::vec3& p2,
+            const glm::vec4& color,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
             mirinae::U_DebugMeshPushConst pc;
-            pc.vertices_[0] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-            pc.vertices_[1] = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-            pc.vertices_[2] = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
-            pc.color_ = glm::vec4(1.0f, 0.0f, 0.0f, 0.5f);
+            pc.vertices_[0] = glm::vec4(p0, 1);
+            pc.vertices_[1] = glm::vec4(p1, 1);
+            pc.vertices_[2] = glm::vec4(p2, 1);
+            pc.color_ = color;
+
             vkCmdPushConstants(
                 cmdbuf,
-                rp.pipeline_layout(),
+                rp_pkg.debug_mesh_->pipeline_layout(),
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0,
                 sizeof(mirinae::U_DebugMeshPushConst),
@@ -1861,6 +1869,14 @@ namespace {
             );
 
             vkCmdDraw(cmdbuf, 3, 1, 0, 0);
+        }
+
+        void end_record(
+            const VkCommandBuffer cmdbuf,
+            const VkExtent2D& fbuf_ext,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
             vkCmdEndRenderPass(cmdbuf);
         }
     };
@@ -2212,13 +2228,11 @@ namespace {
                 rp_
             );
 
-            rp_states_debug_mesh_.record_static(
-                cur_cmd_buf,
-                fbuf_images_.extent(),
-                draw_sheet,
-                framesync_.get_frame_index(),
-                image_index,
-                rp_
+            rp_states_debug_mesh_.begin_record(
+                cur_cmd_buf, fbuf_images_.extent(), image_index, rp_
+            );
+            rp_states_debug_mesh_.end_record(
+                cur_cmd_buf, fbuf_images_.extent(), image_index, rp_
             );
 
             rp_states_fillscreen_.record(
