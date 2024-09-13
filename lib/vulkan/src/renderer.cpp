@@ -2032,7 +2032,7 @@ namespace {
                 auto& dlight = cosmos_->reg().get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
 
-                dlight.transform_.pos_ = glm::dvec3{ 0 };
+                dlight.transform_.pos_ = frustum_vertices.front();
                 dlight.transform_.reset_rotation();
                 dlight.transform_.rotate(
                     sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
