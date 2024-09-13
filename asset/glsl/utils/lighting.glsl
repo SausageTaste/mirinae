@@ -72,6 +72,15 @@ vec3 fresnel_schlick(const float cosTheta, const vec3 F0) {
 }
 
 
+vec3 fresnel_schlick_rughness(float cosTheta, vec3 F0, float roughness) {
+    return (
+        F0
+        + (max(vec3(1.0 - roughness), F0) - F0)
+        * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0)
+    );
+}
+
+
 // https://lisyarus.github.io/blog/graphics/2022/07/30/point-light-attenuation.html
 float calc_attenuation(const float frag_distance, const float max_light_dist) {
     const float s = frag_distance / max_light_dist;
