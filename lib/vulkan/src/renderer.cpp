@@ -2095,7 +2095,7 @@ namespace {
             const auto view_inv = glm::inverse(view_mat);
 
             const auto frustum_vertices = ::make_frustum_vertices<double>(
-                swapchain_.width() / swapchain_.height(), view_inv, cam.proj_
+                swapchain_.calc_ratio(), view_inv, cam.proj_
             );
 
             // Update widgets
