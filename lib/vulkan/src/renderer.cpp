@@ -145,17 +145,11 @@ namespace {
             for (auto& x : shadow_maps_) {
                 const auto img_view = x.tex_->image_view();
 
-                VkFramebufferCreateInfo framebufferInfo{};
-                framebufferInfo.sType =
-                    VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                framebufferInfo.renderPass = rp.renderpass();
-                framebufferInfo.attachmentCount = 1;
-                framebufferInfo.pAttachments = &img_view;
-                framebufferInfo.width = x.tex_->width();
-                framebufferInfo.height = x.tex_->height();
-                framebufferInfo.layers = 1;
-
-                x.fbuf_.init(framebufferInfo, device.logi_device());
+                mirinae::FbufCinfo fbuf_info;
+                fbuf_info.set_rp(rp.renderpass())
+                    .set_single_attach(img_view)
+                    .set_dim(x.width(), x.height());
+                x.fbuf_.init(fbuf_info.get(), device.logi_device());
             }
         }
 
@@ -376,23 +370,13 @@ namespace {
                 }
 
                 for (uint32_t i = 0; i < 6; i++) {
-                    const std::array<VkImageView, 1> attachments = {
-                        face_views_[i].get()
-                    };
+                    const auto attach = face_views_[i].get();
 
-                    VkFramebufferCreateInfo fbuf_cinfo = {};
-                    fbuf_cinfo.sType =
-                        VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                    fbuf_cinfo.renderPass = rp_pkg.envdiffuse_->renderpass();
-                    fbuf_cinfo.attachmentCount = static_cast<uint32_t>(
-                        attachments.size()
-                    );
-                    fbuf_cinfo.pAttachments = attachments.data();
-                    fbuf_cinfo.width = img_.width();
-                    fbuf_cinfo.height = img_.height();
-                    fbuf_cinfo.layers = 1;
-
-                    fbufs_[i].init(fbuf_cinfo, device.logi_device());
+                    mirinae::FbufCinfo fbuf_cinfo;
+                    fbuf_cinfo.set_rp(rp_pkg.envdiffuse_->renderpass())
+                        .set_single_attach(attach)
+                        .set_dim(width, height);
+                    fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
                 }
 
                 return true;
@@ -481,18 +465,11 @@ namespace {
 
                         const auto attach = face.view_.get();
 
-                        VkFramebufferCreateInfo fbuf_cinfo = {};
-                        fbuf_cinfo.sType =
-                            VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                        fbuf_cinfo.renderPass = rp_pkg.envdiffuse_->renderpass(
-                        );
-                        fbuf_cinfo.attachmentCount = 1;
-                        fbuf_cinfo.pAttachments = &attach;
-                        fbuf_cinfo.width = mip.width_;
-                        fbuf_cinfo.height = mip.height_;
-                        fbuf_cinfo.layers = 1;
-
-                        face.fbuf_.init(fbuf_cinfo, device.logi_device());
+                        mirinae::FbufCinfo fbuf_cinfo;
+                        fbuf_cinfo.set_rp(rp_pkg.envdiffuse_->renderpass())
+                            .set_single_attach(attach)
+                            .set_dim(mip.width_, mip.height_);
+                        face.fbuf_.init(fbuf_cinfo.get(), device.logi_device());
                     }
                 }
 
@@ -588,19 +565,11 @@ namespace {
                         depth_map_->image_view(), face_views_[i].get()
                     };
 
-                    VkFramebufferCreateInfo fbuf_cinfo = {};
-                    fbuf_cinfo.sType =
-                        VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                    fbuf_cinfo.renderPass = rp_pkg.cubemap_->renderpass();
-                    fbuf_cinfo.attachmentCount = static_cast<uint32_t>(
-                        attachments.size()
-                    );
-                    fbuf_cinfo.pAttachments = attachments.data();
-                    fbuf_cinfo.width = img_.width();
-                    fbuf_cinfo.height = img_.height();
-                    fbuf_cinfo.layers = 1;
-
-                    fbufs_[i].init(fbuf_cinfo, device.logi_device());
+                    mirinae::FbufCinfo fbuf_cinfo;
+                    fbuf_cinfo.set_rp(rp_pkg.cubemap_->renderpass())
+                        .set_attachments(attachments)
+                        .set_dim(img_.width(), img_.height());
+                    fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
                 }
 
                 return true;
@@ -715,15 +684,11 @@ namespace {
 
                 VkImageView attach = view_.get();
 
-                VkFramebufferCreateInfo fbuf_cinfo = {};
-                fbuf_cinfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                fbuf_cinfo.renderPass = rp_pkg.env_lut_->renderpass();
-                fbuf_cinfo.attachmentCount = 1;
-                fbuf_cinfo.pAttachments = &attach;
-                fbuf_cinfo.width = img_.width();
-                fbuf_cinfo.height = img_.height();
-                fbuf_cinfo.layers = 1;
-                fbuf_.init(fbuf_cinfo, device.logi_device());
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(rp_pkg.env_lut_->renderpass())
+                    .set_single_attach(attach)
+                    .set_dim(width, height);
+                fbuf_.init(fbuf_cinfo.get(), device.logi_device());
 
                 mirinae::CommandPool pool;
                 pool.init(device);
