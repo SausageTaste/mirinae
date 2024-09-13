@@ -781,7 +781,7 @@ namespace {
             VkRect2D scissor{};
             scissor.offset = { 0, 0 };
 
-            const auto proj_mat = glm::perspective<double>(
+            const auto proj_mat = glm::perspectiveRH_ZO<double>(
                 glm::radians(90.0), 1.0, 0.1, 1000.0
             );
 
@@ -893,7 +893,7 @@ namespace {
             rp_info.clearValueCount = rp.clear_value_count();
             rp_info.pClearValues = rp.clear_values();
 
-            const auto proj_mat = glm::perspective<double>(
+            const auto proj_mat = glm::perspectiveRH_ZO<double>(
                 glm::radians(90.0), 1.0, 0.01, 10.0
             );
 
@@ -979,7 +979,7 @@ namespace {
             rp_info.clearValueCount = rp.clear_value_count();
             rp_info.pClearValues = rp.clear_values();
 
-            const auto proj_mat = glm::perspective<double>(
+            const auto proj_mat = glm::perspectiveRH_ZO<double>(
                 glm::radians(90.0), 1.0, 0.01, 10.0
             );
 
