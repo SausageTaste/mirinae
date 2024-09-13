@@ -17,21 +17,15 @@ namespace {
         VkDevice logi_device,
         const std::vector<VkImageView>& attachments
     ) {
-        VkFramebufferCreateInfo framebufferInfo{};
-        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = renderpass;
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(
-            attachments.size()
-        );
-        framebufferInfo.pAttachments = attachments.data();
-        framebufferInfo.width = width;
-        framebufferInfo.height = height;
-        framebufferInfo.layers = 1;
+        mirinae::FbufCinfo fbuf_cinfo;
+        fbuf_cinfo.set_rp(renderpass)
+            .set_attachments(attachments)
+            .set_dim(width, height);
 
         VkFramebuffer output = VK_NULL_HANDLE;
-        VK_CHECK(
-            vkCreateFramebuffer(logi_device, &framebufferInfo, nullptr, &output)
-        );
+        VK_CHECK(vkCreateFramebuffer(
+            logi_device, &fbuf_cinfo.get(), nullptr, &output
+        ));
 
         return output;
     }

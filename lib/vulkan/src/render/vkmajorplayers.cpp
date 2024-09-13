@@ -262,6 +262,91 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// FbufCinfo
+namespace mirinae {
+
+    FbufCinfo::FbufCinfo() {
+        cinfo_ = {};
+        cinfo_.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        cinfo_.layers = 1;
+    }
+
+    bool FbufCinfo::is_valid() const {
+        if (VK_NULL_HANDLE == cinfo_.renderPass) {
+            spdlog::error("renderPass is not set");
+            return false;
+        }
+
+        if (0 == cinfo_.attachmentCount) {
+            spdlog::error("attachmentCount is not set");
+            return false;
+        }
+
+        if (nullptr == cinfo_.pAttachments) {
+            spdlog::error("pAttachments is not set");
+            return false;
+        }
+
+        if (0 == cinfo_.width || 0 == cinfo_.height) {
+            spdlog::error("Framebuffer dimensions are not set");
+            return false;
+        }
+
+        return true;
+    }
+
+    const VkFramebufferCreateInfo& FbufCinfo::get() const {
+        assert(this->is_valid());
+        return cinfo_;
+    }
+
+    FbufCinfo& FbufCinfo::set_rp(VkRenderPass rp) {
+        cinfo_.renderPass = rp;
+        return *this;
+    }
+
+    FbufCinfo& FbufCinfo::set_attach_count(uint32_t count) {
+        cinfo_.attachmentCount = count;
+        return *this;
+    }
+
+    FbufCinfo& FbufCinfo::set_attach(const VkImageView* attachments) {
+        cinfo_.pAttachments = attachments;
+        return *this;
+    }
+
+    FbufCinfo& FbufCinfo::set_dim(uint32_t width, uint32_t height) {
+        cinfo_.width = width;
+        cinfo_.height = height;
+        return *this;
+    }
+
+    FbufCinfo& FbufCinfo::set_dim(const VkExtent2D& extent) {
+        cinfo_.width = extent.width;
+        cinfo_.height = extent.height;
+        return *this;
+    }
+
+    FbufCinfo& FbufCinfo::set_layers(uint32_t layers) {
+        cinfo_.layers = layers;
+        return *this;
+    }
+
+    FbufCinfo& FbufCinfo::set_single_attach(const VkImageView& attachments) {
+        cinfo_.attachmentCount = 1;
+        cinfo_.pAttachments = &attachments;
+        return *this;
+    }
+
+    FbufCinfo& FbufCinfo::set_attachments(const std::vector<VkImageView>& arr) {
+        cinfo_.attachmentCount = static_cast<uint32_t>(arr.size());
+        cinfo_.pAttachments = arr.data();
+        return *this;
+    }
+
+}  // namespace mirinae
+
+
 // Fbuf
 namespace mirinae {
 
