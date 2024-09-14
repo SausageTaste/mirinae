@@ -369,8 +369,9 @@ namespace {
             mirinae::VulkanDevice& device
         ) {
             desc_pool_.init(
-                1,
-                desclayouts.get("envdiffuse:main").size_info(),
+                5,
+                desclayouts.get("envdiffuse:main").size_info() +
+                    desclayouts.get("env_sky:main").size_info(),
                 device.logi_device()
             );
 
@@ -381,6 +382,24 @@ namespace {
                                  -1.1615585516897 };
 
             brdf_lut_.init(512, 512, rp_pkg, device);
+
+            sky_tex_ = tex_man.request(
+                ":asset/textures/kloofendal_48d_partly_cloudy_puresky_1k.hdr",
+                false
+            );
+            assert(sky_tex_);
+
+            desc_set_ = desc_pool_.alloc(
+                desclayouts.get("env_sky:main").layout(), device.logi_device()
+            );
+
+            mirinae::DescWriteInfoBuilder desc_info;
+            desc_info.set_descset(desc_set_)
+                .add_img_sampler(
+                    sky_tex_->image_view(), device.samplers().get_linear()
+                )
+                .apply_all(device.logi_device());
+
             timer_.set_min();
         }
 
@@ -400,6 +419,27 @@ namespace {
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             if (timer_.check_if_elapsed(0)) {
+                record_sky(cur_cmd_buf, desc_set_, rp_pkg);
+
+                VkMemoryBarrier mem_barrier;
+                mem_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+                mem_barrier.pNext = nullptr;
+                mem_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+                mem_barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+
+                vkCmdPipelineBarrier(
+                    cur_cmd_buf,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    0,
+                    1,
+                    &mem_barrier,
+                    0,
+                    nullptr,
+                    0,
+                    nullptr
+                );
+
                 record_base(
                     cur_cmd_buf,
                     draw_sheet,
@@ -408,6 +448,20 @@ namespace {
                     image_index,
                     rp_pkg
                 );
+
+                vkCmdPipelineBarrier(
+                    cur_cmd_buf,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    0,
+                    1,
+                    &mem_barrier,
+                    0,
+                    nullptr,
+                    0,
+                    nullptr
+                );
+
                 record_diffuse(
                     cur_cmd_buf, draw_sheet, frame_index, image_index, rp_pkg
                 );
@@ -972,6 +1026,88 @@ namespace {
             }
         }
 
+        void record_sky(
+            const VkCommandBuffer cur_cmd_buf,
+            const VkDescriptorSet desc_set,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = *rp_pkg.env_sky_;
+
+            VkRenderPassBeginInfo rp_info{};
+            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rp_info.renderPass = rp.renderpass();
+            rp_info.renderArea.offset = { 0, 0 };
+            rp_info.clearValueCount = rp.clear_value_count();
+            rp_info.pClearValues = rp.clear_values();
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+
+            const auto proj_mat = mirinae::make_perspective<double>(
+                mirinae::Angle::from_deg(90.0), 1.0, 0.1, 1000.0
+            );
+
+            for (auto& cube_map : cube_map_) {
+                auto& base_cube = cube_map.base();
+                const auto world_mat = glm::translate<double>(
+                    glm::dmat4(1), -cube_map.world_pos_
+                );
+
+                viewport.width = base_cube.width();
+                viewport.height = base_cube.height();
+                scissor.extent = base_cube.extent2d();
+                rp_info.renderArea.extent = base_cube.extent2d();
+
+                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                for (int i = 0; i < 6; ++i) {
+                    rp_info.framebuffer = cube_map.base().face_fbuf(i);
+
+                    vkCmdBeginRenderPass(
+                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
+                    );
+                    vkCmdBindPipeline(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline()
+                    );
+
+                    vkCmdBindDescriptorSets(
+                        cur_cmd_buf,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rp.pipeline_layout(),
+                        0,
+                        1,
+                        &desc_set,
+                        0,
+                        nullptr
+                    );
+
+                    mirinae::U_EnvSkyPushConst pc;
+                    pc.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+                    vkCmdPushConstants(
+                        cur_cmd_buf,
+                        rp.pipeline_layout(),
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(mirinae::U_EnvSkyPushConst),
+                        &pc
+                    );
+
+                    vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
+
+                    vkCmdEndRenderPass(cur_cmd_buf);
+                }
+            }
+        }
+
         void record_diffuse(
             const VkCommandBuffer cur_cmd_buf,
             const ::DrawSheet& draw_sheet,
@@ -1050,7 +1186,7 @@ namespace {
                             &push_const
                         );
 
-                        vkCmdDrawIndexed(cur_cmd_buf, 36, 1, 0, 0, 0);
+                        vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
                     }
 
                     vkCmdEndRenderPass(cur_cmd_buf);
@@ -1141,7 +1277,7 @@ namespace {
                                 &push_const
                             );
 
-                            vkCmdDrawIndexed(cur_cmd_buf, 36, 1, 0, 0, 0);
+                            vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
                         }
 
                         vkCmdEndRenderPass(cur_cmd_buf);
@@ -1161,6 +1297,8 @@ namespace {
         mirinae::DescPool desc_pool_;
         sung::MonotonicRealtimeTimer timer_;
         BrdfLut brdf_lut_;
+        std::shared_ptr<mirinae::ITexture> sky_tex_;
+        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;  // For env sky
     };
 
 
