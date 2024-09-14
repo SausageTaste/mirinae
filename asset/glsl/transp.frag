@@ -81,9 +81,12 @@ void main() {
     const float depth = gl_FragCoord.z;
     const vec3 frag_pos = v_frag_pos;
     const vec3 albedo = albedo_texel.rgb;
-    const vec3 normal = normalize(v_tbn * (normal_texel.xyz * 2 - 1));
     const float roughness = u_model.roughness;
     const float metallic = u_model.metallic;
+
+    vec3 normal = normalize(v_tbn * (normal_texel.xyz * 2 - 1));
+    if (normal.z < 0)
+        normal = -normal;
 
     const vec3 world_pos = (u_comp_main.view_inv * vec4(frag_pos, 1)).xyz;
     const vec3 world_normal = (u_comp_main.view_inv * vec4(normal, 0)).xyz;
