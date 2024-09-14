@@ -2408,7 +2408,7 @@ namespace {
             framesync_.init(device_.logi_device());
 
             rp_states_shadow_.pool().add(
-                2048, 2048, *rp_.shadowmap_, tex_man_, device_
+                4096, 4096, *rp_.shadowmap_, tex_man_, device_
             );
             rp_states_shadow_.pool().add(
                 256, 256, *rp_.shadowmap_, tex_man_, device_
