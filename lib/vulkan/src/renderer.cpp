@@ -148,7 +148,6 @@ namespace {
                 );
             }
 
-            fmt::print("far_depths: {}\n", fmt::join(far_depths_, ", "));
             return;
         }
 
