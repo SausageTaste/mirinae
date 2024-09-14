@@ -9,6 +9,13 @@
 // DescSizeInfo
 namespace mirinae {
 
+    DescSizeInfo DescSizeInfo::operator+(const DescSizeInfo& rhs) const {
+        DescSizeInfo output;
+        for (const auto& [type, cnt] : data_) output.set(type, cnt);
+        for (const auto& [type, cnt] : rhs.data_) output.add(type, cnt);
+        return output;
+    }
+
     void DescSizeInfo::multiply_counts(uint32_t factor) {
         for (auto& [type, cnt] : data_) cnt *= factor;
     }
@@ -273,9 +280,7 @@ namespace mirinae {
         allocInfo.pSetLayouts = &desclayout;
 
         VkDescriptorSet output;
-        VK_CHECK(
-            vkAllocateDescriptorSets(logi_device, &allocInfo, &output)
-        );
+        VK_CHECK(vkAllocateDescriptorSets(logi_device, &allocInfo, &output));
 
         return output;
     }

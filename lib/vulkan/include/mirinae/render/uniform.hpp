@@ -202,6 +202,8 @@ namespace mirinae {
     class DescSizeInfo {
 
     public:
+        DescSizeInfo operator+(const DescSizeInfo& rhs) const;
+
         // Uniform buffer
         DescSizeInfo& add_ubuf(uint32_t cnt) {
             this->add(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, cnt);
