@@ -883,7 +883,7 @@ namespace {
             {
                 ::SamplerBuilder sampler_builder;
                 sampler_builder
-                    .address_mode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
+                    .address_mode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
                     .compare_op(VK_COMPARE_OP_NEVER)
                     .border_color(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
                 data_.push_back(sampler_builder.build(pd, ld));

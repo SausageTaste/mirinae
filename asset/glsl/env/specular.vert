@@ -7,6 +7,7 @@ layout(location = 0) out vec3 v_local_pos;
 
 layout(push_constant) uniform U_EnvSpecularPushConst {
     mat4 proj_view;
+    float roughness;
 } u_push_const;
 
 
