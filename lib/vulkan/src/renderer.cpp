@@ -930,8 +930,8 @@ namespace {
             VkRect2D scissor{};
             scissor.offset = { 0, 0 };
 
-            const auto proj_mat = mirinae::make_perspective<double>(
-                mirinae::Angle::from_deg(90.0), 1.0, 0.1, 1000.0
+            const auto proj_mat = glm::perspectiveRH_ZO(
+                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
             );
 
             for (auto& cube_map : cube_map_) {
@@ -1049,8 +1049,8 @@ namespace {
             VkRect2D scissor{};
             scissor.offset = { 0, 0 };
 
-            const auto proj_mat = mirinae::make_perspective<double>(
-                mirinae::Angle::from_deg(90.0), 1.0, 0.1, 1000.0
+            const auto proj_mat = glm::perspectiveRH_ZO(
+                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
             );
 
             for (auto& cube_map : cube_map_) {
@@ -1124,8 +1124,8 @@ namespace {
             rp_info.clearValueCount = rp.clear_value_count();
             rp_info.pClearValues = rp.clear_values();
 
-            const auto proj_mat = mirinae::make_perspective<double>(
-                mirinae::Angle::from_deg(90.0), 1.0, 0.01, 10.0
+            const auto proj_mat = glm::perspectiveRH_ZO(
+                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
             );
 
             VkViewport viewport{};
@@ -1210,8 +1210,8 @@ namespace {
             rp_info.clearValueCount = rp.clear_value_count();
             rp_info.pClearValues = rp.clear_values();
 
-            const auto proj_mat = mirinae::make_perspective<double>(
-                mirinae::Angle::from_deg(90.0), 1.0, 0.01, 10.0
+            const auto proj_mat = glm::perspectiveRH_ZO(
+                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
             );
 
             VkViewport viewport{};
@@ -1268,6 +1268,7 @@ namespace {
                             push_const.proj_view_ = proj_mat *
                                                     CUBE_VIEW_MATS[i];
                             push_const.roughness_ = mip.roughness_;
+
                             vkCmdPushConstants(
                                 cur_cmd_buf,
                                 rp.pipeline_layout(),
