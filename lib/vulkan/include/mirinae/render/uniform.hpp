@@ -74,7 +74,9 @@ namespace mirinae {
         }
 
         // It automatically normalize the input vector.
-        void set_dlight_mat(const glm::mat4& m) { dlight_mat_ = m; }
+        void set_dlight_mat(size_t index, const glm::mat4& m) {
+            dlight_mats_[index] = m;
+        }
         void set_dlight_dir(const glm::vec3& dlight_dir) {
             const auto d = glm::normalize(dlight_dir);
             dlight_dir_.x = d.x;
@@ -95,6 +97,11 @@ namespace mirinae {
             dlight_color_.x = dlight_color.r;
             dlight_color_.y = dlight_color.g;
             dlight_color_.z = dlight_color.b;
+        }
+        void set_dlight_cascade_depths(const std::array<double, 4>& depths) {
+            for (size_t i = 0; i < 4; ++i) {
+                dlight_cascade_depths_[i] = depths[i];
+            }
         }
 
         void set_slight_mat(const glm::mat4& m) { slight_mat_ = m; }
@@ -138,9 +145,10 @@ namespace mirinae {
         glm::mat4 proj_inv_;
 
         // Directional light
-        glm::mat4 dlight_mat_;
+        glm::mat4 dlight_mats_[4];
         glm::vec4 dlight_dir_;
         glm::vec4 dlight_color_;
+        glm::vec4 dlight_cascade_depths_;
 
         // Spotlight
         glm::mat4 slight_mat_;
@@ -148,6 +156,7 @@ namespace mirinae {
         glm::vec4 slight_dir_n_outer_angle;
         glm::vec4 slight_color_n_max_dist;
     };
+    constexpr static auto a = sizeof(U_CompoMain);
 
 
     using U_TranspFrame = U_CompoMain;

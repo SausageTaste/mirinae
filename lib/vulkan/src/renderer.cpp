@@ -108,28 +108,52 @@ namespace {
     class CascadeInfo {
 
     public:
+        struct Cascade {
+            std::array<glm::dvec3, 8> frustum_verts_;
+            glm::dmat4 light_mat_;
+            double near_;
+            double far_;
+        };
+
         void update(
             const double ratio,
             const glm::dmat4& view_inv,
-            const mirinae::PerspectiveCamera<double>& pers
+            const mirinae::PerspectiveCamera<double>& pers,
+            const mirinae::cpnt::DLight& dlight
         ) {
-            this->make_frustum_vertices(
-                ratio,
-                pers.near_,
-                pers.fov_,
-                view_inv,
-                full_frustum_verts_.data()
-            );
-            this->make_frustum_vertices(
-                ratio,
-                pers.far_,
-                pers.fov_,
-                view_inv,
-                full_frustum_verts_.data() + 4
-            );
+            const auto dist = this->make_plane_distances(pers.near_, pers.far_);
+
+            for (size_t i = 0; i < dist.size() - 1; ++i) {
+                auto& c = cascades_.at(i);
+
+                c.near_ = dist[i];
+                c.far_ = dist[i + 1];
+
+                this->make_frustum_vertices(
+                    ratio, c.near_, pers.fov_, view_inv, c.frustum_verts_.data()
+                );
+
+                this->make_frustum_vertices(
+                    ratio,
+                    c.far_,
+                    pers.fov_,
+                    view_inv,
+                    c.frustum_verts_.data() + 4
+                );
+
+                c.light_mat_ = dlight.make_light_mat(c.frustum_verts_);
+
+                far_depths_[i] = this->calc_clip_depth(
+                    -c.far_, pers.near_, pers.far_
+                );
+            }
+
+            fmt::print("far_depths: {}\n", fmt::join(far_depths_, ", "));
+            return;
         }
 
-        std::array<glm::dvec3, 8> full_frustum_verts_;
+        std::array<Cascade, 4> cascades_;
+        std::array<double, 4> far_depths_;
 
     private:
         static void make_frustum_vertices(
@@ -151,8 +175,27 @@ namespace {
             out[2] = glm::dvec3{ -half_width, half_height, -plane_dist };
             out[3] = glm::dvec3{ half_width, half_height, -plane_dist };
 
-            for (size_t i = 0; i < 8; ++i)
+            for (size_t i = 0; i < 4; ++i)
                 out[i] = view_inv * glm::dvec4{ out[i], 1 };
+        }
+
+        static std::array<double, 5> make_plane_distances(
+            const double p_near, const double p_far
+        ) {
+            std::array<double, 5> out;
+            const auto dist = p_far - p_near;
+
+            out[0] = p_near;
+            out[1] = p_near + dist * 0.05;
+            out[2] = p_near + dist * 0.2;
+            out[3] = p_near + dist * 0.5;
+            out[4] = p_far;
+
+            return out;
+        }
+
+        double calc_clip_depth(double z, double n, double f) {
+            return (f * (z + n)) / (z * (f - n));
         }
     };
 
@@ -1134,7 +1177,105 @@ namespace {
 
             assert(shadow_maps_.size() == 2);
 
-            for (auto& shadow : shadow_maps_) {
+            {
+                auto& shadow = shadow_maps_.at(0);
+
+                VkRenderPassBeginInfo renderPassInfo{};
+                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderPassInfo.renderPass = rp.renderpass();
+                renderPassInfo.framebuffer = shadow.fbuf();
+                renderPassInfo.renderArea.offset = { 0, 0 };
+                renderPassInfo.renderArea.extent = shadow.tex_->extent();
+                renderPassInfo.clearValueCount = rp.clear_value_count();
+                renderPassInfo.pClearValues = rp.clear_values();
+
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+
+                VkViewport viewport{};
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+
+                VkRect2D scissor{};
+
+                const auto half_width = shadow.width() / 2.0;
+                const auto half_height = shadow.height() / 2.0;
+                const std::array<glm::dvec2, 4> offsets{
+                    glm::dvec2{ 0, 0 },
+                    glm::dvec2{ half_width, 0 },
+                    glm::dvec2{ 0, half_height },
+                    glm::dvec2{ half_width, half_height },
+                };
+
+                for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
+                    const auto& cascade = cascade_info_.cascades_.at(cascade_i);
+                    auto& offset = offsets.at(cascade_i);
+
+                    viewport.x = offset.x;
+                    viewport.y = offset.y;
+                    viewport.width = half_width;
+                    viewport.height = half_height;
+
+                    scissor.offset.x = offset.x;
+                    scissor.offset.y = offset.y;
+                    scissor.extent.width = half_width;
+                    scissor.extent.height = half_height;
+
+                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                    for (auto& pair : draw_sheet.static_pairs_) {
+                        for (auto& unit : pair.model_->render_units_) {
+                            auto unit_desc = unit.get_desc_set(frame_index.get()
+                            );
+                            unit.record_bind_vert_buf(cur_cmd_buf);
+
+                            for (auto& actor : pair.actors_) {
+                                auto actor_desc = actor.actor_->get_desc_set(
+                                    frame_index.get()
+                                );
+                                vkCmdBindDescriptorSets(
+                                    cur_cmd_buf,
+                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    rp.pipeline_layout(),
+                                    0,
+                                    1,
+                                    &actor_desc,
+                                    0,
+                                    nullptr
+                                );
+
+                                mirinae::U_ShadowPushConst push_const;
+                                push_const.pvm_ = cascade.light_mat_ *
+                                                  actor.model_mat_;
+
+                                vkCmdPushConstants(
+                                    cur_cmd_buf,
+                                    rp.pipeline_layout(),
+                                    VK_SHADER_STAGE_VERTEX_BIT,
+                                    0,
+                                    sizeof(push_const),
+                                    &push_const
+                                );
+
+                                vkCmdDrawIndexed(
+                                    cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                                );
+                            }
+                        }
+                    }
+                }
+
+                vkCmdEndRenderPass(cur_cmd_buf);
+            }
+
+            {
+                auto& shadow = shadow_maps_.at(1);
+
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = rp.renderpass();
@@ -1215,7 +1356,105 @@ namespace {
         ) {
             auto& rp = *rp_pkg.shadowmap_skin_;
 
-            for (auto& shadow : shadow_maps_) {
+            {
+                auto& shadow = shadow_maps_.at(0);
+
+                VkRenderPassBeginInfo renderPassInfo{};
+                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderPassInfo.renderPass = rp.renderpass();
+                renderPassInfo.framebuffer = shadow.fbuf();
+                renderPassInfo.renderArea.offset = { 0, 0 };
+                renderPassInfo.renderArea.extent = shadow.tex_->extent();
+                renderPassInfo.clearValueCount = rp.clear_value_count();
+                renderPassInfo.pClearValues = rp.clear_values();
+
+                vkCmdBeginRenderPass(
+                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
+                );
+                vkCmdBindPipeline(
+                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+
+                VkViewport viewport{};
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+
+                VkRect2D scissor{};
+
+                const auto half_width = shadow.width() / 2.0;
+                const auto half_height = shadow.height() / 2.0;
+                const std::array<glm::dvec2, 4> offsets{
+                    glm::dvec2{ 0, 0 },
+                    glm::dvec2{ half_width, 0 },
+                    glm::dvec2{ 0, half_height },
+                    glm::dvec2{ half_width, half_height },
+                };
+
+                for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
+                    const auto& cascade = cascade_info_.cascades_.at(cascade_i);
+                    auto& offset = offsets.at(cascade_i);
+
+                    viewport.x = offset.x;
+                    viewport.y = offset.y;
+                    viewport.width = half_width;
+                    viewport.height = half_height;
+
+                    scissor.offset.x = offset.x;
+                    scissor.offset.y = offset.y;
+                    scissor.extent.width = half_width;
+                    scissor.extent.height = half_height;
+
+                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+
+                    for (auto& pair : draw_sheet.skinned_pairs_) {
+                        for (auto& unit : pair.model_->runits_) {
+                            auto unit_desc = unit.get_desc_set(frame_index.get()
+                            );
+                            unit.record_bind_vert_buf(cur_cmd_buf);
+
+                            for (auto& actor : pair.actors_) {
+                                auto actor_desc = actor.actor_->get_desc_set(
+                                    frame_index.get()
+                                );
+                                vkCmdBindDescriptorSets(
+                                    cur_cmd_buf,
+                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    rp.pipeline_layout(),
+                                    0,
+                                    1,
+                                    &actor_desc,
+                                    0,
+                                    nullptr
+                                );
+
+                                mirinae::U_ShadowPushConst push_const;
+                                push_const.pvm_ = cascade.light_mat_ *
+                                                  actor.model_mat_;
+
+                                vkCmdPushConstants(
+                                    cur_cmd_buf,
+                                    rp.pipeline_layout(),
+                                    VK_SHADER_STAGE_VERTEX_BIT,
+                                    0,
+                                    sizeof(push_const),
+                                    &push_const
+                                );
+
+                                vkCmdDrawIndexed(
+                                    cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                                );
+                            }
+                        }
+                    }
+                }
+
+                vkCmdEndRenderPass(cur_cmd_buf);
+            }
+
+            {
+                auto& shadow = shadow_maps_.at(1);
+
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = rp.renderpass();
@@ -1284,15 +1523,16 @@ namespace {
                         }
                     }
                 }
-
                 vkCmdEndRenderPass(cur_cmd_buf);
             }
         }
 
         ::ShadowMapPool& pool() { return shadow_maps_; }
+        ::CascadeInfo& cascade() { return cascade_info_; }
 
     private:
         ::ShadowMapPool shadow_maps_;
+        ::CascadeInfo cascade_info_;
     };
 
 
@@ -2115,9 +2355,6 @@ namespace {
             const auto view_mat = cam.view_.make_view_mat();
             const auto view_inv = glm::inverse(view_mat);
 
-            ::CascadeInfo cascade_;
-            cascade_.update(swapchain_.calc_ratio(), view_inv, cam.proj_);
-
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
             widget_ren_data.win_dim_ = overlay_man_.win_dim();
@@ -2133,7 +2370,7 @@ namespace {
                 auto& dlight = cosmos_->reg().get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
 
-                dlight.transform_.pos_ = cascade_.full_frustum_verts_.front();
+                dlight.transform_.pos_ = cam.view_.pos_;
                 dlight.transform_.reset_rotation();
                 dlight.transform_.rotate(
                     sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
@@ -2150,10 +2387,12 @@ namespace {
                 );
                 */
 
-                const auto light_mat = dlight.make_light_mat(
-                    cascade_.full_frustum_verts_
+                rp_states_shadow_.cascade().update(
+                    swapchain_.calc_ratio(), view_inv, cam.proj_, dlight
                 );
-                rp_states_shadow_.pool().at(0).mat_ = light_mat;
+                rp_states_shadow_.pool().at(0).mat_ =
+                    rp_states_shadow_.cascade().cascades_.front().light_mat_;
+
                 break;
             }
 
@@ -2171,9 +2410,7 @@ namespace {
                 break;
             }
 
-            this->update_ubufs(
-                proj_mat, view_mat, cascade_.full_frustum_verts_
-            );
+            this->update_ubufs(proj_mat, view_mat);
 
             // Begin recording
             {
@@ -2536,9 +2773,7 @@ namespace {
         }
 
         void update_ubufs(
-            const glm::dmat4& proj_mat,
-            const glm::dmat4& view_mat,
-            const std::array<glm::dvec3, 8>& frus_vert
+            const glm::dmat4& proj_mat, const glm::dmat4& view_mat
         ) {
             namespace cpnt = mirinae::cpnt;
             const auto t = cosmos_->ftime().tp_;
@@ -2600,9 +2835,14 @@ namespace {
 
                 for (auto e : cosmos_->reg().view<cpnt::DLight>()) {
                     const auto& light = cosmos_->reg().get<cpnt::DLight>(e);
-                    ubuf_data.set_dlight_mat(light.make_light_mat(frus_vert));
+                    const auto& cascade = rp_states_shadow_.cascade();
+                    const auto& cascades = cascade.cascades_;
+
+                    for (size_t i = 0; i < cascades.size(); ++i)
+                        ubuf_data.set_dlight_mat(i, cascades.at(i).light_mat_);
                     ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat));
                     ubuf_data.set_dlight_color(light.color_);
+                    ubuf_data.set_dlight_cascade_depths(cascade.far_depths_);
                     break;
                 }
 
