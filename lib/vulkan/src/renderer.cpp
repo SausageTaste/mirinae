@@ -417,7 +417,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            if (timer_.check_if_elapsed(0)) {
+            if (timer_.check_if_elapsed(10)) {
                 record_sky(cur_cmd_buf, desc_set_, rp_pkg);
 
                 VkMemoryBarrier mem_barrier;
@@ -2416,10 +2416,6 @@ namespace {
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
-            overlay_man_.create_image_view(
-                rp_states_shadow_.pool().at(0).tex_->image_view()
-            );
-
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -2431,11 +2427,6 @@ namespace {
                 input_mgrs_.add(std::make_unique<DominantCommandProc>(device_));
                 input_mgrs_.add(&overlay_man_);
             }
-
-            const auto hdri = tex_man_.request(
-                ":asset/textures/kloofendal_48d_partly_cloudy_puresky_1k.hdr",
-                false
-            );
 
             // Widget: Dev console
             {
