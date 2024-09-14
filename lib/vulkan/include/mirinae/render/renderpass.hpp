@@ -103,6 +103,7 @@ namespace mirinae {
         std::unique_ptr<IRenderPassBundle> gbuf_skin_;
         std::unique_ptr<IRenderPassBundle> shadowmap_;
         std::unique_ptr<IRenderPassBundle> shadowmap_skin_;
+        std::unique_ptr<IRenderPassBundle> env_sky_;
         std::unique_ptr<IRenderPassBundle> cubemap_;
         std::unique_ptr<IRenderPassBundle> envdiffuse_;
         std::unique_ptr<IRenderPassBundle> env_specular_;

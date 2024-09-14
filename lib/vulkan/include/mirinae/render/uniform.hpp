@@ -50,6 +50,11 @@ namespace mirinae {
     };
 
 
+    struct U_EnvSkyPushConst {
+        glm::mat4 proj_view_;
+    };
+
+
     struct U_EnvdiffusePushConst {
         glm::mat4 proj_view_;
     };

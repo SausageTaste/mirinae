@@ -1442,6 +1442,201 @@ namespace { namespace shadowmap_skin {
 }}  // namespace ::shadowmap_skin
 
 
+// env_sky
+namespace { namespace env_sky {
+
+    VkDescriptorSetLayout create_desclayout_main(
+        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
+    ) {
+        mirinae::DescLayoutBuilder builder{ "env_sky:main" };
+        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Equirectangular
+        return desclayouts.add(builder, device.logi_device());
+    }
+
+    VkRenderPass create_renderpass(
+        VkFormat depth, VkFormat color, VkDevice logi_device
+    ) {
+        ::AttachmentDescBuilder attach;
+        attach.add(depth)
+            .load_op(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+            .store_op(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+            .initial_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .final_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        attach.add(color)
+            .load_op(VK_ATTACHMENT_LOAD_OP_CLEAR)
+            .store_op(VK_ATTACHMENT_STORE_OP_STORE)
+            .initial_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .final_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        ::AttachmentRefBuilder color_attachment_refs;
+        // albedo
+        color_attachment_refs.add(
+            1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        );  // color
+
+        const VkAttachmentReference depth_attachment_ref{
+            0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        };
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = color_attachment_refs.size();
+        subpass.pColorAttachments = color_attachment_refs.data();
+        subpass.pDepthStencilAttachment = &depth_attachment_ref;
+
+        SubpassDependencyBuilder dependency;
+        dependency.add();
+
+        VkRenderPassCreateInfo create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        create_info.attachmentCount = attach.size();
+        create_info.pAttachments = attach.data();
+        create_info.subpassCount = 1;
+        create_info.pSubpasses = &subpass;
+        create_info.dependencyCount = dependency.size();
+        create_info.pDependencies = dependency.data();
+
+        VkRenderPass output = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
+
+        return output;
+    }
+
+    VkPipeline create_pipeline(
+        VkRenderPass renderpass,
+        VkPipelineLayout pipelineLayout,
+        mirinae::VulkanDevice& device
+    ) {
+        ::ShaderStagesBuilder shader_stages{ device };
+        shader_stages.add_vert(":asset/spv/env_sky_vert.spv");
+        shader_stages.add_frag(":asset/spv/env_sky_frag.spv");
+
+        std::array<VkDynamicState, 2> dynamic_states{
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
+        };
+        const auto dynamic_state_info = ::create_info_dynamic_states(
+            dynamic_states.data(), dynamic_states.size()
+        );
+
+        ::VertexInputStateBuilder vinput_builder;
+        const auto vertex_input_info = vinput_builder.build();
+
+        const auto input_assembly = ::create_info_input_assembly();
+
+        const auto viewport_state = ::create_info_viewport_state();
+
+        const auto rasterizer = ::create_info_rasterizer(
+            VK_CULL_MODE_NONE, false, 0, 0, false
+        );
+
+        const auto multisampling = ::create_info_multisampling();
+
+        const auto depth_stencil = ::create_info_depth_stencil(false, false);
+
+        ::ColorBlendStateBuilder color_blend_builder;
+        const auto color_blending = color_blend_builder.add(false, 1).build();
+
+        VkGraphicsPipelineCreateInfo pipeline_info{};
+        pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipeline_info.stageCount = static_cast<uint32_t>(shader_stages.size());
+        pipeline_info.pStages = shader_stages.data();
+        pipeline_info.pVertexInputState = &vertex_input_info;
+        pipeline_info.pInputAssemblyState = &input_assembly;
+        pipeline_info.pViewportState = &viewport_state;
+        pipeline_info.pRasterizationState = &rasterizer;
+        pipeline_info.pMultisampleState = &multisampling;
+        pipeline_info.pDepthStencilState = &depth_stencil;
+        pipeline_info.pColorBlendState = &color_blending;
+        pipeline_info.pDynamicState = &dynamic_state_info;
+        pipeline_info.layout = pipelineLayout;
+        pipeline_info.renderPass = renderpass;
+        pipeline_info.subpass = 0;
+        pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+        pipeline_info.basePipelineIndex = -1;
+
+        VkPipeline graphics_pipeline;
+        VK_CHECK(vkCreateGraphicsPipelines(
+            device.logi_device(),
+            VK_NULL_HANDLE,
+            1,
+            &pipeline_info,
+            nullptr,
+            &graphics_pipeline
+        ));
+
+        return graphics_pipeline;
+    }
+
+
+    class RenderPassBundle : public mirinae::IRenderPassBundle {
+
+    public:
+        RenderPassBundle(
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : IRenderPassBundle(device) {
+            formats_ = { mirinae::select_depth_map_format(device),
+                         VK_FORMAT_B10G11R11_UFLOAT_PACK32 };
+
+            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+            renderpass_ = create_renderpass(
+                formats_.at(0), formats_.at(1), device.logi_device()
+            );
+            layout_ = ::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_main(desclayouts, device))
+                          .add_vertex_flag()
+                          .pc(0, sizeof(mirinae::U_EnvSkyPushConst))
+                          .build(device);
+            pipeline_ = create_pipeline(renderpass_, layout_, device);
+        }
+
+        ~RenderPassBundle() override { this->destroy(); }
+
+        void destroy() override {
+            if (VK_NULL_HANDLE != pipeline_) {
+                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
+                pipeline_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != layout_) {
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), layout_, nullptr
+                );
+                layout_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != renderpass_) {
+                vkDestroyRenderPass(
+                    device_.logi_device(), renderpass_, nullptr
+                );
+                renderpass_ = VK_NULL_HANDLE;
+            }
+        }
+
+        VkFramebuffer fbuf_at(uint32_t index) override {
+            return VK_NULL_HANDLE;
+        }
+
+        const VkClearValue* clear_values() const override {
+            return clear_values_.data();
+        }
+
+        uint32_t clear_value_count() const override {
+            return static_cast<uint32_t>(clear_values_.size());
+        }
+
+    private:
+        std::array<VkFormat, 2> formats_;
+        std::array<VkClearValue, 2> clear_values_;
+    };
+
+}}  // namespace ::env_sky
+
+
 // cubemap
 namespace { namespace cubemap {
 
@@ -1467,9 +1662,9 @@ namespace { namespace cubemap {
             .initial_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             .final_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
         attach.add(color)
-            .load_op(VK_ATTACHMENT_LOAD_OP_CLEAR)
+            .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
             .store_op(VK_ATTACHMENT_STORE_OP_STORE)
-            .initial_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .initial_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .final_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
@@ -3469,6 +3664,9 @@ namespace mirinae {
         );
         shadowmap_skin_ = std::make_unique<::shadowmap_skin::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        env_sky_ = std::make_unique<::env_sky::RenderPassBundle>(
+            desclayouts, device
         );
         cubemap_ = std::make_unique<::cubemap::RenderPassBundle>(
             desclayouts, device
