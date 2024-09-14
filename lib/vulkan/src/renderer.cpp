@@ -35,39 +35,6 @@ namespace {
         );
     }
 
-    // Positions in world space
-    template <typename T>
-    std::array<glm::tvec3<T>, 8> make_frustum_vertices(
-        const T ratio,
-        const glm::tmat4x4<T>& view_inv,
-        const mirinae::PerspectiveCamera<T>& pers
-    ) {
-        const auto tan_half_angle_vertical = std::tan(pers.fov_.rad() * 0.5);
-        const auto tan_half_angle_horizontal = tan_half_angle_vertical * ratio;
-
-        const auto half_width_near = pers.near_ * tan_half_angle_horizontal;
-        const auto half_width_far = pers.far_ * tan_half_angle_horizontal;
-        const auto half_height_near = pers.near_ * tan_half_angle_vertical;
-        const auto half_height_far = pers.far_ * tan_half_angle_vertical;
-
-        std::array<glm::tvec3<T>, 8> out{
-            glm::tvec3<T>{ -half_width_near, -half_height_near, -pers.near_ },
-            glm::tvec3<T>{ half_width_near, -half_height_near, -pers.near_ },
-            glm::tvec3<T>{ -half_width_near, half_height_near, -pers.near_ },
-            glm::tvec3<T>{ half_width_near, half_height_near, -pers.near_ },
-            glm::tvec3<T>{ -half_width_far, -half_height_far, -pers.far_ },
-            glm::tvec3<T>{ half_width_far, -half_height_far, -pers.far_ },
-            glm::tvec3<T>{ -half_width_far, half_height_far, -pers.far_ },
-            glm::tvec3<T>{ half_width_far, half_height_far, -pers.far_ },
-        };
-
-        for (size_t i = 0; i < 8; ++i) {
-            out[i] = view_inv * glm::tvec4<T>{ out[i], 1 };
-        }
-
-        return out;
-    }
-
 
     class DominantCommandProc : public mirinae::IInputProcessor {
 
@@ -135,6 +102,58 @@ namespace {
         std::array<mirinae::Fence, mirinae::MAX_FRAMES_IN_FLIGHT>
             in_flight_fences_;
         FrameIndex cur_frame_{ 0 };
+    };
+
+
+    class CascadeInfo {
+
+    public:
+        void update(
+            const double ratio,
+            const glm::dmat4& view_inv,
+            const mirinae::PerspectiveCamera<double>& pers
+        ) {
+            this->make_frustum_vertices(
+                ratio,
+                pers.near_,
+                pers.fov_,
+                view_inv,
+                full_frustum_verts_.data()
+            );
+            this->make_frustum_vertices(
+                ratio,
+                pers.far_,
+                pers.fov_,
+                view_inv,
+                full_frustum_verts_.data() + 4
+            );
+        }
+
+        std::array<glm::dvec3, 8> full_frustum_verts_;
+
+    private:
+        static void make_frustum_vertices(
+            const double screen_ratio,
+            const double plane_dist,
+            const mirinae::Angle fov,
+            const glm::dmat4& view_inv,
+            glm::dvec3* const out
+        ) {
+            const auto tan_half_angle_vertical = std::tan(fov.rad() * 0.5);
+            const auto tan_half_angle_horizontal = tan_half_angle_vertical *
+                                                   screen_ratio;
+
+            const auto half_width = plane_dist * tan_half_angle_horizontal;
+            const auto half_height = plane_dist * tan_half_angle_vertical;
+
+            out[0] = glm::dvec3{ -half_width, -half_height, -plane_dist };
+            out[1] = glm::dvec3{ half_width, -half_height, -plane_dist };
+            out[2] = glm::dvec3{ -half_width, half_height, -plane_dist };
+            out[3] = glm::dvec3{ half_width, half_height, -plane_dist };
+
+            for (size_t i = 0; i < 8; ++i)
+                out[i] = view_inv * glm::dvec4{ out[i], 1 };
+        }
     };
 
 
@@ -1112,6 +1131,8 @@ namespace {
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = *rp_pkg.shadowmap_;
+
+            assert(shadow_maps_.size() == 2);
 
             for (auto& shadow : shadow_maps_) {
                 VkRenderPassBeginInfo renderPassInfo{};
@@ -2094,9 +2115,8 @@ namespace {
             const auto view_mat = cam.view_.make_view_mat();
             const auto view_inv = glm::inverse(view_mat);
 
-            const auto frustum_vertices = ::make_frustum_vertices<double>(
-                swapchain_.calc_ratio(), view_inv, cam.proj_
-            );
+            ::CascadeInfo cascade_;
+            cascade_.update(swapchain_.calc_ratio(), view_inv, cam.proj_);
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -2113,7 +2133,7 @@ namespace {
                 auto& dlight = cosmos_->reg().get<mirinae::cpnt::DLight>(l);
                 const auto view_dir = cam.view_.make_forward_dir();
 
-                dlight.transform_.pos_ = frustum_vertices.front();
+                dlight.transform_.pos_ = cascade_.full_frustum_verts_.front();
                 dlight.transform_.reset_rotation();
                 dlight.transform_.rotate(
                     sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
@@ -2130,7 +2150,9 @@ namespace {
                 );
                 */
 
-                const auto light_mat = dlight.make_light_mat(frustum_vertices);
+                const auto light_mat = dlight.make_light_mat(
+                    cascade_.full_frustum_verts_
+                );
                 rp_states_shadow_.pool().at(0).mat_ = light_mat;
                 break;
             }
@@ -2149,7 +2171,9 @@ namespace {
                 break;
             }
 
-            this->update_ubufs(proj_mat, view_mat, frustum_vertices);
+            this->update_ubufs(
+                proj_mat, view_mat, cascade_.full_frustum_verts_
+            );
 
             // Begin recording
             {
