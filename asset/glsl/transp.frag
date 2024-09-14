@@ -17,9 +17,10 @@ layout(set = 0, binding = 0) uniform U_TranspFrame {
     mat4 proj_inv;
 
     // Directional light
-    mat4 dlight_mat;
+    mat4 dlight_mats[4];
     vec4 dlight_dir;
     vec4 dlight_color;
+    vec4 dlight_cascade_depths;
 
     // Spotlight
     mat4 slight_mat;
@@ -77,6 +78,7 @@ void main() {
     vec4 albedo_texel = texture(u_albedo_map, v_texcoord);
     vec4 normal_texel = texture(u_normal_map, v_texcoord);
 
+    const float depth = gl_FragCoord.z;
     const vec3 frag_pos = v_frag_pos;
     const vec3 albedo = albedo_texel.rgb;
     const vec3 normal = normalize(v_tbn * (normal_texel.xyz * 2 - 1));
@@ -97,16 +99,33 @@ void main() {
     );
 
     // Directional light
-    light += calc_pbr_illumination(
-        roughness,
-        metallic,
-        albedo,
-        normal,
-        F0,
-        -view_direc,
-        u_comp_main.dlight_dir.xyz,
-        u_comp_main.dlight_color.rgb
-    ) * how_much_not_in_shadow_pcf_bilinear(world_pos, u_comp_main.dlight_mat, u_dlight_shadow_map);
+    {
+        uint selected_dlight = 3;
+        for (uint i = 0; i < 3; ++i) {
+            if (u_comp_main.dlight_cascade_depths[i] > depth) {
+                selected_dlight = i;
+                break;
+            }
+        }
+
+        const float lit = how_much_not_in_cascade_shadow(
+            world_pos,
+            CASCADE_OFFSETS[selected_dlight],
+            u_comp_main.dlight_mats[selected_dlight],
+            u_dlight_shadow_map
+        );
+
+        light += calc_pbr_illumination(
+            roughness,
+            metallic,
+            albedo,
+            normal,
+            F0,
+            -view_direc,
+            u_comp_main.dlight_dir.xyz,
+            u_comp_main.dlight_color.rgb
+        ) * lit;
+    }
 
     // Flashlight
     {
