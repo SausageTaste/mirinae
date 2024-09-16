@@ -2090,6 +2090,7 @@ namespace { namespace env_specular {
             layout_ = ::PipelineLayoutBuilder{}
                           .desc(create_desclayout_main(desclayouts, device))
                           .add_vertex_flag()
+                          .add_frag_flag()
                           .pc(0, sizeof(mirinae::U_EnvSpecularPushConst))
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);

@@ -1271,7 +1271,8 @@ namespace {
                             vkCmdPushConstants(
                                 cur_cmd_buf,
                                 rp.pipeline_layout(),
-                                VK_SHADER_STAGE_VERTEX_BIT,
+                                VK_SHADER_STAGE_VERTEX_BIT |
+                                    VK_SHADER_STAGE_FRAGMENT_BIT,
                                 0,
                                 sizeof(mirinae::U_EnvSpecularPushConst),
                                 &push_const
