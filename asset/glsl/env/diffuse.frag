@@ -14,10 +14,10 @@ void main() {
     const vec3 normal = normalize(v_local_pos);
     const vec3 right = cross(vec3(0, 1, 0), normal);
     const vec3 up = cross(normal, right);
-    const float sample_delta = 0.1;
+    const float sample_delta = 0.025;
 
     vec3 irradiance = vec3(0);
-    int num_samples = 0;
+    float num_samples = 0;
     for (float phi = 0.0; phi < 2.0 * PI; phi += sample_delta) {
         for (float theta = 0.0; theta < 0.5 * PI; theta += sample_delta) {
             const vec3 tangent_sample = vec3(
@@ -31,7 +31,7 @@ void main() {
                 + tangent_sample.z * normal
             );
             const float cos_x_sin = cos(theta) * sin(theta);
-            irradiance += textureLod(u_envmap, sample_vec, 0.0).rgb * cos_x_sin;
+            irradiance += textureLod(u_envmap, sample_vec, 3).rgb * cos_x_sin;
             num_samples++;
         }
     }

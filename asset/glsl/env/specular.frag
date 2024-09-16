@@ -1,6 +1,7 @@
 #version 450
 
 #include "../utils/konst.glsl"
+#include "../utils/lighting.glsl"
 #include "common.glsl"
 
 
@@ -31,7 +32,19 @@ void main() {
 
         const float NdotL = max(dot(N, L), 0.0);
         if (NdotL > 0.0) {
-            prefiltered_color += texture(u_envmap, L).rgb * NdotL;
+            const float D = distribution_ggx(N, H, u_push_const.roughness);
+            const float NdotH = max(dot(N, H), 0.0);
+            const float HdotV = max(dot(H, V), 0.0);
+            const float pdf = D * NdotH / (4.0 * HdotV) + 0.0001;
+
+            const float resolution = 256; // resolution of source cubemap face
+            const float sa_texel = 4.0 * PI / (6.0 * resolution * resolution);
+            const float sa_sample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
+            const float mipLevel = (u_push_const.roughness == 0.0)
+                ? 0.0
+                : 0.5 * log2(sa_sample / sa_texel);
+
+            prefiltered_color += textureLod(u_envmap, L, mipLevel).rgb * NdotL;
             total_weight      += NdotL;
         }
     }
