@@ -668,10 +668,10 @@ namespace { namespace gbuf {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -721,7 +721,7 @@ namespace { namespace gbuf {
             }
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -914,10 +914,10 @@ namespace { namespace gbuf_skin {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -967,7 +967,7 @@ namespace { namespace gbuf_skin {
             }
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -1129,10 +1129,10 @@ namespace { namespace shadowmap {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -1158,7 +1158,7 @@ namespace { namespace shadowmap {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -1315,10 +1315,10 @@ namespace { namespace shadowmap_skin {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -1344,7 +1344,7 @@ namespace { namespace shadowmap_skin {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -1514,10 +1514,10 @@ namespace { namespace env_sky {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
@@ -1539,7 +1539,7 @@ namespace { namespace env_sky {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -1713,10 +1713,10 @@ namespace { namespace cubemap {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
@@ -1739,7 +1739,7 @@ namespace { namespace cubemap {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -1895,10 +1895,10 @@ namespace { namespace envdiffuse {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
@@ -1918,7 +1918,7 @@ namespace { namespace envdiffuse {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -2072,10 +2072,10 @@ namespace { namespace env_specular {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
@@ -2096,7 +2096,7 @@ namespace { namespace env_specular {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -2244,10 +2244,10 @@ namespace { namespace env_lut {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
@@ -2263,7 +2263,7 @@ namespace { namespace env_lut {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -2429,10 +2429,10 @@ namespace { namespace compo {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -2468,7 +2468,7 @@ namespace { namespace compo {
             }
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -2659,10 +2659,10 @@ namespace { namespace transp {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -2702,7 +2702,7 @@ namespace { namespace transp {
             }
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -2885,10 +2885,10 @@ namespace { namespace transp_skin {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -2928,7 +2928,7 @@ namespace { namespace transp_skin {
             }
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -3091,10 +3091,10 @@ namespace { namespace debug_mesh {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -3134,7 +3134,7 @@ namespace { namespace debug_mesh {
             }
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -3292,10 +3292,10 @@ namespace { namespace fillscreen {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -3331,7 +3331,7 @@ namespace { namespace fillscreen {
             }
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -3497,10 +3497,10 @@ namespace { namespace overlay {
     }
 
 
-    class RenderPassBundle : public mirinae::IRenderPassBundle {
+    class RPBundle : public mirinae::IRenderPassBundle {
 
     public:
-        RenderPassBundle(
+        RPBundle(
             uint32_t width,
             uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
@@ -3539,7 +3539,7 @@ namespace { namespace overlay {
             }
         }
 
-        ~RenderPassBundle() override { this->destroy(); }
+        ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
             if (VK_NULL_HANDLE != pipeline_) {
@@ -3599,59 +3599,57 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        data_["gbuf"] = std::make_unique<::gbuf::RenderPassBundle>(
+        data_["gbuf"] = std::make_unique<::gbuf::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        data_["gbuf_skin"] = std::make_unique<::gbuf_skin::RenderPassBundle>(
+        data_["gbuf_skin"] = std::make_unique<::gbuf_skin::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        data_["shadowmap"] = std::make_unique<::shadowmap::RenderPassBundle>(
+        data_["shadowmap"] = std::make_unique<::shadowmap::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        data_["shadowmap_skin"] =
-            std::make_unique<::shadowmap_skin::RenderPassBundle>(
-                width, height, fbuf_bundle, desclayouts, swapchain, device
-            );
-        data_["env_sky"] = std::make_unique<::env_sky::RenderPassBundle>(
+        data_["shadowmap_skin"] = std::make_unique<::shadowmap_skin::RPBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        data_["env_sky"] = std::make_unique<::env_sky::RPBundle>(
             desclayouts, device
         );
-        data_["env_base"] = std::make_unique<::cubemap::RenderPassBundle>(
+        data_["env_base"] = std::make_unique<::cubemap::RPBundle>(
             desclayouts, device
         );
-        data_["env_diffuse"] = std::make_unique<::envdiffuse::RenderPassBundle>(
+        data_["env_diffuse"] = std::make_unique<::envdiffuse::RPBundle>(
             desclayouts, device
         );
-        data_["env_specular"] =
-            std::make_unique<::env_specular::RenderPassBundle>(
-                desclayouts, device
-            );
-        data_["env_lut"] = std::make_unique<::env_lut::RenderPassBundle>(
+        data_["env_specular"] = std::make_unique<::env_specular::RPBundle>(
             desclayouts, device
         );
-        data_["compo"] = std::make_unique<::compo::RenderPassBundle>(
+        data_["env_lut"] = std::make_unique<::env_lut::RPBundle>(
+            desclayouts, device
+        );
+        data_["compo"] = std::make_unique<::compo::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        data_["transp"] = std::make_unique<::transp::RenderPassBundle>(
+        data_["transp"] = std::make_unique<::transp::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        data_["transp_skin"] =
-            std::make_unique<::transp_skin::RenderPassBundle>(
-                width, height, fbuf_bundle, desclayouts, swapchain, device
-            );
-        data_["debug_mesh"] = std::make_unique<::debug_mesh::RenderPassBundle>(
+        data_["transp_skin"] = std::make_unique<::transp_skin::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        data_["fillscreen"] = std::make_unique<::fillscreen::RenderPassBundle>(
+        data_["debug_mesh"] = std::make_unique<::debug_mesh::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        data_["overlay"] = std::make_unique<::overlay::RenderPassBundle>(
+        data_["fillscreen"] = std::make_unique<::fillscreen::RPBundle>(
+            width, height, fbuf_bundle, desclayouts, swapchain, device
+        );
+        data_["overlay"] = std::make_unique<::overlay::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
     }
 
     void RenderPassPackage::destroy() { data_.clear(); }
 
-    const IRenderPassBundle& RenderPassPackage::get(const std::string& name) const {
+    const IRenderPassBundle& RenderPassPackage::get(const std::string& name
+    ) const {
         auto it = data_.find(name);
         if (it == data_.end()) {
             auto msg = fmt::format("Render pass bundle not found: '{}'", name);
