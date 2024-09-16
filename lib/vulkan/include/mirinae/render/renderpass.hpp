@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "mirinae/render/renderee.hpp"
 
 
@@ -69,13 +71,13 @@ namespace mirinae {
         virtual ~IRenderPassBundle() = default;
         virtual void destroy() = 0;
 
-        virtual VkFramebuffer fbuf_at(uint32_t index) = 0;
+        virtual VkFramebuffer fbuf_at(uint32_t index) const = 0;
         virtual const VkClearValue* clear_values() const = 0;
         virtual uint32_t clear_value_count() const = 0;
 
-        VkRenderPass renderpass() { return renderpass_; }
-        VkPipeline pipeline() { return pipeline_; }
-        VkPipelineLayout pipeline_layout() { return layout_; }
+        VkRenderPass renderpass() const { return renderpass_; }
+        VkPipeline pipeline() const { return pipeline_; }
+        VkPipelineLayout pipeline_layout() const { return layout_; }
 
     protected:
         mirinae::VulkanDevice& device_;
@@ -99,21 +101,10 @@ namespace mirinae {
 
         void destroy();
 
-        std::unique_ptr<IRenderPassBundle> gbuf_;
-        std::unique_ptr<IRenderPassBundle> gbuf_skin_;
-        std::unique_ptr<IRenderPassBundle> shadowmap_;
-        std::unique_ptr<IRenderPassBundle> shadowmap_skin_;
-        std::unique_ptr<IRenderPassBundle> env_sky_;
-        std::unique_ptr<IRenderPassBundle> cubemap_;
-        std::unique_ptr<IRenderPassBundle> envdiffuse_;
-        std::unique_ptr<IRenderPassBundle> env_specular_;
-        std::unique_ptr<IRenderPassBundle> env_lut_;
-        std::unique_ptr<IRenderPassBundle> compo_;
-        std::unique_ptr<IRenderPassBundle> transp_;
-        std::unique_ptr<IRenderPassBundle> transp_skin_;
-        std::unique_ptr<IRenderPassBundle> debug_mesh_;
-        std::unique_ptr<IRenderPassBundle> fillscreen_;
-        std::unique_ptr<IRenderPassBundle> overlay_;
+        const IRenderPassBundle& get(const std::string& name) const;
+
+    private:
+        std::map<std::string, std::unique_ptr<IRenderPassBundle>> data_;
     };
 
 }  // namespace mirinae

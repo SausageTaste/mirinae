@@ -749,7 +749,7 @@ namespace { namespace gbuf {
             fbufs_.clear();
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return fbufs_.at(index);
         }
 
@@ -995,7 +995,7 @@ namespace { namespace gbuf_skin {
             fbufs_.clear();
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return fbufs_.at(index);
         }
 
@@ -1181,7 +1181,7 @@ namespace { namespace shadowmap {
             }
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return VK_NULL_HANDLE;
         }
 
@@ -1367,7 +1367,7 @@ namespace { namespace shadowmap_skin {
             }
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return VK_NULL_HANDLE;
         }
 
@@ -1562,7 +1562,7 @@ namespace { namespace env_sky {
             }
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return VK_NULL_HANDLE;
         }
 
@@ -1762,7 +1762,7 @@ namespace { namespace cubemap {
             }
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return VK_NULL_HANDLE;
         }
 
@@ -1941,7 +1941,7 @@ namespace { namespace envdiffuse {
             }
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return VK_NULL_HANDLE;
         }
 
@@ -2119,7 +2119,7 @@ namespace { namespace env_specular {
             }
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return VK_NULL_HANDLE;
         }
 
@@ -2286,7 +2286,7 @@ namespace { namespace env_lut {
             }
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return VK_NULL_HANDLE;
         }
 
@@ -2496,7 +2496,7 @@ namespace { namespace compo {
             fbufs_.clear();
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return fbufs_.at(index);
         }
 
@@ -2730,7 +2730,7 @@ namespace { namespace transp {
             fbufs_.clear();
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return fbufs_.at(index);
         }
 
@@ -2956,7 +2956,7 @@ namespace { namespace transp_skin {
             fbufs_.clear();
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return fbufs_.at(index);
         }
 
@@ -3162,7 +3162,7 @@ namespace { namespace debug_mesh {
             fbufs_.clear();
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return fbufs_.at(index);
         }
 
@@ -3359,7 +3359,7 @@ namespace { namespace fillscreen {
             fbufs_.clear();
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return fbufs_.at(index);
         }
 
@@ -3567,7 +3567,7 @@ namespace { namespace overlay {
             fbufs_.clear();
         }
 
-        VkFramebuffer fbuf_at(uint32_t index) override {
+        VkFramebuffer fbuf_at(uint32_t index) const override {
             return fbufs_.at(index);
         }
 
@@ -3599,64 +3599,65 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        gbuf_ = std::make_unique<::gbuf::RenderPassBundle>(
+        data_["gbuf"] = std::make_unique<::gbuf::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        gbuf_skin_ = std::make_unique<::gbuf_skin::RenderPassBundle>(
+        data_["gbuf_skin"] = std::make_unique<::gbuf_skin::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        shadowmap_ = std::make_unique<::shadowmap::RenderPassBundle>(
+        data_["shadowmap"] = std::make_unique<::shadowmap::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        shadowmap_skin_ = std::make_unique<::shadowmap_skin::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-        env_sky_ = std::make_unique<::env_sky::RenderPassBundle>(
+        data_["shadowmap_skin"] =
+            std::make_unique<::shadowmap_skin::RenderPassBundle>(
+                width, height, fbuf_bundle, desclayouts, swapchain, device
+            );
+        data_["env_sky"] = std::make_unique<::env_sky::RenderPassBundle>(
             desclayouts, device
         );
-        cubemap_ = std::make_unique<::cubemap::RenderPassBundle>(
+        data_["env_base"] = std::make_unique<::cubemap::RenderPassBundle>(
             desclayouts, device
         );
-        envdiffuse_ = std::make_unique<::envdiffuse::RenderPassBundle>(
+        data_["env_diffuse"] = std::make_unique<::envdiffuse::RenderPassBundle>(
             desclayouts, device
         );
-        env_specular_ = std::make_unique<::env_specular::RenderPassBundle>(
+        data_["env_specular"] =
+            std::make_unique<::env_specular::RenderPassBundle>(
+                desclayouts, device
+            );
+        data_["env_lut"] = std::make_unique<::env_lut::RenderPassBundle>(
             desclayouts, device
         );
-        env_lut_ = std::make_unique<::env_lut::RenderPassBundle>(
-            desclayouts, device
-        );
-        compo_ = std::make_unique<::compo::RenderPassBundle>(
+        data_["compo"] = std::make_unique<::compo::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        transp_ = std::make_unique<::transp::RenderPassBundle>(
+        data_["transp"] = std::make_unique<::transp::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        transp_skin_ = std::make_unique<::transp_skin::RenderPassBundle>(
+        data_["transp_skin"] =
+            std::make_unique<::transp_skin::RenderPassBundle>(
+                width, height, fbuf_bundle, desclayouts, swapchain, device
+            );
+        data_["debug_mesh"] = std::make_unique<::debug_mesh::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        debug_mesh_ = std::make_unique<::debug_mesh::RenderPassBundle>(
+        data_["fillscreen"] = std::make_unique<::fillscreen::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        fillscreen_ = std::make_unique<::fillscreen::RenderPassBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-        overlay_ = std::make_unique<::overlay::RenderPassBundle>(
+        data_["overlay"] = std::make_unique<::overlay::RenderPassBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
     }
 
-    void RenderPassPackage::destroy() {
-        gbuf_.reset();
-        gbuf_skin_.reset();
-        shadowmap_.reset();
-        shadowmap_skin_.reset();
-        cubemap_.reset();
-        compo_.reset();
-        transp_.reset();
-        transp_skin_.reset();
-        fillscreen_.reset();
-        overlay_.reset();
+    void RenderPassPackage::destroy() { data_.clear(); }
+
+    const IRenderPassBundle& RenderPassPackage::get(const std::string& name) const {
+        auto it = data_.find(name);
+        if (it == data_.end()) {
+            auto msg = fmt::format("Render pass bundle not found: '{}'", name);
+            throw std::runtime_error(msg);
+        }
+        return *it->second;
     }
 
 }  // namespace mirinae

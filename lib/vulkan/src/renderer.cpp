@@ -203,8 +203,8 @@ namespace {
 
     public:
         struct Item {
-            float width() const { return tex_->width(); }
-            float height() const { return tex_->height(); }
+            auto width() const { return tex_->width(); }
+            auto height() const { return tex_->height(); }
             VkFramebuffer fbuf() { return fbuf_.get(); }
 
             std::unique_ptr<mirinae::ITexture> tex_;
@@ -223,18 +223,14 @@ namespace {
         }
 
         void add(
-            uint32_t width,
-            uint32_t height,
-            mirinae::IRenderPassBundle& rp,
-            mirinae::TextureManager& tex_man,
-            mirinae::VulkanDevice& device
+            uint32_t width, uint32_t height, mirinae::TextureManager& tex_man
         ) {
             auto& added = shadow_maps_.emplace_back();
             added.tex_ = tex_man.create_depth(width, height);
         }
 
         void recreate_fbufs(
-            mirinae::IRenderPassBundle& rp, mirinae::VulkanDevice& device
+            const mirinae::IRenderPassBundle& rp, mirinae::VulkanDevice& device
         ) {
             for (auto& x : shadow_maps_) {
                 const auto img_view = x.tex_->image_view();
@@ -521,7 +517,7 @@ namespace {
                     const auto attach = face_views_[i].get();
 
                     mirinae::FbufCinfo fbuf_cinfo;
-                    fbuf_cinfo.set_rp(rp_pkg.envdiffuse_->renderpass())
+                    fbuf_cinfo.set_rp(rp_pkg.get("env_diffuse").renderpass())
                         .set_single_attach(attach)
                         .set_dim(width, height);
                     fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
@@ -614,7 +610,8 @@ namespace {
                         const auto attach = face.view_.get();
 
                         mirinae::FbufCinfo fbuf_cinfo;
-                        fbuf_cinfo.set_rp(rp_pkg.envdiffuse_->renderpass())
+                        fbuf_cinfo
+                            .set_rp(rp_pkg.get("env_diffuse").renderpass())
                             .set_single_attach(attach)
                             .set_dim(mip.width_, mip.height_);
                         face.fbuf_.init(fbuf_cinfo.get(), device.logi_device());
@@ -714,7 +711,7 @@ namespace {
                     };
 
                     mirinae::FbufCinfo fbuf_cinfo;
-                    fbuf_cinfo.set_rp(rp_pkg.cubemap_->renderpass())
+                    fbuf_cinfo.set_rp(rp_pkg.get("env_base").renderpass())
                         .set_attachments(attachments)
                         .set_dim(img_.width(), img_.height());
                     fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
@@ -833,7 +830,7 @@ namespace {
                 VkImageView attach = view_.get();
 
                 mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(rp_pkg.env_lut_->renderpass())
+                fbuf_cinfo.set_rp(rp_pkg.get("env_lut").renderpass())
                     .set_single_attach(attach)
                     .set_dim(width, height);
                 fbuf_.init(fbuf_cinfo.get(), device.logi_device());
@@ -862,7 +859,7 @@ namespace {
                 const VkCommandBuffer cmdbuf,
                 const mirinae::RenderPassPackage& rp_pkg
             ) {
-                auto& rp = *rp_pkg.env_lut_;
+                auto& rp = rp_pkg.get("env_lut");
 
                 VkRenderPassBeginInfo rp_info{};
                 rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -911,7 +908,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.cubemap_;
+            auto& rp = rp_pkg.get("env_base");
 
             VkRenderPassBeginInfo rp_info{};
             rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1030,7 +1027,7 @@ namespace {
             const VkDescriptorSet desc_set,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.env_sky_;
+            auto& rp = rp_pkg.get("env_sky");
 
             VkRenderPassBeginInfo rp_info{};
             rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1114,7 +1111,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.envdiffuse_;
+            auto& rp = rp_pkg.get("env_diffuse");
 
             VkRenderPassBeginInfo rp_info{};
             rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1200,7 +1197,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.env_specular_;
+            auto& rp = rp_pkg.get("env_specular");
 
             VkRenderPassBeginInfo rp_info{};
             rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1312,7 +1309,7 @@ namespace {
             const ::FrameIndex frame_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.shadowmap_;
+            auto& rp = rp_pkg.get("shadowmap");
 
             assert(shadow_maps_.size() == 2);
 
@@ -1493,7 +1490,7 @@ namespace {
             const ::FrameIndex frame_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.shadowmap_skin_;
+            auto& rp = rp_pkg.get("shadowmap_skin");
 
             {
                 auto& shadow = shadow_maps_.at(0);
@@ -1686,7 +1683,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.gbuf_;
+            auto& rp = rp_pkg.get("gbuf");
 
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1766,7 +1763,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.gbuf_skin_;
+            auto& rp = rp_pkg.get("gbuf_skin");
 
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1904,7 +1901,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.compo_;
+            auto& rp = rp_pkg.get("compo");
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             renderPassInfo.renderPass = rp.renderpass();
@@ -2019,7 +2016,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.transp_;
+            auto& rp = rp_pkg.get("transp");
 
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2111,7 +2108,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.transp_skin_;
+            auto& rp = rp_pkg.get("transp_skin");
 
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2214,7 +2211,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.debug_mesh_;
+            auto& rp = rp_pkg.get("debug_mesh");
 
             VkRenderPassBeginInfo rp_info{};
             rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2261,7 +2258,7 @@ namespace {
 
             vkCmdPushConstants(
                 cmdbuf,
-                rp_pkg.debug_mesh_->pipeline_layout(),
+                rp_pkg.get("debug_mesh").pipeline_layout(),
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0,
                 sizeof(mirinae::U_DebugMeshPushConst),
@@ -2324,7 +2321,7 @@ namespace {
             mirinae::ShainImageIndex image_index,
             mirinae::RenderPassPackage& rp_pkg
         ) {
-            auto& rp = *rp_pkg.fillscreen_;
+            auto& rp = rp_pkg.get("fillscreen");
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             renderPassInfo.renderPass = rp.renderpass();
@@ -2408,12 +2405,8 @@ namespace {
 
             framesync_.init(device_.logi_device());
 
-            rp_states_shadow_.pool().add(
-                4096, 4096, *rp_.shadowmap_, tex_man_, device_
-            );
-            rp_states_shadow_.pool().add(
-                256, 256, *rp_.shadowmap_, tex_man_, device_
-            );
+            rp_states_shadow_.pool().add(4096, 4096, tex_man_);
+            rp_states_shadow_.pool().add(256, 256, tex_man_);
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 
@@ -2636,7 +2629,7 @@ namespace {
 
             // Shader: Overlay
             {
-                auto& rp = *rp_.overlay_;
+                auto& rp = rp_.get("overlay");
                 VkRenderPassBeginInfo renderPassInfo{};
                 renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                 renderPassInfo.renderPass = rp.renderpass();
@@ -2776,7 +2769,9 @@ namespace {
                 device_
             );
 
-            rp_states_shadow_.pool().recreate_fbufs(*rp_.shadowmap_, device_);
+            rp_states_shadow_.pool().recreate_fbufs(
+                rp_.get("shadowmap"), device_
+            );
 
             rp_states_envmap_.init(rp_, tex_man_, desclayout_, device_);
             rp_states_compo_.init(
