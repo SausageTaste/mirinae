@@ -36,6 +36,34 @@ namespace {
     }
 
 
+    void record_img_mem_barrier(
+        VkCommandBuffer cmdbuf,
+        VkImage img,
+        VkAccessFlagBits src_access,
+        VkAccessFlagBits dst_access,
+        VkImageLayout old_layout,
+        VkImageLayout new_layout,
+        VkPipelineStageFlagBits src_stage,
+        VkPipelineStageFlagBits dst_stage,
+        VkImageSubresourceRange subres_range
+    ) {
+        VkImageMemoryBarrier barrier = {};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.srcAccessMask = src_access;
+        barrier.dstAccessMask = dst_access;
+        barrier.oldLayout = old_layout;
+        barrier.newLayout = new_layout;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = img;
+        barrier.subresourceRange = subres_range;
+
+        vkCmdPipelineBarrier(
+            cmdbuf, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier
+        );
+    }
+
+
     class DominantCommandProc : public mirinae::IInputProcessor {
 
     public:
@@ -413,7 +441,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            if (timer_.check_if_elapsed(10)) {
+            if (timer_.check_if_elapsed(0)) {
                 record_sky(cur_cmd_buf, desc_set_, rp_pkg);
 
                 VkMemoryBarrier mem_barrier;
@@ -682,16 +710,19 @@ namespace {
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
                     .set_dimensions(width, height)
-                    .set_mip_levels(1)
+                    .deduce_mip_levels()
                     .set_arr_layers(6)
                     .add_usage_sampled()
                     .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                    .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                    .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                     .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
                 img_.init(cinfo.get(), device.mem_alloc());
 
                 mirinae::ImageViewBuilder iv_builder;
                 iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
                     .format(img_.format())
+                    .mip_levels(img_.mip_levels())
                     .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                     .arr_layers(6)
                     .image(img_.image());
@@ -1019,6 +1050,71 @@ namespace {
 
                     vkCmdEndRenderPass(cur_cmd_buf);
                 }
+
+                auto& img = cube_map.base().img_;
+                for (uint32_t i = 1; i < img.mip_levels(); ++i) {
+                    ::record_img_mem_barrier(
+                        cur_cmd_buf,
+                        img.image(),
+                        VK_ACCESS_NONE,
+                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        { VK_IMAGE_ASPECT_COLOR_BIT, i, 1, 0, 6 }
+                    );
+
+                    VkImageBlit blit = {};
+                    blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    blit.srcSubresource.layerCount = 6;
+                    blit.srcSubresource.mipLevel = i - 1;
+                    blit.srcOffsets[1].x = int32_t(img.width() >> (i - 1));
+                    blit.srcOffsets[1].y = int32_t(img.height() >> (i - 1));
+                    blit.srcOffsets[1].z = 1;
+
+                    blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    blit.dstSubresource.layerCount = 6;
+                    blit.dstSubresource.mipLevel = i;
+                    blit.dstOffsets[1].x = int32_t(img.width() >> i);
+                    blit.dstOffsets[1].y = int32_t(img.height() >> i);
+                    blit.dstOffsets[1].z = 1;
+
+                    vkCmdBlitImage(
+                        cur_cmd_buf,
+                        img.image(),
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        img.image(),
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        1,
+                        &blit,
+                        VK_FILTER_LINEAR
+                    );
+
+                    ::record_img_mem_barrier(
+                        cur_cmd_buf,
+                        img.image(),
+                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                        VK_ACCESS_TRANSFER_READ_BIT,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        { VK_IMAGE_ASPECT_COLOR_BIT, i, 1, 0, 6 }
+                    );
+                }
+
+                ::record_img_mem_barrier(
+                    cur_cmd_buf,
+                    img.image(),
+                    VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_ACCESS_SHADER_READ_BIT,
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    { VK_IMAGE_ASPECT_COLOR_BIT, 0, img.mip_levels(), 0, 6 }
+                );
             }
         }
 

@@ -1610,7 +1610,7 @@ namespace { namespace cubemap {
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
             .store_op(VK_ATTACHMENT_STORE_OP_STORE)
             .initial_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-            .final_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            .final_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
         ::AttachmentRefBuilder color_attachment_refs;
         // albedo
