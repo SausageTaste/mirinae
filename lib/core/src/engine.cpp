@@ -170,7 +170,15 @@ namespace {
             {
                 const auto entt = reg.create();
                 auto& d = reg.emplace<mirinae::cpnt::DLight>(entt);
-                d.color_ = glm::vec3{ 5, 5, 5 };
+                d.color_ = glm::vec3{ 2 };
+
+                d.transform_.reset_rotation();
+                d.transform_.rotate(
+                    sung::TAngle<double>::from_deg(-60), { 1, 0, 0 }
+                );
+                d.transform_.rotate(
+                    sung::TAngle<double>::from_deg(90), { 0, 1, 0 }
+                );
             }
 
             // SLight

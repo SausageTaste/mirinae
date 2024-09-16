@@ -13,8 +13,8 @@ do
     a:set_anim_idx(0)
 
     local t = e:get_transform()
-    t:set_pos(-3, 0, -0.5)
-    t:rotate(90, 0, 1, 0)
+    t:set_pos(3, 0, -0.5)
+    t:rotate(-90, 0, 1, 0)
     t:set_scale(0.15, 0.15, 0.15)
 
     print("Skinned actor created:", e:get_id(), e:get_respath())
@@ -27,8 +27,8 @@ do
     a:set_anim_name("idle_normal_1")
 
     local t = bard:get_transform()
-    t:set_pos(3, 0, 0.5)
-    t:rotate(180, 0, 1, 0)
+    t:set_pos(-2.5, 0, 0.5)
+    t:rotate(0, 0, 1, 0)
 
     print("Skinned actor created:", bard:get_id(), bard:get_respath())
 end
@@ -40,8 +40,8 @@ do
     a:set_anim_name("idle_normal_1")
 
     local t = artist:get_transform()
-    t:set_pos(3, 0, 0)
-    t:rotate(180, 0, 1, 0)
+    t:set_pos(-2.5, 0, 0)
+    t:rotate(0, 0, 1, 0)
 
     print("Skinned actor created:", artist:get_id(), artist:get_respath())
 end
@@ -53,8 +53,8 @@ do
     a:set_anim_name("idle_normal_1")
 
     local t = slayer:get_transform()
-    t:set_pos(3, 0, -0.5)
-    t:rotate(180, 0, 1, 0)
+    t:set_pos(-2.5, 0, -0.5)
+    t:rotate(0, 0, 1, 0)
 
     print("Skinned actor created:", slayer:get_id(), slayer:get_respath())
 end
