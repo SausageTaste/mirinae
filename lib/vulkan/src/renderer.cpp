@@ -733,12 +733,17 @@ namespace {
                     iv_builder.base_arr_layer(i);
                     face_views_[i].reset(iv_builder, device);
                 }
+                iv_builder.mip_levels(1);
+                for (uint32_t i = 0; i < 6; i++) {
+                    iv_builder.base_arr_layer(i);
+                    fbuf_face_views_[i].reset(iv_builder, device);
+                }
 
                 depth_map_ = tex_man.create_depth(img_.width(), img_.height());
 
                 for (uint32_t i = 0; i < 6; i++) {
                     const std::array<VkImageView, 2> attachments = {
-                        depth_map_->image_view(), face_views_[i].get()
+                        depth_map_->image_view(), fbuf_face_views_[i].get()
                     };
 
                     mirinae::FbufCinfo fbuf_cinfo;
@@ -756,6 +761,7 @@ namespace {
 
                 cubemap_view_.destroy(device);
                 for (auto& x : face_views_) x.destroy(device);
+                for (auto& x : fbuf_face_views_) x.destroy(device);
 
                 depth_map_.reset();
                 img_.destroy(device.mem_alloc());
@@ -781,6 +787,7 @@ namespace {
             std::unique_ptr<mirinae::ITexture> depth_map_;
             mirinae::ImageView cubemap_view_;
             std::array<mirinae::ImageView, 6> face_views_;
+            std::array<mirinae::ImageView, 6> fbuf_face_views_;
             std::array<mirinae::Fbuf, 6> fbufs_;
         };
 
