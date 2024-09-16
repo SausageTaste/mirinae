@@ -1,8 +1,8 @@
 local scene = require('scene')
 
 do
-    local e = scene.create_static_actor(":asset/models/sponza.dun/sponza.dmd")
-    e:get_transform():set_scale(0.01, 0.01, 0.01)
+    local e = scene.create_static_actor("Sung/city.dun/city.dmd")
+    e:get_transform():set_scale(0.5, 0.5, 0.5)
     print("Static actor created:", e:get_id(), e:get_respath())
 end
 

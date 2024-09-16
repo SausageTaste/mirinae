@@ -198,7 +198,7 @@ namespace {
                                  0.84923568828777,
                                  -0.035994972955897 };
                 d.proj_.near_ = 0.1;
-                d.proj_.far_ = 30;
+                d.proj_.far_ = 100;
             }
 
             // Script
