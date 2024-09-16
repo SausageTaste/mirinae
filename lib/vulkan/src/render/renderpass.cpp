@@ -646,65 +646,25 @@ namespace { namespace gbuf {
         VkPipelineLayout pipelineLayout,
         mirinae::VulkanDevice& device
     ) {
-        ::ShaderStagesBuilder shader_stages{ device };
-        shader_stages.add_vert(":asset/spv/gbuf_vert.spv");
-        shader_stages.add_frag(":asset/spv/gbuf_frag.spv");
+        mirinae::PipelineBuilder builder{ device };
 
-        std::array<VkDynamicState, 2> dynamic_states{
-            VK_DYNAMIC_STATE_VIEWPORT,
-            VK_DYNAMIC_STATE_SCISSOR,
-        };
-        const auto dynamic_state_info = ::create_info_dynamic_states(
-            dynamic_states.data(), dynamic_states.size()
-        );
+        builder.shader_stages()
+            .add_vert(":asset/spv/gbuf_vert.spv")
+            .add_frag(":asset/spv/gbuf_frag.spv");
 
-        ::VertexInputStateBuilder vinput_builder;
-        const auto vertex_input_info = vinput_builder.set_static().build();
+        builder.vertex_input_state().set_static();
 
-        const auto input_assembly = ::create_info_input_assembly();
+        builder.rasterization_state().cull_mode_back();
 
-        const auto viewport_state = ::create_info_viewport_state();
+        builder.depth_stencil_state()
+            .depth_test_enable(true)
+            .depth_write_enable(true);
 
-        const auto rasterizer = ::create_info_rasterizer(
-            VK_CULL_MODE_BACK_BIT, false, 0, 0, false
-        );
+        builder.color_blend_state().add(false, 3);
 
-        const auto multisampling = ::create_info_multisampling();
+        builder.dynamic_state().add_viewport().add_scissor();
 
-        const auto depth_stencil = ::create_info_depth_stencil(true, true);
-
-        ::ColorBlendStateBuilder color_blend_builder;
-        const auto color_blending = color_blend_builder.add(false, 3).build();
-
-        VkGraphicsPipelineCreateInfo pipeline_info{};
-        pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipeline_info.stageCount = static_cast<uint32_t>(shader_stages.size());
-        pipeline_info.pStages = shader_stages.data();
-        pipeline_info.pVertexInputState = &vertex_input_info;
-        pipeline_info.pInputAssemblyState = &input_assembly;
-        pipeline_info.pViewportState = &viewport_state;
-        pipeline_info.pRasterizationState = &rasterizer;
-        pipeline_info.pMultisampleState = &multisampling;
-        pipeline_info.pDepthStencilState = &depth_stencil;
-        pipeline_info.pColorBlendState = &color_blending;
-        pipeline_info.pDynamicState = &dynamic_state_info;
-        pipeline_info.layout = pipelineLayout;
-        pipeline_info.renderPass = renderpass;
-        pipeline_info.subpass = 0;
-        pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-        pipeline_info.basePipelineIndex = -1;
-
-        VkPipeline graphics_pipeline;
-        VK_CHECK(vkCreateGraphicsPipelines(
-            device.logi_device(),
-            VK_NULL_HANDLE,
-            1,
-            &pipeline_info,
-            nullptr,
-            &graphics_pipeline
-        ));
-
-        return graphics_pipeline;
+        return builder.build(renderpass, pipelineLayout);
     }
 
 

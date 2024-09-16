@@ -1,5 +1,9 @@
 #include "mirinae/render/renderpass/common.hpp"
 
+#include <spdlog/spdlog.h>
+
+#include "mirinae/render/meshdata.hpp"
+
 
 // RenderPassBuilder
 namespace mirinae {
@@ -27,6 +31,387 @@ namespace mirinae {
         }
 
         return output;
+    }
+
+}  // namespace mirinae
+
+
+// ShaderStagesBuilder
+namespace mirinae {
+
+#define CLS PipelineBuilder::ShaderStagesBuilder
+
+    CLS::ShaderStagesBuilder(mirinae::VulkanDevice& device)
+        : device_{ device } {}
+
+    CLS::~ShaderStagesBuilder() {
+        for (auto& module : modules_) {
+            vkDestroyShaderModule(device_.logi_device(), module, nullptr);
+        }
+        modules_.clear();
+    }
+
+    CLS& CLS::add_vert(const mirinae::respath_t& spv_path) {
+        modules_.push_back(this->load_spv(spv_path, device_));
+        this->add_stage(VK_SHADER_STAGE_VERTEX_BIT, modules_.back());
+        return *this;
+    }
+
+    CLS& CLS::add_frag(const mirinae::respath_t& spv_path) {
+        modules_.push_back(this->load_spv(spv_path, device_));
+        this->add_stage(VK_SHADER_STAGE_FRAGMENT_BIT, modules_.back());
+        return *this;
+    }
+
+    void CLS::add_stage(VkShaderStageFlagBits stage, VkShaderModule module) {
+        auto& added = stages_.emplace_back();
+
+        added.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        added.stage = stage;
+        added.module = module;
+        added.pName = "main";
+    }
+
+    VkShaderModule CLS::load_spv(
+        const mirinae::respath_t& spv_path, mirinae::VulkanDevice& device
+    ) {
+        const auto spv = device.filesys().read_file(spv_path);
+        if (!spv) {
+            throw std::runtime_error{ fmt::format(
+                "Failed to read a shader file: {}", spv_path.u8string()
+            ) };
+        }
+
+        const auto sha = create_shader_module(*spv, device.logi_device());
+        if (!sha) {
+            throw std::runtime_error{ fmt::format(
+                "Failed to create shader module with given data: {}",
+                spv_path.u8string()
+            ) };
+        }
+
+        return sha.value();
+    }
+
+    std::optional<VkShaderModule> CLS::create_shader_module(
+        const std::vector<uint8_t>& spv, VkDevice logi_device
+    ) {
+        VkShaderModuleCreateInfo cinfo{};
+        cinfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        cinfo.codeSize = spv.size();
+        cinfo.pCode = reinterpret_cast<const uint32_t*>(spv.data());
+
+        VkShaderModule output = VK_NULL_HANDLE;
+        const auto result = vkCreateShaderModule(
+            logi_device, &cinfo, nullptr, &output
+        );
+
+        if (result != VK_SUCCESS)
+            return std::nullopt;
+        else
+            return output;
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
+// VertexInputStateBuilder
+namespace mirinae {
+
+#define CLS PipelineBuilder::VertexInputStateBuilder
+
+    CLS& CLS::set_static() {
+        this->set_binding_static();
+        this->set_attrib_static();
+        return *this;
+    }
+
+    CLS& CLS::set_skinned() {
+        this->set_binding_skinned();
+        this->set_attrib_skinned();
+        return *this;
+    }
+
+    VkPipelineVertexInputStateCreateInfo CLS::build() const {
+        VkPipelineVertexInputStateCreateInfo out = {};
+        out.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        out.vertexBindingDescriptionCount = static_cast<uint32_t>(
+            bindings_.size()
+        );
+        out.pVertexBindingDescriptions = bindings_.data();
+        out.vertexAttributeDescriptionCount = static_cast<uint32_t>(
+            attribs_.size()
+        );
+        out.pVertexAttributeDescriptions = attribs_.data();
+        return out;
+    }
+
+    void CLS::add_attrib(VkFormat format, uint32_t offset) {
+        const auto location = static_cast<uint32_t>(attribs_.size());
+
+        auto& one = attribs_.emplace_back();
+        one.binding = 0;
+        one.location = location;
+        one.format = format;
+        one.offset = offset;
+    }
+
+    void CLS::add_attrib_vec2(uint32_t offset) {
+        this->add_attrib(VK_FORMAT_R32G32_SFLOAT, offset);
+    }
+
+    void CLS::add_attrib_vec3(uint32_t offset) {
+        this->add_attrib(VK_FORMAT_R32G32B32_SFLOAT, offset);
+    }
+
+    void CLS::add_attrib_vec4(uint32_t offset) {
+        this->add_attrib(VK_FORMAT_R32G32B32A32_SFLOAT, offset);
+    }
+
+    void CLS::add_attrib_ivec4(uint32_t offset) {
+        this->add_attrib(VK_FORMAT_R32G32B32A32_SINT, offset);
+    }
+
+    void CLS::set_binding_static() {
+        bindings_.clear();
+        auto& one = bindings_.emplace_back();
+
+        one.binding = 0;
+        one.stride = sizeof(mirinae::VertexStatic);
+        one.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    }
+
+    void CLS::set_binding_skinned() {
+        bindings_.clear();
+        auto& one = bindings_.emplace_back();
+
+        one.binding = 0;
+        one.stride = sizeof(mirinae::VertexSkinned);
+        one.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    }
+
+    void CLS::set_attrib_static() {
+        attribs_.clear();
+
+        this->add_attrib_vec3(offsetof(mirinae::VertexStatic, pos_));
+        this->add_attrib_vec3(offsetof(mirinae::VertexStatic, normal_));
+        this->add_attrib_vec3(offsetof(mirinae::VertexStatic, tangent_));
+        this->add_attrib_vec2(offsetof(mirinae::VertexStatic, texcoord_));
+    }
+
+    void CLS::set_attrib_skinned() {
+        using Vertex = mirinae::VertexSkinned;
+        attribs_.clear();
+
+        this->add_attrib_vec3(offsetof(Vertex, pos_));
+        this->add_attrib_vec3(offsetof(Vertex, normal_));
+        this->add_attrib_vec3(offsetof(Vertex, tangent_));
+        this->add_attrib_vec2(offsetof(Vertex, uv_));
+        this->add_attrib_vec4(offsetof(Vertex, joint_weights_));
+        this->add_attrib_ivec4(offsetof(Vertex, joint_indices_));
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
+// Misc inside PipelineBuilder
+namespace mirinae {
+
+    PipelineBuilder::RasterizationStateBuilder::RasterizationStateBuilder() {
+        info_ = {};
+        info_.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+
+        // vulkan-tutorial.com said this requires GPU feature enabled.
+        info_.depthClampEnable = VK_FALSE;
+
+        // Discards all fragents. But why would you ever want it? Well,
+        // check the link below.
+        // https://stackoverflow.com/questions/42470669/when-does-it-make-sense-to-turn-off-the-rasterization-step
+        info_.rasterizerDiscardEnable = VK_FALSE;
+
+        // Any mode other than FILL requires GPU feature enabled.
+        info_.polygonMode = VK_POLYGON_MODE_FILL;
+
+        // GPU feature, `wideLines` required for lines thicker than 1.
+        info_.lineWidth = 1;
+
+        info_.cullMode = 0;
+        info_.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        info_.depthBiasEnable = VK_FALSE;
+        info_.depthBiasConstantFactor = 0;
+        info_.depthBiasSlopeFactor = 0;
+        info_.depthBiasClamp = 0;
+        info_.depthClampEnable = VK_FALSE;
+    }
+
+    PipelineBuilder::DepthStencilStateBuilder::DepthStencilStateBuilder() {
+        info_ = {};
+        info_.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        info_.depthTestEnable = VK_FALSE;
+        info_.depthWriteEnable = VK_FALSE;
+        info_.depthCompareOp = VK_COMPARE_OP_LESS;
+        info_.depthBoundsTestEnable = VK_FALSE;
+        info_.stencilTestEnable = VK_FALSE;
+        info_.front = {};
+        info_.back = {};
+        info_.minDepthBounds = 0;
+        info_.maxDepthBounds = 1;
+    }
+
+    VkPipelineDynamicStateCreateInfo
+    PipelineBuilder::DynamicStateBuilder::build() const {
+        VkPipelineDynamicStateCreateInfo out{};
+        out.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        out.dynamicStateCount = static_cast<uint32_t>(data_.size());
+        out.pDynamicStates = data_.data();
+        return out;
+    }
+
+}  // namespace mirinae
+
+
+// ColorBlendStateBuilder
+namespace mirinae {
+
+#define CLS PipelineBuilder::ColorBlendStateBuilder
+
+    CLS& CLS::add(bool blend_enabled) {
+        auto& added = data_.emplace_back();
+        added.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                               VK_COLOR_COMPONENT_G_BIT |
+                               VK_COLOR_COMPONENT_B_BIT |
+                               VK_COLOR_COMPONENT_A_BIT;
+        added.colorBlendOp = VK_BLEND_OP_ADD;
+        added.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        added.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        added.alphaBlendOp = VK_BLEND_OP_ADD;
+
+        if (blend_enabled) {
+            added.blendEnable = VK_TRUE;
+            added.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            added.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        } else {
+            added.blendEnable = VK_FALSE;
+            added.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+            added.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        }
+
+        return *this;
+    }
+
+    CLS& CLS::add(bool blend_enabled, size_t count) {
+        if (count < 1)
+            return *this;
+
+        this->add(blend_enabled);
+        for (size_t i = 1; i < count; ++i) data_.push_back(data_.back());
+        return *this;
+    }
+
+    VkPipelineColorBlendStateCreateInfo CLS::build() const {
+        VkPipelineColorBlendStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        output.logicOpEnable = VK_FALSE;
+        output.logicOp = VK_LOGIC_OP_COPY;
+        output.attachmentCount = static_cast<uint32_t>(data_.size());
+        output.pAttachments = data_.data();
+        output.blendConstants[0] = 0;
+        output.blendConstants[1] = 0;
+        output.blendConstants[2] = 0;
+        output.blendConstants[3] = 0;
+        return output;
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
+// PipelineBuilder
+namespace {
+
+    auto create_info_input_assembly() {
+        VkPipelineInputAssemblyStateCreateInfo output{};
+        output.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        output.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        output.primitiveRestartEnable = VK_FALSE;
+        return output;
+    }
+
+    auto create_info_viewport_state() {
+        VkPipelineViewportStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        output.viewportCount = 1;
+        output.pViewports = nullptr;
+        output.scissorCount = 1;
+        output.pScissors = nullptr;
+        return output;
+    }
+
+    auto create_info_multisampling() {
+        VkPipelineMultisampleStateCreateInfo output{};
+        output.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        output.sampleShadingEnable = VK_FALSE;
+        output.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        output.minSampleShading = 1;
+        output.pSampleMask = nullptr;
+        output.alphaToCoverageEnable = VK_FALSE;
+        output.alphaToOneEnable = VK_FALSE;
+        return output;
+    }
+
+}  // namespace
+namespace mirinae {
+
+    PipelineBuilder::PipelineBuilder(mirinae::VulkanDevice& device)
+        : device_(device), shader_stages_{ device } {
+        input_assembly_state_ = create_info_input_assembly();
+        viewport_state_ = create_info_viewport_state();
+        multisampling_state_ = create_info_multisampling();
+    }
+
+    VkPipeline PipelineBuilder::build(
+        VkRenderPass render_pass, VkPipelineLayout layout
+    ) const {
+        const auto vertex_input_state = vertex_input_state_.build();
+        const auto color_blending = color_blend_state_.build();
+        const auto dynamic_state_info = dynamic_state_.build();
+
+        VkGraphicsPipelineCreateInfo cinfo{};
+        cinfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        cinfo.stageCount = shader_stages_.size();
+        cinfo.pStages = shader_stages_.data();
+        cinfo.pVertexInputState = &vertex_input_state;
+        cinfo.pInputAssemblyState = &input_assembly_state_;
+        cinfo.pViewportState = &viewport_state_;
+        cinfo.pRasterizationState = rasterization_state_.get();
+        cinfo.pMultisampleState = &multisampling_state_;
+        cinfo.pDepthStencilState = depth_stencil_state_.get();
+        cinfo.pColorBlendState = &color_blending;
+        cinfo.pDynamicState = &dynamic_state_info;
+        cinfo.layout = layout;
+        cinfo.renderPass = render_pass;
+        cinfo.subpass = 0;
+        cinfo.basePipelineHandle = VK_NULL_HANDLE;
+        cinfo.basePipelineIndex = -1;
+
+
+        VkPipeline out = VK_NULL_HANDLE;
+        const auto res = vkCreateGraphicsPipelines(
+            device_.logi_device(), VK_NULL_HANDLE, 1, &cinfo, nullptr, &out
+        );
+        if (VK_SUCCESS != res) {
+            throw std::runtime_error("failed to create graphics pipeline.");
+        }
+
+        return out;
     }
 
 }  // namespace mirinae
