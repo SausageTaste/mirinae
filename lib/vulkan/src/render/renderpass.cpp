@@ -4,6 +4,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "mirinae/render/renderpass/common.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
 
@@ -615,45 +616,29 @@ namespace { namespace gbuf {
         VkFormat material,
         VkDevice logi_device
     ) {
-        ::AttachmentDescBuilder attach;
-        attach.add(depth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-        attach.add(albedo, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        attach.add(normal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        attach.add(material, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        mirinae::RenderPassBuilder builder;
 
-        ::AttachmentRefBuilder color_attachment_refs;
-        // albedo
-        color_attachment_refs
-            .add(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)   // albedo
-            .add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)   // normal
-            .add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);  // material
+        builder.attach_desc()
+            .add(depth)
+            .fin_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .op_pair_clear_store();
+        builder.attach_desc()
+            .add(albedo)
+            .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .op_pair_clear_store();
+        builder.attach_desc().dup(normal);
+        builder.attach_desc().dup(material);
 
-        const VkAttachmentReference depth_attachment_ref{
-            0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        };
+        builder.color_attach_ref()
+            .add_color_attach(1)   // albedo
+            .add_color_attach(2)   // normal
+            .add_color_attach(3);  // material
 
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = color_attachment_refs.size();
-        subpass.pColorAttachments = color_attachment_refs.data();
-        subpass.pDepthStencilAttachment = &depth_attachment_ref;
+        builder.depth_attach_ref().set(0);
 
-        SubpassDependencyBuilder dependency;
-        dependency.add();
+        builder.subpass_dep().add().preset_single();
 
-        VkRenderPassCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        create_info.attachmentCount = attach.size();
-        create_info.pAttachments = attach.data();
-        create_info.subpassCount = 1;
-        create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = dependency.size();
-        create_info.pDependencies = dependency.data();
-
-        VkRenderPass output = VK_NULL_HANDLE;
-        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
-
-        return output;
+        return builder.build(logi_device);
     }
 
     VkPipeline create_pipeline(
