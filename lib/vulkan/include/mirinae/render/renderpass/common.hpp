@@ -258,4 +258,196 @@ namespace mirinae {
         SubpassDepBuilder subpass_dep_;
     };
 
+
+    class PipelineBuilder {
+
+    public:
+        class ShaderStagesBuilder {
+
+        public:
+            ShaderStagesBuilder(mirinae::VulkanDevice& device);
+            ~ShaderStagesBuilder();
+
+            ShaderStagesBuilder& add_vert(const mirinae::respath_t& spv_path);
+            ShaderStagesBuilder& add_frag(const mirinae::respath_t& spv_path);
+
+            const VkPipelineShaderStageCreateInfo* data() const {
+                return stages_.data();
+            }
+            uint32_t size() const {
+                return static_cast<uint32_t>(stages_.size());
+            }
+
+        private:
+            void add_stage(VkShaderStageFlagBits stage, VkShaderModule module);
+
+            static VkShaderModule load_spv(
+                const mirinae::respath_t& spv_path,
+                mirinae::VulkanDevice& device
+            );
+
+            static std::optional<VkShaderModule> create_shader_module(
+                const std::vector<uint8_t>& spv, VkDevice logi_device
+            );
+
+            mirinae::VulkanDevice& device_;
+            std::vector<VkPipelineShaderStageCreateInfo> stages_;
+            std::vector<VkShaderModule> modules_;
+        };
+
+
+        class VertexInputStateBuilder {
+
+        public:
+            VertexInputStateBuilder& set_static();
+            VertexInputStateBuilder& set_skinned();
+
+            VkPipelineVertexInputStateCreateInfo build() const;
+
+        private:
+            void add_attrib(VkFormat format, uint32_t offset);
+
+            void add_attrib_vec2(uint32_t offset);
+            void add_attrib_vec3(uint32_t offset);
+            void add_attrib_vec4(uint32_t offset);
+            void add_attrib_ivec4(uint32_t offset);
+
+            void set_binding_static();
+            void set_binding_skinned();
+            void set_attrib_static();
+            void set_attrib_skinned();
+
+            std::vector<VkVertexInputBindingDescription> bindings_;
+            std::vector<VkVertexInputAttributeDescription> attribs_;
+        };
+
+
+        class RasterizationStateBuilder {
+
+        public:
+            RasterizationStateBuilder();
+
+            RasterizationStateBuilder& cull_mode(VkCullModeFlags mode) {
+                info_.cullMode = mode;
+                return *this;
+            }
+
+            RasterizationStateBuilder& cull_mode_back() {
+                info_.cullMode = VK_CULL_MODE_BACK_BIT;
+                return *this;
+            }
+
+            RasterizationStateBuilder& depth_bias_enable(bool enable) {
+                info_.depthBiasEnable = enable ? VK_TRUE : VK_FALSE;
+                return *this;
+            }
+
+            RasterizationStateBuilder& depth_bias_constant(float value) {
+                info_.depthBiasConstantFactor = value;
+                return *this;
+            }
+
+            RasterizationStateBuilder& depth_bias_slope(float value) {
+                info_.depthBiasSlopeFactor = value;
+                return *this;
+            }
+
+            RasterizationStateBuilder& depth_clamp_enable(bool enable) {
+                info_.depthClampEnable = enable ? VK_TRUE : VK_FALSE;
+                return *this;
+            }
+
+            const VkPipelineRasterizationStateCreateInfo* get() const {
+                return &info_;
+            }
+
+        private:
+            VkPipelineRasterizationStateCreateInfo info_;
+        };
+
+
+        class DepthStencilStateBuilder {
+
+        public:
+            DepthStencilStateBuilder();
+
+            DepthStencilStateBuilder& depth_test_enable(bool enable) {
+                info_.depthTestEnable = enable ? VK_TRUE : VK_FALSE;
+                return *this;
+            }
+
+            DepthStencilStateBuilder& depth_write_enable(bool enable) {
+                info_.depthWriteEnable = enable ? VK_TRUE : VK_FALSE;
+                return *this;
+            }
+
+            const VkPipelineDepthStencilStateCreateInfo* get() const {
+                return &info_;
+            }
+
+        private:
+            VkPipelineDepthStencilStateCreateInfo info_;
+        };
+
+
+        class ColorBlendStateBuilder {
+
+        public:
+            ColorBlendStateBuilder& add(bool blend_enabled);
+            ColorBlendStateBuilder& add(bool blend_enabled, size_t count);
+
+            VkPipelineColorBlendStateCreateInfo build() const;
+
+        private:
+            std::vector<VkPipelineColorBlendAttachmentState> data_;
+        };
+
+
+        class DynamicStateBuilder {
+
+        public:
+            DynamicStateBuilder& add(VkDynamicState state) {
+                data_.push_back(state);
+                return *this;
+            }
+            DynamicStateBuilder& add_viewport() {
+                data_.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+                return *this;
+            }
+            DynamicStateBuilder& add_scissor() {
+                data_.push_back(VK_DYNAMIC_STATE_SCISSOR);
+                return *this;
+            }
+
+            VkPipelineDynamicStateCreateInfo build() const;
+
+        private:
+            std::vector<VkDynamicState> data_;
+        };
+
+
+        PipelineBuilder(mirinae::VulkanDevice& device);
+
+        auto& shader_stages() { return shader_stages_; }
+        auto& vertex_input_state() { return vertex_input_state_; }
+        auto& rasterization_state() { return rasterization_state_; }
+        auto& depth_stencil_state() { return depth_stencil_state_; }
+        auto& color_blend_state() { return color_blend_state_; }
+        auto& dynamic_state() { return dynamic_state_; }
+
+        VkPipeline build(VkRenderPass rp, VkPipelineLayout layout) const;
+
+    private:
+        mirinae::VulkanDevice& device_;
+        ShaderStagesBuilder shader_stages_;
+        VertexInputStateBuilder vertex_input_state_;
+        VkPipelineInputAssemblyStateCreateInfo input_assembly_state_;
+        VkPipelineViewportStateCreateInfo viewport_state_;
+        RasterizationStateBuilder rasterization_state_;
+        VkPipelineMultisampleStateCreateInfo multisampling_state_;
+        DepthStencilStateBuilder depth_stencil_state_;
+        ColorBlendStateBuilder color_blend_state_;
+        DynamicStateBuilder dynamic_state_;
+    };
+
 }  // namespace mirinae
