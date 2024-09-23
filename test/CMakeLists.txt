@@ -1,0 +1,3 @@
+add_executable(mirinae_test_custom_format custom_format.cpp)
+add_test(NAME mirinae_test_custom_format COMMAND mirinae_test_custom_format)
+target_link_libraries(mirinae_test_custom_format GTest::gtest_main mirinae::aux)
