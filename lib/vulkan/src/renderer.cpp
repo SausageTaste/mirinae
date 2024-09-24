@@ -441,7 +441,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            if (timer_.check_if_elapsed(0)) {
+            if (timer_.check_if_elapsed(100)) {
                 record_sky(cur_cmd_buf, desc_set_, rp_pkg);
 
                 VkMemoryBarrier mem_barrier;
