@@ -18,6 +18,114 @@ namespace mirinae {
     }
 
 
+    class Rect2D {
+
+    public:
+        Rect2D() { info_ = {}; }
+
+        Rect2D(const VkExtent2D& wh) {
+            info_ = {};
+            info_.extent = wh;
+        }
+
+        template <typename T>
+        Rect2D& set_xy(T x, T y) {
+            info_.offset.x = static_cast<int32_t>(x);
+            info_.offset.y = static_cast<int32_t>(y);
+            return *this;
+        }
+
+        template <typename TArr>
+        Rect2D& set_xy(const TArr& x) {
+            return this->set_xy(x[0], x[1]);
+        }
+
+        template <typename T>
+        Rect2D& set_wh(T w, T h) {
+            info_.extent.width = static_cast<uint32_t>(w);
+            info_.extent.height = static_cast<uint32_t>(h);
+            return *this;
+        }
+
+        template <typename TArr>
+        Rect2D& set_wh(const TArr& wh) {
+            return this->set_wh(wh[0], wh[1]);
+        }
+
+        Rect2D& set_wh(const VkExtent2D& wh) {
+            info_.extent = wh;
+            return *this;
+        }
+
+        const VkRect2D& get() const { return info_; }
+
+        const VkExtent2D& extent2d() const { return info_.extent; }
+
+        void record_scissor(VkCommandBuffer cmdbuf) const {
+            vkCmdSetScissor(cmdbuf, 0, 1, &info_);
+        }
+
+    private:
+        VkRect2D info_ = {};
+    };
+
+
+    class Viewport {
+
+    public:
+        Viewport() {
+            info_ = {};
+            info_.minDepth = 0;
+            info_.maxDepth = 1;
+        }
+
+        Viewport(const VkExtent2D& wh) {
+            info_ = {};
+            info_.minDepth = 0;
+            info_.maxDepth = 1;
+            info_.width = static_cast<float>(wh.width);
+            info_.height = static_cast<float>(wh.height);
+        }
+
+        template <typename T>
+        Viewport& set_xy(T x, T y) {
+            info_.x = static_cast<float>(x);
+            info_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        template <typename TArr>
+        Viewport& set_xy(const TArr& x) {
+            return this->set_xy(x[0], x[1]);
+        }
+
+        template <typename T>
+        Viewport& set_wh(T w, T h) {
+            info_.width = static_cast<float>(w);
+            info_.height = static_cast<float>(h);
+            return *this;
+        }
+
+        template <typename TArr>
+        Viewport& set_wh(const TArr& wh) {
+            return this->set_wh(wh[0], wh[1]);
+        }
+
+        Viewport& set_wh(const VkExtent2D& wh) {
+            return this->set_wh(wh.width, wh.height);
+        }
+
+        const VkViewport& get() const { return info_; }
+
+        void record_single(VkCommandBuffer cmdbuf) const {
+            vkCmdSetViewport(cmdbuf, 0, 1, &info_);
+        }
+
+    private:
+        VkViewport info_;
+    };
+
+
     class ImageSubresourceLayers {
 
     public:

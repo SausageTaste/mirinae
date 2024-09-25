@@ -880,18 +880,6 @@ namespace {
                 rp_info.clearValueCount = rp.clear_value_count();
                 rp_info.pClearValues = rp.clear_values();
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = img_.width();
-                viewport.height = img_.height();
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = img_.extent2d();
-
                 rp_info.framebuffer = fbuf_.get();
                 vkCmdBeginRenderPass(
                     cmdbuf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
@@ -900,8 +888,13 @@ namespace {
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                vkCmdSetViewport(cmdbuf, 0, 1, &viewport);
-                vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
+                mirinae::Viewport{}
+                    .set_wh(img_.width(), img_.height())
+                    .record_single(cmdbuf);
+                mirinae::Rect2D{}
+                    .set_wh(img_.width(), img_.height())
+                    .record_scissor(cmdbuf);
+
                 vkCmdDraw(cmdbuf, 6, 1, 0, 0);
                 vkCmdEndRenderPass(cmdbuf);
             }
@@ -928,15 +921,6 @@ namespace {
             rp_info.clearValueCount = rp.clear_value_count();
             rp_info.pClearValues = rp.clear_values();
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
             );
@@ -947,13 +931,13 @@ namespace {
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
-                viewport.width = base_cube.width();
-                viewport.height = base_cube.height();
-                scissor.extent = base_cube.extent2d();
+                mirinae::Viewport{}
+                    .set_wh(base_cube.extent2d())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(base_cube.extent2d())
+                    .record_scissor(cur_cmd_buf);
                 rp_info.renderArea.extent = base_cube.extent2d();
-
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
                 for (int i = 0; i < 6; ++i) {
                     rp_info.framebuffer = cube_map.base().face_fbuf(i);
@@ -1124,15 +1108,6 @@ namespace {
             rp_info.clearValueCount = rp.clear_value_count();
             rp_info.pClearValues = rp.clear_values();
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
             );
@@ -1143,13 +1118,13 @@ namespace {
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
-                viewport.width = base_cube.width();
-                viewport.height = base_cube.height();
-                scissor.extent = base_cube.extent2d();
+                mirinae::Viewport{}
+                    .set_wh(base_cube.width(), base_cube.height())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(base_cube.width(), base_cube.height())
+                    .record_scissor(cur_cmd_buf);
                 rp_info.renderArea.extent = base_cube.extent2d();
-
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
 
                 for (int i = 0; i < 6; ++i) {
                     rp_info.framebuffer = cube_map.base().face_fbuf(i);
@@ -1212,24 +1187,14 @@ namespace {
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-
             for (auto& cube_map : cube_map_) {
                 const auto& diffuse = cube_map.diffuse();
                 const auto world_mat = glm::translate<double>(
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
-                viewport.width = diffuse.width();
-                viewport.height = diffuse.height();
-                scissor.extent = diffuse.extent2d();
+                const mirinae::Viewport viewport{ diffuse.extent2d() };
+                const mirinae::Rect2D scissor{ diffuse.extent2d() };
                 rp_info.renderArea.extent = diffuse.extent2d();
 
                 for (int i = 0; i < 6; ++i) {
@@ -1243,8 +1208,8 @@ namespace {
                         rp.pipeline()
                     );
 
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                    viewport.record_single(cur_cmd_buf);
+                    scissor.record_scissor(cur_cmd_buf);
 
                     for (auto& pair : draw_sheet.static_pairs_) {
                         const auto desc_set = cube_map.desc_set();
@@ -1298,15 +1263,6 @@ namespace {
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-
             for (auto& cube_map : cube_map_) {
                 auto& specular = cube_map.specular();
                 const auto world_mat = glm::translate<double>(
@@ -1314,10 +1270,9 @@ namespace {
                 );
 
                 for (auto& mip : specular.mips()) {
-                    viewport.width = mip.width_;
-                    viewport.height = mip.height_;
-                    scissor.extent = mip.extent2d();
-                    rp_info.renderArea.extent = mip.extent2d();
+                    const mirinae::Rect2D scissor{ mip.extent2d() };
+                    const mirinae::Viewport viewport{ scissor.extent2d() };
+                    rp_info.renderArea.extent = scissor.extent2d();
 
                     for (int i = 0; i < 6; ++i) {
                         auto& face = mip.faces_[i];
@@ -1332,8 +1287,8 @@ namespace {
                             rp.pipeline()
                         );
 
-                        vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                        vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                        viewport.record_single(cur_cmd_buf);
+                        scissor.record_scissor(cur_cmd_buf);
 
                         for (auto& pair : draw_sheet.static_pairs_) {
                             const auto desc_set = cube_map.desc_set();
@@ -1368,13 +1323,6 @@ namespace {
 
                         vkCmdEndRenderPass(cur_cmd_buf);
                     }
-
-                    viewport.width /= 2;
-                    viewport.height /= 2;
-                    scissor.extent.width /= 2;
-                    scissor.extent.height /= 2;
-                    rp_info.renderArea.extent.width /= 2;
-                    rp_info.renderArea.extent.height /= 2;
                 }
             }
         }
@@ -1420,12 +1368,6 @@ namespace {
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                VkViewport viewport{};
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-
-                VkRect2D scissor{};
-
                 const auto half_width = shadow.width() / 2.0;
                 const auto half_height = shadow.height() / 2.0;
                 const std::array<glm::dvec2, 4> offsets{
@@ -1439,18 +1381,12 @@ namespace {
                     const auto& cascade = cascade_info_.cascades_.at(cascade_i);
                     auto& offset = offsets.at(cascade_i);
 
-                    viewport.x = offset.x;
-                    viewport.y = offset.y;
-                    viewport.width = half_width;
-                    viewport.height = half_height;
-
-                    scissor.offset.x = offset.x;
-                    scissor.offset.y = offset.y;
-                    scissor.extent.width = half_width;
-                    scissor.extent.height = half_height;
-
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                    mirinae::Viewport{}.set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_single(cur_cmd_buf);
+                    mirinae::Rect2D{}.set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_scissor(cur_cmd_buf);
 
                     for (auto& pair : draw_sheet.static_pairs_) {
                         for (auto& unit : pair.model_->render_units_) {
@@ -1516,19 +1452,12 @@ namespace {
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = shadow.width();
-                viewport.height = shadow.height();
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = shadow.tex_->extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                mirinae::Viewport{}
+                    .set_wh(shadow.width(), shadow.height())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(shadow.tex_->extent())
+                    .record_scissor(cur_cmd_buf);
 
                 for (auto& pair : draw_sheet.static_pairs_) {
                     for (auto& unit : pair.model_->render_units_) {
@@ -1599,12 +1528,6 @@ namespace {
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                VkViewport viewport{};
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-
-                VkRect2D scissor{};
-
                 const auto half_width = shadow.width() / 2.0;
                 const auto half_height = shadow.height() / 2.0;
                 const std::array<glm::dvec2, 4> offsets{
@@ -1618,18 +1541,14 @@ namespace {
                     const auto& cascade = cascade_info_.cascades_.at(cascade_i);
                     auto& offset = offsets.at(cascade_i);
 
-                    viewport.x = offset.x;
-                    viewport.y = offset.y;
-                    viewport.width = half_width;
-                    viewport.height = half_height;
-
-                    scissor.offset.x = offset.x;
-                    scissor.offset.y = offset.y;
-                    scissor.extent.width = half_width;
-                    scissor.extent.height = half_height;
-
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                    mirinae::Viewport{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_single(cur_cmd_buf);
+                    mirinae::Rect2D{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_scissor(cur_cmd_buf);
 
                     for (auto& pair : draw_sheet.skinned_pairs_) {
                         for (auto& unit : pair.model_->runits_) {
@@ -1695,19 +1614,12 @@ namespace {
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = shadow.width();
-                viewport.height = shadow.height();
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = shadow.tex_->extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                mirinae::Viewport{}
+                    .set_wh(shadow.width(), shadow.height())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(shadow.width(), shadow.height())
+                    .record_scissor(cur_cmd_buf);
 
                 for (auto& pair : draw_sheet.skinned_pairs_) {
                     for (auto& unit : pair.model_->runits_) {
@@ -1789,19 +1701,8 @@ namespace {
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_exd.width);
-            viewport.height = static_cast<float>(fbuf_exd.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_exd;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+            mirinae::Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
 
             for (auto& pair : draw_sheet.static_pairs_) {
                 for (auto& unit : pair.model_->render_units_) {
@@ -1869,19 +1770,8 @@ namespace {
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_exd.width);
-            viewport.height = static_cast<float>(fbuf_exd.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_exd;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+            mirinae::Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
 
             for (auto& pair : draw_sheet.skinned_pairs_) {
                 for (auto& unit : pair.model_->runits_) {
@@ -2006,19 +1896,8 @@ namespace {
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_ext.width);
-            viewport.height = static_cast<float>(fbuf_ext.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_ext;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
             auto desc_main = desc_sets_.at(frame_index.get());
             vkCmdBindDescriptorSets(
@@ -2122,19 +2001,8 @@ namespace {
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_ext.width);
-            viewport.height = static_cast<float>(fbuf_ext.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_ext;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
             auto desc_frame = desc_sets_.at(frame_index.get());
             vkCmdBindDescriptorSets(
@@ -2214,19 +2082,8 @@ namespace {
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_ext.width);
-            viewport.height = static_cast<float>(fbuf_ext.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_ext;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
             auto desc_frame = desc_sets_.at(frame_index.get());
             vkCmdBindDescriptorSets(
@@ -2315,19 +2172,8 @@ namespace {
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_ext.width);
-            viewport.height = static_cast<float>(fbuf_ext.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cmdbuf, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_ext;
-            vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
+            mirinae::Viewport{ fbuf_ext }.record_single(cmdbuf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cmdbuf);
         }
 
         void draw(
@@ -2426,19 +2272,8 @@ namespace {
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(shain_exd.width);
-            viewport.height = static_cast<float>(shain_exd.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cmdbuf, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = shain_exd;
-            vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
+            mirinae::Viewport{ shain_exd }.record_single(cmdbuf);
+            mirinae::Rect2D{ shain_exd }.record_scissor(cmdbuf);
 
             auto desc_main = desc_sets_.at(frame_index.get());
             vkCmdBindDescriptorSets(
@@ -2717,19 +2552,12 @@ namespace {
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = static_cast<float>(swapchain_.width());
-                viewport.height = static_cast<float>(swapchain_.height());
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = swapchain_.extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                mirinae::Viewport{}
+                    .set_wh(swapchain_.width(), swapchain_.height())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(swapchain_.width(), swapchain_.height())
+                    .record_scissor(cur_cmd_buf);
 
                 widget_ren_data.cmd_buf_ = cur_cmd_buf;
                 widget_ren_data.pipe_layout_ = rp.pipeline_layout();
