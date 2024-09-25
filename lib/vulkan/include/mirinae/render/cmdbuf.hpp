@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include <vulkan/vulkan.h>
 #include <sung/general/linalg.hpp>
 
@@ -75,19 +77,8 @@ namespace mirinae {
     class Viewport {
 
     public:
-        Viewport() {
-            info_ = {};
-            info_.minDepth = 0;
-            info_.maxDepth = 1;
-        }
-
-        Viewport(const VkExtent2D& wh) {
-            info_ = {};
-            info_.minDepth = 0;
-            info_.maxDepth = 1;
-            info_.width = static_cast<float>(wh.width);
-            info_.height = static_cast<float>(wh.height);
-        }
+        Viewport();
+        Viewport(const VkExtent2D& wh);
 
         template <typename T>
         Viewport& set_xy(T x, T y) {
@@ -113,15 +104,11 @@ namespace mirinae {
             return this->set_wh(wh[0], wh[1]);
         }
 
-        Viewport& set_wh(const VkExtent2D& wh) {
-            return this->set_wh(wh.width, wh.height);
-        }
+        Viewport& set_wh(const VkExtent2D& wh);
 
-        const VkViewport& get() const { return info_; }
+        const VkViewport& get() const;
 
-        void record_single(VkCommandBuffer cmdbuf) const {
-            vkCmdSetViewport(cmdbuf, 0, 1, &info_);
-        }
+        void record_single(VkCommandBuffer cmdbuf) const;
 
     private:
         VkViewport info_;
@@ -237,206 +224,73 @@ namespace mirinae {
     class ImageMemoryBarrier {
 
     public:
-        ImageMemoryBarrier() {
-            info_ = {};
-            info_.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            info_.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            info_.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        }
+        ImageMemoryBarrier();
 
-        ImageMemoryBarrier& set_src_access(VkAccessFlags flags) {
-            info_.srcAccessMask = flags;
-            return *this;
-        }
-        ImageMemoryBarrier& add_src_access(VkAccessFlags flags) {
-            info_.srcAccessMask |= flags;
-            return *this;
-        }
+        ImageMemoryBarrier& set_src_access(VkAccessFlags flags);
+        ImageMemoryBarrier& add_src_access(VkAccessFlags flags);
 
-        ImageMemoryBarrier& set_dst_access(VkAccessFlags flags) {
-            info_.dstAccessMask = flags;
-            return *this;
-        }
-        ImageMemoryBarrier& add_dst_access(VkAccessFlags flags) {
-            info_.dstAccessMask |= flags;
-            return *this;
-        }
+        ImageMemoryBarrier& set_dst_access(VkAccessFlags flags);
+        ImageMemoryBarrier& add_dst_access(VkAccessFlags flags);
 
-        ImageMemoryBarrier& old_layout(VkImageLayout layout) {
-            info_.oldLayout = layout;
-            return *this;
-        }
+        ImageMemoryBarrier& old_layout(VkImageLayout layout);
+        ImageMemoryBarrier& new_layout(VkImageLayout layout);
 
-        ImageMemoryBarrier& new_layout(VkImageLayout layout) {
-            info_.newLayout = layout;
-            return *this;
-        }
+        ImageMemoryBarrier& image(VkImage img);
 
-        ImageMemoryBarrier& image(VkImage img) {
-            info_.image = img;
-            return *this;
-        }
+        ImageMemoryBarrier& set_aspect_mask(VkImageAspectFlags flags);
+        ImageMemoryBarrier& add_aspect_mask(VkImageAspectFlags flags);
 
-        ImageMemoryBarrier& set_aspect_mask(VkImageAspectFlags flags) {
-            info_.subresourceRange.aspectMask = flags;
-            return *this;
-        }
-        ImageMemoryBarrier& add_aspect_mask(VkImageAspectFlags flags) {
-            info_.subresourceRange.aspectMask |= flags;
-            return *this;
-        }
+        ImageMemoryBarrier& mip_base(uint32_t level);
+        ImageMemoryBarrier& mip_count(uint32_t count);
+        ImageMemoryBarrier& layer_base(uint32_t layer);
+        ImageMemoryBarrier& layer_count(uint32_t count);
 
-        ImageMemoryBarrier& mip_base(uint32_t level) {
-            info_.subresourceRange.baseMipLevel = level;
-            return *this;
-        }
-
-        ImageMemoryBarrier& mip_count(uint32_t count) {
-            info_.subresourceRange.levelCount = count;
-            return *this;
-        }
-
-        ImageMemoryBarrier& layer_base(uint32_t layer) {
-            info_.subresourceRange.baseArrayLayer = layer;
-            return *this;
-        }
-
-        ImageMemoryBarrier& layer_count(uint32_t count) {
-            info_.subresourceRange.layerCount = count;
-            return *this;
-        }
-
-        const VkImageMemoryBarrier& get() const { return info_; }
+        const VkImageMemoryBarrier& get() const;
 
         void record_single(
             VkCommandBuffer cmdbuf,
             VkPipelineStageFlags src_stage,
             VkPipelineStageFlags dst_stage
-        ) const {
-            vkCmdPipelineBarrier(
-                cmdbuf,
-                src_stage,
-                dst_stage,
-                0,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                1,
-                &info_
-            );
-        }
+        ) const;
 
     private:
         VkImageMemoryBarrier info_;
     };
 
-    static_assert(sizeof(ImageMemoryBarrier) == sizeof(VkImageMemoryBarrier));
-
 
     class ImageBlit {
 
     public:
-        ImageBlit() { info_ = {}; }
+        ImageBlit();
 
-        ImageSubresourceLayers& src_subres() {
-            return *reinterpret_cast<ImageSubresourceLayers*>(
-                &info_.srcSubresource
-            );
-        }
+        ImageSubresourceLayers& src_subres();
+        ImageSubresourceLayers& dst_subres();
 
-        ImageSubresourceLayers& dst_subres() {
-            return *reinterpret_cast<ImageSubresourceLayers*>(
-                &info_.dstSubresource
-            );
-        }
+        ImageBlit& set_src_offsets_full(int32_t w, int32_t h);
+        ImageBlit& set_dst_offsets_full(int32_t w, int32_t h);
 
-        sung::TVec3<int32_t>& src_offset0() {
-            static_assert(sizeof(sung::TVec3<int32_t>) == sizeof(VkOffset3D));
-
-            return *reinterpret_cast<sung::TVec3<int32_t>*>(&info_.srcOffsets[0]
-            );
-        }
-
-        sung::TVec3<int32_t>& src_offset1() {
-            return *reinterpret_cast<sung::TVec3<int32_t>*>(&info_.srcOffsets[1]
-            );
-        }
-
-        ImageBlit& set_src_offsets_full(int32_t w, int32_t h) {
-            info_.srcOffsets[0] = { 0, 0, 0 };
-            info_.srcOffsets[1] = { w, h, 1 };
-            return *this;
-        }
-
-        sung::TVec3<int32_t>& dst_offset0() {
-            return *reinterpret_cast<sung::TVec3<int32_t>*>(&info_.dstOffsets[0]
-            );
-        }
-
-        sung::TVec3<int32_t>& dst_offset1() {
-            return *reinterpret_cast<sung::TVec3<int32_t>*>(&info_.dstOffsets[1]
-            );
-        }
-
-        ImageBlit& set_dst_offsets_full(int32_t w, int32_t h) {
-            info_.dstOffsets[0] = { 0, 0, 0 };
-            info_.dstOffsets[1] = { w, h, 1 };
-            return *this;
-        }
-
-        const VkImageBlit& get() const { return info_; }
+        const VkImageBlit& get() const;
 
     private:
         VkImageBlit info_;
     };
-
-    static_assert(sizeof(ImageBlit) == sizeof(VkImageBlit));
 
 
     class DescSetBindInfo {
 
     public:
         DescSetBindInfo() = default;
+        DescSetBindInfo(VkPipelineLayout layout);
 
-        DescSetBindInfo(VkPipelineLayout layout) : layout_(layout) {}
+        DescSetBindInfo& layout(VkPipelineLayout layout);
 
-        DescSetBindInfo& layout(VkPipelineLayout layout) {
-            layout_ = layout;
-            return *this;
-        }
+        DescSetBindInfo& first_set(uint32_t set);
 
-        DescSetBindInfo& first_set(uint32_t set) {
-            first_set_ = set;
-            return *this;
-        }
+        DescSetBindInfo& set(VkDescriptorSet set);
+        DescSetBindInfo& add(VkDescriptorSet set);
+        DescSetBindInfo& clear();
 
-        DescSetBindInfo& set(VkDescriptorSet set) {
-            desc_sets_.resize(1);
-            desc_sets_[0] = set;
-            return *this;
-        }
-        DescSetBindInfo& add(VkDescriptorSet set) {
-            desc_sets_.push_back(set);
-            return *this;
-        }
-        DescSetBindInfo& clear() {
-            desc_sets_.clear();
-            return *this;
-        }
-
-        void record(VkCommandBuffer cmdbuf) {
-            vkCmdBindDescriptorSets(
-                cmdbuf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                layout_,
-                first_set_,
-                static_cast<uint32_t>(desc_sets_.size()),
-                desc_sets_.data(),
-                0,
-                nullptr
-            );
-        }
+        void record(VkCommandBuffer cmdbuf);
 
     private:
         std::vector<VkDescriptorSet> desc_sets_;
