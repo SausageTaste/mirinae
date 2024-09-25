@@ -284,8 +284,8 @@ namespace {
             .layer_base(0)
             .layer_count(1);
 
-        int32_t mipWidth = width;
-        int32_t mipHeight = height;
+        int32_t mip_width = width;
+        int32_t mip_height = height;
         for (uint32_t i = 1; i < mip_levels; i++) {
             barrier.set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
                 .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
@@ -298,21 +298,22 @@ namespace {
                 VK_PIPELINE_STAGE_TRANSFER_BIT
             );
 
-            VkImageBlit blit{};
-            blit.srcOffsets[0] = { 0, 0, 0 };
-            blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
-            blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            blit.srcSubresource.mipLevel = i - 1;
-            blit.srcSubresource.baseArrayLayer = 0;
-            blit.srcSubresource.layerCount = 1;
-            blit.dstOffsets[0] = { 0, 0, 0 };
-            blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1,
-                                   mipHeight > 1 ? mipHeight / 2 : 1,
-                                   1 };
-            blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            blit.dstSubresource.mipLevel = i;
-            blit.dstSubresource.baseArrayLayer = 0;
-            blit.dstSubresource.layerCount = 1;
+            mirinae::ImageBlit blit;
+            blit.set_src_offsets_full(mip_width, mip_height)
+                .set_dst_offsets_full(
+                    mirinae::make_half_dim(mip_width),
+                    mirinae::make_half_dim(mip_height)
+                );
+            blit.src_subres()
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .mip_level(i - 1)
+                .layer_base(0)
+                .layer_count(1);
+            blit.dst_subres()
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .mip_level(i)
+                .layer_base(0)
+                .layer_count(1);
 
             vkCmdBlitImage(
                 cmdbuf,
@@ -321,7 +322,7 @@ namespace {
                 image,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 1,
-                &blit,
+                &blit.get(),
                 VK_FILTER_LINEAR
             );
 
@@ -335,10 +336,8 @@ namespace {
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
             );
 
-            if (mipWidth > 1)
-                mipWidth /= 2;
-            if (mipHeight > 1)
-                mipHeight /= 2;
+            mip_width = mirinae::make_half_dim(mip_width);
+            mip_height = mirinae::make_half_dim(mip_height);
         }
 
         barrier.set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
