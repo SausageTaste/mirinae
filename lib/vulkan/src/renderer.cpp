@@ -1073,20 +1073,22 @@ namespace {
                         barrier
                     );
 
-                    VkImageBlit blit = {};
-                    blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    blit.srcSubresource.layerCount = 6;
-                    blit.srcSubresource.mipLevel = i - 1;
-                    blit.srcOffsets[1].x = int32_t(img.width() >> (i - 1));
-                    blit.srcOffsets[1].y = int32_t(img.height() >> (i - 1));
-                    blit.srcOffsets[1].z = 1;
-
-                    blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    blit.dstSubresource.layerCount = 6;
-                    blit.dstSubresource.mipLevel = i;
-                    blit.dstOffsets[1].x = int32_t(img.width() >> i);
-                    blit.dstOffsets[1].y = int32_t(img.height() >> i);
-                    blit.dstOffsets[1].z = 1;
+                    mirinae::ImageBlit blit;
+                    blit.set_src_offsets_full(
+                        img.width() >> (i - 1), img.height() >> (i - 1)
+                    );
+                    blit.set_dst_offsets_full(
+                        img.width() >> i, img.height() >> i
+                    );
+                    blit.src_subres()
+                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mip_level(i - 1)
+                        .layer_base(0)
+                        .layer_count(6);
+                    blit.dst_subres().set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mip_level(i)
+                        .layer_base(0)
+                        .layer_count(6);
 
                     vkCmdBlitImage(
                         cur_cmd_buf,
@@ -1095,7 +1097,7 @@ namespace {
                         img.image(),
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         1,
-                        &blit,
+                        &blit.get(),
                         VK_FILTER_LINEAR
                     );
 

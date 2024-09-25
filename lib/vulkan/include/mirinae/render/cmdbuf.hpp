@@ -1,9 +1,62 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <sung/general/linalg.hpp>
 
 
 namespace mirinae {
+
+    template <typename T>
+    T make_half_dim(T dim) {
+        // check if T is integer
+        static_assert(std::is_integral<T>::value, "T must be an integer type");
+
+        if (dim <= 1)
+            return 1;
+
+        return dim / 2;
+    }
+
+
+    class ImageSubresourceLayers {
+
+    public:
+        ImageSubresourceLayers() { info_ = {}; }
+
+        ImageSubresourceLayers& set_aspect_mask(VkImageAspectFlags flags) {
+            info_.aspectMask = flags;
+            return *this;
+        }
+        ImageSubresourceLayers& add_aspect_mask(VkImageAspectFlags flags) {
+            info_.aspectMask |= flags;
+            return *this;
+        }
+
+        ImageSubresourceLayers& mip_level(uint32_t level) {
+            info_.mipLevel = level;
+            return *this;
+        }
+
+        ImageSubresourceLayers& layer_base(uint32_t layer) {
+            info_.baseArrayLayer = layer;
+            return *this;
+        }
+
+        ImageSubresourceLayers& layer_count(uint32_t count) {
+            info_.layerCount = count;
+            return *this;
+        }
+
+        const VkImageSubresourceLayers& get() const { return info_; }
+
+    private:
+        VkImageSubresourceLayers info_;
+    };
+
+    static_assert(
+        sizeof(ImageSubresourceLayers) == sizeof(VkImageSubresourceLayers)
+    );
+
 
     class ImageMemoryBarrier {
 
@@ -101,5 +154,67 @@ namespace mirinae {
     private:
         VkImageMemoryBarrier info_;
     };
+
+    static_assert(sizeof(ImageMemoryBarrier) == sizeof(VkImageMemoryBarrier));
+
+
+    class ImageBlit {
+
+    public:
+        ImageBlit() { info_ = {}; }
+
+        ImageSubresourceLayers& src_subres() {
+            return *reinterpret_cast<ImageSubresourceLayers*>(
+                &info_.srcSubresource
+            );
+        }
+
+        ImageSubresourceLayers& dst_subres() {
+            return *reinterpret_cast<ImageSubresourceLayers*>(
+                &info_.dstSubresource
+            );
+        }
+
+        sung::TVec3<int32_t>& src_offset0() {
+            static_assert(sizeof(sung::TVec3<int32_t>) == sizeof(VkOffset3D));
+
+            return *reinterpret_cast<sung::TVec3<int32_t>*>(&info_.srcOffsets[0]
+            );
+        }
+
+        sung::TVec3<int32_t>& src_offset1() {
+            return *reinterpret_cast<sung::TVec3<int32_t>*>(&info_.srcOffsets[1]
+            );
+        }
+
+        ImageBlit& set_src_offsets_full(int32_t w, int32_t h) {
+            info_.srcOffsets[0] = { 0, 0, 0 };
+            info_.srcOffsets[1] = { w, h, 1 };
+            return *this;
+        }
+
+        sung::TVec3<int32_t>& dst_offset0() {
+            return *reinterpret_cast<sung::TVec3<int32_t>*>(&info_.dstOffsets[0]
+            );
+        }
+
+        sung::TVec3<int32_t>& dst_offset1() {
+            return *reinterpret_cast<sung::TVec3<int32_t>*>(&info_.dstOffsets[1]
+            );
+        }
+
+        ImageBlit& set_dst_offsets_full(int32_t w, int32_t h) {
+            info_.dstOffsets[0] = { 0, 0, 0 };
+            info_.dstOffsets[1] = { w, h, 1 };
+            return *this;
+        }
+
+        const VkImageBlit& get() const { return info_; }
+
+    private:
+        VkImageBlit info_;
+    };
+
+    static_assert(sizeof(ImageBlit) == sizeof(VkImageBlit));
 
 }  // namespace mirinae
