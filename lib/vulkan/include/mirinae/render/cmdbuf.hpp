@@ -393,4 +393,55 @@ namespace mirinae {
 
     static_assert(sizeof(ImageBlit) == sizeof(VkImageBlit));
 
+
+    class DescSetBindInfo {
+
+    public:
+        DescSetBindInfo() = default;
+
+        DescSetBindInfo(VkPipelineLayout layout) : layout_(layout) {}
+
+        DescSetBindInfo& layout(VkPipelineLayout layout) {
+            layout_ = layout;
+            return *this;
+        }
+
+        DescSetBindInfo& first_set(uint32_t set) {
+            first_set_ = set;
+            return *this;
+        }
+
+        DescSetBindInfo& set(VkDescriptorSet set) {
+            desc_sets_.resize(1);
+            desc_sets_[0] = set;
+            return *this;
+        }
+        DescSetBindInfo& add(VkDescriptorSet set) {
+            desc_sets_.push_back(set);
+            return *this;
+        }
+        DescSetBindInfo& clear() {
+            desc_sets_.clear();
+            return *this;
+        }
+
+        void record(VkCommandBuffer cmdbuf) {
+            vkCmdBindDescriptorSets(
+                cmdbuf,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                layout_,
+                first_set_,
+                static_cast<uint32_t>(desc_sets_.size()),
+                desc_sets_.data(),
+                0,
+                nullptr
+            );
+        }
+
+    private:
+        std::vector<VkDescriptorSet> desc_sets_;
+        VkPipelineLayout layout_ = VK_NULL_HANDLE;
+        uint32_t first_set_ = 0;
+    };
+
 }  // namespace mirinae
