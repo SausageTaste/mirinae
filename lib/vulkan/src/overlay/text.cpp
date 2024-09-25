@@ -7,6 +7,8 @@
 
 #include <sstream>
 
+#include "mirinae/render/cmdbuf.hpp"
+
 
 namespace {
 
@@ -123,17 +125,10 @@ namespace mirinae {
     }
 
     void TextBox::record_render(const mirinae::WidgetRenderUniData& udata) {
-        auto desc_main = text_render_data_.get_desc_set(udata.frame_index_);
-        vkCmdBindDescriptorSets(
-            udata.cmd_buf_,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            udata.pipe_layout_,
-            0,
-            1,
-            &desc_main,
-            0,
-            nullptr
-        );
+        mirinae::DescSetBindInfo{}
+            .layout(udata.pipe_layout_)
+            .set(text_render_data_.get_desc_set(udata.frame_index_))
+            .record(udata.cmd_buf_);
 
         const sung::AABB2<double> widget_box(
             pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y

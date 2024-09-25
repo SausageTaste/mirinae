@@ -919,6 +919,8 @@ namespace {
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
             );
 
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
             for (auto& cube_map : cube_map_) {
                 auto& base_cube = cube_map.base();
                 const auto world_mat = glm::translate<double>(
@@ -956,34 +958,18 @@ namespace {
 
                     for (auto& pair : draw_sheet.static_pairs_) {
                         for (auto& unit : pair.model_->render_units_) {
-                            auto unit_desc = unit.get_desc_set(frame_index.get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &unit_desc,
-                                0,
-                                nullptr
-                            );
+                            descset_info.first_set(0)
+                                .set(unit.get_desc_set(frame_index.get()))
+                                .record(cur_cmd_buf);
+
                             unit.record_bind_vert_buf(cur_cmd_buf);
 
                             for (auto& actor : pair.actors_) {
-                                auto actor_desc = actor.actor_->get_desc_set(
-                                    frame_index.get()
-                                );
-                                vkCmdBindDescriptorSets(
-                                    cur_cmd_buf,
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    rp.pipeline_layout(),
-                                    1,
-                                    1,
-                                    &actor_desc,
-                                    0,
-                                    nullptr
-                                );
+                                descset_info.first_set(1)
+                                    .set(actor.actor_->get_desc_set(
+                                        frame_index.get()
+                                    ))
+                                    .record(cur_cmd_buf);
 
                                 push_const.proj_view_ = proj_mat *
                                                         CUBE_VIEW_MATS[i] *
@@ -1126,16 +1112,10 @@ namespace {
                         rp.pipeline()
                     );
 
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        0,
-                        1,
-                        &desc_set,
-                        0,
-                        nullptr
-                    );
+                    mirinae::DescSetBindInfo{}
+                        .layout(rp.pipeline_layout())
+                        .set(desc_set)
+                        .record(cur_cmd_buf);
 
                     mirinae::U_EnvSkyPushConst pc;
                     pc.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
@@ -1173,6 +1153,8 @@ namespace {
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
             );
 
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
             for (auto& cube_map : cube_map_) {
                 const auto& diffuse = cube_map.diffuse();
                 const auto world_mat = glm::translate<double>(
@@ -1197,17 +1179,8 @@ namespace {
                     scissor.record_scissor(cur_cmd_buf);
 
                     for (auto& pair : draw_sheet.static_pairs_) {
-                        const auto desc_set = cube_map.desc_set();
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            0,
-                            1,
-                            &desc_set,
-                            0,
-                            nullptr
-                        );
+                        descset_info.set(cube_map.desc_set())
+                            .record(cur_cmd_buf);
 
                         mirinae::U_EnvdiffusePushConst push_const;
                         push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
@@ -1246,6 +1219,8 @@ namespace {
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
             );
 
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
             for (auto& cube_map : cube_map_) {
                 auto& specular = cube_map.specular();
                 const auto world_mat = glm::translate<double>(
@@ -1273,17 +1248,8 @@ namespace {
                         scissor.record_scissor(cur_cmd_buf);
 
                         for (auto& pair : draw_sheet.static_pairs_) {
-                            const auto desc_set = cube_map.desc_set();
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &desc_set,
-                                0,
-                                nullptr
-                            );
+                            descset_info.set(cube_map.desc_set())
+                                .record(cur_cmd_buf);
 
                             mirinae::U_EnvSpecularPushConst push_const;
                             push_const.proj_view_ = proj_mat *
@@ -1355,6 +1321,8 @@ namespace {
                     glm::dvec2{ half_width, half_height },
                 };
 
+                mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
                 for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
                     const auto& cascade = cascade_info_.cascades_.at(cascade_i);
                     auto& offset = offsets.at(cascade_i);
@@ -1370,24 +1338,14 @@ namespace {
 
                     for (auto& pair : draw_sheet.static_pairs_) {
                         for (auto& unit : pair.model_->render_units_) {
-                            auto unit_desc = unit.get_desc_set(frame_index.get()
-                            );
                             unit.record_bind_vert_buf(cur_cmd_buf);
 
                             for (auto& actor : pair.actors_) {
-                                auto actor_desc = actor.actor_->get_desc_set(
-                                    frame_index.get()
-                                );
-                                vkCmdBindDescriptorSets(
-                                    cur_cmd_buf,
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    rp.pipeline_layout(),
-                                    0,
-                                    1,
-                                    &actor_desc,
-                                    0,
-                                    nullptr
-                                );
+                                descset_info
+                                    .set(actor.actor_->get_desc_set(
+                                        frame_index.get()
+                                    ))
+                                    .record(cur_cmd_buf);
 
                                 mirinae::U_ShadowPushConst push_const;
                                 push_const.pvm_ = cascade.light_mat_ *
@@ -1435,25 +1393,18 @@ namespace {
                     .set_wh(shadow.tex_->extent())
                     .record_scissor(cur_cmd_buf);
 
+                mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
                 for (auto& pair : draw_sheet.static_pairs_) {
                     for (auto& unit : pair.model_->render_units_) {
                         auto unit_desc = unit.get_desc_set(frame_index.get());
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor.actor_->get_desc_set(
-                                frame_index.get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &actor_desc,
-                                0,
-                                nullptr
-                            );
+                            descset_info
+                                .set(actor.actor_->get_desc_set(frame_index.get(
+                                )))
+                                .record(cur_cmd_buf);
 
                             mirinae::U_ShadowPushConst push_const;
                             push_const.pvm_ = shadow.mat_ * actor.model_mat_;
@@ -1509,6 +1460,8 @@ namespace {
                     glm::dvec2{ half_width, half_height },
                 };
 
+                mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
                 for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
                     const auto& cascade = cascade_info_.cascades_.at(cascade_i);
                     auto& offset = offsets.at(cascade_i);
@@ -1529,19 +1482,11 @@ namespace {
                             unit.record_bind_vert_buf(cur_cmd_buf);
 
                             for (auto& actor : pair.actors_) {
-                                auto actor_desc = actor.actor_->get_desc_set(
-                                    frame_index.get()
-                                );
-                                vkCmdBindDescriptorSets(
-                                    cur_cmd_buf,
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    rp.pipeline_layout(),
-                                    0,
-                                    1,
-                                    &actor_desc,
-                                    0,
-                                    nullptr
-                                );
+                                descset_info
+                                    .set(actor.actor_->get_desc_set(
+                                        frame_index.get()
+                                    ))
+                                    .record(cur_cmd_buf);
 
                                 mirinae::U_ShadowPushConst push_const;
                                 push_const.pvm_ = cascade.light_mat_ *
@@ -1589,25 +1534,18 @@ namespace {
                     .set_wh(shadow.width(), shadow.height())
                     .record_scissor(cur_cmd_buf);
 
+                mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
                 for (auto& pair : draw_sheet.skinned_pairs_) {
                     for (auto& unit : pair.model_->runits_) {
                         auto unit_desc = unit.get_desc_set(frame_index.get());
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor.actor_->get_desc_set(
-                                frame_index.get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &actor_desc,
-                                0,
-                                nullptr
-                            );
+                            descset_info
+                                .set(actor.actor_->get_desc_set(frame_index.get(
+                                )))
+                                .record(cur_cmd_buf);
 
                             mirinae::U_ShadowPushConst push_const;
                             push_const.pvm_ = shadow.mat_ * actor.model_mat_;
@@ -1668,35 +1606,20 @@ namespace {
             mirinae::Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
             mirinae::Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
 
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
             for (auto& pair : draw_sheet.static_pairs_) {
                 for (auto& unit : pair.model_->render_units_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        0,
-                        1,
-                        &unit_desc,
-                        0,
-                        nullptr
-                    );
+                    descset_info.first_set(0)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
                     unit.record_bind_vert_buf(cur_cmd_buf);
 
                     for (auto& actor : pair.actors_) {
-                        auto actor_desc = actor.actor_->get_desc_set(
-                            frame_index.get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            1,
-                            1,
-                            &actor_desc,
-                            0,
-                            nullptr
-                        );
+                        descset_info.first_set(1)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -1733,35 +1656,20 @@ namespace {
             mirinae::Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
             mirinae::Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
 
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
             for (auto& pair : draw_sheet.skinned_pairs_) {
                 for (auto& unit : pair.model_->runits_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        0,
-                        1,
-                        &unit_desc,
-                        0,
-                        nullptr
-                    );
+                    descset_info.first_set(0)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
                     unit.record_bind_vert_buf(cur_cmd_buf);
 
                     for (auto& actor : pair.actors_) {
-                        auto actor_desc = actor.actor_->get_desc_set(
-                            frame_index.get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            1,
-                            1,
-                            &actor_desc,
-                            0,
-                            nullptr
-                        );
+                        descset_info.first_set(1)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -1856,17 +1764,10 @@ namespace {
             mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
             mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
-            auto desc_main = desc_sets_.at(frame_index.get());
-            vkCmdBindDescriptorSets(
-                cur_cmd_buf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                rp.pipeline_layout(),
-                0,
-                1,
-                &desc_main,
-                0,
-                nullptr
-            );
+            mirinae::DescSetBindInfo{}
+                .layout(rp.pipeline_layout())
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cur_cmd_buf);
 
             vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
 
@@ -1957,47 +1858,23 @@ namespace {
             mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
             mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
-            auto desc_frame = desc_sets_.at(frame_index.get());
-            vkCmdBindDescriptorSets(
-                cur_cmd_buf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                rp.pipeline_layout(),
-                0,
-                1,
-                &desc_frame,
-                0,
-                nullptr
-            );
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+            descset_info.first_set(0)
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cur_cmd_buf);
 
             for (auto& pair : draw_sheet.static_pairs_) {
                 for (auto& unit : pair.model_->render_units_alpha_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        1,
-                        1,
-                        &unit_desc,
-                        0,
-                        nullptr
-                    );
+                    descset_info.first_set(1)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
                     unit.record_bind_vert_buf(cur_cmd_buf);
 
                     for (auto& actor : pair.actors_) {
-                        auto actor_desc = actor.actor_->get_desc_set(
-                            frame_index.get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            2,
-                            1,
-                            &actor_desc,
-                            0,
-                            nullptr
-                        );
+                        descset_info.first_set(2)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -2034,47 +1911,23 @@ namespace {
             mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
             mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
-            auto desc_frame = desc_sets_.at(frame_index.get());
-            vkCmdBindDescriptorSets(
-                cur_cmd_buf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                rp.pipeline_layout(),
-                0,
-                1,
-                &desc_frame,
-                0,
-                nullptr
-            );
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+            descset_info.first_set(0)
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cur_cmd_buf);
 
             for (auto& pair : draw_sheet.skinned_pairs_) {
                 for (auto& unit : pair.model_->runits_alpha_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        1,
-                        1,
-                        &unit_desc,
-                        0,
-                        nullptr
-                    );
+                    descset_info.first_set(1)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
                     unit.record_bind_vert_buf(cur_cmd_buf);
 
                     for (auto& actor : pair.actors_) {
-                        auto actor_desc = actor.actor_->get_desc_set(
-                            frame_index.get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            2,
-                            1,
-                            &actor_desc,
-                            0,
-                            nullptr
-                        );
+                        descset_info.first_set(2)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -2219,17 +2072,10 @@ namespace {
             mirinae::Viewport{ shain_exd }.record_single(cmdbuf);
             mirinae::Rect2D{ shain_exd }.record_scissor(cmdbuf);
 
-            auto desc_main = desc_sets_.at(frame_index.get());
-            vkCmdBindDescriptorSets(
-                cmdbuf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                rp.pipeline_layout(),
-                0,
-                1,
-                &desc_main,
-                0,
-                nullptr
-            );
+            mirinae::DescSetBindInfo{}
+                .layout(rp.pipeline_layout())
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cmdbuf);
 
             vkCmdDraw(cmdbuf, 3, 1, 0, 0);
 
