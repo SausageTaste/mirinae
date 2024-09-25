@@ -37,27 +37,6 @@ namespace {
     }
 
 
-    void record_img_mem_barrier(
-        const VkCommandBuffer cmdbuf,
-        const VkPipelineStageFlagBits src_stage,
-        const VkPipelineStageFlagBits dst_stage,
-        const mirinae::ImageMemoryBarrier& imb
-    ) {
-        vkCmdPipelineBarrier(
-            cmdbuf,
-            src_stage,
-            dst_stage,
-            0,
-            0,
-            nullptr,
-            0,
-            nullptr,
-            1,
-            &imb.get()
-        );
-    }
-
-
     class DominantCommandProc : public mirinae::IInputProcessor {
 
     public:
@@ -1065,12 +1044,10 @@ namespace {
                         .mip_count(1)
                         .layer_base(0)
                         .layer_count(6);
-
-                    ::record_img_mem_barrier(
+                    barrier.record_single(
                         cur_cmd_buf,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        barrier
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
                     );
 
                     mirinae::ImageBlit blit;
@@ -1085,7 +1062,8 @@ namespace {
                         .mip_level(i - 1)
                         .layer_base(0)
                         .layer_count(6);
-                    blit.dst_subres().set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    blit.dst_subres()
+                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                         .mip_level(i)
                         .layer_base(0)
                         .layer_count(6);
@@ -1106,12 +1084,10 @@ namespace {
                         .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
                         .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
                         .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-                    ::record_img_mem_barrier(
+                    barrier.record_single(
                         cur_cmd_buf,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        barrier
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
                     );
                 }
 
@@ -1126,12 +1102,10 @@ namespace {
                     .mip_count(img.mip_levels())
                     .layer_base(0)
                     .layer_count(6);
-
-                ::record_img_mem_barrier(
+                barrier.record_single(
                     cur_cmd_buf,
                     VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                    barrier
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                 );
             }
         }
