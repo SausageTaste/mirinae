@@ -10,6 +10,7 @@
 #include "mirinae/math/glm_fmt.hpp"
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
+#include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass.hpp"
 
 
@@ -37,29 +38,22 @@ namespace {
 
 
     void record_img_mem_barrier(
-        VkCommandBuffer cmdbuf,
-        VkImage img,
-        VkAccessFlagBits src_access,
-        VkAccessFlagBits dst_access,
-        VkImageLayout old_layout,
-        VkImageLayout new_layout,
-        VkPipelineStageFlagBits src_stage,
-        VkPipelineStageFlagBits dst_stage,
-        VkImageSubresourceRange subres_range
+        const VkCommandBuffer cmdbuf,
+        const VkPipelineStageFlagBits src_stage,
+        const VkPipelineStageFlagBits dst_stage,
+        const mirinae::ImageMemoryBarrier& imb
     ) {
-        VkImageMemoryBarrier barrier = {};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.srcAccessMask = src_access;
-        barrier.dstAccessMask = dst_access;
-        barrier.oldLayout = old_layout;
-        barrier.newLayout = new_layout;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = img;
-        barrier.subresourceRange = subres_range;
-
         vkCmdPipelineBarrier(
-            cmdbuf, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier
+            cmdbuf,
+            src_stage,
+            dst_stage,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &imb.get()
         );
     }
 
@@ -1060,16 +1054,23 @@ namespace {
 
                 auto& img = cube_map.base().img_;
                 for (uint32_t i = 1; i < img.mip_levels(); ++i) {
+                    mirinae::ImageMemoryBarrier barrier;
+                    barrier.image(img.image())
+                        .set_src_access(VK_ACCESS_NONE)
+                        .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                        .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                        .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mip_base(i)
+                        .mip_count(1)
+                        .layer_base(0)
+                        .layer_count(6);
+
                     ::record_img_mem_barrier(
                         cur_cmd_buf,
-                        img.image(),
-                        VK_ACCESS_NONE,
-                        VK_ACCESS_TRANSFER_WRITE_BIT,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        { VK_IMAGE_ASPECT_COLOR_BIT, i, 1, 0, 6 }
+                        barrier
                     );
 
                     VkImageBlit blit = {};
@@ -1098,29 +1099,37 @@ namespace {
                         VK_FILTER_LINEAR
                     );
 
+                    barrier.image(img.image())
+                        .set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                        .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
+                        .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                        .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
                     ::record_img_mem_barrier(
                         cur_cmd_buf,
-                        img.image(),
-                        VK_ACCESS_TRANSFER_WRITE_BIT,
-                        VK_ACCESS_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        { VK_IMAGE_ASPECT_COLOR_BIT, i, 1, 0, 6 }
+                        barrier
                     );
                 }
 
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.image(img.image())
+                    .set_src_access(VK_ACCESS_TRANSFER_READ_BIT)
+                    .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                    .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_base(0)
+                    .mip_count(img.mip_levels())
+                    .layer_base(0)
+                    .layer_count(6);
+
                 ::record_img_mem_barrier(
                     cur_cmd_buf,
-                    img.image(),
-                    VK_ACCESS_TRANSFER_READ_BIT,
-                    VK_ACCESS_SHADER_READ_BIT,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     VK_PIPELINE_STAGE_TRANSFER_BIT,
                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                    { VK_IMAGE_ASPECT_COLOR_BIT, 0, img.mip_levels(), 0, 6 }
+                    barrier
                 );
             }
         }
