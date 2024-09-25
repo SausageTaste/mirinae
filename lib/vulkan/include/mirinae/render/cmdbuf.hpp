@@ -69,6 +69,8 @@ namespace mirinae {
         VkRect2D info_ = {};
     };
 
+    static_assert(sizeof(Rect2D) == sizeof(VkRect2D));
+
 
     class Viewport {
 
@@ -123,6 +125,72 @@ namespace mirinae {
 
     private:
         VkViewport info_;
+    };
+
+
+    class RenderPassBeginInfo {
+
+    public:
+        RenderPassBeginInfo() {
+            info_ = {};
+            info_.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        }
+
+        RenderPassBeginInfo& rp(VkRenderPass pass) {
+            info_.renderPass = pass;
+            return *this;
+        }
+
+        RenderPassBeginInfo& fbuf(VkFramebuffer fbuf) {
+            info_.framebuffer = fbuf;
+            return *this;
+        }
+
+        template <typename T>
+        RenderPassBeginInfo& xy(T x, T y) {
+            info_.renderArea.offset.x = static_cast<int32_t>(x);
+            info_.renderArea.offset.y = static_cast<int32_t>(y);
+            return *this;
+        }
+
+        template <typename TArr>
+        RenderPassBeginInfo& xy(const TArr& x) {
+            return this->xy(x[0], x[1]);
+        }
+
+        template <typename T>
+        RenderPassBeginInfo& wh(T w, T h) {
+            info_.renderArea.extent.width = static_cast<uint32_t>(w);
+            info_.renderArea.extent.height = static_cast<uint32_t>(h);
+            return *this;
+        }
+
+        template <typename TArr>
+        RenderPassBeginInfo& wh(const TArr& wh) {
+            return this->wh(wh[0], wh[1]);
+        }
+
+        RenderPassBeginInfo& wh(const VkExtent2D& wh) {
+            info_.renderArea.extent = wh;
+            return *this;
+        }
+
+        RenderPassBeginInfo& clear_value_count(uint32_t count) {
+            info_.clearValueCount = count;
+            return *this;
+        }
+
+        RenderPassBeginInfo& clear_values(const VkClearValue* values) {
+            info_.pClearValues = values;
+            return *this;
+        }
+
+        void record_begin(VkCommandBuffer cmdbuf) const {
+            vkCmdBeginRenderPass(cmdbuf, &info_, VK_SUBPASS_CONTENTS_INLINE);
+        }
+
+    private:
+        VkRenderPassBeginInfo info_;
     };
 
 
