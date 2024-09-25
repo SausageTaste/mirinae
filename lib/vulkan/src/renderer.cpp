@@ -872,18 +872,14 @@ namespace {
             ) {
                 auto& rp = rp_pkg.get("env_lut");
 
-                VkRenderPassBeginInfo rp_info{};
-                rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                rp_info.renderPass = rp.renderpass();
-                rp_info.renderArea.offset = { 0, 0 };
-                rp_info.renderArea.extent = img_.extent2d();
-                rp_info.clearValueCount = rp.clear_value_count();
-                rp_info.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(fbuf_.get())
+                    .wh(img_.width(), img_.height())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cmdbuf);
 
-                rp_info.framebuffer = fbuf_.get();
-                vkCmdBeginRenderPass(
-                    cmdbuf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
@@ -914,12 +910,10 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("env_base");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
 
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
@@ -937,14 +931,12 @@ namespace {
                 mirinae::Rect2D{}
                     .set_wh(base_cube.extent2d())
                     .record_scissor(cur_cmd_buf);
-                rp_info.renderArea.extent = base_cube.extent2d();
+                rp_info.wh(base_cube.width(), base_cube.height());
 
                 for (int i = 0; i < 6; ++i) {
-                    rp_info.framebuffer = cube_map.base().face_fbuf(i);
+                    rp_info.fbuf(cube_map.base().face_fbuf(i))
+                        .record_begin(cur_cmd_buf);
 
-                    vkCmdBeginRenderPass(
-                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                    );
                     vkCmdBindPipeline(
                         cur_cmd_buf,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1101,12 +1093,10 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("env_sky");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
 
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
@@ -1124,14 +1114,12 @@ namespace {
                 mirinae::Rect2D{}
                     .set_wh(base_cube.width(), base_cube.height())
                     .record_scissor(cur_cmd_buf);
-                rp_info.renderArea.extent = base_cube.extent2d();
+                rp_info.wh(base_cube.width(), base_cube.height());
 
                 for (int i = 0; i < 6; ++i) {
-                    rp_info.framebuffer = cube_map.base().face_fbuf(i);
+                    rp_info.fbuf(cube_map.base().face_fbuf(i))
+                        .record_begin(cur_cmd_buf);
 
-                    vkCmdBeginRenderPass(
-                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                    );
                     vkCmdBindPipeline(
                         cur_cmd_buf,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1176,12 +1164,10 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("env_diffuse");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
 
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
@@ -1195,13 +1181,12 @@ namespace {
 
                 const mirinae::Viewport viewport{ diffuse.extent2d() };
                 const mirinae::Rect2D scissor{ diffuse.extent2d() };
-                rp_info.renderArea.extent = diffuse.extent2d();
+                rp_info.wh(diffuse.extent2d());
 
                 for (int i = 0; i < 6; ++i) {
-                    rp_info.framebuffer = diffuse.face_fbuf(i);
-                    vkCmdBeginRenderPass(
-                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                    );
+                    rp_info.fbuf(diffuse.face_fbuf(i))
+                        .record_begin(cur_cmd_buf);
+
                     vkCmdBindPipeline(
                         cur_cmd_buf,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1252,12 +1237,10 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("env_specular");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
 
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
@@ -1272,15 +1255,14 @@ namespace {
                 for (auto& mip : specular.mips()) {
                     const mirinae::Rect2D scissor{ mip.extent2d() };
                     const mirinae::Viewport viewport{ scissor.extent2d() };
-                    rp_info.renderArea.extent = scissor.extent2d();
+                    rp_info.wh(scissor.extent2d());
 
                     for (int i = 0; i < 6; ++i) {
                         auto& face = mip.faces_[i];
 
-                        rp_info.framebuffer = face.fbuf_.get();
-                        vkCmdBeginRenderPass(
-                            cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                        );
+                        rp_info.fbuf(face.fbuf_.get())
+                            .record_begin(cur_cmd_buf);
+
                         vkCmdBindPipeline(
                             cur_cmd_buf,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1352,18 +1334,14 @@ namespace {
             {
                 auto& shadow = shadow_maps_.at(0);
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow.fbuf();
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow.tex_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
@@ -1381,10 +1359,12 @@ namespace {
                     const auto& cascade = cascade_info_.cascades_.at(cascade_i);
                     auto& offset = offsets.at(cascade_i);
 
-                    mirinae::Viewport{}.set_xy(offset)
+                    mirinae::Viewport{}
+                        .set_xy(offset)
                         .set_wh(half_width, half_height)
                         .record_single(cur_cmd_buf);
-                    mirinae::Rect2D{}.set_xy(offset)
+                    mirinae::Rect2D{}
+                        .set_xy(offset)
                         .set_wh(half_width, half_height)
                         .record_scissor(cur_cmd_buf);
 
@@ -1436,18 +1416,14 @@ namespace {
             {
                 auto& shadow = shadow_maps_.at(1);
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow.fbuf();
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow.tex_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
@@ -1512,18 +1488,14 @@ namespace {
             {
                 auto& shadow = shadow_maps_.at(0);
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow.fbuf();
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow.tex_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
@@ -1598,18 +1570,14 @@ namespace {
             {
                 auto& shadow = shadow_maps_.at(1);
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow.fbuf();
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow.tex_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
@@ -1685,18 +1653,14 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("gbuf");
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_exd;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_exd)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
@@ -1754,18 +1718,14 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("gbuf_skin");
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_exd;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_exd)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
@@ -1880,18 +1840,15 @@ namespace {
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("compo");
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_ext;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
+
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
@@ -1985,18 +1942,14 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("transp");
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_ext;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
@@ -2066,18 +2019,14 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("transp_skin");
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_ext;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
@@ -2158,16 +2107,14 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("debug_mesh");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.framebuffer = rp.fbuf_at(image_index.get());
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.renderArea.extent = fbuf_ext;
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cmdbuf);
 
-            vkCmdBeginRenderPass(cmdbuf, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
@@ -2256,18 +2203,15 @@ namespace {
             mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("fillscreen");
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = shain_exd;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
 
-            vkCmdBeginRenderPass(
-                cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(shain_exd)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cmdbuf);
+
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
@@ -2536,18 +2480,15 @@ namespace {
             // Shader: Overlay
             {
                 auto& rp = rp_.get("overlay");
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = swapchain_.extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(rp.fbuf_at(image_index.get()))
+                    .wh(swapchain_.extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
+
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
