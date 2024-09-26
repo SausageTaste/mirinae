@@ -10,6 +10,7 @@
 #include "mirinae/math/glm_fmt.hpp"
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
+#include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass.hpp"
 
 
@@ -32,34 +33,6 @@ namespace {
         return std::make_pair(
             static_cast<T>(static_cast<double>(w) * factor),
             static_cast<T>(static_cast<double>(h) * factor)
-        );
-    }
-
-
-    void record_img_mem_barrier(
-        VkCommandBuffer cmdbuf,
-        VkImage img,
-        VkAccessFlagBits src_access,
-        VkAccessFlagBits dst_access,
-        VkImageLayout old_layout,
-        VkImageLayout new_layout,
-        VkPipelineStageFlagBits src_stage,
-        VkPipelineStageFlagBits dst_stage,
-        VkImageSubresourceRange subres_range
-    ) {
-        VkImageMemoryBarrier barrier = {};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.srcAccessMask = src_access;
-        barrier.dstAccessMask = dst_access;
-        barrier.oldLayout = old_layout;
-        barrier.newLayout = new_layout;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = img;
-        barrier.subresourceRange = subres_range;
-
-        vkCmdPipelineBarrier(
-            cmdbuf, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier
         );
     }
 
@@ -441,7 +414,7 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
-            if (timer_.check_if_elapsed(0)) {
+            if (timer_.check_if_elapsed(100)) {
                 record_sky(cur_cmd_buf, desc_set_, rp_pkg);
 
                 VkMemoryBarrier mem_barrier;
@@ -899,36 +872,25 @@ namespace {
             ) {
                 auto& rp = rp_pkg.get("env_lut");
 
-                VkRenderPassBeginInfo rp_info{};
-                rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                rp_info.renderPass = rp.renderpass();
-                rp_info.renderArea.offset = { 0, 0 };
-                rp_info.renderArea.extent = img_.extent2d();
-                rp_info.clearValueCount = rp.clear_value_count();
-                rp_info.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(fbuf_.get())
+                    .wh(img_.width(), img_.height())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cmdbuf);
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = img_.width();
-                viewport.height = img_.height();
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = img_.extent2d();
-
-                rp_info.framebuffer = fbuf_.get();
-                vkCmdBeginRenderPass(
-                    cmdbuf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                vkCmdSetViewport(cmdbuf, 0, 1, &viewport);
-                vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
+                mirinae::Viewport{}
+                    .set_wh(img_.width(), img_.height())
+                    .record_single(cmdbuf);
+                mirinae::Rect2D{}
+                    .set_wh(img_.width(), img_.height())
+                    .record_scissor(cmdbuf);
+
                 vkCmdDraw(cmdbuf, 6, 1, 0, 0);
                 vkCmdEndRenderPass(cmdbuf);
             }
@@ -948,25 +910,16 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("env_base");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
-
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
 
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
             );
+
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
             for (auto& cube_map : cube_map_) {
                 auto& base_cube = cube_map.base();
@@ -974,20 +927,18 @@ namespace {
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
-                viewport.width = base_cube.width();
-                viewport.height = base_cube.height();
-                scissor.extent = base_cube.extent2d();
-                rp_info.renderArea.extent = base_cube.extent2d();
-
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                mirinae::Viewport{}
+                    .set_wh(base_cube.extent2d())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(base_cube.extent2d())
+                    .record_scissor(cur_cmd_buf);
+                rp_info.wh(base_cube.width(), base_cube.height());
 
                 for (int i = 0; i < 6; ++i) {
-                    rp_info.framebuffer = cube_map.base().face_fbuf(i);
+                    rp_info.fbuf(cube_map.base().face_fbuf(i))
+                        .record_begin(cur_cmd_buf);
 
-                    vkCmdBeginRenderPass(
-                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                    );
                     vkCmdBindPipeline(
                         cur_cmd_buf,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1007,34 +958,18 @@ namespace {
 
                     for (auto& pair : draw_sheet.static_pairs_) {
                         for (auto& unit : pair.model_->render_units_) {
-                            auto unit_desc = unit.get_desc_set(frame_index.get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &unit_desc,
-                                0,
-                                nullptr
-                            );
+                            descset_info.first_set(0)
+                                .set(unit.get_desc_set(frame_index.get()))
+                                .record(cur_cmd_buf);
+
                             unit.record_bind_vert_buf(cur_cmd_buf);
 
                             for (auto& actor : pair.actors_) {
-                                auto actor_desc = actor.actor_->get_desc_set(
-                                    frame_index.get()
-                                );
-                                vkCmdBindDescriptorSets(
-                                    cur_cmd_buf,
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    rp.pipeline_layout(),
-                                    1,
-                                    1,
-                                    &actor_desc,
-                                    0,
-                                    nullptr
-                                );
+                                descset_info.first_set(1)
+                                    .set(actor.actor_->get_desc_set(
+                                        frame_index.get()
+                                    ))
+                                    .record(cur_cmd_buf);
 
                                 push_const.proj_view_ = proj_mat *
                                                         CUBE_VIEW_MATS[i] *
@@ -1060,32 +995,40 @@ namespace {
 
                 auto& img = cube_map.base().img_;
                 for (uint32_t i = 1; i < img.mip_levels(); ++i) {
-                    ::record_img_mem_barrier(
+                    mirinae::ImageMemoryBarrier barrier;
+                    barrier.image(img.image())
+                        .set_src_access(VK_ACCESS_NONE)
+                        .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                        .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                        .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mip_base(i)
+                        .mip_count(1)
+                        .layer_base(0)
+                        .layer_count(6);
+                    barrier.record_single(
                         cur_cmd_buf,
-                        img.image(),
-                        VK_ACCESS_NONE,
-                        VK_ACCESS_TRANSFER_WRITE_BIT,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        { VK_IMAGE_ASPECT_COLOR_BIT, i, 1, 0, 6 }
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
                     );
 
-                    VkImageBlit blit = {};
-                    blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    blit.srcSubresource.layerCount = 6;
-                    blit.srcSubresource.mipLevel = i - 1;
-                    blit.srcOffsets[1].x = int32_t(img.width() >> (i - 1));
-                    blit.srcOffsets[1].y = int32_t(img.height() >> (i - 1));
-                    blit.srcOffsets[1].z = 1;
-
-                    blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    blit.dstSubresource.layerCount = 6;
-                    blit.dstSubresource.mipLevel = i;
-                    blit.dstOffsets[1].x = int32_t(img.width() >> i);
-                    blit.dstOffsets[1].y = int32_t(img.height() >> i);
-                    blit.dstOffsets[1].z = 1;
+                    mirinae::ImageBlit blit;
+                    blit.set_src_offsets_full(
+                        img.width() >> (i - 1), img.height() >> (i - 1)
+                    );
+                    blit.set_dst_offsets_full(
+                        img.width() >> i, img.height() >> i
+                    );
+                    blit.src_subres()
+                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mip_level(i - 1)
+                        .layer_base(0)
+                        .layer_count(6);
+                    blit.dst_subres()
+                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mip_level(i)
+                        .layer_base(0)
+                        .layer_count(6);
 
                     vkCmdBlitImage(
                         cur_cmd_buf,
@@ -1094,33 +1037,37 @@ namespace {
                         img.image(),
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         1,
-                        &blit,
+                        &blit.get(),
                         VK_FILTER_LINEAR
                     );
 
-                    ::record_img_mem_barrier(
+                    barrier.image(img.image())
+                        .set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                        .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
+                        .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                        .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                    barrier.record_single(
                         cur_cmd_buf,
-                        img.image(),
-                        VK_ACCESS_TRANSFER_WRITE_BIT,
-                        VK_ACCESS_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        { VK_IMAGE_ASPECT_COLOR_BIT, i, 1, 0, 6 }
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
                     );
                 }
 
-                ::record_img_mem_barrier(
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.image(img.image())
+                    .set_src_access(VK_ACCESS_TRANSFER_READ_BIT)
+                    .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                    .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_base(0)
+                    .mip_count(img.mip_levels())
+                    .layer_base(0)
+                    .layer_count(6);
+                barrier.record_single(
                     cur_cmd_buf,
-                    img.image(),
-                    VK_ACCESS_TRANSFER_READ_BIT,
-                    VK_ACCESS_SHADER_READ_BIT,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                    { VK_IMAGE_ASPECT_COLOR_BIT, 0, img.mip_levels(), 0, 6 }
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                 );
             }
         }
@@ -1132,21 +1079,10 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("env_sky");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
-
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
 
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
@@ -1158,36 +1094,28 @@ namespace {
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
-                viewport.width = base_cube.width();
-                viewport.height = base_cube.height();
-                scissor.extent = base_cube.extent2d();
-                rp_info.renderArea.extent = base_cube.extent2d();
-
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                mirinae::Viewport{}
+                    .set_wh(base_cube.width(), base_cube.height())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(base_cube.width(), base_cube.height())
+                    .record_scissor(cur_cmd_buf);
+                rp_info.wh(base_cube.width(), base_cube.height());
 
                 for (int i = 0; i < 6; ++i) {
-                    rp_info.framebuffer = cube_map.base().face_fbuf(i);
+                    rp_info.fbuf(cube_map.base().face_fbuf(i))
+                        .record_begin(cur_cmd_buf);
 
-                    vkCmdBeginRenderPass(
-                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                    );
                     vkCmdBindPipeline(
                         cur_cmd_buf,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
                         rp.pipeline()
                     );
 
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        0,
-                        1,
-                        &desc_set,
-                        0,
-                        nullptr
-                    );
+                    mirinae::DescSetBindInfo{}
+                        .layout(rp.pipeline_layout())
+                        .set(desc_set)
+                        .record(cur_cmd_buf);
 
                     mirinae::U_EnvSkyPushConst pc;
                     pc.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
@@ -1216,25 +1144,16 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("env_diffuse");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
 
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
             for (auto& cube_map : cube_map_) {
                 const auto& diffuse = cube_map.diffuse();
@@ -1242,37 +1161,26 @@ namespace {
                     glm::dmat4(1), -cube_map.world_pos_
                 );
 
-                viewport.width = diffuse.width();
-                viewport.height = diffuse.height();
-                scissor.extent = diffuse.extent2d();
-                rp_info.renderArea.extent = diffuse.extent2d();
+                const mirinae::Viewport viewport{ diffuse.extent2d() };
+                const mirinae::Rect2D scissor{ diffuse.extent2d() };
+                rp_info.wh(diffuse.extent2d());
 
                 for (int i = 0; i < 6; ++i) {
-                    rp_info.framebuffer = diffuse.face_fbuf(i);
-                    vkCmdBeginRenderPass(
-                        cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                    );
+                    rp_info.fbuf(diffuse.face_fbuf(i))
+                        .record_begin(cur_cmd_buf);
+
                     vkCmdBindPipeline(
                         cur_cmd_buf,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
                         rp.pipeline()
                     );
 
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                    viewport.record_single(cur_cmd_buf);
+                    scissor.record_scissor(cur_cmd_buf);
 
                     for (auto& pair : draw_sheet.static_pairs_) {
-                        const auto desc_set = cube_map.desc_set();
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            0,
-                            1,
-                            &desc_set,
-                            0,
-                            nullptr
-                        );
+                        descset_info.set(cube_map.desc_set())
+                            .record(cur_cmd_buf);
 
                         mirinae::U_EnvdiffusePushConst push_const;
                         push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
@@ -1302,25 +1210,16 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("env_specular");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
 
             const auto proj_mat = glm::perspectiveRH_ZO(
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
             for (auto& cube_map : cube_map_) {
                 auto& specular = cube_map.specular();
@@ -1329,39 +1228,28 @@ namespace {
                 );
 
                 for (auto& mip : specular.mips()) {
-                    viewport.width = mip.width_;
-                    viewport.height = mip.height_;
-                    scissor.extent = mip.extent2d();
-                    rp_info.renderArea.extent = mip.extent2d();
+                    const mirinae::Rect2D scissor{ mip.extent2d() };
+                    const mirinae::Viewport viewport{ scissor.extent2d() };
+                    rp_info.wh(scissor.extent2d());
 
                     for (int i = 0; i < 6; ++i) {
                         auto& face = mip.faces_[i];
 
-                        rp_info.framebuffer = face.fbuf_.get();
-                        vkCmdBeginRenderPass(
-                            cur_cmd_buf, &rp_info, VK_SUBPASS_CONTENTS_INLINE
-                        );
+                        rp_info.fbuf(face.fbuf_.get())
+                            .record_begin(cur_cmd_buf);
+
                         vkCmdBindPipeline(
                             cur_cmd_buf,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
                             rp.pipeline()
                         );
 
-                        vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                        vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                        viewport.record_single(cur_cmd_buf);
+                        scissor.record_scissor(cur_cmd_buf);
 
                         for (auto& pair : draw_sheet.static_pairs_) {
-                            const auto desc_set = cube_map.desc_set();
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &desc_set,
-                                0,
-                                nullptr
-                            );
+                            descset_info.set(cube_map.desc_set())
+                                .record(cur_cmd_buf);
 
                             mirinae::U_EnvSpecularPushConst push_const;
                             push_const.proj_view_ = proj_mat *
@@ -1383,13 +1271,6 @@ namespace {
 
                         vkCmdEndRenderPass(cur_cmd_buf);
                     }
-
-                    viewport.width /= 2;
-                    viewport.height /= 2;
-                    scissor.extent.width /= 2;
-                    scissor.extent.height /= 2;
-                    rp_info.renderArea.extent.width /= 2;
-                    rp_info.renderArea.extent.height /= 2;
                 }
             }
         }
@@ -1419,27 +1300,17 @@ namespace {
             {
                 auto& shadow = shadow_maps_.at(0);
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow.fbuf();
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow.tex_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
-
-                VkViewport viewport{};
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-
-                VkRect2D scissor{};
 
                 const auto half_width = shadow.width() / 2.0;
                 const auto half_height = shadow.height() / 2.0;
@@ -1450,43 +1321,31 @@ namespace {
                     glm::dvec2{ half_width, half_height },
                 };
 
+                mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
                 for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
                     const auto& cascade = cascade_info_.cascades_.at(cascade_i);
                     auto& offset = offsets.at(cascade_i);
 
-                    viewport.x = offset.x;
-                    viewport.y = offset.y;
-                    viewport.width = half_width;
-                    viewport.height = half_height;
-
-                    scissor.offset.x = offset.x;
-                    scissor.offset.y = offset.y;
-                    scissor.extent.width = half_width;
-                    scissor.extent.height = half_height;
-
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                    mirinae::Viewport{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_single(cur_cmd_buf);
+                    mirinae::Rect2D{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_scissor(cur_cmd_buf);
 
                     for (auto& pair : draw_sheet.static_pairs_) {
                         for (auto& unit : pair.model_->render_units_) {
-                            auto unit_desc = unit.get_desc_set(frame_index.get()
-                            );
                             unit.record_bind_vert_buf(cur_cmd_buf);
 
                             for (auto& actor : pair.actors_) {
-                                auto actor_desc = actor.actor_->get_desc_set(
-                                    frame_index.get()
-                                );
-                                vkCmdBindDescriptorSets(
-                                    cur_cmd_buf,
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    rp.pipeline_layout(),
-                                    0,
-                                    1,
-                                    &actor_desc,
-                                    0,
-                                    nullptr
-                                );
+                                descset_info
+                                    .set(actor.actor_->get_desc_set(
+                                        frame_index.get()
+                                    ))
+                                    .record(cur_cmd_buf);
 
                                 mirinae::U_ShadowPushConst push_const;
                                 push_const.pvm_ = cascade.light_mat_ *
@@ -1515,35 +1374,26 @@ namespace {
             {
                 auto& shadow = shadow_maps_.at(1);
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow.fbuf();
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow.tex_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = shadow.width();
-                viewport.height = shadow.height();
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                mirinae::Viewport{}
+                    .set_wh(shadow.width(), shadow.height())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(shadow.tex_->extent())
+                    .record_scissor(cur_cmd_buf);
 
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = shadow.tex_->extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
                 for (auto& pair : draw_sheet.static_pairs_) {
                     for (auto& unit : pair.model_->render_units_) {
@@ -1551,19 +1401,10 @@ namespace {
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor.actor_->get_desc_set(
-                                frame_index.get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &actor_desc,
-                                0,
-                                nullptr
-                            );
+                            descset_info
+                                .set(actor.actor_->get_desc_set(frame_index.get(
+                                )))
+                                .record(cur_cmd_buf);
 
                             mirinae::U_ShadowPushConst push_const;
                             push_const.pvm_ = shadow.mat_ * actor.model_mat_;
@@ -1598,27 +1439,17 @@ namespace {
             {
                 auto& shadow = shadow_maps_.at(0);
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow.fbuf();
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow.tex_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
-
-                VkViewport viewport{};
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-
-                VkRect2D scissor{};
 
                 const auto half_width = shadow.width() / 2.0;
                 const auto half_height = shadow.height() / 2.0;
@@ -1629,22 +1460,20 @@ namespace {
                     glm::dvec2{ half_width, half_height },
                 };
 
+                mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
                 for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
                     const auto& cascade = cascade_info_.cascades_.at(cascade_i);
                     auto& offset = offsets.at(cascade_i);
 
-                    viewport.x = offset.x;
-                    viewport.y = offset.y;
-                    viewport.width = half_width;
-                    viewport.height = half_height;
-
-                    scissor.offset.x = offset.x;
-                    scissor.offset.y = offset.y;
-                    scissor.extent.width = half_width;
-                    scissor.extent.height = half_height;
-
-                    vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-                    vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                    mirinae::Viewport{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_single(cur_cmd_buf);
+                    mirinae::Rect2D{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_scissor(cur_cmd_buf);
 
                     for (auto& pair : draw_sheet.skinned_pairs_) {
                         for (auto& unit : pair.model_->runits_) {
@@ -1653,19 +1482,11 @@ namespace {
                             unit.record_bind_vert_buf(cur_cmd_buf);
 
                             for (auto& actor : pair.actors_) {
-                                auto actor_desc = actor.actor_->get_desc_set(
-                                    frame_index.get()
-                                );
-                                vkCmdBindDescriptorSets(
-                                    cur_cmd_buf,
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    rp.pipeline_layout(),
-                                    0,
-                                    1,
-                                    &actor_desc,
-                                    0,
-                                    nullptr
-                                );
+                                descset_info
+                                    .set(actor.actor_->get_desc_set(
+                                        frame_index.get()
+                                    ))
+                                    .record(cur_cmd_buf);
 
                                 mirinae::U_ShadowPushConst push_const;
                                 push_const.pvm_ = cascade.light_mat_ *
@@ -1694,35 +1515,26 @@ namespace {
             {
                 auto& shadow = shadow_maps_.at(1);
 
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = shadow.fbuf();
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = shadow.tex_->extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = shadow.width();
-                viewport.height = shadow.height();
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+                mirinae::Viewport{}
+                    .set_wh(shadow.width(), shadow.height())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(shadow.width(), shadow.height())
+                    .record_scissor(cur_cmd_buf);
 
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = shadow.tex_->extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
                 for (auto& pair : draw_sheet.skinned_pairs_) {
                     for (auto& unit : pair.model_->runits_) {
@@ -1730,19 +1542,10 @@ namespace {
                         unit.record_bind_vert_buf(cur_cmd_buf);
 
                         for (auto& actor : pair.actors_) {
-                            auto actor_desc = actor.actor_->get_desc_set(
-                                frame_index.get()
-                            );
-                            vkCmdBindDescriptorSets(
-                                cur_cmd_buf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                rp.pipeline_layout(),
-                                0,
-                                1,
-                                &actor_desc,
-                                0,
-                                nullptr
-                            );
+                            descset_info
+                                .set(actor.actor_->get_desc_set(frame_index.get(
+                                )))
+                                .record(cur_cmd_buf);
 
                             mirinae::U_ShadowPushConst push_const;
                             push_const.pvm_ = shadow.mat_ * actor.model_mat_;
@@ -1788,65 +1591,35 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("gbuf");
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_exd;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_exd)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_exd.width);
-            viewport.height = static_cast<float>(fbuf_exd.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+            mirinae::Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
 
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_exd;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
             for (auto& pair : draw_sheet.static_pairs_) {
                 for (auto& unit : pair.model_->render_units_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        0,
-                        1,
-                        &unit_desc,
-                        0,
-                        nullptr
-                    );
+                    descset_info.first_set(0)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
                     unit.record_bind_vert_buf(cur_cmd_buf);
 
                     for (auto& actor : pair.actors_) {
-                        auto actor_desc = actor.actor_->get_desc_set(
-                            frame_index.get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            1,
-                            1,
-                            &actor_desc,
-                            0,
-                            nullptr
-                        );
+                        descset_info.first_set(1)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -1868,65 +1641,35 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("gbuf_skin");
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_exd;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_exd)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_exd.width);
-            viewport.height = static_cast<float>(fbuf_exd.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+            mirinae::Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
 
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_exd;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
             for (auto& pair : draw_sheet.skinned_pairs_) {
                 for (auto& unit : pair.model_->runits_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        0,
-                        1,
-                        &unit_desc,
-                        0,
-                        nullptr
-                    );
+                    descset_info.first_set(0)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
                     unit.record_bind_vert_buf(cur_cmd_buf);
 
                     for (auto& actor : pair.actors_) {
-                        auto actor_desc = actor.actor_->get_desc_set(
-                            frame_index.get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            1,
-                            1,
-                            &actor_desc,
-                            0,
-                            nullptr
-                        );
+                        descset_info.first_set(1)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -2005,47 +1748,26 @@ namespace {
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("compo");
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_ext;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
+
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_ext.width);
-            viewport.height = static_cast<float>(fbuf_ext.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_ext;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
-
-            auto desc_main = desc_sets_.at(frame_index.get());
-            vkCmdBindDescriptorSets(
-                cur_cmd_buf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                rp.pipeline_layout(),
-                0,
-                1,
-                &desc_main,
-                0,
-                nullptr
-            );
+            mirinae::DescSetBindInfo{}
+                .layout(rp.pipeline_layout())
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cur_cmd_buf);
 
             vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
 
@@ -2121,77 +1843,38 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("transp");
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_ext;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_ext.width);
-            viewport.height = static_cast<float>(fbuf_ext.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_ext;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
-
-            auto desc_frame = desc_sets_.at(frame_index.get());
-            vkCmdBindDescriptorSets(
-                cur_cmd_buf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                rp.pipeline_layout(),
-                0,
-                1,
-                &desc_frame,
-                0,
-                nullptr
-            );
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+            descset_info.first_set(0)
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cur_cmd_buf);
 
             for (auto& pair : draw_sheet.static_pairs_) {
                 for (auto& unit : pair.model_->render_units_alpha_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        1,
-                        1,
-                        &unit_desc,
-                        0,
-                        nullptr
-                    );
+                    descset_info.first_set(1)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
                     unit.record_bind_vert_buf(cur_cmd_buf);
 
                     for (auto& actor : pair.actors_) {
-                        auto actor_desc = actor.actor_->get_desc_set(
-                            frame_index.get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            2,
-                            1,
-                            &actor_desc,
-                            0,
-                            nullptr
-                        );
+                        descset_info.first_set(2)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -2213,77 +1896,38 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("transp_skin");
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = fbuf_ext;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-            vkCmdBeginRenderPass(
-                cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
             vkCmdBindPipeline(
                 cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_ext.width);
-            viewport.height = static_cast<float>(fbuf_ext.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
+            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
 
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_ext;
-            vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
-
-            auto desc_frame = desc_sets_.at(frame_index.get());
-            vkCmdBindDescriptorSets(
-                cur_cmd_buf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                rp.pipeline_layout(),
-                0,
-                1,
-                &desc_frame,
-                0,
-                nullptr
-            );
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+            descset_info.first_set(0)
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cur_cmd_buf);
 
             for (auto& pair : draw_sheet.skinned_pairs_) {
                 for (auto& unit : pair.model_->runits_alpha_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    vkCmdBindDescriptorSets(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline_layout(),
-                        1,
-                        1,
-                        &unit_desc,
-                        0,
-                        nullptr
-                    );
+                    descset_info.first_set(1)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
                     unit.record_bind_vert_buf(cur_cmd_buf);
 
                     for (auto& actor : pair.actors_) {
-                        auto actor_desc = actor.actor_->get_desc_set(
-                            frame_index.get()
-                        );
-                        vkCmdBindDescriptorSets(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline_layout(),
-                            2,
-                            1,
-                            &actor_desc,
-                            0,
-                            nullptr
-                        );
+                        descset_info.first_set(2)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -2316,33 +1960,20 @@ namespace {
         ) {
             auto& rp = rp_pkg.get("debug_mesh");
 
-            VkRenderPassBeginInfo rp_info{};
-            rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rp_info.renderPass = rp.renderpass();
-            rp_info.framebuffer = rp.fbuf_at(image_index.get());
-            rp_info.renderArea.offset = { 0, 0 };
-            rp_info.renderArea.extent = fbuf_ext;
-            rp_info.clearValueCount = rp.clear_value_count();
-            rp_info.pClearValues = rp.clear_values();
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cmdbuf);
 
-            vkCmdBeginRenderPass(cmdbuf, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(fbuf_ext.width);
-            viewport.height = static_cast<float>(fbuf_ext.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cmdbuf, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = fbuf_ext;
-            vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
+            mirinae::Viewport{ fbuf_ext }.record_single(cmdbuf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cmdbuf);
         }
 
         void draw(
@@ -2425,47 +2056,26 @@ namespace {
             mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("fillscreen");
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = rp.renderpass();
-            renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = shain_exd;
-            renderPassInfo.clearValueCount = rp.clear_value_count();
-            renderPassInfo.pClearValues = rp.clear_values();
 
-            vkCmdBeginRenderPass(
-                cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-            );
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(shain_exd)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cmdbuf);
+
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(shain_exd.width);
-            viewport.height = static_cast<float>(shain_exd.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(cmdbuf, 0, 1, &viewport);
+            mirinae::Viewport{ shain_exd }.record_single(cmdbuf);
+            mirinae::Rect2D{ shain_exd }.record_scissor(cmdbuf);
 
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = shain_exd;
-            vkCmdSetScissor(cmdbuf, 0, 1, &scissor);
-
-            auto desc_main = desc_sets_.at(frame_index.get());
-            vkCmdBindDescriptorSets(
-                cmdbuf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                rp.pipeline_layout(),
-                0,
-                1,
-                &desc_main,
-                0,
-                nullptr
-            );
+            mirinae::DescSetBindInfo{}
+                .layout(rp.pipeline_layout())
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cmdbuf);
 
             vkCmdDraw(cmdbuf, 3, 1, 0, 0);
 
@@ -2716,35 +2326,25 @@ namespace {
             // Shader: Overlay
             {
                 auto& rp = rp_.get("overlay");
-                VkRenderPassBeginInfo renderPassInfo{};
-                renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassInfo.renderPass = rp.renderpass();
-                renderPassInfo.framebuffer = rp.fbuf_at(image_index.get());
-                renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = swapchain_.extent();
-                renderPassInfo.clearValueCount = rp.clear_value_count();
-                renderPassInfo.pClearValues = rp.clear_values();
 
-                vkCmdBeginRenderPass(
-                    cur_cmd_buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE
-                );
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.renderpass())
+                    .fbuf(rp.fbuf_at(image_index.get()))
+                    .wh(swapchain_.extent())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cur_cmd_buf);
+
                 vkCmdBindPipeline(
                     cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = static_cast<float>(swapchain_.width());
-                viewport.height = static_cast<float>(swapchain_.height());
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(cur_cmd_buf, 0, 1, &viewport);
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = swapchain_.extent();
-                vkCmdSetScissor(cur_cmd_buf, 0, 1, &scissor);
+                mirinae::Viewport{}
+                    .set_wh(swapchain_.width(), swapchain_.height())
+                    .record_single(cur_cmd_buf);
+                mirinae::Rect2D{}
+                    .set_wh(swapchain_.width(), swapchain_.height())
+                    .record_scissor(cur_cmd_buf);
 
                 widget_ren_data.cmd_buf_ = cur_cmd_buf;
                 widget_ren_data.pipe_layout_ = rp.pipeline_layout();
