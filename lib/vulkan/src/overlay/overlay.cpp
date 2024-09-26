@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "mirinae/overlay/text.hpp"
+#include "mirinae/render/cmdbuf.hpp"
 
 
 namespace {
@@ -47,18 +48,11 @@ namespace {
         }
 
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
+            mirinae::DescSetBindInfo descset_info{ udata.pipe_layout_ };
+
             for (auto& overlay : render_units_) {
-                auto desc_main = overlay.get_desc_set(udata.frame_index_);
-                vkCmdBindDescriptorSets(
-                    udata.cmd_buf_,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    udata.pipe_layout_,
-                    0,
-                    1,
-                    &desc_main,
-                    0,
-                    nullptr
-                );
+                descset_info.set(overlay.get_desc_set(udata.frame_index_))
+                    .record(udata.cmd_buf_);
 
                 vkCmdPushConstants(
                     udata.cmd_buf_,

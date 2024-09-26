@@ -6,6 +6,8 @@
 #include <daltools/img/backend/ktx.hpp>
 #include <daltools/img/backend/stb.hpp>
 
+#include "mirinae/render/cmdbuf.hpp"
+
 
 namespace {
 
@@ -237,81 +239,14 @@ namespace {
         return true;
     }
 
-    void transition_image_layout(
-        const VkImage image,
-        const uint32_t mip_levels,
-        const VkFormat format,
-        const VkImageLayout old_layout,
-        const VkImageLayout new_layout,
-        mirinae::CommandPool& cmd_pool,
-        VkQueue graphics_queue,
-        VkDevice logi_device
-    ) {
-        auto cmd_buf = cmd_pool.begin_single_time(logi_device);
-
-        VkImageMemoryBarrier barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.oldLayout = old_layout;
-        barrier.newLayout = new_layout;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = image;
-        barrier.srcAccessMask = 0;  // TODO
-        barrier.dstAccessMask = 0;  // TODO
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = mip_levels;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
-
-        VkPipelineStageFlags src_stage;
-        VkPipelineStageFlags dst_stage;
-        if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED &&
-            new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-            barrier.srcAccessMask = 0;
-            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-            src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-            dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        } else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-                   new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-            src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-            dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        } else {
-            spdlog::error("unsupported layout transition!");
-        }
-
-        vkCmdPipelineBarrier(
-            cmd_buf,
-            src_stage,
-            dst_stage,
-            0,
-            0,
-            nullptr,
-            0,
-            nullptr,
-            1,
-            &barrier
-        );
-
-        cmd_pool.end_single_time(cmd_buf, graphics_queue, logi_device);
-    }
-
     void copy_buffer_to_image(
+        const VkCommandBuffer cmdbuf,
         const VkImage dst_image,
         const VkBuffer src_buffer,
         const uint32_t width,
         const uint32_t height,
-        const uint32_t mip_level,
-        mirinae::CommandPool& cmd_pool,
-        VkQueue graphics_queue,
-        VkDevice logi_device
+        const uint32_t mip_level
     ) {
-        auto cmd_buf = cmd_pool.begin_single_time(logi_device);
-
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
         region.bufferRowLength = 0;
@@ -326,131 +261,95 @@ namespace {
         region.imageExtent = { width, height, 1 };
 
         vkCmdCopyBufferToImage(
-            cmd_buf,
+            cmdbuf,
             src_buffer,
             dst_image,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &region
         );
-
-        cmd_pool.end_single_time(cmd_buf, graphics_queue, logi_device);
     }
 
     void generate_mipmaps(
-        VkImage image,
-        uint32_t width,
-        uint32_t height,
-        uint32_t mip_levels,
-        mirinae::CommandPool& cmd_pool,
-        VkQueue graphics_queue,
-        VkDevice logi_device
+        const VkCommandBuffer cmdbuf,
+        const VkImage image,
+        const uint32_t width,
+        const uint32_t height,
+        const uint32_t mip_levels
     ) {
-        auto cmd_buf = cmd_pool.begin_single_time(logi_device);
+        mirinae::ImageMemoryBarrier barrier;
+        barrier.image(image)
+            .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+            .mip_count(1)
+            .layer_base(0)
+            .layer_count(1);
 
-        VkImageMemoryBarrier barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.image = image;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
-        barrier.subresourceRange.levelCount = 1;
-
-        int32_t mipWidth = width;
-        int32_t mipHeight = height;
+        int32_t mip_width = width;
+        int32_t mip_height = height;
         for (uint32_t i = 1; i < mip_levels; i++) {
-            barrier.subresourceRange.baseMipLevel = i - 1;
-            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-            vkCmdPipelineBarrier(
-                cmd_buf,
+            barrier.set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .mip_base(i - 1);
+            barrier.record_single(
+                cmdbuf,
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                0,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                1,
-                &barrier
+                VK_PIPELINE_STAGE_TRANSFER_BIT
             );
 
-            VkImageBlit blit{};
-            blit.srcOffsets[0] = { 0, 0, 0 };
-            blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
-            blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            blit.srcSubresource.mipLevel = i - 1;
-            blit.srcSubresource.baseArrayLayer = 0;
-            blit.srcSubresource.layerCount = 1;
-            blit.dstOffsets[0] = { 0, 0, 0 };
-            blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1,
-                                   mipHeight > 1 ? mipHeight / 2 : 1,
-                                   1 };
-            blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            blit.dstSubresource.mipLevel = i;
-            blit.dstSubresource.baseArrayLayer = 0;
-            blit.dstSubresource.layerCount = 1;
+            mirinae::ImageBlit blit;
+            blit.set_src_offsets_full(mip_width, mip_height)
+                .set_dst_offsets_full(
+                    mirinae::make_half_dim(mip_width),
+                    mirinae::make_half_dim(mip_height)
+                );
+            blit.src_subres()
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .mip_level(i - 1)
+                .layer_base(0)
+                .layer_count(1);
+            blit.dst_subres()
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .mip_level(i)
+                .layer_base(0)
+                .layer_count(1);
 
             vkCmdBlitImage(
-                cmd_buf,
+                cmdbuf,
                 image,
                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                 image,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 1,
-                &blit,
+                &blit.get(),
                 VK_FILTER_LINEAR
             );
 
-            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-            vkCmdPipelineBarrier(
-                cmd_buf,
+            barrier.set_src_access(VK_ACCESS_TRANSFER_READ_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            barrier.record_single(
+                cmdbuf,
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                0,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                1,
-                &barrier
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
             );
 
-            if (mipWidth > 1)
-                mipWidth /= 2;
-            if (mipHeight > 1)
-                mipHeight /= 2;
+            mip_width = mirinae::make_half_dim(mip_width);
+            mip_height = mirinae::make_half_dim(mip_height);
         }
 
-        barrier.subresourceRange.baseMipLevel = mip_levels - 1;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        vkCmdPipelineBarrier(
-            cmd_buf,
+        barrier.set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+            .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+            .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+            .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .mip_base(mip_levels - 1);
+        barrier.record_single(
+            cmdbuf,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            0,
-            0,
-            nullptr,
-            0,
-            nullptr,
-            1,
-            &barrier
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
         );
-
-        cmd_pool.end_single_time(cmd_buf, graphics_queue, logi_device);
     }
 
     void copy_to_img_and_transition(
@@ -464,37 +363,29 @@ namespace {
         VkQueue graphics_queue,
         VkDevice logi_device
     ) {
-        ::transition_image_layout(
-            image,
-            mip_levels,
-            format,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            cmd_pool,
-            graphics_queue,
-            logi_device
+        auto cmdbuf = cmd_pool.begin_single_time(logi_device);
+
+        mirinae::ImageMemoryBarrier barrier;
+        barrier.image(image)
+            .set_src_access(0)
+            .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+            .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+            .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+            .mip_base(0)
+            .mip_count(mip_levels)
+            .layer_base(0)
+            .layer_count(1);
+        barrier.record_single(
+            cmdbuf,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT
         );
 
-        ::copy_buffer_to_image(
-            image,
-            staging_buffer,
-            width,
-            height,
-            0,
-            cmd_pool,
-            graphics_queue,
-            logi_device
-        );
+        ::copy_buffer_to_image(cmdbuf, image, staging_buffer, width, height, 0);
+        ::generate_mipmaps(cmdbuf, image, width, height, mip_levels);
 
-        ::generate_mipmaps(
-            image,
-            width,
-            height,
-            mip_levels,
-            cmd_pool,
-            graphics_queue,
-            logi_device
-        );
+        cmd_pool.end_single_time(cmdbuf, graphics_queue, logi_device);
     }
 
 }  // namespace

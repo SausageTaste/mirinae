@@ -1,0 +1,218 @@
+#include "mirinae/render/cmdbuf.hpp"
+
+
+// Viewport
+namespace mirinae {
+
+    static_assert(sizeof(Viewport) == sizeof(VkViewport));
+
+    Viewport::Viewport() {
+        info_ = {};
+        info_.minDepth = 0;
+        info_.maxDepth = 1;
+    }
+
+    Viewport::Viewport(const VkExtent2D& wh) {
+        info_ = {};
+        info_.minDepth = 0;
+        info_.maxDepth = 1;
+        info_.width = static_cast<float>(wh.width);
+        info_.height = static_cast<float>(wh.height);
+    }
+
+    Viewport& Viewport::set_wh(const VkExtent2D& wh) {
+        return this->set_wh(wh.width, wh.height);
+    }
+
+    const VkViewport& Viewport::get() const { return info_; }
+
+    void Viewport::record_single(VkCommandBuffer cmdbuf) const {
+        vkCmdSetViewport(cmdbuf, 0, 1, &info_);
+    }
+
+}  // namespace mirinae
+
+
+// ImageMemoryBarrier
+namespace mirinae {
+
+    static_assert(sizeof(ImageMemoryBarrier) == sizeof(VkImageMemoryBarrier));
+
+#define CLS ImageMemoryBarrier
+
+    CLS::CLS() {
+        info_ = {};
+        info_.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        info_.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        info_.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    }
+
+    CLS& CLS::set_src_access(VkAccessFlags flags) {
+        info_.srcAccessMask = flags;
+        return *this;
+    }
+
+    CLS& CLS::add_src_access(VkAccessFlags flags) {
+        info_.srcAccessMask |= flags;
+        return *this;
+    }
+
+    CLS& CLS::set_dst_access(VkAccessFlags flags) {
+        info_.dstAccessMask = flags;
+        return *this;
+    }
+
+    CLS& CLS::add_dst_access(VkAccessFlags flags) {
+        info_.dstAccessMask |= flags;
+        return *this;
+    }
+
+    CLS& CLS::old_layout(VkImageLayout layout) {
+        info_.oldLayout = layout;
+        return *this;
+    }
+
+    CLS& CLS::new_layout(VkImageLayout layout) {
+        info_.newLayout = layout;
+        return *this;
+    }
+
+    CLS& CLS::image(VkImage img) {
+        info_.image = img;
+        return *this;
+    }
+
+    CLS& CLS::set_aspect_mask(VkImageAspectFlags flags) {
+        info_.subresourceRange.aspectMask = flags;
+        return *this;
+    }
+
+    CLS& CLS::add_aspect_mask(VkImageAspectFlags flags) {
+        info_.subresourceRange.aspectMask |= flags;
+        return *this;
+    }
+
+    CLS& CLS::mip_base(uint32_t level) {
+        info_.subresourceRange.baseMipLevel = level;
+        return *this;
+    }
+
+    CLS& CLS::mip_count(uint32_t count) {
+        info_.subresourceRange.levelCount = count;
+        return *this;
+    }
+
+    CLS& CLS::layer_base(uint32_t layer) {
+        info_.subresourceRange.baseArrayLayer = layer;
+        return *this;
+    }
+
+    CLS& CLS::layer_count(uint32_t count) {
+        info_.subresourceRange.layerCount = count;
+        return *this;
+    }
+
+    const VkImageMemoryBarrier& CLS::get() const { return info_; }
+
+    void CLS::record_single(
+        VkCommandBuffer cmdbuf,
+        VkPipelineStageFlags src_stage,
+        VkPipelineStageFlags dst_stage
+    ) const {
+        vkCmdPipelineBarrier(
+            cmdbuf, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &info_
+        );
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
+// ImageBlit
+namespace mirinae {
+
+    static_assert(sizeof(ImageBlit) == sizeof(VkImageBlit));
+
+#define CLS ImageBlit
+
+    CLS::CLS() { info_ = {}; }
+
+    ImageSubresourceLayers& CLS::src_subres() {
+        return *reinterpret_cast<ImageSubresourceLayers*>(&info_.srcSubresource
+        );
+    }
+
+    ImageSubresourceLayers& CLS::dst_subres() {
+        return *reinterpret_cast<ImageSubresourceLayers*>(&info_.dstSubresource
+        );
+    }
+
+    CLS& CLS::set_src_offsets_full(int32_t w, int32_t h) {
+        info_.srcOffsets[0] = { 0, 0, 0 };
+        info_.srcOffsets[1] = { w, h, 1 };
+        return *this;
+    }
+
+    CLS& CLS::set_dst_offsets_full(int32_t w, int32_t h) {
+        info_.dstOffsets[0] = { 0, 0, 0 };
+        info_.dstOffsets[1] = { w, h, 1 };
+        return *this;
+    }
+
+    const VkImageBlit& CLS::get() const { return info_; }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
+// DescSetBindInfo
+namespace mirinae {
+
+#define CLS DescSetBindInfo
+
+    CLS::CLS(VkPipelineLayout layout) : layout_(layout) {}
+
+    DescSetBindInfo& CLS::layout(VkPipelineLayout layout) {
+        layout_ = layout;
+        return *this;
+    }
+
+    DescSetBindInfo& CLS::first_set(uint32_t set) {
+        first_set_ = set;
+        return *this;
+    }
+
+    DescSetBindInfo& CLS::set(VkDescriptorSet set) {
+        desc_sets_.resize(1);
+        desc_sets_[0] = set;
+        return *this;
+    }
+
+    DescSetBindInfo& CLS::add(VkDescriptorSet set) {
+        desc_sets_.push_back(set);
+        return *this;
+    }
+
+    DescSetBindInfo& CLS::clear() {
+        desc_sets_.clear();
+        return *this;
+    }
+
+    void CLS::record(VkCommandBuffer cmdbuf) {
+        vkCmdBindDescriptorSets(
+            cmdbuf,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            layout_,
+            first_set_,
+            static_cast<uint32_t>(desc_sets_.size()),
+            desc_sets_.data(),
+            0,
+            nullptr
+        );
+    }
+
+#undef CLS
+
+}  // namespace mirinae
