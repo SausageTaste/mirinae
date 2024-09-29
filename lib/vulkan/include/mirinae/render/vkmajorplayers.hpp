@@ -140,20 +140,21 @@ namespace mirinae {
         FbufCinfo& set_dim(const VkExtent2D& extent);
         FbufCinfo& set_layers(uint32_t layers);
 
-        FbufCinfo& set_single_attach(const VkImageView& attachments);
-        FbufCinfo& set_attachments(const std::vector<VkImageView>& arr);
+        FbufCinfo& clear_attach();
+        FbufCinfo& add_attach(const VkImageView& attachments);
+        FbufCinfo& add_attach(const VkImageView* arr, size_t count);
+        FbufCinfo& add_attach(const std::vector<VkImageView>& arr);
 
         template <size_t TSize>
-        FbufCinfo& set_attachments(const std::array<VkImageView, TSize>& arr) {
-            cinfo_.attachmentCount = TSize;
-            cinfo_.pAttachments = arr.data();
-            return *this;
+        FbufCinfo& add_attach(const std::array<VkImageView, TSize>& arr) {
+            return this->add_attach(arr.data(), arr.size());
         }
 
         VkFramebuffer build(VulkanDevice& device) const;
 
     private:
         VkFramebufferCreateInfo cinfo_ = {};
+        std::vector<VkImageView> attachments_;
     };
 
 

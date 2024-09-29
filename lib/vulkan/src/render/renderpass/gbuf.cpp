@@ -122,16 +122,12 @@ namespace { namespace gbuf {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             {
-                const std::array<VkImageView, 4> attachments{
-                    fbuf_bundle.depth().image_view(),
-                    fbuf_bundle.albedo().image_view(),
-                    fbuf_bundle.normal().image_view(),
-                    fbuf_bundle.material().image_view(),
-                };
-
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(renderpass_)
-                    .set_attachments(attachments)
+                    .add_attach(fbuf_bundle.depth().image_view())
+                    .add_attach(fbuf_bundle.albedo().image_view())
+                    .add_attach(fbuf_bundle.normal().image_view())
+                    .add_attach(fbuf_bundle.material().image_view())
                     .set_dim(width, height);
 
                 for (int i = 0; i < swapchain.views_count(); ++i)
