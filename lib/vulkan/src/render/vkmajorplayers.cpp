@@ -344,6 +344,14 @@ namespace mirinae {
         return *this;
     }
 
+    VkFramebuffer FbufCinfo::build(VulkanDevice& device) const {
+        VkFramebuffer output = VK_NULL_HANDLE;
+        VK_CHECK(
+            vkCreateFramebuffer(device.logi_device(), &cinfo_, nullptr, &output)
+        );
+        return output;
+    }
+
 }  // namespace mirinae
 
 
