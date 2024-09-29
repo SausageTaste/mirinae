@@ -59,6 +59,17 @@ do
     print("Skinned actor created:", slayer:get_id(), slayer:get_respath())
 end
 
+do
+    cherno = scene.create_static_actor("Sung/cherno.dun/cherno_swimsuit.dmd")
+
+    local t = cherno:get_transform()
+    t:set_pos(-2.5, 0, -3)
+    t:rotate(0, 0, 1, 0)
+    t:set_scale(0.75, 0.75, 0.75)
+
+    print("Static actor created:", cherno:get_id(), cherno:get_respath())
+end
+
 
 function cycle_anim(offset)
     actors = {bard, artist, slayer}
