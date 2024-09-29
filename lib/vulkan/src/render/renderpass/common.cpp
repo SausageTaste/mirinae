@@ -415,3 +415,56 @@ namespace mirinae {
     }
 
 }  // namespace mirinae
+
+
+// PipelineLayoutBuilder
+namespace mirinae {
+
+#define CLS PipelineLayoutBuilder
+
+    PipelineLayoutBuilder& CLS::reset_stage_flags(VkShaderStageFlags flags) {
+        pc_stage_flags_ = 0;
+        return *this;
+    }
+
+    PipelineLayoutBuilder& CLS::add_vertex_flag() {
+        pc_stage_flags_ |= VK_SHADER_STAGE_VERTEX_BIT;
+        return *this;
+    }
+
+    PipelineLayoutBuilder& CLS::add_frag_flag() {
+        pc_stage_flags_ |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        return *this;
+    }
+
+    PipelineLayoutBuilder& CLS::pc(uint32_t offset, uint32_t size) {
+        auto& added = pc_ranges_.emplace_back();
+        added.stageFlags = pc_stage_flags_;
+        added.offset = offset;
+        added.size = size;
+        return *this;
+    }
+
+    PipelineLayoutBuilder& CLS::desc(VkDescriptorSetLayout layout) {
+        desclayouts_.push_back(layout);
+        return *this;
+    }
+
+    VkPipelineLayout CLS::build(mirinae::VulkanDevice& device) {
+        VkPipelineLayoutCreateInfo create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        create_info.setLayoutCount = (uint32_t)desclayouts_.size();
+        create_info.pSetLayouts = desclayouts_.data();
+        create_info.pushConstantRangeCount = (uint32_t)pc_ranges_.size();
+        create_info.pPushConstantRanges = pc_ranges_.data();
+
+        VkPipelineLayout output = VK_NULL_HANDLE;
+        VK_CHECK(vkCreatePipelineLayout(
+            device.logi_device(), &create_info, nullptr, &output
+        ));
+        return output;
+    }
+
+#undef CLS
+
+}  // namespace mirinae

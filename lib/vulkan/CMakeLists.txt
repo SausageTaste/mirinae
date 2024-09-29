@@ -3,6 +3,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/overlay.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/common.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/gbuf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/cmdbuf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/mem_alloc.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/meshdata.cpp

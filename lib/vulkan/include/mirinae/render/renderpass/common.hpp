@@ -1,5 +1,8 @@
 #pragma once
 
+#include <map>
+
+#include "mirinae/render/renderee.hpp"
 #include "mirinae/render/vkdevice.hpp"
 
 
@@ -449,5 +452,117 @@ namespace mirinae {
         ColorBlendStateBuilder color_blend_state_;
         DynamicStateBuilder dynamic_state_;
     };
+
+
+    class PipelineLayoutBuilder {
+
+    public:
+        PipelineLayoutBuilder& reset_stage_flags(VkShaderStageFlags flags);
+        PipelineLayoutBuilder& add_vertex_flag();
+        PipelineLayoutBuilder& add_frag_flag();
+
+        PipelineLayoutBuilder& pc(uint32_t offset, uint32_t size);
+        PipelineLayoutBuilder& desc(VkDescriptorSetLayout layout);
+
+        VkPipelineLayout build(mirinae::VulkanDevice& device);
+
+    private:
+        std::vector<VkDescriptorSetLayout> desclayouts_;
+        std::vector<VkPushConstantRange> pc_ranges_;
+        VkShaderStageFlags pc_stage_flags_ = 0;
+    };
+
+
+    class FbufImageBundle {
+
+    public:
+        void init(
+            uint32_t width, uint32_t height, mirinae::TextureManager& tex_man
+        ) {
+            depth_ = tex_man.create_depth(width, height);
+            albedo_ = tex_man.create_attachment(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "albedo"
+            );
+            normal_ = tex_man.create_attachment(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "normal"
+            );
+            material_ = tex_man.create_attachment(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "material"
+            );
+            compo_ = tex_man.create_attachment(
+                width,
+                height,
+                VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+                mirinae::FbufUsage::color_attachment,
+                "compo"
+            );
+        }
+
+        uint32_t width() const { return depth_->width(); }
+        uint32_t height() const { return depth_->height(); }
+        VkExtent2D extent() const { return { this->width(), this->height() }; }
+
+        mirinae::ITexture& depth() { return *depth_; }
+        mirinae::ITexture& albedo() { return *albedo_; }
+        mirinae::ITexture& normal() { return *normal_; }
+        mirinae::ITexture& material() { return *material_; }
+        mirinae::ITexture& compo() { return *compo_; }
+
+    private:
+        std::unique_ptr<mirinae::ITexture> depth_;
+        std::unique_ptr<mirinae::ITexture> albedo_;
+        std::unique_ptr<mirinae::ITexture> normal_;
+        std::unique_ptr<mirinae::ITexture> material_;
+        std::unique_ptr<mirinae::ITexture> compo_;
+    };
+
+
+    class IRenderPassBundle {
+
+    public:
+        IRenderPassBundle(mirinae::VulkanDevice& device) : device_(device) {}
+
+        virtual ~IRenderPassBundle() = default;
+        virtual void destroy() = 0;
+
+        virtual VkFramebuffer fbuf_at(uint32_t index) const = 0;
+        virtual const VkClearValue* clear_values() const = 0;
+        virtual uint32_t clear_value_count() const = 0;
+
+        VkRenderPass renderpass() const { return renderpass_; }
+        VkPipeline pipeline() const { return pipeline_; }
+        VkPipelineLayout pipeline_layout() const { return layout_; }
+
+    protected:
+        mirinae::VulkanDevice& device_;
+        VkRenderPass renderpass_ = VK_NULL_HANDLE;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout layout_ = VK_NULL_HANDLE;
+    };
+
+
+    using RpMap = std::map<std::string, std::unique_ptr<IRenderPassBundle>>;
+
+    void create_rp_gbuf(
+        RpMap& out,
+        uint32_t width,
+        uint32_t height,
+        FbufImageBundle& fbuf_bundle,
+        DesclayoutManager& desclayouts,
+        Swapchain& swapchain,
+        VulkanDevice& device
+    );
 
 }  // namespace mirinae

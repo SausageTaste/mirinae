@@ -150,6 +150,8 @@ namespace mirinae {
             return *this;
         }
 
+        VkFramebuffer build(VulkanDevice& device) const;
+
     private:
         VkFramebufferCreateInfo cinfo_ = {};
     };
