@@ -1204,6 +1204,19 @@ namespace mirinae {
                     dst_vertex.texcoord_ = src_vertex.uv_;
                 }
 
+                const auto tri_count = dst_vertices.indices_.size() / 3;
+                for (size_t i = 0; i < tri_count; ++i) {
+                    const auto i0 = dst_vertices.indices_.at(i * 3 + 0);
+                    const auto i1 = dst_vertices.indices_.at(i * 3 + 1);
+                    const auto i2 = dst_vertices.indices_.at(i * 3 + 2);
+
+                    auto& v0 = dst_vertices.vertices_.at(i0);
+                    auto& v1 = dst_vertices.vertices_.at(i1);
+                    auto& v2 = dst_vertices.vertices_.at(i2);
+
+                    ::calc_tangents(v0, v1, v2);
+                }
+
                 MaterialResources mat_res;
                 mat_res.fetch(res_id, src_unit.material_, tex_man);
 
