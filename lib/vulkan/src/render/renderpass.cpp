@@ -20,7 +20,7 @@ namespace {
     ) {
         mirinae::FbufCinfo fbuf_cinfo;
         fbuf_cinfo.set_rp(renderpass)
-            .set_attachments(attachments)
+            .add_attach(attachments)
             .set_dim(width, height);
 
         VkFramebuffer output = VK_NULL_HANDLE;

@@ -234,11 +234,9 @@ namespace {
             const mirinae::IRenderPassBundle& rp, mirinae::VulkanDevice& device
         ) {
             for (auto& x : shadow_maps_) {
-                const auto img_view = x.tex_->image_view();
-
                 mirinae::FbufCinfo fbuf_info;
                 fbuf_info.set_rp(rp.renderpass())
-                    .set_single_attach(img_view)
+                    .add_attach(x.tex_->image_view())
                     .set_dim(x.width(), x.height());
                 x.fbuf_.init(fbuf_info.get(), device.logi_device());
             }
@@ -515,11 +513,9 @@ namespace {
                 }
 
                 for (uint32_t i = 0; i < 6; i++) {
-                    const auto attach = face_views_[i].get();
-
                     mirinae::FbufCinfo fbuf_cinfo;
                     fbuf_cinfo.set_rp(rp_pkg.get("env_diffuse").renderpass())
-                        .set_single_attach(attach)
+                        .add_attach(face_views_[i].get())
                         .set_dim(width, height);
                     fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
                 }
@@ -608,12 +604,10 @@ namespace {
                         iv_builder.base_arr_layer(face_i);
                         face.view_.reset(iv_builder, device);
 
-                        const auto attach = face.view_.get();
-
                         mirinae::FbufCinfo fbuf_cinfo;
                         fbuf_cinfo
                             .set_rp(rp_pkg.get("env_diffuse").renderpass())
-                            .set_single_attach(attach)
+                            .add_attach(face.view_.get())
                             .set_dim(mip.width_, mip.height_);
                         face.fbuf_.init(fbuf_cinfo.get(), device.logi_device());
                     }
@@ -715,13 +709,10 @@ namespace {
                 depth_map_ = tex_man.create_depth(img_.width(), img_.height());
 
                 for (uint32_t i = 0; i < 6; i++) {
-                    const std::array<VkImageView, 2> attachments = {
-                        depth_map_->image_view(), fbuf_face_views_[i].get()
-                    };
-
                     mirinae::FbufCinfo fbuf_cinfo;
                     fbuf_cinfo.set_rp(rp_pkg.get("env_base").renderpass())
-                        .set_attachments(attachments)
+                        .add_attach(depth_map_->image_view())
+                        .add_attach(fbuf_face_views_[i].get())
                         .set_dim(img_.width(), img_.height());
                     fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
                 }
@@ -838,11 +829,9 @@ namespace {
                     .image(img_.image());
                 view_.reset(iv_builder, device);
 
-                VkImageView attach = view_.get();
-
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(rp_pkg.get("env_lut").renderpass())
-                    .set_single_attach(attach)
+                    .add_attach(view_.get())
                     .set_dim(width, height);
                 fbuf_.init(fbuf_cinfo.get(), device.logi_device());
 

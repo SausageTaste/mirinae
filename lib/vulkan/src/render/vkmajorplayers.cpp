@@ -332,16 +332,37 @@ namespace mirinae {
         return *this;
     }
 
-    FbufCinfo& FbufCinfo::set_single_attach(const VkImageView& attachments) {
-        cinfo_.attachmentCount = 1;
-        cinfo_.pAttachments = &attachments;
+    FbufCinfo& FbufCinfo::clear_attach() {
+        attachments_.clear();
+
+        cinfo_.attachmentCount = 0;
+        cinfo_.pAttachments = nullptr;
+
         return *this;
     }
 
-    FbufCinfo& FbufCinfo::set_attachments(const std::vector<VkImageView>& arr) {
-        cinfo_.attachmentCount = static_cast<uint32_t>(arr.size());
-        cinfo_.pAttachments = arr.data();
+    FbufCinfo& FbufCinfo::add_attach(const VkImageView& attachments) {
+        attachments_.push_back(attachments);
+
+        cinfo_.attachmentCount = static_cast<uint32_t>(attachments_.size());
+        cinfo_.pAttachments = attachments_.data();
+
         return *this;
+    }
+
+    FbufCinfo& FbufCinfo::add_attach(const VkImageView* arr, size_t count) {
+        for (size_t i = 0; i < count; ++i) {
+            attachments_.push_back(arr[i]);
+        }
+
+        cinfo_.attachmentCount = static_cast<uint32_t>(attachments_.size());
+        cinfo_.pAttachments = attachments_.data();
+
+        return *this;
+    }
+
+    FbufCinfo& FbufCinfo::add_attach(const std::vector<VkImageView>& arr) {
+        return this->add_attach(arr.data(), arr.size());
     }
 
     VkFramebuffer FbufCinfo::build(VulkanDevice& device) const {
