@@ -134,8 +134,6 @@ namespace mirinae {
         const VkFramebufferCreateInfo& get() const;
 
         FbufCinfo& set_rp(VkRenderPass rp);
-        FbufCinfo& set_attach_count(uint32_t count);
-        FbufCinfo& set_attach(const VkImageView* attachments);
         FbufCinfo& set_dim(uint32_t width, uint32_t height);
         FbufCinfo& set_dim(const VkExtent2D& extent);
         FbufCinfo& set_layers(uint32_t layers);
