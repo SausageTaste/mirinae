@@ -305,16 +305,6 @@ namespace mirinae {
         return *this;
     }
 
-    FbufCinfo& FbufCinfo::set_attach_count(uint32_t count) {
-        cinfo_.attachmentCount = count;
-        return *this;
-    }
-
-    FbufCinfo& FbufCinfo::set_attach(const VkImageView* attachments) {
-        cinfo_.pAttachments = attachments;
-        return *this;
-    }
-
     FbufCinfo& FbufCinfo::set_dim(uint32_t width, uint32_t height) {
         cinfo_.width = width;
         cinfo_.height = height;
