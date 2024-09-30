@@ -14,74 +14,24 @@ namespace mirinae {
         class AttachDescView {
 
         public:
-            AttachDescView(VkAttachmentDescription& desc) : desc_{ desc } {}
+            AttachDescView(VkAttachmentDescription& desc);
+            ~AttachDescView();
 
-            ~AttachDescView() = default;
+            AttachDescView& format(VkFormat x);
+            AttachDescView& samples(VkSampleCountFlagBits x);
 
-            AttachDescView& format(VkFormat x) {
-                desc_.format = x;
-                return *this;
-            }
+            AttachDescView& load_op(VkAttachmentLoadOp x);
+            AttachDescView& stor_op(VkAttachmentStoreOp x);
+            AttachDescView& op_pair_clear_store();
+            AttachDescView& op_pair_load_store();
 
-            AttachDescView& samples(VkSampleCountFlagBits x) {
-                desc_.samples = x;
-                return *this;
-            }
+            AttachDescView& stencil_load(VkAttachmentLoadOp x);
+            AttachDescView& stencil_stor(VkAttachmentStoreOp x);
 
-            AttachDescView& load_op(VkAttachmentLoadOp x) {
-                desc_.loadOp = x;
-                return *this;
-            }
+            AttachDescView& ini_layout(VkImageLayout x);
+            AttachDescView& fin_layout(VkImageLayout x);
 
-            AttachDescView& stor_op(VkAttachmentStoreOp x) {
-                desc_.storeOp = x;
-                return *this;
-            }
-
-            AttachDescView& op_pair_clear_store() {
-                desc_.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-                desc_.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-                return *this;
-            }
-
-            AttachDescView& op_pair_load_store() {
-                desc_.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-                desc_.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-                return *this;
-            }
-
-            AttachDescView& stencil_load(VkAttachmentLoadOp x) {
-                desc_.stencilLoadOp = x;
-                return *this;
-            }
-
-            AttachDescView& stencil_stor(VkAttachmentStoreOp x) {
-                desc_.stencilStoreOp = x;
-                return *this;
-            }
-
-            AttachDescView& ini_layout(VkImageLayout x) {
-                desc_.initialLayout = x;
-                return *this;
-            }
-
-            AttachDescView& fin_layout(VkImageLayout x) {
-                desc_.finalLayout = x;
-                return *this;
-            }
-
-            AttachDescView& preset_default() {
-                desc_ = {};
-                // desc_.format = VK_FORMAT_UNDEFINED;
-                desc_.samples = VK_SAMPLE_COUNT_1_BIT;
-                desc_.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-                desc_.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-                desc_.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-                desc_.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-                // desc_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                // desc_.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                return *this;
-            }
+            AttachDescView& preset_default();
 
         private:
             VkAttachmentDescription& desc_;
@@ -91,32 +41,11 @@ namespace mirinae {
         class AttachDescBuilder {
 
         public:
-            const VkAttachmentDescription* data() const {
-                if (data_.empty())
-                    return nullptr;
-                else
-                    return data_.data();
-            }
+            const VkAttachmentDescription* data() const;
+            uint32_t size() const;
 
-            uint32_t size() const {
-                return static_cast<uint32_t>(data_.size());
-            }
-
-            AttachDescView add(const VkFormat format) {
-                auto& added = data_.emplace_back();
-                AttachDescView view{ added };
-                view.preset_default();
-                view.format(format);
-                return view;
-            }
-
-            AttachDescView dup(const VkFormat format) {
-                const auto& last = data_.back();
-                auto& added = data_.emplace_back(last);
-                AttachDescView view{ added };
-                view.format(format);
-                return view;
-            }
+            AttachDescView add(const VkFormat format);
+            AttachDescView dup(const VkFormat format);
 
         private:
             std::vector<VkAttachmentDescription> data_;
@@ -348,21 +277,9 @@ namespace mirinae {
         class TessellationStateBuilder {
 
         public:
-            TessellationStateBuilder() {
-                info_ = {};
-                info_.sType =
-                    VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-            }
-
-            TessellationStateBuilder& patch_ctrl_points(uint32_t count) {
-                info_.patchControlPoints = count;
-                enabled_ = true;
-                return *this;
-            }
-
-            const VkPipelineTessellationStateCreateInfo* get() const {
-                return enabled_ ? &info_ : nullptr;
-            }
+            TessellationStateBuilder();
+            TessellationStateBuilder& patch_ctrl_points(uint32_t count);
+            const VkPipelineTessellationStateCreateInfo* get() const;
 
         private:
             VkPipelineTessellationStateCreateInfo info_ = {};
@@ -466,12 +383,10 @@ namespace mirinae {
                 return *this;
             }
             DynamicStateBuilder& add_viewport() {
-                data_.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-                return *this;
+                return this->add(VK_DYNAMIC_STATE_VIEWPORT);
             }
             DynamicStateBuilder& add_scissor() {
-                data_.push_back(VK_DYNAMIC_STATE_SCISSOR);
-                return *this;
+                return this->add(VK_DYNAMIC_STATE_SCISSOR);
             }
 
             VkPipelineDynamicStateCreateInfo build() const;
