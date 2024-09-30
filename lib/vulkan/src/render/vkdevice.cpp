@@ -366,6 +366,10 @@ namespace {
             return properties_.limits.maxSamplerAnisotropy;
         }
 
+        bool is_tessellation_supported() const {
+            return features_.tessellationShader;
+        }
+
         std::vector<VkExtensionProperties> get_extensions() const {
             std::vector<VkExtensionProperties> output;
 
@@ -698,6 +702,8 @@ namespace {
                 deviceFeatures.samplerAnisotropy =
                     phys_dev.is_anisotropic_filtering_supported();
                 deviceFeatures.depthClamp = phys_dev.is_depth_clamp_supported();
+                deviceFeatures.tessellationShader =
+                    phys_dev.is_tessellation_supported();
             }
 
             const auto char_extension = ::make_char_vec(ext);
