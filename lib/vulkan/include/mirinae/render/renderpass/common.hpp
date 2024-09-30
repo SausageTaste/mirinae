@@ -271,15 +271,18 @@ namespace mirinae {
             ShaderStagesBuilder(mirinae::VulkanDevice& device);
             ~ShaderStagesBuilder();
 
+            ShaderStagesBuilder& add(
+                const mirinae::respath_t& spv_path,
+                const VkShaderStageFlagBits stage
+            );
+
             ShaderStagesBuilder& add_vert(const mirinae::respath_t& spv_path);
             ShaderStagesBuilder& add_frag(const mirinae::respath_t& spv_path);
+            ShaderStagesBuilder& add_tesc(const mirinae::respath_t& spv_path);
+            ShaderStagesBuilder& add_tese(const mirinae::respath_t& spv_path);
 
-            const VkPipelineShaderStageCreateInfo* data() const {
-                return stages_.data();
-            }
-            uint32_t size() const {
-                return static_cast<uint32_t>(stages_.size());
-            }
+            const VkPipelineShaderStageCreateInfo* data() const;
+            uint32_t size() const;
 
         private:
             void add_stage(VkShaderStageFlagBits stage, VkShaderModule module);
@@ -322,6 +325,48 @@ namespace mirinae {
 
             std::vector<VkVertexInputBindingDescription> bindings_;
             std::vector<VkVertexInputAttributeDescription> attribs_;
+        };
+
+
+        class InputAssemblyStateBuilder {
+
+        public:
+            InputAssemblyStateBuilder();
+
+            InputAssemblyStateBuilder& topology(VkPrimitiveTopology top);
+            InputAssemblyStateBuilder& topology_patch_list();
+
+            const VkPipelineInputAssemblyStateCreateInfo* get() const {
+                return &info_;
+            }
+
+        private:
+            VkPipelineInputAssemblyStateCreateInfo info_;
+        };
+
+
+        class TessellationStateBuilder {
+
+        public:
+            TessellationStateBuilder() {
+                info_ = {};
+                info_.sType =
+                    VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+            }
+
+            TessellationStateBuilder& patch_ctrl_points(uint32_t count) {
+                info_.patchControlPoints = count;
+                enabled_ = true;
+                return *this;
+            }
+
+            const VkPipelineTessellationStateCreateInfo* get() const {
+                return enabled_ ? &info_ : nullptr;
+            }
+
+        private:
+            VkPipelineTessellationStateCreateInfo info_ = {};
+            bool enabled_ = false;
         };
 
 
@@ -440,6 +485,8 @@ namespace mirinae {
 
         auto& shader_stages() { return shader_stages_; }
         auto& vertex_input_state() { return vertex_input_state_; }
+        auto& input_assembly_state() { return input_assembly_state_; }
+        auto& tes_state() { return tes_state_; }
         auto& rasterization_state() { return rasterization_state_; }
         auto& depth_stencil_state() { return depth_stencil_state_; }
         auto& color_blend_state() { return color_blend_state_; }
@@ -451,7 +498,8 @@ namespace mirinae {
         mirinae::VulkanDevice& device_;
         ShaderStagesBuilder shader_stages_;
         VertexInputStateBuilder vertex_input_state_;
-        VkPipelineInputAssemblyStateCreateInfo input_assembly_state_;
+        InputAssemblyStateBuilder input_assembly_state_;
+        TessellationStateBuilder tes_state_;
         VkPipelineViewportStateCreateInfo viewport_state_;
         RasterizationStateBuilder rasterization_state_;
         VkPipelineMultisampleStateCreateInfo multisampling_state_;
