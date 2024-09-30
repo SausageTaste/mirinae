@@ -1822,6 +1822,8 @@ namespace {
 
         void record(
             const VkCommandBuffer cur_cmd_buf,
+            const glm::mat4 proj_inv,
+            const glm::mat4 view_inv,
             const VkExtent2D& fbuf_ext,
             const ::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
@@ -1848,6 +1850,19 @@ namespace {
                 .layout(rp.pipeline_layout())
                 .set(desc_sets_.at(frame_index.get()))
                 .record(cur_cmd_buf);
+
+            mirinae::U_CompoSkyMain pc;
+            pc.proj_inv_ = proj_inv;
+            pc.view_inv_ = view_inv;
+
+            vkCmdPushConstants(
+                cur_cmd_buf,
+                rp.pipeline_layout(),
+                VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(mirinae::U_CompoSkyMain),
+                &pc
+            );
 
             vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
 
@@ -2266,9 +2281,12 @@ namespace {
             }
             const auto image_index = image_index_opt.value();
 
+            const auto aspect_ratio = (double)swapchain_.width() /
+                                      (double)swapchain_.height();
             const auto proj_mat = cam.proj_.make_proj_mat(
                 swapchain_.width(), swapchain_.height()
             );
+            const auto proj_inv = glm::inverse(proj_mat);
             const auto view_mat = cam.view_.make_view_mat();
             const auto view_inv = glm::inverse(view_mat);
 
@@ -2373,6 +2391,8 @@ namespace {
 
             rp_states_compo_sky_.record(
                 cur_cmd_buf,
+                proj_inv,
+                view_inv,
                 fbuf_images_.extent(),
                 framesync_.get_frame_index(),
                 image_index,

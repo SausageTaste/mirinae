@@ -227,6 +227,8 @@ namespace { namespace compo_sky {
             );
             layout_ = mirinae::PipelineLayoutBuilder{}
                           .desc(create_desclayout_main(desclayouts, device))
+                          .add_frag_flag()
+                          .pc<mirinae::U_CompoSkyMain>()
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }

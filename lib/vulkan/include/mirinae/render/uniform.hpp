@@ -161,7 +161,12 @@ namespace mirinae {
         glm::vec4 slight_dir_n_outer_angle;
         glm::vec4 slight_color_n_max_dist;
     };
-    constexpr static auto a = sizeof(U_CompoMain);
+
+
+    struct U_CompoSkyMain {
+        glm::mat4 proj_inv_;
+        glm::mat4 view_inv_;
+    };
 
 
     using U_TranspFrame = U_CompoMain;
