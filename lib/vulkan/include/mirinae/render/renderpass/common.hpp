@@ -353,6 +353,11 @@ namespace mirinae {
                 return *this;
             }
 
+            DepthStencilStateBuilder& depth_compare_op(VkCompareOp op) {
+                info_.depthCompareOp = op;
+                return *this;
+            }
+
             const VkPipelineDepthStencilStateCreateInfo* get() const {
                 return &info_;
             }
