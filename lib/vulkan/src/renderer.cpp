@@ -472,6 +472,7 @@ namespace {
             return cube_map_.at(index).specular().cube_view();
         }
         VkImageView brdf_lut_view() const { return brdf_lut_.view(); }
+        VkImageView sky_tex_view() const { return sky_tex_->image_view(); }
 
         glm::dvec3& envmap_pos(size_t index) {
             return cube_map_.at(index).world_pos_;
@@ -1769,6 +1770,97 @@ namespace {
     };
 
 
+    class RpStatesCompoSky {
+
+    public:
+        void init(
+            VkImageView sky_texture,
+            mirinae::RenderPassPackage& rp_pkg,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::FbufImageBundle& fbufs,
+            mirinae::Swapchain& shain,
+            mirinae::VulkanDevice& device
+        ) {
+            auto& desclayout = desclayouts.get("compo_sky:main");
+            desc_pool_.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                desclayout.size_info(),
+                device.logi_device()
+            );
+            desc_sets_ = desc_pool_.alloc(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                desclayout.layout(),
+                device.logi_device()
+            );
+
+            const auto sam_lin = device.samplers().get_linear();
+            mirinae::DescWriteInfoBuilder builder;
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                builder.set_descset(desc_sets_.at(i))
+                    .add_img_sampler(sky_texture, sam_lin);
+            }
+            builder.apply_all(device.logi_device());
+
+            auto& rp = rp_pkg.get("compo_sky");
+
+            mirinae::FbufCinfo fbuf_cinfo;
+            fbuf_cinfo.set_rp(rp.renderpass())
+                .set_dim(fbufs.width(), fbufs.height())
+                .add_attach(fbufs.depth().image_view())
+                .add_attach(fbufs.compo().image_view());
+            for (int i = 0; i < shain.views_count(); ++i)
+                fbufs_.push_back(fbuf_cinfo.build(device));
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            desc_pool_.destroy(device.logi_device());
+
+            for (auto& x : fbufs_)
+                vkDestroyFramebuffer(device.logi_device(), x, nullptr);
+            fbufs_.clear();
+        }
+
+        void record(
+            const VkCommandBuffer cur_cmd_buf,
+            const VkExtent2D& fbuf_ext,
+            const ::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::RenderPassPackage& rp_pkg
+        ) {
+            auto& rp = rp_pkg.get("compo_sky");
+
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(fbufs_.at(image_index.get()))
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
+
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
+
+            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
+
+            mirinae::DescSetBindInfo{}
+                .layout(rp.pipeline_layout())
+                .set(desc_sets_.at(frame_index.get()))
+                .record(cur_cmd_buf);
+
+            vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
+
+            vkCmdEndRenderPass(cur_cmd_buf);
+        }
+
+    private:
+        mirinae::DescPool desc_pool_;
+        std::vector<VkDescriptorSet> desc_sets_;
+        std::vector<VkFramebuffer> fbufs_;
+    };
+
+
     class RpStatesTransp {
 
     public:
@@ -2279,6 +2371,14 @@ namespace {
                 rp_
             );
 
+            rp_states_compo_sky_.record(
+                cur_cmd_buf,
+                fbuf_images_.extent(),
+                framesync_.get_frame_index(),
+                image_index,
+                rp_
+            );
+
             rp_states_transp_.record_static(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
@@ -2459,6 +2559,14 @@ namespace {
                 rp_states_envmap_.brdf_lut_view(),
                 device_
             );
+            rp_states_compo_sky_.init(
+                rp_states_envmap_.sky_tex_view(),
+                rp_,
+                desclayout_,
+                fbuf_images_,
+                swapchain_,
+                device_
+            );
             rp_states_transp_.init(
                 desclayout_,
                 rp_states_shadow_.pool().get_img_view_at(0),
@@ -2480,6 +2588,7 @@ namespace {
             rp_states_fillscreen_.destroy(device_);
             rp_states_debug_mesh_.destroy(device_);
             rp_states_transp_.destroy(device_);
+            rp_states_compo_sky_.destroy(device_);
             rp_states_compo_.destroy(device_);
             rp_states_envmap_.destroy(device_);
 
@@ -2685,6 +2794,7 @@ namespace {
         ::RpStatesEnvmap rp_states_envmap_;
         ::RpStatesGbuf rp_states_gbuf_;
         ::RpStatesCompo rp_states_compo_;
+        ::RpStatesCompoSky rp_states_compo_sky_;
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
