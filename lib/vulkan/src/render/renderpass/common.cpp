@@ -51,17 +51,35 @@ namespace mirinae {
         modules_.clear();
     }
 
-    CLS& CLS::add_vert(const mirinae::respath_t& spv_path) {
+    CLS& CLS::add(
+        const mirinae::respath_t& spv_path, const VkShaderStageFlagBits stage
+    ) {
         modules_.push_back(this->load_spv(spv_path, device_));
-        this->add_stage(VK_SHADER_STAGE_VERTEX_BIT, modules_.back());
+        this->add_stage(stage, modules_.back());
         return *this;
     }
 
-    CLS& CLS::add_frag(const mirinae::respath_t& spv_path) {
-        modules_.push_back(this->load_spv(spv_path, device_));
-        this->add_stage(VK_SHADER_STAGE_FRAGMENT_BIT, modules_.back());
-        return *this;
+    CLS& CLS::add_vert(const mirinae::respath_t& spv_path) {
+        return this->add(spv_path, VK_SHADER_STAGE_VERTEX_BIT);
     }
+
+    CLS& CLS::add_frag(const mirinae::respath_t& spv_path) {
+        return this->add(spv_path, VK_SHADER_STAGE_FRAGMENT_BIT);
+    }
+
+    CLS& CLS::add_tesc(const mirinae::respath_t& spv_path) {
+        return this->add(spv_path, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+    }
+
+    CLS& CLS::add_tese(const mirinae::respath_t& spv_path) {
+        return this->add(spv_path, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+    }
+
+    const VkPipelineShaderStageCreateInfo* CLS::data() const {
+        return stages_.data();
+    }
+
+    uint32_t CLS::size() const { return static_cast<uint32_t>(stages_.size()); }
 
     void CLS::add_stage(VkShaderStageFlagBits stage, VkShaderModule module) {
         auto& added = stages_.emplace_back();
@@ -218,6 +236,33 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// InputAssemblyStateBuilder
+namespace mirinae {
+
+#define CLS PipelineBuilder::InputAssemblyStateBuilder
+
+    CLS::InputAssemblyStateBuilder() {
+        info_ = {};
+        info_.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        info_.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        info_.primitiveRestartEnable = VK_FALSE;
+    }
+
+    CLS& CLS::topology(VkPrimitiveTopology top) {
+        info_.topology = top;
+        return *this;
+    }
+
+    CLS& CLS::topology_patch_list() {
+        return this->topology(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
 // Misc inside PipelineBuilder
 namespace mirinae {
 
@@ -336,15 +381,6 @@ namespace mirinae {
 // PipelineBuilder
 namespace {
 
-    auto create_info_input_assembly() {
-        VkPipelineInputAssemblyStateCreateInfo output{};
-        output.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        output.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        output.primitiveRestartEnable = VK_FALSE;
-        return output;
-    }
-
     auto create_info_viewport_state() {
         VkPipelineViewportStateCreateInfo output{};
         output.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -372,7 +408,6 @@ namespace mirinae {
 
     PipelineBuilder::PipelineBuilder(mirinae::VulkanDevice& device)
         : device_(device), shader_stages_{ device } {
-        input_assembly_state_ = create_info_input_assembly();
         viewport_state_ = create_info_viewport_state();
         multisampling_state_ = create_info_multisampling();
     }
@@ -389,7 +424,8 @@ namespace mirinae {
         cinfo.stageCount = shader_stages_.size();
         cinfo.pStages = shader_stages_.data();
         cinfo.pVertexInputState = &vertex_input_state;
-        cinfo.pInputAssemblyState = &input_assembly_state_;
+        cinfo.pInputAssemblyState = input_assembly_state_.get();
+        cinfo.pTessellationState = tes_state_.get();
         cinfo.pViewportState = &viewport_state_;
         cinfo.pRasterizationState = rasterization_state_.get();
         cinfo.pMultisampleState = &multisampling_state_;
