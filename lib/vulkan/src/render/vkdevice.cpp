@@ -264,6 +264,12 @@ namespace {
                     break;
             }
 
+            ss << "Features\n";
+            if (features_.geometryShader)
+                ss << "  * Geometry\n";
+            if (features_.tessellationShader)
+                ss << "  * Tessellation\n";
+
             ss << "Max image 2D dimension                    "
                << properties_.limits.maxImageDimension2D << '\n';
             ss << "    push constant                         "
