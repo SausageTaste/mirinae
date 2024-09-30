@@ -5,6 +5,120 @@
 #include "mirinae/render/meshdata.hpp"
 
 
+// AttachDescView
+namespace mirinae {
+
+#define CLS RenderPassBuilder::AttachDescView
+
+    CLS::AttachDescView(VkAttachmentDescription& desc) : desc_{ desc } {}
+
+    CLS::~AttachDescView() = default;
+
+    CLS& CLS::format(VkFormat x) {
+        desc_.format = x;
+        return *this;
+    }
+
+    CLS& CLS::samples(VkSampleCountFlagBits x) {
+        desc_.samples = x;
+        return *this;
+    }
+
+    CLS& CLS::load_op(VkAttachmentLoadOp x) {
+        desc_.loadOp = x;
+        return *this;
+    }
+
+    CLS& CLS::stor_op(VkAttachmentStoreOp x) {
+        desc_.storeOp = x;
+        return *this;
+    }
+
+    CLS& CLS::op_pair_clear_store() {
+        desc_.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        desc_.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        return *this;
+    }
+
+    CLS& CLS::op_pair_load_store() {
+        desc_.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        desc_.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        return *this;
+    }
+
+    CLS& CLS::stencil_load(VkAttachmentLoadOp x) {
+        desc_.stencilLoadOp = x;
+        return *this;
+    }
+
+    CLS& CLS::stencil_stor(VkAttachmentStoreOp x) {
+        desc_.stencilStoreOp = x;
+        return *this;
+    }
+
+    CLS& CLS::ini_layout(VkImageLayout x) {
+        desc_.initialLayout = x;
+        return *this;
+    }
+
+    CLS& CLS::fin_layout(VkImageLayout x) {
+        desc_.finalLayout = x;
+        return *this;
+    }
+
+    CLS& CLS::preset_default() {
+        desc_ = {};
+        // desc_.format = VK_FORMAT_UNDEFINED;
+        desc_.samples = VK_SAMPLE_COUNT_1_BIT;
+        desc_.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        desc_.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        desc_.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        desc_.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        // desc_.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        // desc_.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        return *this;
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
+// AttachDescBuilder
+namespace mirinae {
+
+#define CLS RenderPassBuilder::AttachDescBuilder
+
+    const VkAttachmentDescription* CLS::data() const {
+        if (data_.empty())
+            return nullptr;
+        else
+            return data_.data();
+    }
+
+    uint32_t CLS::size() const { return static_cast<uint32_t>(data_.size()); }
+
+    RenderPassBuilder::AttachDescView CLS::add(const VkFormat format) {
+        auto& added = data_.emplace_back();
+        AttachDescView view{ added };
+        view.preset_default();
+        view.format(format);
+        return view;
+    }
+
+    RenderPassBuilder::AttachDescView CLS::dup(const VkFormat format) {
+        const auto& last = data_.back();
+        auto& added = data_.emplace_back(last);
+        AttachDescView view{ added };
+        view.format(format);
+        return view;
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
 // RenderPassBuilder
 namespace mirinae {
 
@@ -256,6 +370,31 @@ namespace mirinae {
 
     CLS& CLS::topology_patch_list() {
         return this->topology(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
+// TessellationStateBuilder
+namespace mirinae {
+
+#define CLS PipelineBuilder::TessellationStateBuilder
+
+    CLS::TessellationStateBuilder() {
+        info_ = {};
+        info_.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+    }
+
+    CLS& CLS::patch_ctrl_points(uint32_t count) {
+        info_.patchControlPoints = count;
+        enabled_ = true;
+        return *this;
+    }
+
+    const VkPipelineTessellationStateCreateInfo* CLS::get() const {
+        return enabled_ ? &info_ : nullptr;
     }
 
 #undef CLS
