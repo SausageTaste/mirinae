@@ -355,6 +355,13 @@ namespace mirinae {
                 return *this;
             }
 
+            RasterizationStateBuilder& depth_bias(float constant, float slope) {
+                info_.depthBiasEnable = VK_TRUE;
+                info_.depthBiasConstantFactor = constant;
+                info_.depthBiasSlopeFactor = slope;
+                return *this;
+            }
+
             RasterizationStateBuilder& depth_clamp_enable(bool enable) {
                 info_.depthClampEnable = enable ? VK_TRUE : VK_FALSE;
                 return *this;
@@ -462,6 +469,12 @@ namespace mirinae {
         PipelineLayoutBuilder& add_frag_flag();
 
         PipelineLayoutBuilder& pc(uint32_t offset, uint32_t size);
+
+        template <typename T>
+        PipelineLayoutBuilder& pc(uint32_t offset = 0) {
+            return this->pc(offset, sizeof(T));
+        }
+
         PipelineLayoutBuilder& desc(VkDescriptorSetLayout layout);
 
         VkPipelineLayout build(mirinae::VulkanDevice& device);
@@ -562,6 +575,17 @@ namespace mirinae {
         FbufImageBundle& fbuf_bundle,
         DesclayoutManager& desclayouts,
         Swapchain& swapchain,
+        VulkanDevice& device
+    );
+
+    void create_rp_envmap(
+        RpMap& out, DesclayoutManager& desclayouts, VulkanDevice& device
+    );
+
+    void create_rp_shadow(
+        RpMap& out,
+        VkFormat depth_format,
+        DesclayoutManager& desclayouts,
         VulkanDevice& device
     );
 

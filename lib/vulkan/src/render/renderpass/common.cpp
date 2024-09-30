@@ -240,7 +240,7 @@ namespace mirinae {
         // GPU feature, `wideLines` required for lines thicker than 1.
         info_.lineWidth = 1;
 
-        info_.cullMode = 0;
+        info_.cullMode = VK_CULL_MODE_NONE;
         info_.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         info_.depthBiasEnable = VK_FALSE;
         info_.depthBiasConstantFactor = 0;
