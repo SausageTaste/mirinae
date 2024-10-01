@@ -15,36 +15,22 @@ layout(push_constant) uniform U_CompoSkyMain {
 layout(set = 0, binding = 0) uniform sampler2D u_sky_tex;
 
 
-float atan2(in float y, in float x) {
-    bool s = (abs(x) > abs(y));
-    return mix(PI/2.0 - atan(x,y), atan(y,x), s);
-}
-
-vec2 get_theta_phi(const vec3 v) {
-    const float dv = sqrt(dot(v, v));
-    const float x = v.x / dv;
-    const float y = v.y / dv;
-    const float z = v.z / dv;
-    const float theta = atan2(z, x);
-    const float phi = asin(-y);
-    return vec2(theta, phi);
-}
-
-vec2 map_cube(const vec3 vec) {
-    const vec2 theta_phi = get_theta_phi(vec);
-    const float u = 0.5 + 0.5 * (theta_phi.x / PI);
-    const float v = 0.5 + (theta_phi.y / PI);
-    return vec2(u, v);
+const vec2 invAtan = vec2(0.1591, 0.3183);
+vec2 map_cube(vec3 v) {
+    vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
+    uv *= invAtan;
+    uv += 0.5;
+    uv.y = 1.0 - uv.y;
+    return uv;
 }
 
 
 void main() {
     const vec4 clip_pos = vec4(v_uv_coord * 2 - 1, 1, 1);
-    vec4 frag_pos = u_pc.proj_inv * clip_pos;
-    frag_pos /= frag_pos.w;
-    const vec3 view_direc = normalize(frag_pos.xyz);
+    const vec4 frag_pos = u_pc.proj_inv * clip_pos;
+    const vec3 view_direc = normalize(frag_pos.xyz / frag_pos.w);
     const vec3 world_direc = (u_pc.view_inv * vec4(view_direc, 0)).xyz;
     const vec2 uv = map_cube(normalize(world_direc));
 
-    f_color = texture(u_sky_tex, uv);
+    f_color = textureLod(u_sky_tex, uv, 0);
 }
