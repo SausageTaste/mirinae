@@ -26,6 +26,12 @@ namespace mirinae::cpnt {
         // glm::dmat4 make_light_mat() const;
         glm::dmat4 make_light_mat(const std::array<glm::dvec3, 8>& p) const;
 
+        // Set the direction of the light ray traveling out of the light source
+        void set_light_dir(glm::dvec3 dir);
+        void set_light_dir(double x, double y, double z) {
+            this->set_light_dir(glm::dvec3{ x, y, z });
+        }
+
         TransformQuat<double> transform_;
         glm::vec3 color_;
     };
