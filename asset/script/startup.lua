@@ -60,12 +60,15 @@ do
 end
 
 do
-    cherno = scene.create_static_actor("Sung/cherno.dun/cherno_swimsuit.dmd")
+    cherno = scene.create_skinned_actor("Sung/cherno.dun/cherno_swimsuit.dmd")
+
+    local a = cherno:get_anim_state()
+    a:set_anim_name("pose_01")
 
     local t = cherno:get_transform()
-    t:set_pos(-2.5, 0, -3)
-    t:rotate(0, 0, 1, 0)
-    t:set_scale(0.75, 0.75, 0.75)
+    t:set_pos(-2.5, 0, -1)
+    t:rotate(90, 0, 1, 0)
+    t:set_scale(0.65, 0.65, 0.65)
 
     print("Static actor created:", cherno:get_id(), cherno:get_respath())
 end
