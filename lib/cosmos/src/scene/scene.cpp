@@ -494,6 +494,15 @@ namespace mirinae::cpnt {
         return proj_mat * view_mat;
     }
 
+    void DLight::set_light_dir(glm::dvec3 dir) {
+        dir = glm::normalize(dir);
+        const auto axis = glm::cross(glm::dvec3{ 0, 0, -1 }, dir);
+        const auto cos_angle = glm::dot(glm::dvec3{ 0, 0, -1 }, dir);
+        const auto angle = sung::acos_safe(cos_angle);
+        transform_.reset_rotation();
+        transform_.rotate(Transform::Angle::from_rad(angle), axis);
+    }
+
 }  // namespace mirinae::cpnt
 
 
