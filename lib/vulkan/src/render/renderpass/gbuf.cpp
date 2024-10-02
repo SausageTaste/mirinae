@@ -65,8 +65,8 @@ namespace { namespace gbuf {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/gbuf_vert.spv")
-            .add_frag(":asset/spv/gbuf_frag.spv");
+            .add_vert(":asset/spv/gbuf_basic_vert.spv")
+            .add_frag(":asset/spv/gbuf_basic_frag.spv");
 
         builder.vertex_input_state().set_static();
 
@@ -244,7 +244,7 @@ namespace { namespace gbuf_skin {
 
         builder.shader_stages()
             .add_vert(":asset/spv/gbuf_skin_vert.spv")
-            .add_frag(":asset/spv/gbuf_frag.spv");
+            .add_frag(":asset/spv/gbuf_basic_frag.spv");
 
         builder.vertex_input_state().set_skinned();
 
