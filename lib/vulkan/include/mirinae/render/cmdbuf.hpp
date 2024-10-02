@@ -298,4 +298,48 @@ namespace mirinae {
         uint32_t first_set_ = 0;
     };
 
+
+    class SubmitInfo {
+
+    public:
+        SubmitInfo();
+
+        SubmitInfo& add_wait_semaph(
+            VkSemaphore semaph, VkPipelineStageFlags stage
+        );
+        SubmitInfo& add_wait_semaph_color_attach_out(VkSemaphore semaph);
+
+        SubmitInfo& add_cmdbuf(VkCommandBuffer cmdbuf);
+        SubmitInfo& add_signal_semaph(VkSemaphore semaph);
+
+        const VkSubmitInfo* get() const;
+        void queue_submit_single(VkQueue queue, VkFence fence);
+
+    private:
+        VkSubmitInfo info_;
+        std::vector<VkSemaphore> wait_semaph_;
+        std::vector<VkPipelineStageFlags> wait_stages_;
+        std::vector<VkSemaphore> signal_semaphores_;
+        std::vector<VkCommandBuffer> cmdbufs_;
+    };
+
+
+    class PresentInfo {
+
+    public:
+        PresentInfo();
+
+        PresentInfo& add_wait_semaph(const VkSemaphore& semaph);
+        PresentInfo& add_swapchain(const VkSwapchainKHR& swapchain);
+        PresentInfo& add_image_index(uint32_t index);
+
+        void queue_present(VkQueue queue);
+
+    private:
+        VkPresentInfoKHR info_;
+        std::vector<VkSemaphore> wait_semaphores_;
+        std::vector<VkSwapchainKHR> swapchains_;
+        std::vector<uint32_t> image_indices_;
+    };
+
 }  // namespace mirinae

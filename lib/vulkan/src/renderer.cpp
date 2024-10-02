@@ -2466,51 +2466,25 @@ namespace {
 
             // Submit and present
             {
-                VkSubmitInfo submitInfo{};
-                submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                const VkSemaphore signal_semaph =
+                    framesync_.get_cur_render_fin_semaph().get();
 
-                VkSemaphore waitSemaphores[] = {
-                    framesync_.get_cur_img_ava_semaph().get(),
-                };
-                VkPipelineStageFlags waitStages[] = {
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                };
-                submitInfo.waitSemaphoreCount = 1;
-                submitInfo.pWaitSemaphores = waitSemaphores;
-                submitInfo.pWaitDstStageMask = waitStages;
-                submitInfo.commandBufferCount = 1;
-                submitInfo.pCommandBuffers = &cur_cmd_buf;
+                mirinae::SubmitInfo{}
+                    .add_wait_semaph_color_attach_out(
+                        framesync_.get_cur_img_ava_semaph().get()
+                    )
+                    .add_signal_semaph(signal_semaph)
+                    .add_cmdbuf(cur_cmd_buf)
+                    .queue_submit_single(
+                        device_.graphics_queue(),
+                        framesync_.get_cur_in_flight_fence().get()
+                    );
 
-                VkSemaphore signalSemaphores[] = {
-                    framesync_.get_cur_render_fin_semaph().get(),
-                };
-                submitInfo.signalSemaphoreCount = 1;
-                submitInfo.pSignalSemaphores = signalSemaphores;
-
-                VK_CHECK(vkQueueSubmit(
-                    device_.graphics_queue(),
-                    1,
-                    &submitInfo,
-                    framesync_.get_cur_in_flight_fence().get()
-                ));
-
-                std::array<uint32_t, 1> swapchain_indices{ image_index.get() };
-                std::array<VkSwapchainKHR, 1> swapchains{ swapchain_.get() };
-
-                VkPresentInfoKHR presentInfo{};
-                presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-                presentInfo.waitSemaphoreCount = 1;
-                presentInfo.pWaitSemaphores = signalSemaphores;
-                presentInfo.swapchainCount = static_cast<uint32_t>(
-                    swapchains.size()
-                );
-                presentInfo.pSwapchains = swapchains.data();
-                presentInfo.pImageIndices = swapchain_indices.data();
-                presentInfo.pResults = nullptr;
-
-                VK_CHECK(
-                    vkQueuePresentKHR(device_.present_queue(), &presentInfo)
-                );
+                mirinae::PresentInfo{}
+                    .add_wait_semaph(signal_semaph)
+                    .add_swapchain(swapchain_.get())
+                    .add_image_index(image_index.get())
+                    .queue_present(device_.present_queue());
             }
 
             framesync_.increase_frame_index();

@@ -1,5 +1,7 @@
 #include "mirinae/render/cmdbuf.hpp"
 
+#include "mirinae/render/mem_alloc.hpp"
+
 
 // Viewport
 namespace mirinae {
@@ -214,5 +216,98 @@ namespace mirinae {
     }
 
 #undef CLS
+
+}  // namespace mirinae
+
+
+// SubmitInfo
+namespace mirinae {
+
+    SubmitInfo::SubmitInfo() {
+        info_ = {};
+        info_.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    }
+
+    SubmitInfo& SubmitInfo::add_wait_semaph(
+        VkSemaphore semaph, VkPipelineStageFlags stage
+    ) {
+        wait_semaph_.push_back(semaph);
+        wait_stages_.push_back(stage);
+
+        info_.waitSemaphoreCount = static_cast<uint32_t>(wait_semaph_.size());
+        info_.pWaitSemaphores = wait_semaph_.data();
+        info_.pWaitDstStageMask = wait_stages_.data();
+        return *this;
+    }
+
+    SubmitInfo& SubmitInfo::add_wait_semaph_color_attach_out(VkSemaphore semaph
+    ) {
+        return this->add_wait_semaph(
+            semaph, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+        );
+    }
+
+    SubmitInfo& SubmitInfo::add_cmdbuf(VkCommandBuffer cmdbuf) {
+        cmdbufs_.push_back(cmdbuf);
+
+        info_.commandBufferCount = static_cast<uint32_t>(cmdbufs_.size());
+        info_.pCommandBuffers = cmdbufs_.data();
+        return *this;
+    }
+
+    SubmitInfo& SubmitInfo::add_signal_semaph(VkSemaphore semaph) {
+        signal_semaphores_.push_back(semaph);
+
+        info_.signalSemaphoreCount = static_cast<uint32_t>(
+            signal_semaphores_.size()
+        );
+        info_.pSignalSemaphores = signal_semaphores_.data();
+        return *this;
+    }
+
+    const VkSubmitInfo* SubmitInfo::get() const { return &info_; }
+
+    void SubmitInfo::queue_submit_single(VkQueue queue, VkFence fence) {
+        VK_CHECK(vkQueueSubmit(queue, 1, &info_, fence));
+    }
+
+}  // namespace mirinae
+
+
+// PresentInfo
+namespace mirinae {
+
+    PresentInfo::PresentInfo() {
+        info_ = {};
+        info_.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    }
+
+    PresentInfo& PresentInfo::add_wait_semaph(const VkSemaphore& semaph) {
+        wait_semaphores_.push_back(semaph);
+
+        info_.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores_.size()
+        );
+        info_.pWaitSemaphores = wait_semaphores_.data();
+        return *this;
+    }
+
+    PresentInfo& PresentInfo::add_swapchain(const VkSwapchainKHR& swapchain) {
+        swapchains_.push_back(swapchain);
+
+        info_.swapchainCount = static_cast<uint32_t>(swapchains_.size());
+        info_.pSwapchains = swapchains_.data();
+        return *this;
+    }
+
+    PresentInfo& PresentInfo::add_image_index(uint32_t index) {
+        image_indices_.push_back(index);
+
+        info_.pImageIndices = image_indices_.data();
+        return *this;
+    }
+
+    void PresentInfo::queue_present(VkQueue queue) {
+        VK_CHECK(vkQueuePresentKHR(queue, &info_));
+    }
 
 }  // namespace mirinae
