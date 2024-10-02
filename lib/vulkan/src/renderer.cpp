@@ -1168,24 +1168,20 @@ namespace {
                     viewport.record_single(cur_cmd_buf);
                     scissor.record_scissor(cur_cmd_buf);
 
-                    for (auto& pair : draw_sheet.static_pairs_) {
-                        descset_info.set(cube_map.desc_set())
-                            .record(cur_cmd_buf);
+                    descset_info.set(cube_map.desc_set()).record(cur_cmd_buf);
 
-                        mirinae::U_EnvdiffusePushConst push_const;
-                        push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
-                        vkCmdPushConstants(
-                            cur_cmd_buf,
-                            rp.pipeline_layout(),
-                            VK_SHADER_STAGE_VERTEX_BIT,
-                            0,
-                            sizeof(mirinae::U_EnvdiffusePushConst),
-                            &push_const
-                        );
+                    mirinae::U_EnvdiffusePushConst push_const;
+                    push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+                    vkCmdPushConstants(
+                        cur_cmd_buf,
+                        rp.pipeline_layout(),
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(mirinae::U_EnvdiffusePushConst),
+                        &push_const
+                    );
 
-                        vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
-                    }
-
+                    vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
                     vkCmdEndRenderPass(cur_cmd_buf);
                 }
             }
@@ -1237,28 +1233,23 @@ namespace {
                         viewport.record_single(cur_cmd_buf);
                         scissor.record_scissor(cur_cmd_buf);
 
-                        for (auto& pair : draw_sheet.static_pairs_) {
-                            descset_info.set(cube_map.desc_set())
-                                .record(cur_cmd_buf);
+                        descset_info.set(cube_map.desc_set())
+                            .record(cur_cmd_buf);
 
-                            mirinae::U_EnvSpecularPushConst push_const;
-                            push_const.proj_view_ = proj_mat *
-                                                    CUBE_VIEW_MATS[i];
-                            push_const.roughness_ = mip.roughness_;
+                        mirinae::U_EnvSpecularPushConst push_const;
+                        push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+                        push_const.roughness_ = mip.roughness_;
+                        vkCmdPushConstants(
+                            cur_cmd_buf,
+                            rp.pipeline_layout(),
+                            VK_SHADER_STAGE_VERTEX_BIT |
+                                VK_SHADER_STAGE_FRAGMENT_BIT,
+                            0,
+                            sizeof(mirinae::U_EnvSpecularPushConst),
+                            &push_const
+                        );
 
-                            vkCmdPushConstants(
-                                cur_cmd_buf,
-                                rp.pipeline_layout(),
-                                VK_SHADER_STAGE_VERTEX_BIT |
-                                    VK_SHADER_STAGE_FRAGMENT_BIT,
-                                0,
-                                sizeof(mirinae::U_EnvSpecularPushConst),
-                                &push_const
-                            );
-
-                            vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
-                        }
-
+                        vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
                         vkCmdEndRenderPass(cur_cmd_buf);
                     }
                 }
