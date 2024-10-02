@@ -1,7 +1,7 @@
 #version 450
 
-#include "utils/lighting.glsl"
-#include "utils/shadow.glsl"
+#include "../utils/lighting.glsl"
+#include "../utils/shadow.glsl"
 
 layout(location = 0) in vec2 v_uv_coord;
 
