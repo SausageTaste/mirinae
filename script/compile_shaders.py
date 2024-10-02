@@ -12,7 +12,7 @@ COMPILER_PATH = os.path.join(VULKAN_SDK_DIR, "Bin", "glslc.exe")
 ROOT_DIR = utils.find_root_dir()
 ASSET_DIR = os.path.join(ROOT_DIR, "asset")
 GLSL_DIR = os.path.join(ROOT_DIR, "asset", "glsl")
-PROC_COUNT = psutil.cpu_count(logical=False) // 2
+PROC_COUNT = psutil.cpu_count(logical=True) // 2
 
 INPUT_EXTENSIONS = {
     ".vert",
