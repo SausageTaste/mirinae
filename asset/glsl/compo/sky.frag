@@ -1,6 +1,6 @@
 #version 450
 
-#include "utils/konst.glsl"
+#include "../utils/konst.glsl"
 
 layout(location = 0) in vec2 v_uv_coord;
 

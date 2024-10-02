@@ -48,8 +48,8 @@ namespace { namespace compo {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/compo_vert.spv")
-            .add_frag(":asset/spv/compo_frag.spv");
+            .add_vert(":asset/spv/compo_basic_vert.spv")
+            .add_frag(":asset/spv/compo_basic_frag.spv");
 
         builder.rasterization_state().cull_mode_back();
 
