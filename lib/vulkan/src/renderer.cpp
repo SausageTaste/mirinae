@@ -415,25 +415,6 @@ namespace {
             if (timer_.check_if_elapsed(100)) {
                 record_sky(cur_cmd_buf, desc_set_, rp_pkg);
 
-                VkMemoryBarrier mem_barrier;
-                mem_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-                mem_barrier.pNext = nullptr;
-                mem_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-                mem_barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-
-                vkCmdPipelineBarrier(
-                    cur_cmd_buf,
-                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                    0,
-                    1,
-                    &mem_barrier,
-                    0,
-                    nullptr,
-                    0,
-                    nullptr
-                );
-
                 record_base(
                     cur_cmd_buf,
                     draw_sheet,
@@ -441,19 +422,6 @@ namespace {
                     cosmos,
                     image_index,
                     rp_pkg
-                );
-
-                vkCmdPipelineBarrier(
-                    cur_cmd_buf,
-                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                    0,
-                    1,
-                    &mem_barrier,
-                    0,
-                    nullptr,
-                    0,
-                    nullptr
                 );
 
                 record_diffuse(
