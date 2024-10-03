@@ -12,7 +12,10 @@
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass.hpp"
+#include "mirinae/render/renderpass/compo.hpp"
 #include "mirinae/render/renderpass/envmap.hpp"
+#include "mirinae/render/renderpass/gbuf.hpp"
+#include "mirinae/render/renderpass/shadow.hpp"
 
 
 namespace {
@@ -2489,7 +2492,8 @@ namespace {
             );
             fbuf_images_.init(gbuf_width, gbuf_height, tex_man_);
 
-            rp_.init(
+            mirinae::rp::gbuf::create_rp(
+                rp_,
                 fbuf_images_.width(),
                 fbuf_images_.height(),
                 fbuf_images_,
@@ -2498,6 +2502,26 @@ namespace {
                 device_
             );
             mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
+            mirinae::rp::shadow::create_rp(
+                rp_, fbuf_images_.depth().format(), desclayout_, device_
+            );
+            mirinae::rp::compo::create_rp(
+                rp_,
+                fbuf_images_.width(),
+                fbuf_images_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
+            rp_.init_render_passes(
+                fbuf_images_.width(),
+                fbuf_images_.height(),
+                fbuf_images_,
+                desclayout_,
+                swapchain_,
+                device_
+            );
 
             rp_states_shadow_.pool().recreate_fbufs(
                 rp_.get("shadowmap"), device_

@@ -12,7 +12,7 @@ namespace mirinae {
             const std::string& name, std::unique_ptr<IRenderPassBundle>&& rp
         ) override;
 
-        void init(
+        void init_render_passes(
             uint32_t width,
             uint32_t height,
             FbufImageBundle& fbuf_bundle,
@@ -26,7 +26,7 @@ namespace mirinae {
         const IRenderPassBundle& get(const std::string& name) const;
 
     private:
-        RpMap data_;
+        std::map<std::string, std::unique_ptr<IRenderPassBundle>> data_;
     };
 
 }  // namespace mirinae

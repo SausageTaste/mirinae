@@ -1,4 +1,4 @@
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/render/renderpass/gbuf.hpp"
 
 #include "mirinae/render/vkmajorplayers.hpp"
 
@@ -538,10 +538,10 @@ namespace { namespace gbuf_terrain {
 }}  // namespace ::gbuf_terrain
 
 
-namespace mirinae {
+namespace mirinae::rp::gbuf {
 
-    void create_rp_gbuf(
-        RpMap& out,
+    void create_rp(
+        IRenderPassRegistry& reg,
         uint32_t width,
         uint32_t height,
         FbufImageBundle& fbuf_bundle,
@@ -549,15 +549,27 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        out["gbuf"] = std::make_unique<::gbuf::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+        reg.add<::gbuf::RPBundle>(
+            "gbuf", width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        out["gbuf_skin"] = std::make_unique<::gbuf_skin::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+        reg.add<::gbuf_skin::RPBundle>(
+            "gbuf_skin",
+            width,
+            height,
+            fbuf_bundle,
+            desclayouts,
+            swapchain,
+            device
         );
-        out["gbuf_terrain"] = std::make_unique<::gbuf_terrain::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+        reg.add<::gbuf_terrain::RPBundle>(
+            "gbuf_terrain",
+            width,
+            height,
+            fbuf_bundle,
+            desclayouts,
+            swapchain,
+            device
         );
     }
 
-}  // namespace mirinae
+}  // namespace mirinae::rp::gbuf

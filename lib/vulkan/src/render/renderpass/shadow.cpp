@@ -1,4 +1,4 @@
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/render/renderpass/shadow.hpp"
 
 
 // shadowmap
@@ -243,20 +243,20 @@ namespace { namespace shadowmap_skin {
 }}  // namespace ::shadowmap_skin
 
 
-namespace mirinae {
+namespace mirinae::rp::shadow {
 
-    void create_rp_shadow(
-        RpMap& out,
+    void create_rp(
+        IRenderPassRegistry& reg,
         VkFormat depth_format,
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
-        out["shadowmap"] = std::make_unique<::shadowmap::RPBundle>(
-            depth_format, desclayouts, device
+        reg.add<::shadowmap::RPBundle>(
+            "shadowmap", depth_format, desclayouts, device
         );
-        out["shadowmap_skin"] = std::make_unique<::shadowmap_skin::RPBundle>(
-            depth_format, desclayouts, device
+        reg.add<::shadowmap_skin::RPBundle>(
+            "shadowmap_skin", depth_format, desclayouts, device
         );
     }
 
-}  // namespace mirinae
+}  // namespace mirinae::rp::shadow
