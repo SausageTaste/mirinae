@@ -1,5 +1,7 @@
 #include "mirinae/render/renderpass/compo.hpp"
 
+#include "mirinae/render/renderpass/builder.hpp"
+
 
 // compo
 namespace { namespace compo {

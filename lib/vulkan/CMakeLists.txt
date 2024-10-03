@@ -2,6 +2,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/iwidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/overlay.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/text.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/builder.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/compo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/envmap.cpp
