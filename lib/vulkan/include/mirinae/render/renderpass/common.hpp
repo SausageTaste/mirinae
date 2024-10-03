@@ -549,33 +549,4 @@ namespace mirinae {
         }
     };
 
-    using RpMap = std::map<std::string, std::unique_ptr<IRenderPassBundle>>;
-
-    void create_rp_gbuf(
-        RpMap& out,
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
-
-    void create_rp_shadow(
-        RpMap& out,
-        VkFormat depth_format,
-        DesclayoutManager& desclayouts,
-        VulkanDevice& device
-    );
-
-    void create_rp_compo(
-        RpMap& out,
-        uint32_t width,
-        uint32_t height,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
-
 }  // namespace mirinae

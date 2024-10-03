@@ -1,4 +1,4 @@
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/render/renderpass/compo.hpp"
 
 
 // compo
@@ -277,10 +277,10 @@ namespace { namespace compo_sky {
 }}  // namespace ::compo_sky
 
 
-namespace mirinae {
+namespace mirinae::rp::compo {
 
-    void create_rp_compo(
-        RpMap& out,
+    void create_rp(
+        IRenderPassRegistry& reg,
         uint32_t width,
         uint32_t height,
         FbufImageBundle& fbuf_bundle,
@@ -288,10 +288,11 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        out["compo"] = std::make_unique<::compo::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+        reg.add<::compo::RPBundle>(
+            "compo", width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        out["compo_sky"] = std::make_unique<::compo_sky::RPBundle>(
+        reg.add<::compo_sky::RPBundle>(
+            "compo_sky",
             fbuf_bundle.depth().format(),
             fbuf_bundle.compo().format(),
             desclayouts,
@@ -299,4 +300,4 @@ namespace mirinae {
         );
     }
 
-}  // namespace mirinae
+}  // namespace mirinae::rp::compo

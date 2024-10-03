@@ -1673,7 +1673,7 @@ namespace mirinae {
         data_[name] = std::move(rp);
     }
 
-    void RenderPassPackage::init(
+    void RenderPassPackage::init_render_passes(
         uint32_t width,
         uint32_t height,
         FbufImageBundle& fbuf_bundle,
@@ -1681,16 +1681,6 @@ namespace mirinae {
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
-        create_rp_gbuf(
-            data_, width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-        create_rp_shadow(
-            data_, fbuf_bundle.depth().format(), desclayouts, device
-        );
-        create_rp_compo(
-            data_, width, height, fbuf_bundle, desclayouts, swapchain, device
-        );
-
         data_["transp"] = std::make_unique<::transp::RPBundle>(
             width, height, fbuf_bundle, desclayouts, swapchain, device
         );
