@@ -1477,111 +1477,6 @@ namespace {
     };
 
 
-    class RpStatesGbuf {
-
-    public:
-        void record_static(
-            const VkCommandBuffer cur_cmd_buf,
-            const VkExtent2D& fbuf_exd,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::RenderPassPackage& rp_pkg
-        ) {
-            auto& rp = rp_pkg.get("gbuf");
-
-            mirinae::RenderPassBeginInfo{}
-                .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
-                .wh(fbuf_exd)
-                .clear_value_count(rp.clear_value_count())
-                .clear_values(rp.clear_values())
-                .record_begin(cur_cmd_buf);
-
-            vkCmdBindPipeline(
-                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-            );
-
-            mirinae::Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
-            mirinae::Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
-
-            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
-
-            for (auto& pair : draw_sheet.static_pairs_) {
-                for (auto& unit : pair.model_->render_units_) {
-                    descset_info.first_set(0)
-                        .set(unit.get_desc_set(frame_index.get()))
-                        .record(cur_cmd_buf);
-
-                    unit.record_bind_vert_buf(cur_cmd_buf);
-
-                    for (auto& actor : pair.actors_) {
-                        descset_info.first_set(1)
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
-
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
-                }
-            }
-
-            vkCmdEndRenderPass(cur_cmd_buf);
-        }
-
-        void record_skinned(
-            const VkCommandBuffer cur_cmd_buf,
-            const VkExtent2D& fbuf_exd,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::RenderPassPackage& rp_pkg
-        ) {
-            auto& rp = rp_pkg.get("gbuf_skin");
-
-            mirinae::RenderPassBeginInfo{}
-                .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
-                .wh(fbuf_exd)
-                .clear_value_count(rp.clear_value_count())
-                .clear_values(rp.clear_values())
-                .record_begin(cur_cmd_buf);
-
-            vkCmdBindPipeline(
-                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-            );
-
-            mirinae::Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
-            mirinae::Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
-
-            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
-
-            for (auto& pair : draw_sheet.skinned_pairs_) {
-                for (auto& unit : pair.model_->runits_) {
-                    descset_info.first_set(0)
-                        .set(unit.get_desc_set(frame_index.get()))
-                        .record(cur_cmd_buf);
-
-                    unit.record_bind_vert_buf(cur_cmd_buf);
-
-                    for (auto& actor : pair.actors_) {
-                        descset_info.first_set(1)
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
-
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
-                }
-            }
-
-            vkCmdEndRenderPass(cur_cmd_buf);
-        }
-    };
-
-
     class RpStatesCompo {
 
     public:
@@ -2272,7 +2167,7 @@ namespace {
                 cur_cmd_buf, draw_sheet, framesync_.get_frame_index(), rp_
             );
 
-            rp_states_gbuf_.record_static(
+            rpm_gbuf_.record_static(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
                 draw_sheet,
@@ -2281,7 +2176,7 @@ namespace {
                 rp_
             );
 
-            rp_states_gbuf_.record_skinned(
+            rpm_gbuf_.record_skinned(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
                 draw_sheet,
@@ -2717,7 +2612,7 @@ namespace {
         mirinae::RenderPassPackage rp_;
         ::RpStatesShadow rp_states_shadow_;
         ::RpStatesEnvmap rp_states_envmap_;
-        ::RpStatesGbuf rp_states_gbuf_;
+        mirinae::rp::gbuf::RpMaster rpm_gbuf_;
         ::RpStatesCompo rp_states_compo_;
         ::RpStatesCompoSky rp_states_compo_sky_;
         ::RpStatesTransp rp_states_transp_;

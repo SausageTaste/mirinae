@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/gbuf.hpp"
 
+#include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
@@ -571,6 +572,111 @@ namespace mirinae::rp::gbuf {
             swapchain,
             device
         );
+    }
+
+}  // namespace mirinae::rp::gbuf
+
+
+namespace mirinae::rp::gbuf {
+
+    void RpMaster::record_static(
+        const VkCommandBuffer cur_cmd_buf,
+        const VkExtent2D& fbuf_exd,
+        const DrawSheet& draw_sheet,
+        const FrameIndex frame_index,
+        const ShainImageIndex image_index,
+        const IRenderPassRegistry& rp_pkg
+    ) {
+        auto& rp = rp_pkg.get("gbuf");
+
+        RenderPassBeginInfo{}
+            .rp(rp.renderpass())
+            .fbuf(rp.fbuf_at(image_index.get()))
+            .wh(fbuf_exd)
+            .clear_value_count(rp.clear_value_count())
+            .clear_values(rp.clear_values())
+            .record_begin(cur_cmd_buf);
+
+        vkCmdBindPipeline(
+            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+        );
+
+        Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
+        Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
+
+        DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
+        for (auto& pair : draw_sheet.static_pairs_) {
+            for (auto& unit : pair.model_->render_units_) {
+                descset_info.first_set(0)
+                    .set(unit.get_desc_set(frame_index.get()))
+                    .record(cur_cmd_buf);
+
+                unit.record_bind_vert_buf(cur_cmd_buf);
+
+                for (auto& actor : pair.actors_) {
+                    descset_info.first_set(1)
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
+                }
+            }
+        }
+
+        vkCmdEndRenderPass(cur_cmd_buf);
+    }
+
+    void RpMaster::record_skinned(
+        const VkCommandBuffer cur_cmd_buf,
+        const VkExtent2D& fbuf_exd,
+        const DrawSheet& draw_sheet,
+        const FrameIndex frame_index,
+        const ShainImageIndex image_index,
+        const IRenderPassRegistry& rp_pkg
+    ) {
+        auto& rp = rp_pkg.get("gbuf_skin");
+
+        RenderPassBeginInfo{}
+            .rp(rp.renderpass())
+            .fbuf(rp.fbuf_at(image_index.get()))
+            .wh(fbuf_exd)
+            .clear_value_count(rp.clear_value_count())
+            .clear_values(rp.clear_values())
+            .record_begin(cur_cmd_buf);
+
+        vkCmdBindPipeline(
+            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+        );
+
+        Viewport{ fbuf_exd }.record_single(cur_cmd_buf);
+        Rect2D{ fbuf_exd }.record_scissor(cur_cmd_buf);
+
+        DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
+        for (auto& pair : draw_sheet.skinned_pairs_) {
+            for (auto& unit : pair.model_->runits_) {
+                descset_info.first_set(0)
+                    .set(unit.get_desc_set(frame_index.get()))
+                    .record(cur_cmd_buf);
+
+                unit.record_bind_vert_buf(cur_cmd_buf);
+
+                for (auto& actor : pair.actors_) {
+                    descset_info.first_set(1)
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
+                }
+            }
+        }
+
+        vkCmdEndRenderPass(cur_cmd_buf);
     }
 
 }  // namespace mirinae::rp::gbuf

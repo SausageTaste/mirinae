@@ -23,7 +23,7 @@ namespace mirinae {
 
         void destroy();
 
-        const IRenderPassBundle& get(const std::string& name) const;
+        const IRenderPassBundle& get(const std::string& name) const override;
 
     private:
         std::map<std::string, std::unique_ptr<IRenderPassBundle>> data_;
