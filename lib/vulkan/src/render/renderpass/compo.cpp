@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/compo.hpp"
 
+#include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 
 
@@ -300,6 +301,191 @@ namespace mirinae::rp::compo {
             desclayouts,
             device
         );
+    }
+
+}  // namespace mirinae::rp::compo
+
+
+// RpMasterBasic
+namespace mirinae::rp::compo {
+
+    void RpMasterBasic::init(
+        DesclayoutManager& desclayouts,
+        FbufImageBundle& fbufs,
+        VkImageView dlight_shadowmap,
+        VkImageView slight_shadowmap,
+        VkImageView env_diffuse,
+        VkImageView env_specular,
+        VkImageView env_lut,
+        VulkanDevice& device
+    ) {
+        auto& desclayout = desclayouts.get("compo:main");
+        desc_pool_.init(
+            MAX_FRAMES_IN_FLIGHT, desclayout.size_info(), device.logi_device()
+        );
+        desc_sets_ = desc_pool_.alloc(
+            MAX_FRAMES_IN_FLIGHT, desclayout.layout(), device.logi_device()
+        );
+
+        const auto sam_lin = device.samplers().get_linear();
+        const auto sam_nea = device.samplers().get_nearest();
+        const auto sam_cube = device.samplers().get_cubemap();
+        DescWriteInfoBuilder builder;
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            auto& ubuf = ubufs_.emplace_back();
+            ubuf.init_ubuf(sizeof(U_CompoMain), device.mem_alloc());
+
+            builder.set_descset(desc_sets_.at(i))
+                .add_img_sampler(fbufs.depth().image_view(), sam_lin)
+                .add_img_sampler(fbufs.albedo().image_view(), sam_lin)
+                .add_img_sampler(fbufs.normal().image_view(), sam_lin)
+                .add_img_sampler(fbufs.material().image_view(), sam_lin)
+                .add_ubuf(ubuf)
+                .add_img_sampler(dlight_shadowmap, sam_nea)
+                .add_img_sampler(slight_shadowmap, sam_nea)
+                .add_img_sampler(env_diffuse, sam_cube)
+                .add_img_sampler(env_specular, sam_cube)
+                .add_img_sampler(env_lut, sam_lin);
+        }
+        builder.apply_all(device.logi_device());
+    }
+
+    void RpMasterBasic::destroy(VulkanDevice& device) {
+        desc_pool_.destroy(device.logi_device());
+
+        for (auto& ubuf : ubufs_) ubuf.destroy(device.mem_alloc());
+        ubufs_.clear();
+    }
+
+    void RpMasterBasic::record(
+        const VkCommandBuffer cur_cmd_buf,
+        const VkExtent2D& fbuf_ext,
+        const FrameIndex frame_index,
+        const ShainImageIndex image_index,
+        const IRenderPassRegistry& rp_pkg
+    ) {
+        auto& rp = rp_pkg.get("compo");
+
+        RenderPassBeginInfo{}
+            .rp(rp.renderpass())
+            .fbuf(rp.fbuf_at(image_index.get()))
+            .wh(fbuf_ext)
+            .clear_value_count(rp.clear_value_count())
+            .clear_values(rp.clear_values())
+            .record_begin(cur_cmd_buf);
+
+        vkCmdBindPipeline(
+            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+        );
+
+        Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+        Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
+
+        DescSetBindInfo{}
+            .layout(rp.pipeline_layout())
+            .set(desc_sets_.at(frame_index.get()))
+            .record(cur_cmd_buf);
+
+        vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
+
+        vkCmdEndRenderPass(cur_cmd_buf);
+    }
+
+}  // namespace mirinae::rp::compo
+
+// RpMasterSky
+namespace mirinae::rp::compo {
+
+    void RpMasterSky::init(
+        VkImageView sky_texture,
+        IRenderPassRegistry& rp_pkg,
+        DesclayoutManager& desclayouts,
+        FbufImageBundle& fbufs,
+        Swapchain& shain,
+        VulkanDevice& device
+    ) {
+        auto& desclayout = desclayouts.get("compo_sky:main");
+        desc_pool_.init(
+            MAX_FRAMES_IN_FLIGHT, desclayout.size_info(), device.logi_device()
+        );
+        desc_sets_ = desc_pool_.alloc(
+            MAX_FRAMES_IN_FLIGHT, desclayout.layout(), device.logi_device()
+        );
+
+        const auto sam_lin = device.samplers().get_linear();
+        DescWriteInfoBuilder builder;
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            builder.set_descset(desc_sets_.at(i))
+                .add_img_sampler(sky_texture, sam_lin);
+        }
+        builder.apply_all(device.logi_device());
+
+        auto& rp = rp_pkg.get("compo_sky");
+
+        FbufCinfo fbuf_cinfo;
+        fbuf_cinfo.set_rp(rp.renderpass())
+            .set_dim(fbufs.width(), fbufs.height())
+            .add_attach(fbufs.depth().image_view())
+            .add_attach(fbufs.compo().image_view());
+        for (int i = 0; i < shain.views_count(); ++i)
+            fbufs_.push_back(fbuf_cinfo.build(device));
+    }
+
+    void RpMasterSky::destroy(VulkanDevice& device) {
+        desc_pool_.destroy(device.logi_device());
+
+        for (auto& x : fbufs_)
+            vkDestroyFramebuffer(device.logi_device(), x, nullptr);
+        fbufs_.clear();
+    }
+
+    void RpMasterSky::record(
+        const VkCommandBuffer cur_cmd_buf,
+        const glm::mat4 proj_inv,
+        const glm::mat4 view_inv,
+        const VkExtent2D& fbuf_ext,
+        const FrameIndex frame_index,
+        const ShainImageIndex image_index,
+        const IRenderPassRegistry& rp_pkg
+    ) {
+        auto& rp = rp_pkg.get("compo_sky");
+
+        RenderPassBeginInfo{}
+            .rp(rp.renderpass())
+            .fbuf(fbufs_.at(image_index.get()))
+            .wh(fbuf_ext)
+            .clear_value_count(rp.clear_value_count())
+            .clear_values(rp.clear_values())
+            .record_begin(cur_cmd_buf);
+
+        vkCmdBindPipeline(
+            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+        );
+
+        Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
+        Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
+
+        DescSetBindInfo{}
+            .layout(rp.pipeline_layout())
+            .set(desc_sets_.at(frame_index.get()))
+            .record(cur_cmd_buf);
+
+        U_CompoSkyMain pc;
+        pc.proj_inv_ = proj_inv;
+        pc.view_inv_ = view_inv;
+
+        vkCmdPushConstants(
+            cur_cmd_buf,
+            rp.pipeline_layout(),
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            0,
+            sizeof(U_CompoSkyMain),
+            &pc
+        );
+
+        vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
+
+        vkCmdEndRenderPass(cur_cmd_buf);
     }
 
 }  // namespace mirinae::rp::compo
