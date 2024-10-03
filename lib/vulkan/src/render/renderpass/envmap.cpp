@@ -1,5 +1,7 @@
 #include "mirinae/render/renderpass/envmap.hpp"
 
+#include "mirinae/render/renderpass/builder.hpp"
+
 
 // env_sky
 namespace { namespace env_sky {

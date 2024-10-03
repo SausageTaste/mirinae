@@ -1,5 +1,7 @@
 #include "mirinae/render/renderpass/shadow.hpp"
 
+#include "mirinae/render/renderpass/builder.hpp"
+
 
 // shadowmap
 namespace { namespace shadowmap {
