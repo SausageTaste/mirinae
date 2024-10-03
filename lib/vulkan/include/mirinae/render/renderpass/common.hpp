@@ -148,6 +148,8 @@ namespace mirinae {
             const std::string& name, std::unique_ptr<IRenderPassBundle>&& rp
         ) = 0;
 
+        virtual const IRenderPassBundle& get(const std::string& name) const = 0;
+
         template <typename T, typename... Args>
         void add(const std::string& name, Args&&... args) {
             this->add(name, std::make_unique<T>(std::forward<Args>(args)...));
