@@ -5,9 +5,13 @@
 
 namespace mirinae {
 
-    class RenderPassPackage {
+    class RenderPassPackage : public IRenderPassRegistry {
 
     public:
+        void add(
+            const std::string& name, std::unique_ptr<IRenderPassBundle>&& rp
+        ) override;
+
         void init(
             uint32_t width,
             uint32_t height,

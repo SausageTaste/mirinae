@@ -1,4 +1,4 @@
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/render/renderpass/envmap.hpp"
 
 
 // env_sky
@@ -368,7 +368,7 @@ namespace { namespace env_diffuse {
         std::array<VkClearValue, 1> clear_values_;
     };
 
-}}  // namespace ::envdiffuse
+}}  // namespace ::env_diffuse
 
 
 // env_specular
@@ -582,26 +582,18 @@ namespace { namespace env_lut {
 }}  // namespace ::env_lut
 
 
-namespace mirinae {
+namespace mirinae::rp::envmap {
 
-    void create_rp_envmap(
-        RpMap& out, DesclayoutManager& desclayouts, VulkanDevice& device
+    void create_rp(
+        IRenderPassRegistry& reg,
+        DesclayoutManager& desclayouts,
+        VulkanDevice& device
     ) {
-        out["env_sky"] = std::make_unique<::env_sky::RPBundle>(
-            desclayouts, device
-        );
-        out["env_base"] = std::make_unique<::env_base::RPBundle>(
-            desclayouts, device
-        );
-        out["env_diffuse"] = std::make_unique<::env_diffuse::RPBundle>(
-            desclayouts, device
-        );
-        out["env_specular"] = std::make_unique<::env_specular::RPBundle>(
-            desclayouts, device
-        );
-        out["env_lut"] = std::make_unique<::env_lut::RPBundle>(
-            desclayouts, device
-        );
+        reg.add<::env_sky::RPBundle>("env_sky", desclayouts, device);
+        reg.add<::env_base::RPBundle>("env_base", desclayouts, device);
+        reg.add<::env_diffuse::RPBundle>("env_diffuse", desclayouts, device);
+        reg.add<::env_specular::RPBundle>("env_specular", desclayouts, device);
+        reg.add<::env_lut::RPBundle>("env_lut", desclayouts, device);
     }
 
-}  // namespace mirinae
+}  // namespace mirinae::rp::envmap
