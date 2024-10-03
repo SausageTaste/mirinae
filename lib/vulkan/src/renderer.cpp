@@ -110,9 +110,15 @@ namespace {
     class RpMasters {
 
     public:
-        RpMasters() { envmap_ = mirinae::rp::envmap::create_rp_master(); }
+        RpMasters() {
+            gbuf_terrain_ = mirinae::rp::gbuf::create_rpm_terrain();
+            envmap_ = mirinae::rp::envmap::create_rp_master();
+        }
 
         mirinae::rp::gbuf::RpMaster& gbuf() { return gbuf_; }
+        mirinae::rp::gbuf::IRpMasterTerrain& gbuf_terrain() {
+            return *gbuf_terrain_;
+        }
         mirinae::rp::envmap::IRpMaster& envmap() { return *envmap_; }
         mirinae::rp::shadow::RpMaster& shadow() { return shadow_; }
         mirinae::rp::compo::RpMasterBasic& compo_basic() {
@@ -122,6 +128,7 @@ namespace {
 
     private:
         mirinae::rp::gbuf::RpMaster gbuf_;
+        std::unique_ptr<mirinae::rp::gbuf::IRpMasterTerrain> gbuf_terrain_;
         std::unique_ptr<mirinae::rp::envmap::IRpMaster> envmap_;
         mirinae::rp::shadow::RpMaster shadow_;
         mirinae::rp::compo::RpMasterBasic compo_basic_;
@@ -670,6 +677,8 @@ namespace {
                 rp_
             );
 
+            rpm_.gbuf_terrain().record();
+
             rpm_.compo_basic().record(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
@@ -852,6 +861,7 @@ namespace {
             rpm_.shadow().pool().recreate_fbufs(rp_.get("shadowmap"), device_);
 
             rpm_.envmap().init(rp_, tex_man_, desclayout_, device_);
+            rpm_.gbuf_terrain().init();
             rpm_.compo_basic().init(
                 desclayout_,
                 fbuf_images_,
@@ -893,6 +903,7 @@ namespace {
             rp_states_transp_.destroy(device_);
             rpm_.compo_sky().destroy(device_);
             rpm_.compo_basic().destroy(device_);
+            rpm_.gbuf_terrain().destroy(device_);
             rpm_.envmap().destroy(device_);
 
             rp_.destroy();
