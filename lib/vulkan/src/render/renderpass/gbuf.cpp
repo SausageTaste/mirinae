@@ -577,6 +577,7 @@ namespace mirinae::rp::gbuf {
 }  // namespace mirinae::rp::gbuf
 
 
+// RpMaster
 namespace mirinae::rp::gbuf {
 
     void RpMaster::record_static(
@@ -677,6 +678,29 @@ namespace mirinae::rp::gbuf {
         }
 
         vkCmdEndRenderPass(cur_cmd_buf);
+    }
+
+}  // namespace mirinae::rp::gbuf
+
+
+// RpMasterTerrain
+namespace {
+
+    class RpMasterTerrain : public mirinae::rp::gbuf::IRpMasterTerrain {
+
+    public:
+        void init() override {}
+
+        void destroy(mirinae::VulkanDevice& device) override {}
+
+        void record() override {}
+    };
+
+}  // namespace
+namespace mirinae::rp::gbuf {
+
+    std::unique_ptr<IRpMasterTerrain> create_rpm_terrain() {
+        return std::make_unique<::RpMasterTerrain>();
     }
 
 }  // namespace mirinae::rp::gbuf

@@ -38,4 +38,19 @@ namespace mirinae::rp::gbuf {
         );
     };
 
+
+    class IRpMasterTerrain {
+
+    public:
+        virtual ~IRpMasterTerrain() = default;
+
+        virtual void init() = 0;
+
+        virtual void destroy(VulkanDevice& device) = 0;
+
+        virtual void record() = 0;
+    };
+
+    std::unique_ptr<IRpMasterTerrain> create_rpm_terrain();
+
 }  // namespace mirinae::rp::gbuf
