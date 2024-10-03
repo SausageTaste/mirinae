@@ -1661,6 +1661,18 @@ namespace { namespace overlay {
 // RenderPassPackage
 namespace mirinae {
 
+    void RenderPassPackage::add(
+        const std::string& name, std::unique_ptr<IRenderPassBundle>&& rp
+    ) {
+        if (data_.find(name) != data_.end()) {
+            SPDLOG_WARN(
+                "Render pass bundle already exists, replacing: '{}'", name
+            );
+        }
+
+        data_[name] = std::move(rp);
+    }
+
     void RenderPassPackage::init(
         uint32_t width,
         uint32_t height,
@@ -1672,7 +1684,6 @@ namespace mirinae {
         create_rp_gbuf(
             data_, width, height, fbuf_bundle, desclayouts, swapchain, device
         );
-        create_rp_envmap(data_, desclayouts, device);
         create_rp_shadow(
             data_, fbuf_bundle.depth().format(), desclayouts, device
         );

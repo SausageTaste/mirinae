@@ -534,6 +534,21 @@ namespace mirinae {
     };
 
 
+    class IRenderPassRegistry {
+
+    public:
+        virtual ~IRenderPassRegistry() = default;
+
+        virtual void add(
+            const std::string& name, std::unique_ptr<IRenderPassBundle>&& rp
+        ) = 0;
+
+        template <typename T, typename... Args>
+        void add(const std::string& name, Args&&... args) {
+            this->add(name, std::make_unique<T>(std::forward<Args>(args)...));
+        }
+    };
+
     using RpMap = std::map<std::string, std::unique_ptr<IRenderPassBundle>>;
 
     void create_rp_gbuf(
@@ -544,10 +559,6 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         Swapchain& swapchain,
         VulkanDevice& device
-    );
-
-    void create_rp_envmap(
-        RpMap& out, DesclayoutManager& desclayouts, VulkanDevice& device
     );
 
     void create_rp_shadow(

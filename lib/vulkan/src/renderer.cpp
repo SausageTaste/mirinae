@@ -12,6 +12,7 @@
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass.hpp"
+#include "mirinae/render/renderpass/envmap.hpp"
 
 
 namespace {
@@ -2496,6 +2497,7 @@ namespace {
                 swapchain_,
                 device_
             );
+            mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
 
             rp_states_shadow_.pool().recreate_fbufs(
                 rp_.get("shadowmap"), device_
