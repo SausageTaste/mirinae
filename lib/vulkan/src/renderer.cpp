@@ -20,9 +20,6 @@
 
 namespace {
 
-    using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
-
-
     bool is_fbuf_too_small(uint32_t width, uint32_t height) {
         if (width < 5)
             return true;
@@ -94,7 +91,7 @@ namespace {
             return in_flight_fences_.at(cur_frame_.get());
         }
 
-        FrameIndex get_frame_index() const { return cur_frame_; }
+        mirinae::FrameIndex get_frame_index() const { return cur_frame_; }
         void increase_frame_index() {
             cur_frame_ = (cur_frame_ + 1) % mirinae::MAX_FRAMES_IN_FLIGHT;
         }
@@ -106,7 +103,7 @@ namespace {
             render_finished_semaphores_;
         std::array<mirinae::Fence, mirinae::MAX_FRAMES_IN_FLIGHT>
             in_flight_fences_;
-        FrameIndex cur_frame_{ 0 };
+        mirinae::FrameIndex cur_frame_{ 0 };
     };
 
 
@@ -256,64 +253,13 @@ namespace {
         std::vector<Item> shadow_maps_;
     };
 
-}  // namespace
 
-
-namespace {
-
-    struct DrawSheet {
-        struct StaticRenderPairs {
-            struct Actor {
-                mirinae::RenderActor* actor_;
-                glm::dmat4 model_mat_;
-            };
-
-            mirinae::RenderModel* model_;
-            std::vector<Actor> actors_;
-        };
-
-        struct SkinnedRenderPairs {
-            struct Actor {
-                mirinae::RenderActorSkinned* actor_;
-                glm::dmat4 model_mat_;
-            };
-
-            mirinae::RenderModelSkinned* model_;
-            std::vector<Actor> actors_;
-        };
-
-        StaticRenderPairs& get_static_pair(mirinae::RenderModel& model) {
-            for (auto& x : static_pairs_) {
-                if (x.model_ == &model)
-                    return x;
-            }
-
-            auto& output = static_pairs_.emplace_back();
-            output.model_ = &model;
-            return output;
-        }
-
-        SkinnedRenderPairs& get_skinn_pair(mirinae::RenderModelSkinned& model) {
-            for (auto& x : skinned_pairs_) {
-                if (x.model_ == &model)
-                    return x;
-            }
-
-            auto& output = skinned_pairs_.emplace_back();
-            output.model_ = &model;
-            return output;
-        }
-
-        std::vector<StaticRenderPairs> static_pairs_;
-        std::vector<SkinnedRenderPairs> skinned_pairs_;
-    };
-
-    DrawSheet make_draw_sheet(mirinae::Scene& scene) {
+    mirinae::DrawSheet make_draw_sheet(mirinae::Scene& scene) {
         using CTrans = mirinae::cpnt::Transform;
         using CStaticModelActor = mirinae::cpnt::StaticActorVk;
         using CSkinnedModelActor = mirinae::cpnt::SkinnedActorVk;
 
-        DrawSheet sheet;
+        mirinae::DrawSheet sheet;
 
         for (auto enttid : scene.reg_.view<CTrans, CStaticModelActor>()) {
             auto& pair = scene.reg_.get<CStaticModelActor>(enttid);
@@ -410,8 +356,8 @@ namespace {
 
         void record(
             const VkCommandBuffer cur_cmd_buf,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::CosmosSimulator& cosmos,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
@@ -864,8 +810,8 @@ namespace {
 
         void record_base(
             const VkCommandBuffer cur_cmd_buf,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::CosmosSimulator& cosmos,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
@@ -1099,8 +1045,8 @@ namespace {
 
         void record_diffuse(
             const VkCommandBuffer cur_cmd_buf,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -1161,8 +1107,8 @@ namespace {
 
         void record_specular(
             const VkCommandBuffer cur_cmd_buf,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -1242,8 +1188,8 @@ namespace {
     public:
         void record_static(
             const VkCommandBuffer cur_cmd_buf,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("shadowmap");
@@ -1383,8 +1329,8 @@ namespace {
 
         void record_skinned(
             const VkCommandBuffer cur_cmd_buf,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("shadowmap_skin");
@@ -1537,8 +1483,8 @@ namespace {
         void record_static(
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_exd,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -1587,8 +1533,8 @@ namespace {
         void record_skinned(
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_exd,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -1696,7 +1642,7 @@ namespace {
         void record(
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_ext,
-            const ::FrameIndex frame_index,
+            const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -1788,7 +1734,7 @@ namespace {
             const glm::mat4 proj_inv,
             const glm::mat4 view_inv,
             const VkExtent2D& fbuf_ext,
-            const ::FrameIndex frame_index,
+            const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -1895,8 +1841,8 @@ namespace {
         void record_static(
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_ext,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -1948,8 +1894,8 @@ namespace {
         void record_skinned(
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_ext,
-            const ::DrawSheet& draw_sheet,
-            const ::FrameIndex frame_index,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
@@ -2110,7 +2056,7 @@ namespace {
         void record(
             VkCommandBuffer cmdbuf,
             VkExtent2D shain_exd,
-            ::FrameIndex frame_index,
+            mirinae::FrameIndex frame_index,
             mirinae::ShainImageIndex image_index,
             mirinae::RenderPassPackage& rp_pkg
         ) {

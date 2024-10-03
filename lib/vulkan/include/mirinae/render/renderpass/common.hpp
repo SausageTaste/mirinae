@@ -8,6 +8,57 @@
 
 namespace mirinae {
 
+    using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
+
+
+    struct DrawSheet {
+        struct StaticRenderPairs {
+            struct Actor {
+                mirinae::RenderActor* actor_;
+                glm::dmat4 model_mat_;
+            };
+
+            mirinae::RenderModel* model_;
+            std::vector<Actor> actors_;
+        };
+
+        struct SkinnedRenderPairs {
+            struct Actor {
+                mirinae::RenderActorSkinned* actor_;
+                glm::dmat4 model_mat_;
+            };
+
+            mirinae::RenderModelSkinned* model_;
+            std::vector<Actor> actors_;
+        };
+
+        StaticRenderPairs& get_static_pair(mirinae::RenderModel& model) {
+            for (auto& x : static_pairs_) {
+                if (x.model_ == &model)
+                    return x;
+            }
+
+            auto& output = static_pairs_.emplace_back();
+            output.model_ = &model;
+            return output;
+        }
+
+        SkinnedRenderPairs& get_skinn_pair(mirinae::RenderModelSkinned& model) {
+            for (auto& x : skinned_pairs_) {
+                if (x.model_ == &model)
+                    return x;
+            }
+
+            auto& output = skinned_pairs_.emplace_back();
+            output.model_ = &model;
+            return output;
+        }
+
+        std::vector<StaticRenderPairs> static_pairs_;
+        std::vector<SkinnedRenderPairs> skinned_pairs_;
+    };
+
+
     class FbufImageBundle {
 
     public:
