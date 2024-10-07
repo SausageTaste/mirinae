@@ -476,12 +476,6 @@ namespace {
 
 
 int main() {
-    __try {
-        return ::start();
-    } __except (
-        mirinae::windows::create_minidump(GetExceptionInformation()),
-        EXCEPTION_EXECUTE_HANDLER
-    ) {
-        std::abort();
-    }
+    MIRINAE_WIN_TRY { return ::start(); }
+    MIRINAE_WIN_CATCH { std::abort(); }
 }
