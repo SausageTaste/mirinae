@@ -16,27 +16,34 @@ namespace mirinae::rp::gbuf {
     );
 
 
-    class RpMaster {
+    class IRpMasterBasic {
 
     public:
-        void record_static(
-            const VkCommandBuffer cur_cmd_buf,
-            const VkExtent2D& fbuf_exd,
-            const DrawSheet& draw_sheet,
-            const FrameIndex frame_index,
-            const ShainImageIndex image_index,
-            const IRenderPassRegistry& rp_pkg
-        );
+        virtual ~IRpMasterBasic() = default;
 
-        void record_skinned(
+        virtual void init() = 0;
+        virtual void destroy(VulkanDevice& device) = 0;
+
+        virtual void record_static(
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_exd,
             const DrawSheet& draw_sheet,
             const FrameIndex frame_index,
             const ShainImageIndex image_index,
             const IRenderPassRegistry& rp_pkg
-        );
+        ) = 0;
+
+        virtual void record_skinned(
+            const VkCommandBuffer cur_cmd_buf,
+            const VkExtent2D& fbuf_exd,
+            const DrawSheet& draw_sheet,
+            const FrameIndex frame_index,
+            const ShainImageIndex image_index,
+            const IRenderPassRegistry& rp_pkg
+        ) = 0;
     };
+
+    std::unique_ptr<IRpMasterBasic> create_rpm_basic();
 
 
     class IRpMasterTerrain {
