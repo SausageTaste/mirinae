@@ -43,18 +43,6 @@ namespace {
 
 
 int main() {
-#ifdef SUNG_OS_WINDOWS
-    __try {
-#endif
-
-        return ::start();
-
-#ifdef SUNG_OS_WINDOWS
-    } __except (
-        mirinae::windows::create_minidump(GetExceptionInformation()),
-        EXCEPTION_EXECUTE_HANDLER
-    ) {
-        std::abort();
-    }
-#endif
+    MIRINAE_WIN_TRY { return ::start(); }
+    MIRINAE_WIN_CATCH { std::abort(); }
 }

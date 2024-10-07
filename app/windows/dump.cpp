@@ -1,5 +1,7 @@
 #include "dump.hpp"
 
+#ifdef _MSC_VER
+
 #include <crtdbg.h>
 #include <dbghelp.h>
 #include <stdio.h>
@@ -79,3 +81,5 @@ namespace mirinae { namespace windows {
     }
 
 }}  // namespace mirinae::windows
+
+#endif
