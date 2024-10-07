@@ -38,7 +38,7 @@ namespace mirinae {
             return false;
         }
 
-        bool on_text_event(char32_t e) {
+        bool on_text_event(char32_t e) override {
             for (auto& x : items_) {
                 switch (x.index()) {
                     case 0:
@@ -54,7 +54,7 @@ namespace mirinae {
             return false;
         }
 
-        bool on_mouse_event(const mouse::Event& e) {
+        bool on_mouse_event(const mouse::Event& e) override {
             for (auto& x : items_) {
                 switch (x.index()) {
                     case 0:
