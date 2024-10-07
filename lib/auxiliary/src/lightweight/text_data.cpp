@@ -96,7 +96,7 @@ namespace {
             return true;
         }
 
-        bool append(const std::string_view str) {
+        bool append(const std::string_view str) override {
             const auto str32 = una::utf8to32<char, char32_t>(str);
             for (auto c : str32) {
                 this->last_valid_block().append(c);
