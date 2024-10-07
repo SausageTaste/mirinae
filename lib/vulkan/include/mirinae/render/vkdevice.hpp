@@ -22,6 +22,13 @@ namespace mirinae {
     };
 
 
+    struct IImageFormats {
+        virtual ~IImageFormats() = default;
+        virtual VkFormat depth_map() const = 0;
+        virtual VkFormat rgb_hdr() const = 0;
+    };
+
+
     class VulkanDevice {
 
     public:
@@ -38,15 +45,11 @@ namespace mirinae {
         VkPhysicalDevice phys_device();
         const VkPhysicalDeviceFeatures& phys_device_features() const;
         std::optional<uint32_t> graphics_queue_family_index();
-        VkFormat select_first_supported_format(
-            const std::vector<VkFormat>& candidates,
-            VkImageTiling tiling,
-            VkFormatFeatureFlags features
-        ) const;
         bool has_supp_depth_clamp() const;
 
         // Sub-systems
         ISamplerManager& samplers();
+        IImageFormats& img_formats();
 
         // Misc
         VulkanMemoryAllocator mem_alloc();

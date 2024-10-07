@@ -825,7 +825,7 @@ namespace {
             const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                 swapchain_.width(), swapchain_.height(), 0.9
             );
-            fbuf_images_.init(gbuf_width, gbuf_height, tex_man_);
+            fbuf_images_.init(gbuf_width, gbuf_height, tex_man_, device_);
 
             mirinae::rp::gbuf::create_rp(
                 rp_,
