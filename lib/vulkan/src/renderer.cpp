@@ -111,11 +111,12 @@ namespace {
 
     public:
         RpMasters() {
+            gbuf_basic_ = mirinae::rp::gbuf::create_rpm_basic();
             gbuf_terrain_ = mirinae::rp::gbuf::create_rpm_terrain();
             envmap_ = mirinae::rp::envmap::create_rp_master();
         }
 
-        mirinae::rp::gbuf::RpMaster& gbuf() { return gbuf_; }
+        mirinae::rp::gbuf::IRpMasterBasic& gbuf_basic() { return *gbuf_basic_; }
         mirinae::rp::gbuf::IRpMasterTerrain& gbuf_terrain() {
             return *gbuf_terrain_;
         }
@@ -127,7 +128,7 @@ namespace {
         mirinae::rp::compo::RpMasterSky& compo_sky() { return compo_sky_; }
 
     private:
-        mirinae::rp::gbuf::RpMaster gbuf_;
+        std::unique_ptr<mirinae::rp::gbuf::IRpMasterBasic> gbuf_basic_;
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterTerrain> gbuf_terrain_;
         std::unique_ptr<mirinae::rp::envmap::IRpMaster> envmap_;
         mirinae::rp::shadow::RpMaster shadow_;
@@ -659,7 +660,7 @@ namespace {
                 cur_cmd_buf, draw_sheet, framesync_.get_frame_index(), rp_
             );
 
-            rpm_.gbuf().record_static(
+            rpm_.gbuf_basic().record_static(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
                 draw_sheet,
@@ -668,7 +669,7 @@ namespace {
                 rp_
             );
 
-            rpm_.gbuf().record_skinned(
+            rpm_.gbuf_basic().record_skinned(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
                 draw_sheet,
@@ -861,6 +862,7 @@ namespace {
             rpm_.shadow().pool().recreate_fbufs(rp_.get("shadowmap"), device_);
 
             rpm_.envmap().init(rp_, tex_man_, desclayout_, device_);
+            rpm_.gbuf_basic().init();
             rpm_.gbuf_terrain().init();
             rpm_.compo_basic().init(
                 desclayout_,
@@ -904,6 +906,7 @@ namespace {
             rpm_.compo_sky().destroy(device_);
             rpm_.compo_basic().destroy(device_);
             rpm_.gbuf_terrain().destroy(device_);
+            rpm_.gbuf_basic().destroy(device_);
             rpm_.envmap().destroy(device_);
 
             rp_.destroy();
