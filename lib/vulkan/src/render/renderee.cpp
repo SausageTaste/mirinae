@@ -175,7 +175,7 @@ namespace {
         vkGetPhysicalDeviceMemoryProperties(phys_device, &memProperties);
 
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-            if (0 == typeFilter & (1 << i))
+            if (0 == (typeFilter & (1 << i)))
                 continue;
 
             const auto& mem_type = memProperties.memoryTypes[i];
@@ -655,7 +655,7 @@ namespace mirinae {
 
         ~KtxTextureData() { this->destroy(); }
 
-        void destroy() {
+        void destroy() override {
             id_.clear();
             texture_view_.destroy(device_);
 

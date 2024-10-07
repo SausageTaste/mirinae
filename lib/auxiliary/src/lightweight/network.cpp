@@ -84,6 +84,9 @@ namespace {
                     /* Reset the peer's client information. */
 
                     event.peer->data = NULL;
+
+                case ENET_EVENT_TYPE_NONE:
+                    break;
             }
         }
 
@@ -158,6 +161,9 @@ namespace {
                     /* Reset the peer's client information. */
 
                     event.peer->data = NULL;
+
+                case ENET_EVENT_TYPE_NONE:
+                    break;
             }
         }
 
