@@ -66,8 +66,10 @@ namespace { namespace env_sky {
             mirinae::VulkanDevice& device
         )
             : IRenderPassBundle(device) {
-            formats_ = { mirinae::select_depth_map_format(device),
-                         VK_FORMAT_B10G11R11_UFLOAT_PACK32 };
+            formats_ = {
+                device.img_formats().depth_map(),
+                VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+            };
 
             clear_values_.at(0).depthStencil = { 1.0f, 0 };
             clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -201,8 +203,10 @@ namespace { namespace env_base {
             mirinae::VulkanDevice& device
         )
             : IRenderPassBundle(device) {
-            formats_ = { mirinae::select_depth_map_format(device),
-                         VK_FORMAT_B10G11R11_UFLOAT_PACK32 };
+            formats_ = {
+                device.img_formats().depth_map(),
+                VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+            };
 
             clear_values_.at(0).depthStencil = { 1.0f, 0 };
             clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };

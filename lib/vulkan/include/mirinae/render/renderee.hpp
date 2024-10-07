@@ -20,9 +20,6 @@ namespace mirinae {
     };
 
 
-    VkFormat select_depth_map_format(VulkanDevice& device);
-
-
     class ITexture {
 
     public:

@@ -391,25 +391,6 @@ namespace {
 }  // namespace
 
 
-namespace mirinae {
-
-    VkFormat select_depth_map_format(VulkanDevice& device) {
-        const static std::vector<VkFormat> candidates = {
-            VK_FORMAT_D32_SFLOAT,
-            VK_FORMAT_D32_SFLOAT_S8_UINT,
-            VK_FORMAT_D24_UNORM_S8_UINT,
-        };
-
-        return device.select_first_supported_format(
-            candidates,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-        );
-    }
-
-}  // namespace mirinae
-
-
 // TextureManager
 namespace mirinae {
 
@@ -530,17 +511,15 @@ namespace mirinae {
         void init_depth(uint32_t width, uint32_t height) {
             id_ = "<depth>";
 
-            const auto depth_format = select_depth_map_format(device_);
-
             mirinae::ImageCreateInfo img_info;
             img_info.set_dimensions(width, height)
-                .set_format(depth_format)
+                .set_format(device_.img_formats().depth_map())
                 .add_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
                 .add_usage_sampled();
             texture_.init(img_info.get(), device_.mem_alloc());
 
             mirinae::ImageViewBuilder iv_builder;
-            iv_builder.format(depth_format)
+            iv_builder.format(device_.img_formats().depth_map())
                 .aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                 .image(texture_.image());
             texture_view_.reset(iv_builder, device_);

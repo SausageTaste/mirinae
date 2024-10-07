@@ -63,7 +63,10 @@ namespace mirinae {
 
     public:
         void init(
-            uint32_t width, uint32_t height, mirinae::TextureManager& tex_man
+            uint32_t width,
+            uint32_t height,
+            mirinae::TextureManager& tex_man,
+            mirinae::VulkanDevice& device
         ) {
             depth_ = tex_man.create_depth(width, height);
             albedo_ = tex_man.create_attachment(
@@ -90,7 +93,7 @@ namespace mirinae {
             compo_ = tex_man.create_attachment(
                 width,
                 height,
-                VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+                device.img_formats().rgb_hdr(),
                 mirinae::FbufUsage::color_attachment,
                 "compo"
             );

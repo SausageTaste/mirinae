@@ -760,6 +760,38 @@ namespace {
         VkQueue present_queue_ = nullptr;
     };
 
+
+    class ImageFormats : public mirinae::IImageFormats {
+
+    public:
+        void init(::PhysDevice& phys_device) {
+            depth_map_ = this->select_depth_map_format(phys_device);
+        }
+
+        virtual VkFormat depth_map() const override { return depth_map_; }
+
+        virtual VkFormat rgb_hdr() const override {
+            return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+        }
+
+    private:
+        static VkFormat select_depth_map_format(::PhysDevice& phys_device) {
+            const std::vector<VkFormat> candidates = {
+                VK_FORMAT_D32_SFLOAT,
+                VK_FORMAT_D32_SFLOAT_S8_UINT,
+                VK_FORMAT_D24_UNORM_S8_UINT,
+            };
+
+            return phys_device.select_first_supported_format(
+                candidates,
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+            );
+        }
+
+        VkFormat depth_map_ = VK_FORMAT_UNDEFINED;
+    };
+
 }  // namespace
 
 
@@ -975,6 +1007,7 @@ namespace mirinae {
             }
 
             samplers_.init(phys_device_, logi_device_);
+            img_formats_.init(phys_device_);
         }
 
         ~Pimpl() {
@@ -993,6 +1026,7 @@ namespace mirinae {
         ::PhysDevice phys_device_;
         ::LogiDevice logi_device_;
         ::SamplerManager samplers_;
+        ::ImageFormats img_formats_;
         mirinae::VulkanMemoryAllocator mem_allocator_;
         mirinae::EngineCreateInfo create_info_;
         VkSurfaceKHR surface_ = VK_NULL_HANDLE;
@@ -1033,21 +1067,13 @@ namespace mirinae {
         return pimpl_->phys_device_.graphics_family_index();
     }
 
-    VkFormat VulkanDevice::select_first_supported_format(
-        const std::vector<VkFormat>& candidates,
-        VkImageTiling tiling,
-        VkFormatFeatureFlags features
-    ) const {
-        return pimpl_->phys_device_.select_first_supported_format(
-            candidates, tiling, features
-        );
-    }
-
     bool VulkanDevice::has_supp_depth_clamp() const {
         return pimpl_->phys_device_.is_depth_clamp_supported();
     }
 
     ISamplerManager& VulkanDevice::samplers() { return pimpl_->samplers_; }
+
+    IImageFormats& VulkanDevice::img_formats() { return pimpl_->img_formats_; }
 
     VulkanMemoryAllocator VulkanDevice::mem_alloc() {
         return pimpl_->mem_allocator_;
