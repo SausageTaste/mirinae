@@ -204,7 +204,7 @@ namespace {
             widgets_.update_content(wd);
         }
 
-        void request_update() { widgets_.request_update(); };
+        void request_update() override { widgets_.request_update(); };
 
         bool on_key_event(const mirinae::key::Event& e) override {
             using mirinae::key::ActionType;
