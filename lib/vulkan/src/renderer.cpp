@@ -660,16 +660,7 @@ namespace {
                 cur_cmd_buf, draw_sheet, framesync_.get_frame_index(), rp_
             );
 
-            rpm_.gbuf_basic().record_static(
-                cur_cmd_buf,
-                fbuf_images_.extent(),
-                draw_sheet,
-                framesync_.get_frame_index(),
-                image_index,
-                rp_
-            );
-
-            rpm_.gbuf_basic().record_skinned(
+            rpm_.gbuf_basic().record(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
                 draw_sheet,

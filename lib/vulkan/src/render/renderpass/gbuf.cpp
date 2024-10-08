@@ -587,7 +587,7 @@ namespace {
 
         void destroy(mirinae::VulkanDevice& device) override {}
 
-        void record_static(
+        void record(
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_exd,
             const mirinae::DrawSheet& draw_sheet,
@@ -595,6 +595,33 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) override {
+            this->record_static(
+                cur_cmd_buf,
+                fbuf_exd,
+                draw_sheet,
+                frame_index,
+                image_index,
+                rp_pkg
+            );
+            this->record_skinned(
+                cur_cmd_buf,
+                fbuf_exd,
+                draw_sheet,
+                frame_index,
+                image_index,
+                rp_pkg
+            );
+        }
+
+    private:
+        void record_static(
+            const VkCommandBuffer cur_cmd_buf,
+            const VkExtent2D& fbuf_exd,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::IRenderPassRegistry& rp_pkg
+        ) {
             auto& rp = rp_pkg.get("gbuf");
 
             mirinae::RenderPassBeginInfo{}
@@ -644,7 +671,7 @@ namespace {
             const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
             const mirinae::IRenderPassRegistry& rp_pkg
-        ) override {
+        ) {
             auto& rp = rp_pkg.get("gbuf_skin");
 
             mirinae::RenderPassBeginInfo{}
