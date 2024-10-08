@@ -669,7 +669,16 @@ namespace {
                 rp_
             );
 
-            rpm_.gbuf_terrain().record();
+            rpm_.gbuf_terrain().record(
+                cur_cmd_buf,
+                proj_mat,
+                view_mat,
+                glm::translate(glm::mat4{ 1 }, glm::vec3{ 0, 2, 0 }),
+                fbuf_images_.extent(),
+                framesync_.get_frame_index(),
+                image_index,
+                rp_
+            );
 
             rpm_.compo_basic().record(
                 cur_cmd_buf,

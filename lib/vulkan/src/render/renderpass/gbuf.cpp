@@ -1,5 +1,7 @@
 #include "mirinae/render/renderpass/gbuf.hpp"
 
+#include <sung/general/time.hpp>
+
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
@@ -215,12 +217,12 @@ namespace { namespace gbuf_skin {
         builder.attach_desc()
             .add(depth)
             .ini_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-            .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .fin_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             .op_pair_load_store();
         builder.attach_desc()
             .add(albedo)
             .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-            .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .op_pair_load_store();
         builder.attach_desc().dup(normal);
         builder.attach_desc().dup(material);
@@ -370,7 +372,7 @@ namespace { namespace gbuf_terrain {
         mirinae::DescLayoutBuilder builder{ "gbuf_terrain:main" };
         builder.add_ubuf(
             VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 1
-        );  // U_GbufTerrainMain
+        );  // U_GbufTerrain
         return desclayouts.add(builder, device.logi_device());
     }
 
@@ -421,13 +423,13 @@ namespace { namespace gbuf_terrain {
             .add_tese(":asset/spv/gbuf_terrain_tese.spv")
             .add_frag(":asset/spv/gbuf_terrain_frag.spv");
 
-        builder.vertex_input_state().set_skinned();
-
         builder.input_assembly_state().topology_patch_list();
 
-        builder.tes_state().patch_ctrl_points(3);
+        builder.tes_state().patch_ctrl_points(4);
 
-        builder.rasterization_state().cull_mode_back();
+        builder.rasterization_state()
+            .polygon_mode(VK_POLYGON_MODE_LINE)
+            .cull_mode_back();
 
         builder.depth_stencil_state()
             .depth_test_enable(true)
@@ -476,7 +478,9 @@ namespace { namespace gbuf_terrain {
                 device.logi_device()
             );
             layout_ = mirinae::PipelineLayoutBuilder{}
-                          .desc(create_desclayout_main(desclayouts, device))
+                          .add_tesc_flag()
+                          .add_tese_flag()
+                          .pc<mirinae::rp::gbuf::U_GbufTerrainPushConst>(0)
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
@@ -735,7 +739,59 @@ namespace {
 
         void destroy(mirinae::VulkanDevice& device) override {}
 
-        void record() override {}
+        void record(
+            const VkCommandBuffer cmdbuf,
+            const glm::mat4& proj_mat,
+            const glm::mat4& view_mat,
+            const glm::mat4& model_mat,
+            const VkExtent2D& fbuf_exd,
+            const mirinae::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::IRenderPassRegistry& rp_pkg
+        ) override {
+            auto& rp = rp_pkg.get("gbuf_terrain");
+
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(rp.fbuf_at(image_index.get()))
+                .wh(fbuf_exd)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cmdbuf);
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
+
+            mirinae::Viewport{ fbuf_exd }.record_single(cmdbuf);
+            mirinae::Rect2D{ fbuf_exd }.record_scissor(cmdbuf);
+
+            mirinae::rp::gbuf::U_GbufTerrainPushConst pc;
+            pc.proj_ = proj_mat;
+            pc.view_ = view_mat;
+            pc.model_ = model_mat;
+            pc.tess_alpha_ = 1.0f;
+            pc.tess_level_ = 1.0f;
+
+            vkCmdPushConstants(
+                cmdbuf,
+                rp.pipeline_layout(),
+                VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                    VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+                0,
+                sizeof(pc),
+                &pc
+            );
+
+            const auto t = (uint32_t)timer_.elapsed() % 100;
+
+            vkCmdDraw(cmdbuf, 4, t, 0, 0);
+
+            vkCmdEndRenderPass(cmdbuf);
+        }
+
+    private:
+        sung::MonotonicRealtimeTimer timer_;
     };
 
 }  // namespace
