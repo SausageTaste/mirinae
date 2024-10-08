@@ -402,10 +402,12 @@ namespace mirinae {
 }  // namespace mirinae
 
 
-// Misc inside PipelineBuilder
+// RasterizationStateBuilder
 namespace mirinae {
 
-    PipelineBuilder::RasterizationStateBuilder::RasterizationStateBuilder() {
+#define CLS PipelineBuilder::RasterizationStateBuilder
+
+    CLS::RasterizationStateBuilder() {
         info_ = {};
         info_.sType =
             VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -432,6 +434,65 @@ namespace mirinae {
         info_.depthBiasClamp = 0;
         info_.depthClampEnable = VK_FALSE;
     }
+
+    CLS& CLS::polygon_mode(VkPolygonMode mode) {
+        info_.polygonMode = mode;
+        return *this;
+    }
+
+    CLS& CLS::line_width(float x) {
+        info_.lineWidth = x;
+        return *this;
+    }
+
+    CLS& CLS::cull_mode(VkCullModeFlags mode) {
+        info_.cullMode = mode;
+        return *this;
+    }
+
+    CLS& CLS::cull_mode_back() {
+        info_.cullMode = VK_CULL_MODE_BACK_BIT;
+        return *this;
+    }
+
+    CLS& CLS::depth_bias_enable(bool enable) {
+        info_.depthBiasEnable = enable ? VK_TRUE : VK_FALSE;
+        return *this;
+    }
+
+    CLS& CLS::depth_bias_constant(float value) {
+        info_.depthBiasConstantFactor = value;
+        return *this;
+    }
+
+    CLS& CLS::depth_bias_slope(float value) {
+        info_.depthBiasSlopeFactor = value;
+        return *this;
+    }
+
+    CLS& CLS::depth_bias(float constant, float slope) {
+        info_.depthBiasEnable = VK_TRUE;
+        info_.depthBiasConstantFactor = constant;
+        info_.depthBiasSlopeFactor = slope;
+        return *this;
+    }
+
+    CLS& CLS::depth_clamp_enable(bool enable) {
+        info_.depthClampEnable = enable ? VK_TRUE : VK_FALSE;
+        return *this;
+    }
+
+    const VkPipelineRasterizationStateCreateInfo* CLS::get() const {
+        return &info_;
+    }
+
+#undef CLS
+
+}  // namespace mirinae
+
+
+// Misc inside PipelineBuilder
+namespace mirinae {
 
     PipelineBuilder::DepthStencilStateBuilder::DepthStencilStateBuilder() {
         info_ = {};
@@ -597,19 +658,36 @@ namespace mirinae {
 
 #define CLS PipelineLayoutBuilder
 
-    PipelineLayoutBuilder& CLS::reset_stage_flags(VkShaderStageFlags flags) {
+    PipelineLayoutBuilder& CLS::reset_stage_flags() {
         pc_stage_flags_ = 0;
         return *this;
     }
 
-    PipelineLayoutBuilder& CLS::add_vertex_flag() {
-        pc_stage_flags_ |= VK_SHADER_STAGE_VERTEX_BIT;
+    PipelineLayoutBuilder& CLS::set_stage_flags(VkShaderStageFlags flags) {
+        pc_stage_flags_ = flags;
         return *this;
     }
 
-    PipelineLayoutBuilder& CLS::add_frag_flag() {
-        pc_stage_flags_ |= VK_SHADER_STAGE_FRAGMENT_BIT;
+    PipelineLayoutBuilder& CLS::add_stage_flags(VkShaderStageFlags flags) {
+        pc_stage_flags_ |= flags;
         return *this;
+    }
+
+    PipelineLayoutBuilder& CLS::add_vertex_flag() {
+        return this->add_stage_flags(VK_SHADER_STAGE_VERTEX_BIT);
+    }
+
+    PipelineLayoutBuilder& CLS::add_tesc_flag() {
+        return this->add_stage_flags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+    }
+
+    PipelineLayoutBuilder& CLS::add_tese_flag() {
+        return this->add_stage_flags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
+        );
+    }
+
+    PipelineLayoutBuilder& CLS::add_frag_flag() {
+        return this->add_stage_flags(VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
     PipelineLayoutBuilder& CLS::pc(uint32_t offset, uint32_t size) {

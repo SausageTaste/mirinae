@@ -5,6 +5,15 @@
 
 namespace mirinae::rp::gbuf {
 
+    struct U_GbufTerrainPushConst {
+        glm::mat4 proj_;
+        glm::mat4 view_;
+        glm::mat4 model_;
+        float tess_alpha_;
+        float tess_level_;
+    };
+
+
     void create_rp(
         IRenderPassRegistry& reg,
         uint32_t width,
@@ -46,7 +55,16 @@ namespace mirinae::rp::gbuf {
 
         virtual void destroy(VulkanDevice& device) = 0;
 
-        virtual void record() = 0;
+        virtual void record(
+            const VkCommandBuffer cmdbuf,
+            const glm::mat4& proj_mat,
+            const glm::mat4& view_mat,
+            const glm::mat4& model_mat,
+            const VkExtent2D& fbuf_exd,
+            const mirinae::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
+            const mirinae::IRenderPassRegistry& rp_pkg
+        ) = 0;
     };
 
     std::unique_ptr<IRpMasterTerrain> create_rpm_terrain();

@@ -289,46 +289,20 @@ namespace mirinae {
         public:
             RasterizationStateBuilder();
 
-            RasterizationStateBuilder& cull_mode(VkCullModeFlags mode) {
-                info_.cullMode = mode;
-                return *this;
-            }
+            RasterizationStateBuilder& polygon_mode(VkPolygonMode mode);
+            RasterizationStateBuilder& line_width(float x);
 
-            RasterizationStateBuilder& cull_mode_back() {
-                info_.cullMode = VK_CULL_MODE_BACK_BIT;
-                return *this;
-            }
+            RasterizationStateBuilder& cull_mode(VkCullModeFlags mode);
+            RasterizationStateBuilder& cull_mode_back();
 
-            RasterizationStateBuilder& depth_bias_enable(bool enable) {
-                info_.depthBiasEnable = enable ? VK_TRUE : VK_FALSE;
-                return *this;
-            }
+            RasterizationStateBuilder& depth_bias_enable(bool enable);
+            RasterizationStateBuilder& depth_bias_constant(float value);
+            RasterizationStateBuilder& depth_bias_slope(float value);
+            RasterizationStateBuilder& depth_bias(float constant, float slope);
 
-            RasterizationStateBuilder& depth_bias_constant(float value) {
-                info_.depthBiasConstantFactor = value;
-                return *this;
-            }
+            RasterizationStateBuilder& depth_clamp_enable(bool enable);
 
-            RasterizationStateBuilder& depth_bias_slope(float value) {
-                info_.depthBiasSlopeFactor = value;
-                return *this;
-            }
-
-            RasterizationStateBuilder& depth_bias(float constant, float slope) {
-                info_.depthBiasEnable = VK_TRUE;
-                info_.depthBiasConstantFactor = constant;
-                info_.depthBiasSlopeFactor = slope;
-                return *this;
-            }
-
-            RasterizationStateBuilder& depth_clamp_enable(bool enable) {
-                info_.depthClampEnable = enable ? VK_TRUE : VK_FALSE;
-                return *this;
-            }
-
-            const VkPipelineRasterizationStateCreateInfo* get() const {
-                return &info_;
-            }
+            const VkPipelineRasterizationStateCreateInfo* get() const;
 
         private:
             VkPipelineRasterizationStateCreateInfo info_;
@@ -429,8 +403,12 @@ namespace mirinae {
     class PipelineLayoutBuilder {
 
     public:
-        PipelineLayoutBuilder& reset_stage_flags(VkShaderStageFlags flags);
+        PipelineLayoutBuilder& reset_stage_flags();
+        PipelineLayoutBuilder& set_stage_flags(VkShaderStageFlags flags);
+        PipelineLayoutBuilder& add_stage_flags(VkShaderStageFlags flags);
         PipelineLayoutBuilder& add_vertex_flag();
+        PipelineLayoutBuilder& add_tesc_flag();
+        PipelineLayoutBuilder& add_tese_flag();
         PipelineLayoutBuilder& add_frag_flag();
 
         PipelineLayoutBuilder& pc(uint32_t offset, uint32_t size);
