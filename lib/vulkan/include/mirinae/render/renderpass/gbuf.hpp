@@ -24,16 +24,7 @@ namespace mirinae::rp::gbuf {
         virtual void init() = 0;
         virtual void destroy(VulkanDevice& device) = 0;
 
-        virtual void record_static(
-            const VkCommandBuffer cur_cmd_buf,
-            const VkExtent2D& fbuf_exd,
-            const DrawSheet& draw_sheet,
-            const FrameIndex frame_index,
-            const ShainImageIndex image_index,
-            const IRenderPassRegistry& rp_pkg
-        ) = 0;
-
-        virtual void record_skinned(
+        virtual void record(
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_exd,
             const DrawSheet& draw_sheet,
