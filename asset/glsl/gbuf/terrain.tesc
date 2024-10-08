@@ -14,50 +14,39 @@ layout (push_constant) uniform U_GbufTerrainPushConst {
     mat4 view;
     mat4 model;
     float tessAlpha;
-    float tessLevel;
+    float tess_level;
 } u_pc;
 
 
 void main(void) {
     if (gl_InvocationID == 0) {
-        const int MIN_TESS_LEVEL = 4;
-        const int MAX_TESS_LEVEL = 64;
-        const float MIN_DISTANCE = 20;
-        const float MAX_DISTANCE = 800;
+        const mat4 pvm_mat = u_pc.projection * u_pc.view * u_pc.model;
+        vec4 p00 = pvm_mat * gl_in[0].gl_Position;
+        vec4 p01 = pvm_mat * gl_in[1].gl_Position;
+        vec4 p11 = pvm_mat * gl_in[2].gl_Position;
+        vec4 p10 = pvm_mat * gl_in[3].gl_Position;
+        p00 /= p00.w;
+        p01 /= p01.w;
+        p11 /= p11.w;
+        p10 /= p10.w;
 
-        // ----------------------------------------------------------------------
-        // Step 2: transform each vertex into eye space
-        mat4 vm_mat = u_pc.view * u_pc.model;
-        vec4 eyeSpacePos00 = vm_mat * gl_in[0].gl_Position;
-        vec4 eyeSpacePos01 = vm_mat * gl_in[1].gl_Position;
-        vec4 eyeSpacePos10 = vm_mat * gl_in[2].gl_Position;
-        vec4 eyeSpacePos11 = vm_mat * gl_in[3].gl_Position;
+        float edge0 = distance(p00.xy, p01.xy);
+        float edge1 = distance(p01.xy, p11.xy);
+        float edge2 = distance(p11.xy, p10.xy);
+        float edge3 = distance(p10.xy, p00.xy);
 
-        // ----------------------------------------------------------------------
-        // Step 3: "distance" from camera scaled between 0 and 1
-        float distance00 = clamp((abs(eyeSpacePos00.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
-        float distance01 = clamp((abs(eyeSpacePos01.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
-        float distance10 = clamp((abs(eyeSpacePos10.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
-        float distance11 = clamp((abs(eyeSpacePos11.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
+        float tess_level0 = min(edge3 * 16, 32);
+        float tess_level1 = min(edge0 * 16, 32);
+        float tess_level2 = min(edge1 * 16, 32);
+        float tess_level3 = min(edge2 * 16, 32);
 
-        // ----------------------------------------------------------------------
-        // Step 4: interpolate edge tessellation level based on closer vertex
-        float tessLevel0 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance10, distance00) );
-        float tessLevel1 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance00, distance01) );
-        float tessLevel2 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance01, distance11) );
-        float tessLevel3 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance11, distance10) );
+        gl_TessLevelOuter[0] = tess_level0;
+        gl_TessLevelOuter[1] = tess_level1;
+        gl_TessLevelOuter[2] = tess_level2;
+        gl_TessLevelOuter[3] = tess_level3;
 
-        // ----------------------------------------------------------------------
-        // Step 5: set the corresponding outer edge tessellation levels
-        gl_TessLevelOuter[0] = tessLevel0;
-        gl_TessLevelOuter[1] = tessLevel1;
-        gl_TessLevelOuter[2] = tessLevel2;
-        gl_TessLevelOuter[3] = tessLevel3;
-
-        // ----------------------------------------------------------------------
-        // Step 6: set the inner tessellation levels to the max of the two parallel edges
-        gl_TessLevelInner[0] = max(tessLevel1, tessLevel3);
-        gl_TessLevelInner[1] = max(tessLevel0, tessLevel2);
+        gl_TessLevelInner[0] = (tess_level1 + tess_level3) * 0.5;
+        gl_TessLevelInner[1] = (tess_level0 + tess_level2) * 0.5;
     }
 
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;

@@ -766,12 +766,14 @@ namespace {
             mirinae::Viewport{ fbuf_exd }.record_single(cmdbuf);
             mirinae::Rect2D{ fbuf_exd }.record_scissor(cmdbuf);
 
+            const auto t = timer_.elapsed();
+
             mirinae::rp::gbuf::U_GbufTerrainPushConst pc;
             pc.proj_ = proj_mat;
             pc.view_ = view_mat;
             pc.model_ = model_mat;
             pc.tess_alpha_ = 1.0f;
-            pc.tess_level_ = 1.0f;
+            pc.tess_level_ = std::fmod(t, 16.0);
 
             vkCmdPushConstants(
                 cmdbuf,
@@ -783,9 +785,7 @@ namespace {
                 &pc
             );
 
-            const auto t = (uint32_t)timer_.elapsed() % 100;
-
-            vkCmdDraw(cmdbuf, 4, t, 0, 0);
+            vkCmdDraw(cmdbuf, 4, 8*8, 0, 0);
 
             vkCmdEndRenderPass(cmdbuf);
         }

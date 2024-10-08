@@ -194,7 +194,7 @@ namespace {
                 d.view_.pos_ = { 1.2896, 0.6601, 1.2123 };
                 d.view_.rot_ = { -0.9499, -0.0259, 0.3112, -0.0085 };
                 d.proj_.near_ = 0.1;
-                d.proj_.far_ = 100;
+                d.proj_.far_ = 1000;
             }
 
             // Script
