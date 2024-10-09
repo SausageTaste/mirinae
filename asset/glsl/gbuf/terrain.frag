@@ -18,12 +18,14 @@ layout (push_constant) uniform U_GbufTerrainPushConst {
 } u_pc;
 
 layout(set = 0, binding = 0) uniform sampler2D u_height_map;
+layout(set = 0, binding = 1) uniform sampler2D u_albedo_map;
 
 
 void main() {
+    vec4 albedo_texel = texture(u_albedo_map, inUV);
     float height = texture(u_height_map, inUV).r;
 
-    out_albedo = vec4(vec3(height), 1);
+    out_albedo = vec4(albedo_texel.xyz, 1);
     out_material = vec4(0.9, 0, 0, 0);
 
     {

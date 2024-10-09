@@ -932,6 +932,14 @@ namespace {
                     .border_color(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
                 data_.push_back(sampler_builder.build(pd, ld));
             }
+
+            {
+                ::SamplerBuilder sampler_builder;
+                sampler_builder.address_mode(
+                    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+                );
+                data_.push_back(sampler_builder.build(pd, ld));
+            }
         }
 
         void destroy(::LogiDevice& ld) {
@@ -946,6 +954,7 @@ namespace {
         VkSampler get_linear() override { return data_[0]; }
         VkSampler get_nearest() override { return data_[1]; }
         VkSampler get_cubemap() override { return data_[2]; }
+        VkSampler get_heightmap() override { return data_[3]; }
 
     private:
         std::vector<VkSampler> data_;

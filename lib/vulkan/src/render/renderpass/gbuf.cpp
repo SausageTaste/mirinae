@@ -370,11 +370,13 @@ namespace { namespace gbuf_terrain {
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
         mirinae::DescLayoutBuilder builder{ "gbuf_terrain:main" };
-        builder.add_img(
-            VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
-                VK_SHADER_STAGE_FRAGMENT_BIT,
-            1
-        );  // Height map
+        builder
+            .add_img(
+                VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                    VK_SHADER_STAGE_FRAGMENT_BIT,
+                1
+            )
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Albedo map
         return desclayouts.add(builder, device.logi_device());
     }
 
@@ -429,9 +431,7 @@ namespace { namespace gbuf_terrain {
 
         builder.tes_state().patch_ctrl_points(4);
 
-        builder
-            .rasterization_state()
-            .cull_mode_back();
+        builder.rasterization_state().cull_mode_back();
 
         builder.depth_stencil_state()
             .depth_test_enable(true)
@@ -749,15 +749,19 @@ namespace {
             desc_pool_.init(3, layout.size_info(), device.logi_device());
             desc_set_ = desc_pool_.alloc(layout.layout(), device.logi_device());
 
+            albedo_map_ = tex_man.request(
+                ":asset/textures/mountains512.png", false
+            );
             height_map_ = tex_man.request(
-                ":asset/textures/iceland_heightmap.png", false
+                ":asset/textures/mountains512.png", false
             );
 
             auto& sam = device.samplers();
 
             mirinae::DescWriteInfoBuilder{}
                 .set_descset(desc_set_)
-                .add_img_sampler(height_map_->image_view(), sam.get_linear())
+                .add_img_sampler(height_map_->image_view(), sam.get_heightmap())
+                .add_img_sampler(albedo_map_->image_view(), sam.get_linear())
                 .apply_all(device.logi_device());
         }
 
@@ -803,14 +807,14 @@ namespace {
             pc.model_ = model_mat;
             pc.height_map_size_.x = height_map_->width();
             pc.height_map_size_.y = height_map_->height();
-            pc.height_scale_ = 32;
+            pc.height_scale_ = 64;
 
-            for (int x = 0; x < 26; ++x) {
-                for (int y = 0; y < 17; ++y) {
+            for (int x = 0; x < 12; ++x) {
+                for (int y = 0; y < 12; ++y) {
                     pc.tile_index_count_[0] = x;
                     pc.tile_index_count_[1] = y;
-                    pc.tile_index_count_[2] = 26;
-                    pc.tile_index_count_[3] = 17;
+                    pc.tile_index_count_[2] = 12;
+                    pc.tile_index_count_[3] = 12;
 
                     vkCmdPushConstants(
                         cmdbuf,
@@ -834,6 +838,7 @@ namespace {
     private:
         sung::MonotonicRealtimeTimer timer_;
         std::shared_ptr<mirinae::ITexture> height_map_;
+        std::shared_ptr<mirinae::ITexture> albedo_map_;
         mirinae::DescPool desc_pool_;
         VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
