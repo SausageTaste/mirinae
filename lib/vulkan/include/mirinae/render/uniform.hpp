@@ -277,11 +277,15 @@ namespace mirinae {
         explicit DescLayoutBuilder(const char* name);
 
         // Uniform buffer
-        DescLayoutBuilder& add_ubuf(VkShaderStageFlagBits, uint32_t cnt);
+        DescLayoutBuilder& add_ubuf(VkShaderStageFlags, uint32_t cnt);
+
         // Combined image sampler
-        DescLayoutBuilder& add_img(VkShaderStageFlagBits, uint32_t cnt);
+        DescLayoutBuilder& add_img(VkShaderStageFlags, uint32_t cnt);
+        DescLayoutBuilder& add_img_tesc(uint32_t cnt);
+        DescLayoutBuilder& add_img_tese(uint32_t cnt);
+
         // Input attachment
-        DescLayoutBuilder& add_input_att(VkShaderStageFlagBits, uint32_t cnt);
+        DescLayoutBuilder& add_input_att(VkShaderStageFlags, uint32_t cnt);
 
         VkDescriptorSetLayout build(VkDevice logi_device) const;
 

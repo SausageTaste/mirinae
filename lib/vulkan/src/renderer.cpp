@@ -863,7 +863,7 @@ namespace {
 
             rpm_.envmap().init(rp_, tex_man_, desclayout_, device_);
             rpm_.gbuf_basic().init();
-            rpm_.gbuf_terrain().init();
+            rpm_.gbuf_terrain().init(tex_man_, desclayout_, device_);
             rpm_.compo_basic().init(
                 desclayout_,
                 fbuf_images_,

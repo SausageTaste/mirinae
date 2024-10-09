@@ -8,11 +8,40 @@ layout(location = 1) out vec4 out_normal;
 layout(location = 2) out vec4 out_material;
 
 
-void main() {
-    vec3 N = normalize(inNormal);
-    vec3 L = normalize(vec3(-4.0, -4.0, 0.0));
+layout (push_constant) uniform U_GbufTerrainPushConst {
+    mat4 projection;
+    mat4 view;
+    mat4 model;
+    vec4 tile_index_count;
+    vec4 height_map_size;
+    float height_scale;
+} u_pc;
 
-    out_albedo = vec4(1, 0, 0, 1);
-    out_normal.xyz = inNormal;
-    out_material = vec4(0.5, 0.5, 0.0, 0.0);
+layout(set = 0, binding = 0) uniform sampler2D u_height_map;
+
+
+void main() {
+    float height = texture(u_height_map, inUV).r;
+
+    out_albedo = vec4(vec3(height), 1);
+    out_material = vec4(0.9, 0, 0, 0);
+
+    {
+        const vec2 tile_size = vec2(60, 60);
+        const vec2 terr_plane_size = tile_size * u_pc.tile_index_count.zw;
+        const vec2 size_per_texel = terr_plane_size / u_pc.height_map_size.xy;
+
+        float right = u_pc.height_scale * textureOffset(u_height_map, inUV, ivec2( 1,  0)).r;
+        float left  = u_pc.height_scale * textureOffset(u_height_map, inUV, ivec2(-1,  0)).r;
+        float up    = u_pc.height_scale * textureOffset(u_height_map, inUV, ivec2( 0,  1)).r;
+        float down  = u_pc.height_scale * textureOffset(u_height_map, inUV, ivec2( 0, -1)).r;
+        vec3 normal = vec3(
+            (left - right) / (size_per_texel.x + size_per_texel.x),
+            1,
+            (down - up) / (size_per_texel.y + size_per_texel.y)
+        );
+        normal = normalize(normal);
+        normal = mat3(u_pc.view) * mat3(u_pc.model) * normal;
+        out_normal.xyz = normal * 0.5 + 0.5;
+    }
 }

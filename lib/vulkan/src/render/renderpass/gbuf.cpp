@@ -370,9 +370,11 @@ namespace { namespace gbuf_terrain {
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
         mirinae::DescLayoutBuilder builder{ "gbuf_terrain:main" };
-        builder.add_ubuf(
-            VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 1
-        );  // U_GbufTerrain
+        builder.add_img(
+            VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                VK_SHADER_STAGE_FRAGMENT_BIT,
+            1
+        );  // Height map
         return desclayouts.add(builder, device.logi_device());
     }
 
@@ -427,8 +429,8 @@ namespace { namespace gbuf_terrain {
 
         builder.tes_state().patch_ctrl_points(4);
 
-        builder.rasterization_state()
-            .polygon_mode(VK_POLYGON_MODE_LINE)
+        builder
+            .rasterization_state()
             .cull_mode_back();
 
         builder.depth_stencil_state()
@@ -478,8 +480,11 @@ namespace { namespace gbuf_terrain {
                 device.logi_device()
             );
             layout_ = mirinae::PipelineLayoutBuilder{}
+                          .desc(create_desclayout_main(desclayouts, device))
+                          .add_vertex_flag()
                           .add_tesc_flag()
                           .add_tese_flag()
+                          .add_frag_flag()
                           .pc<mirinae::rp::gbuf::U_GbufTerrainPushConst>(0)
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
@@ -735,7 +740,26 @@ namespace {
     class RpMasterTerrain : public mirinae::rp::gbuf::IRpMasterTerrain {
 
     public:
-        void init() override {}
+        void init(
+            mirinae::TextureManager& tex_man,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        ) override {
+            auto& layout = desclayouts.get("gbuf_terrain:main");
+            desc_pool_.init(3, layout.size_info(), device.logi_device());
+            desc_set_ = desc_pool_.alloc(layout.layout(), device.logi_device());
+
+            height_map_ = tex_man.request(
+                ":asset/textures/iceland_heightmap.png", false
+            );
+
+            auto& sam = device.samplers();
+
+            mirinae::DescWriteInfoBuilder{}
+                .set_descset(desc_set_)
+                .add_img_sampler(height_map_->image_view(), sam.get_linear())
+                .apply_all(device.logi_device());
+        }
 
         void destroy(mirinae::VulkanDevice& device) override {}
 
@@ -768,30 +792,50 @@ namespace {
 
             const auto t = timer_.elapsed();
 
+            mirinae::DescSetBindInfo{}
+                .layout(rp.pipeline_layout())
+                .add(desc_set_)
+                .record(cmdbuf);
+
             mirinae::rp::gbuf::U_GbufTerrainPushConst pc;
             pc.proj_ = proj_mat;
             pc.view_ = view_mat;
             pc.model_ = model_mat;
-            pc.tess_alpha_ = 1.0f;
-            pc.tess_level_ = std::fmod(t, 16.0);
+            pc.height_map_size_.x = height_map_->width();
+            pc.height_map_size_.y = height_map_->height();
+            pc.height_scale_ = 32;
 
-            vkCmdPushConstants(
-                cmdbuf,
-                rp.pipeline_layout(),
-                VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
-                    VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
-                0,
-                sizeof(pc),
-                &pc
-            );
+            for (int x = 0; x < 26; ++x) {
+                for (int y = 0; y < 17; ++y) {
+                    pc.tile_index_count_[0] = x;
+                    pc.tile_index_count_[1] = y;
+                    pc.tile_index_count_[2] = 26;
+                    pc.tile_index_count_[3] = 17;
 
-            vkCmdDraw(cmdbuf, 4, 8*8, 0, 0);
+                    vkCmdPushConstants(
+                        cmdbuf,
+                        rp.pipeline_layout(),
+                        VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                            VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                            VK_SHADER_STAGE_VERTEX_BIT |
+                            VK_SHADER_STAGE_FRAGMENT_BIT,
+                        0,
+                        sizeof(pc),
+                        &pc
+                    );
+
+                    vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                }
+            }
 
             vkCmdEndRenderPass(cmdbuf);
         }
 
     private:
         sung::MonotonicRealtimeTimer timer_;
+        std::shared_ptr<mirinae::ITexture> height_map_;
+        mirinae::DescPool desc_pool_;
+        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
 }  // namespace
