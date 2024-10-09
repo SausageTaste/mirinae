@@ -765,7 +765,9 @@ namespace {
                 .apply_all(device.logi_device());
         }
 
-        void destroy(mirinae::VulkanDevice& device) override {}
+        void destroy(mirinae::VulkanDevice& device) override {
+            desc_pool_.destroy(device.logi_device());
+        }
 
         void record(
             const VkCommandBuffer cmdbuf,
