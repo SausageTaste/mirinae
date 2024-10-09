@@ -13,12 +13,15 @@ layout (push_constant) uniform U_GbufTerrainPushConst {
     mat4 projection;
     mat4 view;
     mat4 model;
-    float tessAlpha;
-    float tess_level;
+    vec4 tile_index_count;
+    vec4 height_map_size;
+    float height_scale;
 } u_pc;
 
 
 void main(void) {
+    const float MAX_TESS_LEVEL = 64;
+
     if (gl_InvocationID == 0) {
         const mat4 pvm_mat = u_pc.projection * u_pc.view * u_pc.model;
         vec4 p00 = pvm_mat * gl_in[0].gl_Position;
@@ -35,10 +38,10 @@ void main(void) {
         float edge2 = distance(p11.xy, p10.xy);
         float edge3 = distance(p10.xy, p00.xy);
 
-        float tess_level0 = min(edge3 * 16, 32);
-        float tess_level1 = min(edge0 * 16, 32);
-        float tess_level2 = min(edge1 * 16, 32);
-        float tess_level3 = min(edge2 * 16, 32);
+        float tess_level0 = min(edge3 * MAX_TESS_LEVEL, MAX_TESS_LEVEL);
+        float tess_level1 = min(edge0 * MAX_TESS_LEVEL, MAX_TESS_LEVEL);
+        float tess_level2 = min(edge1 * MAX_TESS_LEVEL, MAX_TESS_LEVEL);
+        float tess_level3 = min(edge2 * MAX_TESS_LEVEL, MAX_TESS_LEVEL);
 
         gl_TessLevelOuter[0] = tess_level0;
         gl_TessLevelOuter[1] = tess_level1;

@@ -9,8 +9,9 @@ namespace mirinae::rp::gbuf {
         glm::mat4 proj_;
         glm::mat4 view_;
         glm::mat4 model_;
-        float tess_alpha_;
-        float tess_level_;
+        glm::vec4 tile_index_count_;
+        glm::vec4 height_map_size_;
+        float height_scale_;
     };
 
 
@@ -51,7 +52,11 @@ namespace mirinae::rp::gbuf {
     public:
         virtual ~IRpMasterTerrain() = default;
 
-        virtual void init() = 0;
+        virtual void init(
+            mirinae::TextureManager& tex_man,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        ) = 0;
 
         virtual void destroy(VulkanDevice& device) = 0;
 

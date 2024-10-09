@@ -59,7 +59,7 @@ namespace mirinae {
     DescLayoutBuilder::DescLayoutBuilder(const char* name) : name_(name) {}
 
     DescLayoutBuilder& DescLayoutBuilder::add_ubuf(
-        VkShaderStageFlagBits stage_flags, uint32_t count
+        VkShaderStageFlags stage_flags, uint32_t count
     ) {
         auto& binding = bindings_.emplace_back();
         binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
@@ -73,7 +73,7 @@ namespace mirinae {
     }
 
     DescLayoutBuilder& DescLayoutBuilder::add_img(
-        VkShaderStageFlagBits stage_flags, uint32_t count
+        VkShaderStageFlags stage_flags, uint32_t count
     ) {
         auto& binding = bindings_.emplace_back();
         binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
@@ -86,8 +86,16 @@ namespace mirinae {
         return *this;
     }
 
+    DescLayoutBuilder& DescLayoutBuilder::add_img_tesc(uint32_t cnt) {
+        return this->add_img(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, cnt);
+    }
+
+    DescLayoutBuilder& DescLayoutBuilder::add_img_tese(uint32_t cnt) {
+        return this->add_img(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, cnt);
+    }
+
     DescLayoutBuilder& DescLayoutBuilder::add_input_att(
-        VkShaderStageFlagBits stage_flags, uint32_t count
+        VkShaderStageFlags stage_flags, uint32_t count
     ) {
         auto& binding = bindings_.emplace_back();
         binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
