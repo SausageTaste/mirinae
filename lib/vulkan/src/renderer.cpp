@@ -673,7 +673,6 @@ namespace {
                 cur_cmd_buf,
                 proj_mat,
                 view_mat,
-                glm::translate(glm::mat4{ 1 }, glm::vec3{ 0, -1, 0 }),
                 fbuf_images_.extent(),
                 framesync_.get_frame_index(),
                 image_index,
