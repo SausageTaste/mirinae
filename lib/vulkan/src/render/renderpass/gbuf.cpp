@@ -771,9 +771,8 @@ namespace {
 
         void record(
             const VkCommandBuffer cmdbuf,
-            const glm::mat4& proj_mat,
-            const glm::mat4& view_mat,
-            const glm::mat4& model_mat,
+            const glm::dmat4& proj_mat,
+            const glm::dmat4& view_mat,
             const VkExtent2D& fbuf_exd,
             const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,
@@ -803,8 +802,12 @@ namespace {
                 .add(desc_set_)
                 .record(cmdbuf);
 
+            const auto model_mat = glm::translate(
+                glm::dmat4{ 1 }, glm::dvec3{ 0, -1, 0 }
+            );
+
             mirinae::rp::gbuf::U_GbufTerrainPushConst pc;
-            pc.proj_ = proj_mat;
+            pc.pvm_ = proj_mat * view_mat * model_mat;
             pc.view_ = view_mat;
             pc.model_ = model_mat;
             pc.height_map_size_.x = height_map_->width();

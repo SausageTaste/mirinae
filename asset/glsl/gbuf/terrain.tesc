@@ -2,15 +2,15 @@
 
 layout (vertices = 4) out;
 
-layout (location = 0) in vec3 inNormal[];
-layout (location = 1) in vec2 inUV[];
+layout (location = 0) in vec3 v_normal[];
+layout (location = 1) in vec2 v_uv[];
 
-layout (location = 0) out vec3 outNormal[4];
-layout (location = 1) out vec2 outUV[4];
+layout (location = 0) out vec3 o_normal[4];
+layout (location = 1) out vec2 o_uv[4];
 
 
 layout (push_constant) uniform U_GbufTerrainPushConst {
-    mat4 projection;
+    mat4 pvm;
     mat4 view;
     mat4 model;
     vec4 tile_index_count;
@@ -19,15 +19,14 @@ layout (push_constant) uniform U_GbufTerrainPushConst {
 } u_pc;
 
 
-void main(void) {
+void main() {
     const float MAX_TESS_LEVEL = 64;
 
     if (gl_InvocationID == 0) {
-        const mat4 pvm_mat = u_pc.projection * u_pc.view * u_pc.model;
-        vec4 p00 = pvm_mat * gl_in[0].gl_Position;
-        vec4 p01 = pvm_mat * gl_in[1].gl_Position;
-        vec4 p11 = pvm_mat * gl_in[2].gl_Position;
-        vec4 p10 = pvm_mat * gl_in[3].gl_Position;
+        vec4 p00 = u_pc.pvm * gl_in[0].gl_Position;
+        vec4 p01 = u_pc.pvm * gl_in[1].gl_Position;
+        vec4 p11 = u_pc.pvm * gl_in[2].gl_Position;
+        vec4 p10 = u_pc.pvm * gl_in[3].gl_Position;
         p00 /= p00.w;
         p01 /= p01.w;
         p11 /= p11.w;
@@ -53,6 +52,6 @@ void main(void) {
     }
 
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-    outNormal[gl_InvocationID] = inNormal[gl_InvocationID];
-    outUV[gl_InvocationID] = inUV[gl_InvocationID];
+    o_normal[gl_InvocationID] = v_normal[gl_InvocationID];
+    o_uv[gl_InvocationID] = v_uv[gl_InvocationID];
 }

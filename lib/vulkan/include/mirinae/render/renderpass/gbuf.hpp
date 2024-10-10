@@ -6,7 +6,7 @@
 namespace mirinae::rp::gbuf {
 
     struct U_GbufTerrainPushConst {
-        glm::mat4 proj_;
+        glm::mat4 pvm_;
         glm::mat4 view_;
         glm::mat4 model_;
         glm::vec4 tile_index_count_;
@@ -62,9 +62,8 @@ namespace mirinae::rp::gbuf {
 
         virtual void record(
             const VkCommandBuffer cmdbuf,
-            const glm::mat4& proj_mat,
-            const glm::mat4& view_mat,
-            const glm::mat4& model_mat,
+            const glm::dmat4& proj_mat,
+            const glm::dmat4& view_mat,
             const VkExtent2D& fbuf_exd,
             const mirinae::FrameIndex frame_index,
             const mirinae::ShainImageIndex image_index,

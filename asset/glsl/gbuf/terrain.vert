@@ -1,11 +1,11 @@
 #version 450
 
-layout (location = 0) out vec3 outNormal;
-layout (location = 1) out vec2 outUV;
+layout (location = 0) out vec3 v_normal;
+layout (location = 1) out vec2 v_uv;
 
 
 layout (push_constant) uniform U_GbufTerrainPushConst {
-    mat4 projection;
+    mat4 pvm;
     mat4 view;
     mat4 model;
     vec4 tile_index_count;
@@ -33,20 +33,19 @@ const vec2 TEX_COORDS[] = vec2[4](
 
 
 void main() {
-    vec3 offset = vec3(
+    gl_Position.xyz = POSITIONS[gl_VertexIndex] + vec3(
         u_pc.tile_index_count.x * TILE_SIZE_X,
         0,
         u_pc.tile_index_count.y * TILE_SIZE_Y
     );
+    gl_Position.w = 1;
 
-    vec2 uv_cell_size = vec2(
+    const vec2 uv_cell_size = vec2(
         1.0 / u_pc.tile_index_count.z,
         1.0 / u_pc.tile_index_count.w
     );
-    vec2 uv_start = uv_cell_size * u_pc.tile_index_count.xy;
-    vec2 uv = uv_start + TEX_COORDS[gl_VertexIndex] * uv_cell_size;
+    const vec2 uv_start = uv_cell_size * u_pc.tile_index_count.xy;
+    v_uv = uv_start + TEX_COORDS[gl_VertexIndex] * uv_cell_size;
 
-    gl_Position = vec4(POSITIONS[gl_VertexIndex] + offset, 1);
-    outNormal = vec3(0, 1, 0);
-    outUV = uv;
+    v_normal = vec3(0, 1, 0);
 }
