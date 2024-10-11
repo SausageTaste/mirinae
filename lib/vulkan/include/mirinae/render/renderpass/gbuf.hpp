@@ -5,7 +5,44 @@
 
 namespace mirinae::rp::gbuf {
 
-    struct U_GbufTerrainPushConst {
+    class U_GbufTerrainPushConst {
+
+    public:
+        U_GbufTerrainPushConst& pvm(
+            const glm::dmat4& proj,
+            const glm::dmat4& view,
+            const glm::dmat4& model
+        ) {
+            pvm_ = proj * view * model;
+            view_ = view;
+            model_ = model;
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& tile_index(int x, int y) {
+            tile_index_count_.x = static_cast<float>(x);
+            tile_index_count_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& tile_count(int x, int y) {
+            tile_index_count_.z = static_cast<float>(x);
+            tile_index_count_.w = static_cast<float>(y);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& height_map_size(uint32_t x, uint32_t y) {
+            height_map_size_.x = static_cast<float>(x);
+            height_map_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& height_scale(float x) {
+            height_scale_ = x;
+            return *this;
+        }
+
+    private:
         glm::mat4 pvm_;
         glm::mat4 view_;
         glm::mat4 model_;

@@ -69,78 +69,122 @@ namespace mirinae {
     class U_CompoMain {
 
     public:
-        void set_proj(const glm::mat4& m) {
+        template <typename T>
+        U_CompoMain& set_proj(const glm::tmat4x4<T>& m) {
             proj_ = m;
             proj_inv_ = glm::inverse(m);
-        }
-        void set_view(const glm::mat4& m) {
-            view_ = m;
-            view_inv_ = glm::inverse(m);
+            return *this;
         }
 
-        // It automatically normalize the input vector.
-        void set_dlight_mat(size_t index, const glm::mat4& m) {
+        template <typename T>
+        U_CompoMain& set_view(const glm::tmat4x4<T>& m) {
+            view_ = m;
+            view_inv_ = glm::inverse(m);
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoMain& set_dlight_mat(size_t index, const glm::tmat4x4<T>& m) {
             dlight_mats_[index] = m;
+            return *this;
         }
-        void set_dlight_dir(const glm::vec3& dlight_dir) {
-            const auto d = glm::normalize(dlight_dir);
-            dlight_dir_.x = d.x;
-            dlight_dir_.y = d.y;
-            dlight_dir_.z = d.z;
+
+        template <typename T>
+        U_CompoMain& set_dlight_dir(const glm::tvec3<T>& x) {
+            dlight_dir_.x = x.x;
+            dlight_dir_.y = x.y;
+            dlight_dir_.z = x.z;
+            return *this;
         }
-        void set_dlight_color(float r, float g, float b) {
+
+        template <typename T>
+        U_CompoMain& set_dlight_color(T r, T g, T b) {
             dlight_color_.x = r;
             dlight_color_.y = g;
             dlight_color_.z = b;
+            return *this;
         }
-        void set_dlight_color(float v) {
+
+        template <typename T>
+        U_CompoMain& set_dlight_color(T v) {
             dlight_color_.x = v;
             dlight_color_.y = v;
             dlight_color_.z = v;
+            return *this;
         }
-        void set_dlight_color(const glm::vec3& dlight_color) {
+
+        template <typename T>
+        U_CompoMain& set_dlight_color(const glm::tvec3<T>& dlight_color) {
             dlight_color_.x = dlight_color.r;
             dlight_color_.y = dlight_color.g;
             dlight_color_.z = dlight_color.b;
-        }
-        void set_dlight_cascade_depths(const std::array<double, 4>& depths) {
-            for (size_t i = 0; i < 4; ++i) {
-                dlight_cascade_depths_[i] = depths[i];
-            }
+            return *this;
         }
 
-        void set_slight_mat(const glm::mat4& m) { slight_mat_ = m; }
-        void set_slight_pos(const glm::vec3& pos) {
+        template <typename T>
+        U_CompoMain& set_dlight_cascade_depths(const std::array<T, 4>& depths) {
+            for (size_t i = 0; i < depths.size(); ++i)
+                dlight_cascade_depths_[i] = depths[i];
+
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoMain& set_slight_mat(const glm::tmat4x4<T>& m) {
+            slight_mat_ = m;
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoMain& set_slight_pos(const glm::tvec3<T>& pos) {
             slight_pos_n_inner_angle.x = pos.x;
             slight_pos_n_inner_angle.y = pos.y;
             slight_pos_n_inner_angle.z = pos.z;
+            return *this;
         }
-        void set_slight_dir(const glm::vec3& dir) {
-            const auto d = glm::normalize(dir);
-            slight_dir_n_outer_angle.x = d.x;
-            slight_dir_n_outer_angle.y = d.y;
-            slight_dir_n_outer_angle.z = d.z;
+
+        template <typename T>
+        U_CompoMain& set_slight_dir(const glm::tvec3<T>& x) {
+            slight_dir_n_outer_angle.x = x.x;
+            slight_dir_n_outer_angle.y = x.y;
+            slight_dir_n_outer_angle.z = x.z;
+            return *this;
         }
-        void set_slight_color(const glm::vec3& v) {
+
+        template <typename T>
+        U_CompoMain& set_slight_color(const glm::tvec3<T>& v) {
             slight_color_n_max_dist.x = v.r;
             slight_color_n_max_dist.y = v.g;
             slight_color_n_max_dist.z = v.b;
+            return *this;
         }
-        void set_slight_color(float v) {
+
+        template <typename T>
+        U_CompoMain& set_slight_color(T v) {
             slight_color_n_max_dist.x = v;
             slight_color_n_max_dist.y = v;
             slight_color_n_max_dist.z = v;
+            return *this;
         }
-        void set_slight_inner_angle(Angle angle) {
+
+        template <typename T>
+        U_CompoMain& set_slight_inner_angle(sung::TAngle<T> angle) {
             const auto v = std::cos(angle.rad());
             slight_pos_n_inner_angle.w = static_cast<float>(v);
+            return *this;
         }
-        void set_slight_outer_angle(Angle angle) {
+
+        template <typename T>
+        U_CompoMain& set_slight_outer_angle(sung::TAngle<T> angle) {
             const auto v = std::cos(angle.rad());
             slight_dir_n_outer_angle.w = static_cast<float>(v);
+            return *this;
         }
-        void set_slight_max_dist(float max_dist) {
+
+        template <typename T>
+        U_CompoMain& set_slight_max_dist(T max_dist) {
             slight_color_n_max_dist.w = max_dist;
+            return *this;
         }
 
     private:

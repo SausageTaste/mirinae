@@ -1052,8 +1052,7 @@ namespace {
             // Update ubuf: U_CompoMain
             {
                 mirinae::U_CompoMain ubuf_data;
-                ubuf_data.set_proj(proj_mat);
-                ubuf_data.set_view(view_mat);
+                ubuf_data.set_proj(proj_mat).set_view(view_mat);
 
                 for (auto e : cosmos_->reg().view<cpnt::DLight>()) {
                     const auto& light = cosmos_->reg().get<cpnt::DLight>(e);
@@ -1062,34 +1061,30 @@ namespace {
 
                     for (size_t i = 0; i < cascades.size(); ++i)
                         ubuf_data.set_dlight_mat(i, cascades.at(i).light_mat_);
-                    ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat));
-                    ubuf_data.set_dlight_color(light.color_);
-                    ubuf_data.set_dlight_cascade_depths(cascade.far_depths_);
+
+                    ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat))
+                        .set_dlight_color(light.color_)
+                        .set_dlight_cascade_depths(cascade.far_depths_);
                     break;
                 }
 
                 for (auto e : cosmos_->reg().view<cpnt::SLight>()) {
                     const auto& l = cosmos_->reg().get<cpnt::SLight>(e);
-                    ubuf_data.set_slight_mat(l.make_light_mat());
-                    ubuf_data.set_slight_pos(l.calc_view_space_pos(view_mat));
-                    ubuf_data.set_slight_dir(l.calc_to_light_dir(view_mat));
-                    ubuf_data.set_slight_color(l.color_);
-                    ubuf_data.set_slight_inner_angle(l.inner_angle_);
-                    ubuf_data.set_slight_outer_angle(l.outer_angle_);
-                    ubuf_data.set_slight_max_dist(l.max_distance_);
+                    ubuf_data.set_slight_mat(l.make_light_mat())
+                        .set_slight_pos(l.calc_view_space_pos(view_mat))
+                        .set_slight_dir(l.calc_to_light_dir(view_mat))
+                        .set_slight_color(l.color_)
+                        .set_slight_inner_angle(l.inner_angle_)
+                        .set_slight_outer_angle(l.outer_angle_)
+                        .set_slight_max_dist(l.max_distance_);
                     break;
                 }
 
                 rpm_.compo_basic()
                     .ubufs_.at(framesync_.get_frame_index().get())
-                    .set_data(
-                        &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
-                    );
-
+                    .set_data(ubuf_data, device_.mem_alloc());
                 rp_states_transp_.ubufs_.at(framesync_.get_frame_index().get())
-                    .set_data(
-                        &ubuf_data, sizeof(ubuf_data), device_.mem_alloc()
-                    );
+                    .set_data(ubuf_data, device_.mem_alloc());
             }
         }
 
