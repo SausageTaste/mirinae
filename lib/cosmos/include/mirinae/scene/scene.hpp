@@ -19,7 +19,7 @@ namespace mirinae::cpnt {
          * @param view_mat View matrix of camera
          * @return glm::vec3
          */
-        glm::vec3 calc_to_light_dir(const glm::dmat4 view_mat) const;
+        glm::dvec3 calc_to_light_dir(const glm::dmat4 view_mat) const;
 
         // glm::dmat4 make_proj_mat() const;
         // glm::dmat4 make_view_mat() const;
@@ -38,8 +38,8 @@ namespace mirinae::cpnt {
 
 
     struct SLight {
-        glm::vec3 calc_view_space_pos(const glm::dmat4 view_mat) const;
-        glm::vec3 calc_to_light_dir(const glm::dmat4 view_mat) const;
+        glm::dvec3 calc_view_space_pos(const glm::dmat4 view_mat) const;
+        glm::dvec3 calc_to_light_dir(const glm::dmat4 view_mat) const;
 
         glm::dmat4 make_proj_mat() const;
         glm::dmat4 make_view_mat() const;

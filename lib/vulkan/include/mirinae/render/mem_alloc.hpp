@@ -45,6 +45,12 @@ namespace mirinae {
         void set_data(
             const void* data, size_t size, VulkanMemoryAllocator allocator
         );
+
+        template <typename T>
+        void set_data(const T& data, VulkanMemoryAllocator allocator) {
+            this->set_data(&data, sizeof(T), allocator);
+        }
+
         void record_copy_cmd(
             const Buffer& src, VkCommandBuffer cmdbuf, VkDevice logi_device
         );

@@ -448,10 +448,10 @@ namespace { namespace scene {
 // DLight
 namespace mirinae::cpnt {
 
-    glm::vec3 DLight::calc_to_light_dir(const glm::dmat4 view_mat) const {
+    glm::dvec3 DLight::calc_to_light_dir(const glm::dmat4 view_mat) const {
         const auto v = view_mat * transform_.make_model_mat() *
                        glm::dvec4(0, 0, 1, 0);
-        return glm::normalize(glm::vec3(v));
+        return glm::normalize(glm::dvec3(v));
     };
 
     /*
@@ -509,15 +509,15 @@ namespace mirinae::cpnt {
 // SLight
 namespace mirinae::cpnt {
 
-    glm::vec3 SLight::calc_view_space_pos(const glm::dmat4 view_mat) const {
+    glm::dvec3 SLight::calc_view_space_pos(const glm::dmat4 view_mat) const {
         const auto v = view_mat * glm::dvec4(transform_.pos_, 1);
-        return glm::vec3(v);
+        return glm::dvec3(v);
     }
 
-    glm::vec3 SLight::calc_to_light_dir(const glm::dmat4 view_mat) const {
+    glm::dvec3 SLight::calc_to_light_dir(const glm::dmat4 view_mat) const {
         const auto v = view_mat * transform_.make_model_mat() *
                        glm::dvec4(0, 0, 1, 0);
-        return glm::normalize(glm::vec3(v));
+        return glm::normalize(glm::dvec3(v));
     };
 
     glm::dmat4 SLight::make_proj_mat() const {
