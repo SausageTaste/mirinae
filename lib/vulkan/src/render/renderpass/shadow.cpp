@@ -452,14 +452,10 @@ namespace mirinae::rp::shadow {
                             push_const.pvm_ = cascade.light_mat_ *
                                               actor.model_mat_;
 
-                            vkCmdPushConstants(
-                                cur_cmd_buf,
-                                rp.pipeline_layout(),
-                                VK_SHADER_STAGE_VERTEX_BIT,
-                                0,
-                                sizeof(push_const),
-                                &push_const
-                            );
+                            PushConstInfo{}
+                                .layout(rp.pipeline_layout())
+                                .add_stage_vert()
+                                .record(cur_cmd_buf, push_const);
 
                             vkCmdDrawIndexed(
                                 cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -507,14 +503,10 @@ namespace mirinae::rp::shadow {
                         U_ShadowPushConst push_const;
                         push_const.pvm_ = shadow.mat_ * actor.model_mat_;
 
-                        vkCmdPushConstants(
-                            cur_cmd_buf,
-                            rp.pipeline_layout(),
-                            VK_SHADER_STAGE_VERTEX_BIT,
-                            0,
-                            sizeof(push_const),
-                            &push_const
-                        );
+                        PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .record(cur_cmd_buf, push_const);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -588,14 +580,10 @@ namespace mirinae::rp::shadow {
                             push_const.pvm_ = cascade.light_mat_ *
                                               actor.model_mat_;
 
-                            vkCmdPushConstants(
-                                cur_cmd_buf,
-                                rp.pipeline_layout(),
-                                VK_SHADER_STAGE_VERTEX_BIT,
-                                0,
-                                sizeof(push_const),
-                                &push_const
-                            );
+                            mirinae::PushConstInfo{}
+                                .layout(rp.pipeline_layout())
+                                .add_stage_vert()
+                                .record(cur_cmd_buf, push_const);
 
                             vkCmdDrawIndexed(
                                 cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -645,14 +633,10 @@ namespace mirinae::rp::shadow {
                         U_ShadowPushConst push_const;
                         push_const.pvm_ = shadow.mat_ * actor.model_mat_;
 
-                        vkCmdPushConstants(
-                            cur_cmd_buf,
-                            rp.pipeline_layout(),
-                            VK_SHADER_STAGE_VERTEX_BIT,
-                            0,
-                            sizeof(push_const),
-                            &push_const
-                        );
+                        PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .record(cur_cmd_buf, push_const);
 
                         vkCmdDrawIndexed(
                             cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0

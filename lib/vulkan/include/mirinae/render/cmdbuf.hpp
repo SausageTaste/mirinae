@@ -299,6 +299,37 @@ namespace mirinae {
     };
 
 
+    class PushConstInfo {
+
+    public:
+        PushConstInfo& layout(VkPipelineLayout layout);
+
+        PushConstInfo& set_stage(VkShaderStageFlags stages);
+        PushConstInfo& add_stage(VkShaderStageFlags stage);
+        PushConstInfo& add_stage_vert();
+        PushConstInfo& add_stage_tesc();
+        PushConstInfo& add_stage_tese();
+        PushConstInfo& add_stage_frag();
+
+        void record(
+            VkCommandBuffer cmdbuf,
+            const void* data,
+            uint32_t size,
+            uint32_t offset
+        ) const;
+
+        template <typename T>
+        void record(VkCommandBuffer cmdbuf, const T& data, uint32_t offset = 0)
+            const {
+            this->record(cmdbuf, &data, sizeof(data), offset);
+        }
+
+    private:
+        VkPipelineLayout layout_ = VK_NULL_HANDLE;
+        VkShaderStageFlags stages_ = 0;
+    };
+
+
     class SubmitInfo {
 
     public:

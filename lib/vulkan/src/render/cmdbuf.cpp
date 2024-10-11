@@ -220,6 +220,49 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// PushConstInfo
+namespace mirinae {
+
+    PushConstInfo& PushConstInfo::layout(VkPipelineLayout layout) {
+        layout_ = layout;
+        return *this;
+    }
+
+    PushConstInfo& PushConstInfo::set_stage(VkShaderStageFlags stages) {
+        stages_ = stages;
+        return *this;
+    }
+
+    PushConstInfo& PushConstInfo::add_stage(VkShaderStageFlags stage) {
+        stages_ |= stage;
+        return *this;
+    }
+
+    PushConstInfo& PushConstInfo::add_stage_vert() {
+        return this->add_stage(VK_SHADER_STAGE_VERTEX_BIT);
+    }
+
+    PushConstInfo& PushConstInfo::add_stage_tesc() {
+        return this->add_stage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+    }
+
+    PushConstInfo& PushConstInfo::add_stage_tese() {
+        return this->add_stage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+    }
+
+    PushConstInfo& PushConstInfo::add_stage_frag() {
+        return this->add_stage(VK_SHADER_STAGE_FRAGMENT_BIT);
+    }
+
+    void PushConstInfo::record(
+        VkCommandBuffer cmdbuf, const void* data, uint32_t size, uint32_t offset
+    ) const {
+        vkCmdPushConstants(cmdbuf, layout_, stages_, offset, size, data);
+    }
+
+}  // namespace mirinae
+
+
 // SubmitInfo
 namespace mirinae {
 
