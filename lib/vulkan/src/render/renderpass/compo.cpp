@@ -474,14 +474,10 @@ namespace mirinae::rp::compo {
         pc.proj_inv_ = proj_inv;
         pc.view_inv_ = view_inv;
 
-        vkCmdPushConstants(
-            cur_cmd_buf,
-            rp.pipeline_layout(),
-            VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            sizeof(U_CompoSkyMain),
-            &pc
-        );
+        mirinae::PushConstInfo{}
+            .layout(rp.pipeline_layout())
+            .add_stage_frag()
+            .record(cur_cmd_buf, pc);
 
         vkCmdDraw(cur_cmd_buf, 3, 1, 0, 0);
 

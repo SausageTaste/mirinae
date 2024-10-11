@@ -136,6 +136,9 @@ namespace mirinae {
         auto x_offset = pos_.x;
         auto y_offset = pos_.y + text_render_data_.text_height();
 
+        PushConstInfo pc_info{};
+        pc_info.layout(udata.pipe_layout_).add_stage_vert().add_stage_frag();
+
         for (auto c : texts_->make_str32()) {
             if ('\n' == c) {
                 x_offset = pos_.x;
@@ -203,14 +206,7 @@ namespace mirinae {
 
             push_const.color = { 1, 1, 1, 1 };
 
-            vkCmdPushConstants(
-                udata.cmd_buf_,
-                udata.pipe_layout_,
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                0,
-                sizeof(push_const),
-                &push_const
-            );
+            pc_info.record(udata.cmd_buf_, push_const);
 
             vkCmdDraw(udata.cmd_buf_, 6, 1, 0, 0);
             x_offset += char_info.xadvance;

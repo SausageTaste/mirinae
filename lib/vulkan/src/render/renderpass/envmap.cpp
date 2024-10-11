@@ -1202,17 +1202,13 @@ namespace {
                                     ))
                                     .record(cur_cmd_buf);
 
-                                push_const.proj_view_ = proj_mat *
-                                                        CUBE_VIEW_MATS[i] *
-                                                        world_mat;
-                                vkCmdPushConstants(
-                                    cur_cmd_buf,
-                                    rp.pipeline_layout(),
-                                    VK_SHADER_STAGE_VERTEX_BIT,
-                                    0,
-                                    sizeof(mirinae::U_EnvmapPushConst),
-                                    &push_const
-                                );
+                                push_const.proj_view_ =
+                                    (proj_mat * CUBE_VIEW_MATS[i] * world_mat);
+
+                                mirinae::PushConstInfo{}
+                                    .layout(rp.pipeline_layout())
+                                    .add_stage_vert()
+                                    .record(cur_cmd_buf, push_const);
 
                                 vkCmdDrawIndexed(
                                     cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
@@ -1350,14 +1346,11 @@ namespace {
 
                     mirinae::U_EnvSkyPushConst pc;
                     pc.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
-                    vkCmdPushConstants(
-                        cur_cmd_buf,
-                        rp.pipeline_layout(),
-                        VK_SHADER_STAGE_VERTEX_BIT,
-                        0,
-                        sizeof(mirinae::U_EnvSkyPushConst),
-                        &pc
-                    );
+
+                    mirinae::PushConstInfo{}
+                        .layout(rp.pipeline_layout())
+                        .add_stage_vert()
+                        .record(cur_cmd_buf, pc);
 
                     vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
 
@@ -1413,14 +1406,11 @@ namespace {
 
                     mirinae::U_EnvdiffusePushConst push_const;
                     push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
-                    vkCmdPushConstants(
-                        cur_cmd_buf,
-                        rp.pipeline_layout(),
-                        VK_SHADER_STAGE_VERTEX_BIT,
-                        0,
-                        sizeof(mirinae::U_EnvdiffusePushConst),
-                        &push_const
-                    );
+
+                    mirinae::PushConstInfo{}
+                        .layout(rp.pipeline_layout())
+                        .add_stage_vert()
+                        .record(cur_cmd_buf, push_const);
 
                     vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
                     vkCmdEndRenderPass(cur_cmd_buf);
@@ -1480,15 +1470,12 @@ namespace {
                         mirinae::U_EnvSpecularPushConst push_const;
                         push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
                         push_const.roughness_ = mip.roughness_;
-                        vkCmdPushConstants(
-                            cur_cmd_buf,
-                            rp.pipeline_layout(),
-                            VK_SHADER_STAGE_VERTEX_BIT |
-                                VK_SHADER_STAGE_FRAGMENT_BIT,
-                            0,
-                            sizeof(mirinae::U_EnvSpecularPushConst),
-                            &push_const
-                        );
+
+                        mirinae::PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .add_stage_frag()
+                            .record(cur_cmd_buf, push_const);
 
                         vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
                         vkCmdEndRenderPass(cur_cmd_buf);

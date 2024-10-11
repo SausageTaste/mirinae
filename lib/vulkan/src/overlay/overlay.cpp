@@ -21,8 +21,10 @@ namespace {
             auto& overlay = render_units_.emplace_back(device);
             overlay.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
-                tex_man.request(":asset/textures/black.png", true)->image_view(),
-                tex_man.request(":asset/textures/white.png", true)->image_view(),
+                tex_man.request(":asset/textures/black.png", true)
+                    ->image_view(),
+                tex_man.request(":asset/textures/white.png", true)
+                    ->image_view(),
                 device.samplers().get_linear(),
                 desclayout,
                 tex_man
@@ -50,18 +52,15 @@ namespace {
         void record_render(const mirinae::WidgetRenderUniData& udata) override {
             mirinae::DescSetBindInfo descset_info{ udata.pipe_layout_ };
 
+            mirinae::PushConstInfo pc_info;
+            pc_info.layout(udata.pipe_layout_)
+                .add_stage_vert()
+                .add_stage_frag();
+
             for (auto& overlay : render_units_) {
                 descset_info.set(overlay.get_desc_set(udata.frame_index_))
                     .record(udata.cmd_buf_);
-
-                vkCmdPushConstants(
-                    udata.cmd_buf_,
-                    udata.pipe_layout_,
-                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                    0,
-                    sizeof(overlay.push_const_),
-                    &overlay.push_const_
-                );
+                pc_info.record(udata.cmd_buf_, overlay.push_const_);
 
                 vkCmdDraw(udata.cmd_buf_, 6, 1, 0, 0);
             }

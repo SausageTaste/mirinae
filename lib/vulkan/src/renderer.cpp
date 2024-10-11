@@ -383,14 +383,11 @@ namespace {
             pc.vertices_[2] = glm::vec4(p2, 1);
             pc.color_ = color;
 
-            vkCmdPushConstants(
-                cmdbuf,
-                rp_pkg.get("debug_mesh").pipeline_layout(),
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                0,
-                sizeof(mirinae::U_DebugMeshPushConst),
-                &pc
-            );
+            mirinae::PushConstInfo{}
+                .layout(rp_pkg.get("debug_mesh").pipeline_layout())
+                .add_stage_vert()
+                .add_stage_frag()
+                .record(cmdbuf, pc);
 
             vkCmdDraw(cmdbuf, 3, 1, 0, 0);
         }

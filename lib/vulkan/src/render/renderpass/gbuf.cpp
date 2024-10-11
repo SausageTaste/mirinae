@@ -810,29 +810,24 @@ namespace {
             pc.pvm_ = proj_mat * view_mat * model_mat;
             pc.view_ = view_mat;
             pc.model_ = model_mat;
+            pc.tile_index_count_[2] = 12;
+            pc.tile_index_count_[3] = 12;
             pc.height_map_size_.x = height_map_->width();
             pc.height_map_size_.y = height_map_->height();
             pc.height_scale_ = 64;
 
-            for (int x = 0; x < 12; ++x) {
-                for (int y = 0; y < 12; ++y) {
+            mirinae::PushConstInfo pc_info;
+            pc_info.layout(rp.pipeline_layout())
+                .add_stage_vert()
+                .add_stage_tesc()
+                .add_stage_tese()
+                .add_stage_frag();
+
+            for (int x = 0; x < pc.tile_index_count_[2]; ++x) {
+                for (int y = 0; y < pc.tile_index_count_[3]; ++y) {
                     pc.tile_index_count_[0] = x;
                     pc.tile_index_count_[1] = y;
-                    pc.tile_index_count_[2] = 12;
-                    pc.tile_index_count_[3] = 12;
-
-                    vkCmdPushConstants(
-                        cmdbuf,
-                        rp.pipeline_layout(),
-                        VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
-                            VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                            VK_SHADER_STAGE_VERTEX_BIT |
-                            VK_SHADER_STAGE_FRAGMENT_BIT,
-                        0,
-                        sizeof(pc),
-                        &pc
-                    );
-
+                    pc_info.record(cmdbuf, pc);
                     vkCmdDraw(cmdbuf, 4, 1, 0, 0);
                 }
             }
