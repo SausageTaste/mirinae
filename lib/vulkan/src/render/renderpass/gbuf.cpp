@@ -816,6 +816,7 @@ namespace {
             pc.pvm(proj_mat, view_mat, model_mat)
                 .tile_count(12, 12)
                 .height_map_size(height_map_->width(), height_map_->height())
+                .fbuf_size(fbuf_exd)
                 .height_scale(64);
 
             for (int x = 0; x < 12; ++x) {

@@ -32,8 +32,14 @@ namespace mirinae::rp::gbuf {
         }
 
         U_GbufTerrainPushConst& height_map_size(uint32_t x, uint32_t y) {
-            height_map_size_.x = static_cast<float>(x);
-            height_map_size_.y = static_cast<float>(y);
+            height_map_size_fbuf_size_.x = static_cast<float>(x);
+            height_map_size_fbuf_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& fbuf_size(const VkExtent2D& x) {
+            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
+            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
             return *this;
         }
 
@@ -47,7 +53,7 @@ namespace mirinae::rp::gbuf {
         glm::mat4 view_;
         glm::mat4 model_;
         glm::vec4 tile_index_count_;
-        glm::vec4 height_map_size_;
+        glm::vec4 height_map_size_fbuf_size_;
         float height_scale_;
     };
 
