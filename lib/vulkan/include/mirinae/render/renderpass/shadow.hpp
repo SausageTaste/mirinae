@@ -90,6 +90,17 @@ namespace mirinae::rp::shadow {
         };
 
 
+        void record(
+            const VkCommandBuffer cur_cmd_buf,
+            const DrawSheet& draw_sheet,
+            const FrameIndex frame_index,
+            const IRenderPassRegistry& rp_pkg
+        );
+
+        ShadowMapPool& pool() { return shadow_maps_; }
+        CascadeInfo& cascade() { return cascade_info_; }
+
+    private:
         void record_static(
             const VkCommandBuffer cur_cmd_buf,
             const DrawSheet& draw_sheet,
@@ -104,10 +115,13 @@ namespace mirinae::rp::shadow {
             const IRenderPassRegistry& rp_pkg
         );
 
-        ShadowMapPool& pool() { return shadow_maps_; }
-        CascadeInfo& cascade() { return cascade_info_; }
+        void record_skin_transp(
+            const VkCommandBuffer cur_cmd_buf,
+            const DrawSheet& draw_sheet,
+            const FrameIndex frame_index,
+            const IRenderPassRegistry& rp_pkg
+        );
 
-    private:
         ShadowMapPool shadow_maps_;
         CascadeInfo cascade_info_;
     };

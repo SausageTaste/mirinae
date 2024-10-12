@@ -105,7 +105,7 @@ float how_much_not_in_cascade_shadow(
     const mat4 light_mat,
     sampler2D depth_map
 ) {
-    return how_much_not_in_cascade_shadow_bilinear(
+    return how_much_not_in_cascade_shadow_pcf(
         world_pos, offset, light_mat, depth_map
     );
 }
