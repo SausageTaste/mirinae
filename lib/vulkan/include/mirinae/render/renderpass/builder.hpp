@@ -290,6 +290,7 @@ namespace mirinae {
             RasterizationStateBuilder();
 
             RasterizationStateBuilder& polygon_mode(VkPolygonMode mode);
+            RasterizationStateBuilder& polygon_mode_line();
             RasterizationStateBuilder& line_width(float x);
 
             RasterizationStateBuilder& cull_mode(VkCullModeFlags mode);
