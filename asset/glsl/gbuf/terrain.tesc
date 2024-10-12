@@ -14,7 +14,7 @@ layout (push_constant) uniform U_GbufTerrainPushConst {
     mat4 view;
     mat4 model;
     vec4 tile_index_count;
-    vec4 height_map_size;
+    vec4 height_map_size_fbuf_size;
     float height_scale;
 } u_pc;
 
@@ -32,15 +32,22 @@ void main() {
         p11 /= p11.w;
         p10 /= p10.w;
 
+        const vec2 fbuf_size = u_pc.height_map_size_fbuf_size.zw;
+        p00.xy = (p00.xy * 0.5 + 0.5) * fbuf_size;
+        p01.xy = (p01.xy * 0.5 + 0.5) * fbuf_size;
+        p11.xy = (p11.xy * 0.5 + 0.5) * fbuf_size;
+        p10.xy = (p10.xy * 0.5 + 0.5) * fbuf_size;
+
         float edge0 = distance(p00.xy, p01.xy);
         float edge1 = distance(p01.xy, p11.xy);
         float edge2 = distance(p11.xy, p10.xy);
         float edge3 = distance(p10.xy, p00.xy);
 
-        float tess_level0 = min(edge3 * MAX_TESS_LEVEL, MAX_TESS_LEVEL);
-        float tess_level1 = min(edge0 * MAX_TESS_LEVEL, MAX_TESS_LEVEL);
-        float tess_level2 = min(edge1 * MAX_TESS_LEVEL, MAX_TESS_LEVEL);
-        float tess_level3 = min(edge2 * MAX_TESS_LEVEL, MAX_TESS_LEVEL);
+        const float factor = MAX_TESS_LEVEL / 500.0;
+        float tess_level0 = min(edge3 * factor, MAX_TESS_LEVEL);
+        float tess_level1 = min(edge0 * factor, MAX_TESS_LEVEL);
+        float tess_level2 = min(edge1 * factor, MAX_TESS_LEVEL);
+        float tess_level3 = min(edge2 * factor, MAX_TESS_LEVEL);
 
         gl_TessLevelOuter[0] = tess_level0;
         gl_TessLevelOuter[1] = tess_level1;
