@@ -9,6 +9,8 @@ layout(location = 3) in vec2 i_texcoord;
 layout(location = 4) in vec4 i_jweights;
 layout(location = 5) in ivec4 i_jids;
 
+layout(location = 0) out vec2 v_uv;
+
 
 layout(push_constant) uniform U_ShadowPushConst {
     mat4 pvm;
@@ -42,4 +44,5 @@ mat4 make_joint_transform() {
 void main() {
     const mat4 joint_mat = make_joint_transform();
     gl_Position = u_push_const.pvm * joint_mat * vec4(i_pos, 1);
+    v_uv = i_texcoord;
 }

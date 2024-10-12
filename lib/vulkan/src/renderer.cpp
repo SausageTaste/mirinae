@@ -649,11 +649,7 @@ namespace {
                 rp_
             );
 
-            rpm_.shadow().record_static(
-                cur_cmd_buf, draw_sheet, framesync_.get_frame_index(), rp_
-            );
-
-            rpm_.shadow().record_skinned(
+            rpm_.shadow().record(
                 cur_cmd_buf, draw_sheet, framesync_.get_frame_index(), rp_
             );
 
