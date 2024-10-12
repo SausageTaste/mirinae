@@ -440,6 +440,11 @@ namespace mirinae {
         return *this;
     }
 
+    CLS& CLS::polygon_mode_line() {
+        info_.polygonMode = VK_POLYGON_MODE_LINE;
+        return *this;
+    }
+
     CLS& CLS::line_width(float x) {
         info_.lineWidth = x;
         return *this;
