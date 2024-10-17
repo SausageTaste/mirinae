@@ -2,6 +2,13 @@
     "dependencies": [
         "brotli",
         "entt",
+        "ktx",
+        {
+            "name": "ktx",
+            "features": [
+                "vulkan"
+            ]
+        },
         "libhydrogen",
         "lua",
         "vulkan-memory-allocator"
