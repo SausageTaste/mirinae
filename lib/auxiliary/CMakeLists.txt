@@ -15,7 +15,7 @@ target_include_directories(mirinae_aux PUBLIC
 target_link_libraries(mirinae_aux PUBLIC
     ${LUA_LIBRARIES}
     uni-algo::uni-algo
-    enet
+    unofficial::enet::enet
     dalbaragi::daltools
     sungtools::general
 )

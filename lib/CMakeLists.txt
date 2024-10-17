@@ -1,31 +1,6 @@
-include(FetchContent)
-
-set(FETCHCONTENT_QUIET FALSE)
-
-
-FetchContent_Declare(
-    fetch_unialgo
-    GIT_REPOSITORY  https://github.com/uni-algo/uni-algo
-    GIT_TAG         v1.2.0
-    GIT_PROGRESS    TRUE
-)
-
-FetchContent_Declare(
-    fetch_enet
-    GIT_REPOSITORY  https://github.com/lsalzman/enet
-    GIT_TAG         v1.3.18
-    GIT_PROGRESS    TRUE
-)
-
-FetchContent_MakeAvailable(
-    fetch_unialgo
-    fetch_enet
-)
 
 # define global macro
 add_compile_definitions(_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
-
-add_subdirectory(../extern/DalbaragiTools  ${PROJECT_BINARY_DIR}/DalbaragiTools)
 
 add_subdirectory(auxiliary)
 add_subdirectory(platform)
