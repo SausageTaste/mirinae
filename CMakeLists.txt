@@ -17,6 +17,7 @@ FetchContent_Declare(
 )
 
 
+find_package(EnTT CONFIG REQUIRED)
 find_package(Lua REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)

@@ -11,13 +11,6 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
-    fetch_entt
-    GIT_REPOSITORY  https://github.com/skypjack/entt
-    GIT_TAG         v3.13.2
-    GIT_PROGRESS    TRUE
-)
-
-FetchContent_Declare(
     fetch_enet
     GIT_REPOSITORY  https://github.com/lsalzman/enet
     GIT_TAG         v1.3.18
@@ -26,7 +19,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(
     fetch_unialgo
-    fetch_entt
     fetch_enet
 )
 
