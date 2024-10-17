@@ -6,6 +6,7 @@
         "enet",
         "entt",
         "glm",
+        "gtest",
         {
             "name": "ktx",
             "features": [
