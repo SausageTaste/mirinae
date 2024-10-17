@@ -1,0 +1,7 @@
+{
+    "dependencies": [
+        "libhydrogen",
+        "lua",
+        "vulkan-memory-allocator"
+    ]
+}

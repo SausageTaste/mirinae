@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
+
+set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+
 project(mirinae)
 
 include(FetchContent)
@@ -12,6 +15,11 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/google/googletest
     GIT_TAG        v1.14.0
 )
+
+
+find_package(Lua REQUIRED)
+find_package(Vulkan REQUIRED)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 
 
 add_subdirectory(lib)
