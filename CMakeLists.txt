@@ -5,6 +5,7 @@ include(FetchContent)
 
 
 set(MIRINAE_ENABLE_TEST OFF CACHE BOOL "Enable testing")
+set(MIRINAE_BUILD_APP OFF CACHE BOOL "Build projects in app folder")
 
 FetchContent_Declare(
     sung_fetch_googletest
@@ -14,7 +15,11 @@ FetchContent_Declare(
 
 
 add_subdirectory(lib)
-add_subdirectory(app)
+
+
+if (MIRINAE_BUILD_APP)
+    add_subdirectory(app)
+endif()
 
 
 if (MIRINAE_ENABLE_TEST)
