@@ -10,7 +10,6 @@ set(MIRINAE_BUILD_APP OFF CACHE BOOL "Build projects in app folder")
 
 add_subdirectory(extern/DalbaragiTools)
 
-find_package(unofficial-enet CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(Lua REQUIRED)
 find_package(uni-algo CONFIG REQUIRED)

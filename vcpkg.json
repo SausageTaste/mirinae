@@ -3,7 +3,6 @@
         "aklomp-base64",
         "argparse",
         "brotli",
-        "enet",
         "entt",
         "glm",
         "gtest",
