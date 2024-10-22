@@ -24,7 +24,7 @@ target_include_directories(mirinae_vulkan PUBLIC
 )
 target_link_libraries(mirinae_vulkan PUBLIC
     Vulkan::Vulkan
-    VulkanMemoryAllocator
+    GPUOpen::VulkanMemoryAllocator
     mirinae::cosmos
 )
 target_compile_features(mirinae_vulkan PUBLIC cxx_std_17)
