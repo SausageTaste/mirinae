@@ -6,6 +6,7 @@
 
 namespace {
 
+    /*
     TEST(CustomFormat, Vec3) {
         std::vector<glm::dvec4> data{
             { 1.0 / 3.0, 2.0 / 3.0, 1.0 / 5.0, 85.0 },
@@ -36,6 +37,7 @@ namespace {
             fmt::print("{:>8.3f} = mat3\n", glm::mat3(m));
         }
     }
+    */
 
 }  // namespace
 

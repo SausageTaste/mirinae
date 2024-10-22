@@ -9,12 +9,11 @@ add_library(mirinae_aux STATIC
 )
 target_include_directories(mirinae_aux PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${fetch_enet_SOURCE_DIR}/include
+    ${LUA_INCLUDE_DIR}
 )
 target_link_libraries(mirinae_aux PUBLIC
-    lua::lua
+    ${LUA_LIBRARIES}
     uni-algo::uni-algo
-    enet
     dalbaragi::daltools
     sungtools::general
 )

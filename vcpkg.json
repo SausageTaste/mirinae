@@ -1,0 +1,23 @@
+{
+    "dependencies": [
+        "aklomp-base64",
+        "argparse",
+        "brotli",
+        "entt",
+        "glm",
+        "gtest",
+        {
+            "name": "ktx",
+            "features": [
+                "vulkan"
+            ]
+        },
+        "lua",
+        "nlohmann-json",
+        "spdlog",
+        "stb",
+        "uni-algo",
+        "vulkan-memory-allocator",
+        "zlib"
+    ]
+}
