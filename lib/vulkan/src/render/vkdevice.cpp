@@ -1163,13 +1163,12 @@ namespace mirinae {
         }
 
         spdlog::info(
-            "Swapchain created: format={}, extent=({}, {}), present_mode={}, "
-            "image_count={}",
-            sung::lstrip(to_str(format_), "VK_FORMAT_"),
+            "Swapchain created: {}*{}, {}, {} images, present_mode={}",
             extent_.width,
             extent_.height,
-            static_cast<int>(cinfo.presentMode),
-            images_.size()
+            sung::lstrip(to_str(format_), "VK_FORMAT_"),
+            images_.size(),
+            static_cast<int>(cinfo.presentMode)
         );
 
         // Create views
