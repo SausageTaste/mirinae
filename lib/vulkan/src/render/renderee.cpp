@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 #include <daltools/img/backend/ktx.hpp>
 #include <daltools/img/backend/stb.hpp>
+#include <sung/general/stringtool.hpp>
 
 #include "mirinae/render/cmdbuf.hpp"
 
@@ -462,8 +463,8 @@ namespace mirinae {
 
             spdlog::debug(
                 "Raw texture loaded: size={}, format={}, path='{}'",
-                image.data_size(),
-                static_cast<int>(texture_.format()),
+                sung::format_bytes(image.data_size()),
+                sung::lstrip(to_str(texture_.format()), "VK_FORMAT_"),
                 id
             );
         }
@@ -511,8 +512,8 @@ namespace mirinae {
 
             spdlog::debug(
                 "Raw texture loaded: size={}, format={}, path='{}'",
-                image.data_size(),
-                static_cast<int>(texture_.format()),
+                sung::format_bytes(image.data_size()),
+                sung::lstrip(to_str(texture_.format()), "VK_FORMAT_"),
                 id
             );
         }
@@ -634,8 +635,11 @@ namespace mirinae {
             texture_view_.reset(iv_builder, device_);
 
             spdlog::debug(
-                "KTX texture loaded: format={}, path='{}'",
-                static_cast<int>(data_->imageFormat),
+                "KTX texture loaded: format={}, levels={}, layers={}, "
+                "path='{}'",
+                sung::lstrip(to_str(data_->imageFormat), "VK_FORMAT_"),
+                data_->levelCount,
+                data_->layerCount,
                 id
             );
             return true;
