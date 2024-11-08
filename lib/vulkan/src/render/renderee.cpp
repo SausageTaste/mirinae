@@ -461,10 +461,18 @@ namespace mirinae {
                 .image(texture_.image());
             texture_view_.reset(iv_builder, device_);
 
+            VkMemoryRequirements mem_req = {};
+            vkGetImageMemoryRequirements(
+                device_.logi_device(), texture_.image(), &mem_req
+            );
+
             spdlog::debug(
-                "Raw texture loaded: size={}, format={}, path='{}'",
-                sung::format_bytes(image.data_size()),
+                "Raw texture loaded: {}*{}, {}, {}, {} levels, '{}'",
+                texture_.width(),
+                texture_.height(),
                 sung::lstrip(to_str(texture_.format()), "VK_FORMAT_"),
+                sung::format_bytes(mem_req.size),
+                img_info.mip_levels(),
                 id
             );
         }
@@ -510,10 +518,18 @@ namespace mirinae {
                 .image(texture_.image());
             texture_view_.reset(iv_builder, device_);
 
+            VkMemoryRequirements mem_req = {};
+            vkGetImageMemoryRequirements(
+                device_.logi_device(), texture_.image(), &mem_req
+            );
+
             spdlog::debug(
-                "Raw texture loaded: size={}, format={}, path='{}'",
-                sung::format_bytes(image.data_size()),
+                "Raw texture loaded: {}*{}, {}, {}, {} levels, '{}'",
+                texture_.width(),
+                texture_.height(),
                 sung::lstrip(to_str(texture_.format()), "VK_FORMAT_"),
+                sung::format_bytes(mem_req.size),
+                img_info.mip_levels(),
                 id
             );
         }
@@ -634,12 +650,18 @@ namespace mirinae {
                 .image(data_->image);
             texture_view_.reset(iv_builder, device_);
 
+            VkMemoryRequirements mem_req = {};
+            vkGetImageMemoryRequirements(
+                device_.logi_device(), data_->image, &mem_req
+            );
+
             spdlog::debug(
-                "KTX texture loaded: format={}, levels={}, layers={}, "
-                "path='{}'",
+                "KTX texture loaded: {}*{}, {}, {}, {} levels, '{}'",
+                src.baseWidth,
+                src.baseHeight,
                 sung::lstrip(to_str(data_->imageFormat), "VK_FORMAT_"),
+                sung::format_bytes(mem_req.size),
                 data_->levelCount,
-                data_->layerCount,
                 id
             );
             return true;
