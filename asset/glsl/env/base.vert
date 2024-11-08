@@ -25,7 +25,6 @@ layout(push_constant) uniform U_EnvmapPushConst {
 
 void main() {
     gl_Position = u_push_const.proj_view * u_gbuf_model.model * vec4(i_pos, 1);
-    //v_tbn = mat3(u_gbuf_model.view_model) * mat3(i_tangent, normalize(cross(i_normal, i_tangent)), i_normal);
 
     v_light = vec3(0.2) ;
 

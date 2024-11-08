@@ -1,5 +1,7 @@
 #version 450
 
+#include "../utils/normal_mapping.glsl"
+
 layout(location = 0) in vec3 i_pos;
 layout(location = 1) in vec3 i_normal;
 layout(location = 2) in vec3 i_tangent;
@@ -18,6 +20,6 @@ layout(set = 1, binding = 0) uniform U_GbufActor {
 
 void main() {
     gl_Position = u_gbuf_model.pvm * vec4(i_pos, 1);
-    v_tbn = mat3(u_gbuf_model.view_model) * mat3(i_tangent, normalize(cross(i_normal, i_tangent)), i_normal);
+    v_tbn = make_tbn_mat(i_normal, i_tangent, u_gbuf_model.view_model);
     v_texcoord = i_texcoord;
 }
