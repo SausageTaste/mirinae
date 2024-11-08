@@ -1,5 +1,7 @@
 #version 450
 
+#include "../utils/normal_mapping.glsl"
+
 const int MAX_JOINTS = 256;
 
 layout(location = 0) in vec3 i_pos;
@@ -42,6 +44,6 @@ void main() {
     mat4 joint_mat = make_joint_transform();
 
     gl_Position = u_gbuf_model.pvm * joint_mat * vec4(i_pos, 1);
-    v_tbn = mat3(u_gbuf_model.view_model * joint_mat) * mat3(i_tangent, normalize(cross(i_normal, i_tangent)), i_normal);
+    v_tbn = make_tbn_mat(i_normal, i_tangent, u_gbuf_model.view_model);
     v_texcoord = i_texcoord;
 }
