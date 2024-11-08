@@ -86,6 +86,14 @@ namespace {
                 tex_man
             );
 
+            orm_map_ = this->request_texture(
+                res_id,
+                src_material.roughness_map_,
+                ":asset/textures/white.png",
+                false,
+                tex_man
+            );
+
             model_ubuf_.roughness = src_material.roughness_;
             model_ubuf_.metallic = src_material.metallic_;
         }
@@ -93,6 +101,7 @@ namespace {
         mirinae::U_GbufModel model_ubuf_;
         std::shared_ptr<mirinae::ITexture> albedo_map_;
         std::shared_ptr<mirinae::ITexture> normal_map_;
+        std::shared_ptr<mirinae::ITexture> orm_map_;
 
     private:
         static std::shared_ptr<mirinae::ITexture> request_texture(
@@ -862,6 +871,7 @@ namespace mirinae {
         const U_GbufModel& ubuf_data,
         VkImageView albedo_map,
         VkImageView normal_map,
+        VkImageView orm_map,
         CommandPool& cmd_pool,
         DesclayoutManager& desclayouts,
         VulkanDevice& device
@@ -884,7 +894,8 @@ namespace mirinae {
             builder.set_descset(desc_sets_.at(i))
                 .add_ubuf(uniform_buf_)
                 .add_img_sampler(albedo_map, device.samplers().get_linear())
-                .add_img_sampler(normal_map, device.samplers().get_linear());
+                .add_img_sampler(normal_map, device.samplers().get_linear())
+                .add_img_sampler(orm_map, device.samplers().get_linear());
         }
         builder.apply_all(device.logi_device());
 
@@ -929,6 +940,7 @@ namespace mirinae {
         const U_GbufModel& ubuf_data,
         VkImageView albedo_map,
         VkImageView normal_map,
+        VkImageView orm_map,
         CommandPool& cmd_pool,
         DesclayoutManager& desclayouts,
         VulkanDevice& device
@@ -951,7 +963,8 @@ namespace mirinae {
             builder.set_descset(desc_sets_.at(i))
                 .add_ubuf(uniform_buf_)
                 .add_img_sampler(albedo_map, device.samplers().get_linear())
-                .add_img_sampler(normal_map, device.samplers().get_linear());
+                .add_img_sampler(normal_map, device.samplers().get_linear())
+                .add_img_sampler(orm_map, device.samplers().get_linear());
         }
         builder.apply_all(device.logi_device());
 
@@ -1163,6 +1176,7 @@ namespace mirinae {
                     mat_res.model_ubuf_,
                     mat_res.albedo_map_->image_view(),
                     mat_res.normal_map_->image_view(),
+                    mat_res.orm_map_->image_view(),
                     cmd_pool_,
                     desclayouts,
                     device_
@@ -1209,6 +1223,7 @@ namespace mirinae {
                     mat_res.model_ubuf_,
                     mat_res.albedo_map_->image_view(),
                     mat_res.normal_map_->image_view(),
+                    mat_res.orm_map_->image_view(),
                     cmd_pool_,
                     desclayouts,
                     device_
@@ -1309,6 +1324,7 @@ namespace mirinae {
                     mat_res.model_ubuf_,
                     mat_res.albedo_map_->image_view(),
                     mat_res.normal_map_->image_view(),
+                    mat_res.orm_map_->image_view(),
                     cmd_pool_,
                     desclayouts,
                     device_

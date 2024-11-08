@@ -17,7 +17,8 @@ namespace { namespace gbuf {
         builder
             .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_GbufModel
             .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // Albedo map
-            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Normal map
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // Normal map
+            .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // ORM map
         return desclayouts.add(builder, device.logi_device());
     }
 
