@@ -14,6 +14,9 @@ namespace mirinae {
     constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
 
 
+    const char* to_str(VkFormat format);
+
+
     struct ISamplerManager {
         virtual ~ISamplerManager() = default;
         virtual VkSampler get_linear() = 0;
