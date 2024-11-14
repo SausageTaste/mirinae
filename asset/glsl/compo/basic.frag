@@ -163,5 +163,52 @@ void main() {
         ) * attenuation * not_shadow;
     }
 
+    // Point light
+    const vec3 pos_offset = vec3(-30, 0, -50);
+    const vec3[] plight_poses = vec3[](
+        vec3(0, 3, 0) + pos_offset,
+        vec3(30, 5, 0) + pos_offset,
+        vec3(0, 7, 30) + pos_offset,
+        vec3(30, 9, 30) + pos_offset,
+        vec3(500, 50, 500)
+    );
+    const vec3[] plight_colors = vec3[](
+        vec3(24, 18, 7),
+        vec3(24, 18, 7),
+        vec3(24, 18, 7),
+        vec3(24, 18, 7),
+        vec3(240, 180, 70)
+    );
+
+    for (uint i = 0; i < plight_poses.length(); ++i) {
+        const vec3 light_pos = (u_comp_main.view * vec4(plight_poses[i], 1)).xyz;
+        const vec3 cam_to_light = light_pos;
+        const float projected_light_distance = dot(cam_to_light, view_direc);
+        const vec3 projected_light_pos = projected_light_distance * view_direc;
+
+        const float h = distance(light_pos, projected_light_pos);
+        const float a = dot(-projected_light_pos, view_direc);
+        const float b = dot(frag_pos - projected_light_pos, view_direc);
+        const float c = (atan(b / h) / h) - (atan(a / h) / h);
+        light += plight_colors[i] * c * 0.01;
+
+        const vec3 to_light = light_pos - frag_pos;
+        const vec3 to_light_n = normalize(to_light);
+        const vec3 to_light_dir = cam_to_light;
+
+        const float attenuation = 1.0 / dot(to_light, to_light);
+
+        light += calc_pbr_illumination(
+            roughness,
+            metallic,
+            albedo,
+            normal,
+            F0,
+            -view_direc,
+            to_light_n,
+            plight_colors[i]
+        ) * attenuation;
+    }
+
     f_color = vec4(light, 1);
 }
