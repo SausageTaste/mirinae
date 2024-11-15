@@ -7,6 +7,12 @@ do
 end
 
 do
+    local e = scene.create_static_actor("Sung/cerberus/Cerberus_LP.dmd")
+    e:get_transform():set_pos(0.5, 2, 0.5)
+    print("Static actor created:", e:get_id(), e:get_respath())
+end
+
+do
     local e = scene.create_skinned_actor(":asset/models/Character Running.dun/Character Running.dmd")
 
     local a = e:get_anim_state()
