@@ -646,7 +646,7 @@ namespace {
             brdf_lut_.init(512, 512, rp_pkg, device);
 
             sky_tex_ = tex_man.request(
-                ":asset/textures/kloofendal_48d_partly_cloudy_puresky_1k.hdr",
+                "Sung/satara_night_4k.hdr",
                 false
             );
             assert(sky_tex_);

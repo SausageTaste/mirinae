@@ -810,18 +810,18 @@ namespace {
 
             const auto t = timer_.elapsed();
             const auto model_mat = glm::translate(
-                glm::dmat4{ 1 }, glm::dvec3{ 0, -1, 0 }
+                glm::dmat4{ 1 }, glm::dvec3{ -360 + 100, -5, -360 - 400 }
             );
 
             mirinae::rp::gbuf::U_GbufTerrainPushConst pc;
             pc.pvm(proj_mat, view_mat, model_mat)
-                .tile_count(12, 12)
+                .tile_count(24, 24)
                 .height_map_size(height_map_->width(), height_map_->height())
                 .fbuf_size(fbuf_exd)
                 .height_scale(64);
 
-            for (int x = 0; x < 12; ++x) {
-                for (int y = 0; y < 12; ++y) {
+            for (int x = 0; x < 24; ++x) {
+                for (int y = 0; y < 24; ++y) {
                     pc.tile_index(x, y);
                     pc_info.record(cmdbuf, pc);
                     vkCmdDraw(cmdbuf, 4, 1, 0, 0);

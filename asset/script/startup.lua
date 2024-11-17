@@ -1,19 +1,26 @@
-local scene = require('scene')
+scene = require('scene')
 
 do
-    local e = scene.create_static_actor("Sung/city.dun/city.dmd")
-    e:get_transform():set_scale(0.5, 0.5, 0.5)
-    print("Static actor created:", e:get_id(), e:get_respath())
+    sponza = scene.create_static_actor("Sung/sponza.dun/sponza.dmd")
+    sponza:get_transform():set_pos(30, 1, -70)
+    sponza:get_transform():set_scale(0.01, 0.01, 0.01)
+    print("Static actor created:", sponza:get_id(), sponza:get_respath())
 end
 
 do
-    local e = scene.create_static_actor("Sung/cerberus/Cerberus_LP.dmd")
+    city = scene.create_static_actor("Sung/city.dun/city.dmd")
+    city:get_transform():set_scale(0.5, 0.5, 0.5)
+    print("Static actor created:", city:get_id(), city:get_respath())
+end
+
+do
+    local e = scene.create_static_actor("Sung/cerberus.dun/Cerberus_LP.dmd")
     e:get_transform():set_pos(0.5, 2, 0.5)
     print("Static actor created:", e:get_id(), e:get_respath())
 end
 
 do
-    local e = scene.create_skinned_actor(":asset/models/Character Running.dun/Character Running.dmd")
+    local e = scene.create_skinned_actor("Sung/Character Running.dun/Character Running.dmd")
 
     local a = e:get_anim_state()
     a:set_anim_idx(0)
@@ -100,4 +107,9 @@ function set_anim_speed(speed)
         local a = actor:get_anim_state()
         a:set_anim_speed(speed)
     end
+end
+
+
+function cam_pos()
+    print(scene.get_cam_pos())
 end
