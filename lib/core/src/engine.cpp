@@ -191,8 +191,8 @@ namespace {
 
                 auto& d = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
 
-                d.view_.pos_ = { 0.7354, 0.6603, -1.2617 };
-                d.view_.rot_ = { -0.5512, -0.0160, 0.8338, -0.0243 };
+                d.view_.pos_ = { 1.9518, 0.6559, 0.0913, };
+                d.view_.rot_ = { -.921, -0.051, 0.3848, -0.021, } * 5.0;
                 d.proj_.near_ = 0.1;
                 d.proj_.far_ = 1000;
             }
