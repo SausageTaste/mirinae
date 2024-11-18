@@ -603,34 +603,28 @@ namespace mirinae {
         KtxTextureData(VulkanDevice& device) : device_(device) {}
 
         bool init(
-            const std::string& id, ktxTexture& src, ktxVulkanDeviceInfo& vdi
+            const std::string& id, dal::KtxImage& src, ktxVulkanDeviceInfo& vdi
         ) {
             this->destroy();
 
             id_ = id;
 
-            if (ktxTexture_NeedsTranscoding(&src)) {
+            if (src.need_transcoding()) {
                 const auto tf = this->determine_transcode_format(src);
                 if (!tf) {
                     spdlog::error("Failed to find transcode format: {}", id);
                     return false;
                 }
 
-                const auto tex2 = reinterpret_cast<ktxTexture2*>(&src);
-                const auto res = ktxTexture2_TranscodeBasis(tex2, *tf, 0);
-                if (KTX_SUCCESS != res) {
-                    spdlog::error(
-                        "Failed to transcode KTX ({}): {}",
-                        static_cast<int>(res),
-                        id
-                    );
+                if (!src.transcode(tf.value())) {
+                    spdlog::error("Failed to transcode KTX: {}", id);
                     return false;
                 }
             }
 
             data_ = ktxVulkanTexture{};
             const auto res = ktxTexture_VkUploadEx(
-                &src,
+                &src.ktx(),
                 &vdi,
                 &data_.value(),
                 VK_IMAGE_TILING_OPTIMAL,
@@ -657,8 +651,8 @@ namespace mirinae {
 
             spdlog::debug(
                 "KTX texture loaded: {}*{}, {}, {}, {} levels, '{}'",
-                src.baseWidth,
-                src.baseHeight,
+                src.base_width(),
+                src.base_height(),
                 sung::lstrip(to_str(data_->imageFormat), "VK_FORMAT_"),
                 sung::format_bytes(mem_req.size),
                 data_->levelCount,
@@ -690,10 +684,15 @@ namespace mirinae {
 
     private:
         std::optional<ktx_texture_transcode_fmt_e> determine_transcode_format(
-            ktxTexture& src
+            dal::KtxImage& src
         ) {
+            auto ktx2 = src.ktx2();
+            if (!ktx2)
+                return std::nullopt;
+
             auto& df = device_.phys_device_features();
-            const auto cm = ktxTexture2_GetColorModel_e((ktxTexture2*)&src);
+            const auto cm = ktxTexture2_GetColorModel_e(ktx2);
+            const auto num_cpnt = src.num_cpnts();
 
             if (cm == KHR_DF_MODEL_UASTC && df.textureCompressionASTC_LDR)
                 return KTX_TTF_ASTC_4x4_RGBA;
@@ -703,9 +702,20 @@ namespace mirinae {
                 return KTX_TTF_ASTC_4x4_RGBA;
             else if (df.textureCompressionETC2)
                 return KTX_TTF_ETC2_RGBA;
-            else if (df.textureCompressionBC)
-                return KTX_TTF_BC3_RGBA;
-            else
+            else if (df.textureCompressionBC) {
+                switch (num_cpnt) {
+                    case 1:
+                        return KTX_TTF_BC4_R;
+                    case 2:
+                        return KTX_TTF_BC5_RG;
+                    case 3:
+                        return KTX_TTF_BC1_RGB;
+                    case 4:
+                        return KTX_TTF_BC3_RGBA;
+                    default:
+                        return std::nullopt;
+                }
+            } else
                 return std::nullopt;
         }
 
@@ -767,7 +777,7 @@ namespace mirinae {
 
             if (auto kts_img = img->as<dal::KtxImage>()) {
                 auto out = std::make_shared<KtxTextureData>(device_);
-                if (out->init(id, kts_img->ktx(), ktx_device_)) {
+                if (out->init(id, *kts_img, ktx_device_)) {
                     textures_.push_back(out);
                     return out;
                 } else {
