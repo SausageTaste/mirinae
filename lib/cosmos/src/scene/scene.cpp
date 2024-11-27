@@ -114,6 +114,26 @@ namespace { namespace scene {
             return 0;
         }
 
+        int get_quat(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            lua_pushnumber(L, self->rot_.w);
+            lua_pushnumber(L, self->rot_.x);
+            lua_pushnumber(L, self->rot_.y);
+            lua_pushnumber(L, self->rot_.z);
+            return 4;
+        }
+
+        int set_quat(lua_State* const L) {
+            GET_SCENE_PTR();
+            auto& self = check_udata(L, 1);
+            self->rot_.w = luaL_checknumber(L, 2);
+            self->rot_.x = luaL_checknumber(L, 3);
+            self->rot_.y = luaL_checknumber(L, 4);
+            self->rot_.z = luaL_checknumber(L, 5);
+            return 0;
+        }
+
         int get_scale(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
@@ -126,9 +146,17 @@ namespace { namespace scene {
         int set_scale(lua_State* const L) {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
-            self->scale_.x = luaL_checknumber(L, 2);
-            self->scale_.y = luaL_checknumber(L, 3);
-            self->scale_.z = luaL_checknumber(L, 4);
+
+            if (lua_gettop(L) == 2) {
+                self->scale_.x = luaL_checknumber(L, 2);
+                self->scale_.y = luaL_checknumber(L, 2);
+                self->scale_.z = luaL_checknumber(L, 2);
+            } else {
+                self->scale_.x = luaL_checknumber(L, 2);
+                self->scale_.y = luaL_checknumber(L, 3);
+                self->scale_.z = luaL_checknumber(L, 4);
+            }
+
             return 0;
         }
 
@@ -396,6 +424,8 @@ namespace { namespace scene {
             methods.add("get_pos", tview::get_pos);
             methods.add("set_pos", tview::set_pos);
             methods.add("rotate", tview::rotate);
+            methods.add("get_quat", tview::get_quat);
+            methods.add("set_quat", tview::set_quat);
             methods.add("get_scale", tview::get_scale);
             methods.add("set_scale", tview::set_scale);
 

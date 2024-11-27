@@ -3,13 +3,13 @@ scene = require('scene')
 do
     sponza = scene.create_static_actor("Sung/sponza.dun/sponza.dmd")
     sponza:get_transform():set_pos(30, 1, -70)
-    sponza:get_transform():set_scale(0.01, 0.01, 0.01)
+    sponza:get_transform():set_scale(0.01)
     print("Static actor created:", sponza:get_id(), sponza:get_respath())
 end
 
 do
     city = scene.create_static_actor("Sung/city.dun/city.dmd")
-    city:get_transform():set_scale(0.5, 0.5, 0.5)
+    city:get_transform():set_scale(0.5)
     print("Static actor created:", city:get_id(), city:get_respath())
 end
 
@@ -28,7 +28,7 @@ do
     local t = e:get_transform()
     t:set_pos(3, 0, -0.5)
     t:rotate(-90, 0, 1, 0)
-    t:set_scale(0.15, 0.15, 0.15)
+    t:set_scale(0.15)
 
     print("Skinned actor created:", e:get_id(), e:get_respath())
 end
@@ -81,7 +81,7 @@ do
     local t = cherno:get_transform()
     t:set_pos(-2.5, 0, -1)
     t:rotate(90, 0, 1, 0)
-    t:set_scale(0.65, 0.65, 0.65)
+    t:set_scale(0.65)
 
     print("Static actor created:", cherno:get_id(), cherno:get_respath())
 end
