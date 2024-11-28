@@ -1,5 +1,7 @@
 #include "mirinae/scene/scene.hpp"
 
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+#include <spdlog/spdlog.h>
 #include <sung/general/aabb.hpp>
 
 
@@ -573,6 +575,18 @@ namespace mirinae {
     Scene::Scene(ScriptEngine& script) : script_(script) {
         script_.register_global_ptr(SCENE_PTR_NAME, this);
         script_.register_module("scene", scene::luaopen_scene);
+    }
+
+    void Scene::pick_entt(const sung::LineSegment3& ray) {
+        SPDLOG_DEBUG(
+            "Ray: ({:.2f}, {:.2f}, {:.2f}) -> ({:.2f}, {:.2f}, {:.2f})",
+            ray.pos().x(),
+            ray.pos().y(),
+            ray.pos().z(),
+            ray.end().x(),
+            ray.end().y(),
+            ray.end().z()
+        );
     }
 
 }  // namespace mirinae

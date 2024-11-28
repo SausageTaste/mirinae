@@ -1,6 +1,7 @@
 #include "mirinae/engine.hpp"
 
 #include <spdlog/spdlog.h>
+#include <daltools/common/glm_tool.hpp>
 
 #include "mirinae/lightweight/network.hpp"
 #include "mirinae/renderer.hpp"
@@ -194,8 +195,17 @@ namespace {
 
                 auto& d = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
 
-                d.view_.pos_ = { 1.9518, 0.6559, 0.0913, };
-                d.view_.rot_ = { -.921, -0.051, 0.3848, -0.021, } * 5.0;
+                d.view_.pos_ = {
+                    1.9518,
+                    0.6559,
+                    0.0913,
+                };
+                d.view_.rot_ = {
+                    -.921,
+                    -0.051,
+                    0.3848,
+                    -0.021,
+                } * 5.0;
                 d.proj_.near_ = 0.1;
                 d.proj_.far_ = 1000;
             }
@@ -267,6 +277,44 @@ namespace {
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
             if (renderer_->on_mouse_event(e))
                 return true;
+
+            if (e.button_ == mirinae::mouse::ButtonCode::left &&
+                e.action_ == mirinae::mouse::ActionType::up) {
+                auto cam =
+                    cosmos_->reg().try_get<mirinae::cpnt::StandardCamera>(
+                        cosmos_->scene().main_camera_
+                    );
+                if (!cam) {
+                    SPDLOG_WARN("No camera entity found.");
+                    return true;
+                }
+
+                // Upper left is (-1, -1)
+                const glm::vec4 in_ndc{
+                    (2.0 * e.xpos_) / win_width_ - 1.0,
+                    (2.0 * e.ypos_) / win_height_ - 1.0,
+                    -1,
+                    1,
+                };
+                const auto proj_mat = cam->proj_.make_proj_mat(
+                    win_width_, win_height_
+                );
+                const auto proj_inv = glm::inverse(proj_mat);
+                auto in_view = proj_inv * in_ndc;
+                in_view /= in_view.w;
+
+                const auto view_mat = cam->view_.make_view_mat();
+                const auto view_inv = glm::inverse(view_mat);
+                const auto in_world = view_inv * in_view;
+                const auto dir = glm::dvec3{ in_world } - cam->view_.pos_;
+
+                const sung::LineSegment3 ray{
+                    dal::vec_cast(cam->view_.pos_),
+                    dal::vec_cast(glm::normalize(dir) * 1000.0),
+                };
+                cosmos_->scene().pick_entt(ray);
+                return true;
+            }
 
             camera_controller_.on_mouse_event(e);
 
