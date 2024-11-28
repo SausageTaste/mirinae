@@ -1,6 +1,7 @@
 #pragma once
 
 #include <entt/entt.hpp>
+#include <sung/general/geometry3d.hpp>
 
 #include "mirinae/lightweight/script.hpp"
 #include "mirinae/lightweight/skin_anim.hpp"
@@ -78,6 +79,9 @@ namespace mirinae {
         Scene(ScriptEngine& script);
 
         auto& ftime() const { return ftime_; }
+
+        // Ray in world space
+        void pick_entt(const sung::LineSegment3& ray);
 
     public:
         constexpr static uint64_t MAGIC_NUM = 46461236464165;
