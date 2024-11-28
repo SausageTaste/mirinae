@@ -1,6 +1,12 @@
 scene = require('scene')
 
 do
+    local e = scene.create_static_actor("Sung/axes.dun/axes.dmd")
+    e:get_transform():set_scale(1)
+    print("Static actor created:", e:get_id(), e:get_respath())
+end
+
+do
     sponza = scene.create_static_actor("Sung/sponza.dun/sponza.dmd")
     sponza:get_transform():set_pos(30, 1, -70)
     sponza:get_transform():set_scale(0.01)
