@@ -154,6 +154,9 @@ namespace {
 
     public:
         Engine(mirinae::EngineCreateInfo&& cinfo) {
+            win_width_ = cinfo.init_width_;
+            win_height_ = cinfo.init_height_;
+
             filesys_ = cinfo.filesys_;
             camera_controller_.osio_ = cinfo.osio_;
 
@@ -231,6 +234,8 @@ namespace {
         bool is_ongoing() override { return true; }
 
         void notify_window_resize(uint32_t width, uint32_t height) override {
+            win_width_ = width;
+            win_height_ = height;
             renderer_->notify_window_resize(width, height);
         }
 
@@ -289,6 +294,7 @@ namespace {
         sung::MonotonicRealtimeTimer delta_timer_, sec5_;
         ::NoclipController camera_controller_;
         entt::entity flashlight_;
+        uint32_t win_width_ = 0, win_height_ = 0;
     };
 
 }  // namespace
