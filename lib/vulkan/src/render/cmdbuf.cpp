@@ -1,5 +1,7 @@
 #include "mirinae/render/cmdbuf.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include "mirinae/render/mem_alloc.hpp"
 
 
@@ -350,7 +352,19 @@ namespace mirinae {
     }
 
     void PresentInfo::queue_present(VkQueue queue) {
-        VK_CHECK(vkQueuePresentKHR(queue, &info_));
+        const auto res = vkQueuePresentKHR(queue, &info_);
+
+        switch (res) {
+            case VK_SUCCESS:
+                break;
+            case VK_SUBOPTIMAL_KHR:
+            case VK_ERROR_OUT_OF_DATE_KHR:
+                spdlog::warn("Queue present failed: Swapchain is invalid");
+                break;
+            default:
+                spdlog::critical("Queue present failed: {}", static_cast<int>(res));
+                break;
+        }
     }
 
 }  // namespace mirinae

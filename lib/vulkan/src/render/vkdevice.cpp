@@ -1208,7 +1208,12 @@ namespace mirinae {
             case VK_SUBOPTIMAL_KHR:
                 return ShainImageIndex{ imageIndex };
             case VK_ERROR_OUT_OF_DATE_KHR:
+                spdlog::info("Swapchain out of date");
+                return std::nullopt;
             default:
+                spdlog::error(
+                    "Failed to acquire next image: {}", static_cast<int>(result)
+                );
                 return std::nullopt;
         }
     }
