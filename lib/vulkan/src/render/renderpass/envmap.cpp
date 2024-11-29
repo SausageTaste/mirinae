@@ -645,11 +645,13 @@ namespace {
 
             brdf_lut_.init(512, 512, rp_pkg, device);
 
-            sky_tex_ = tex_man.request(
-                "Sung/satara_night_4k.hdr",
-                false
-            );
-            assert(sky_tex_);
+            sky_tex_ = tex_man.request("Sung/satara_night_4k.hdr", false);
+            if (!sky_tex_)
+                sky_tex_ = tex_man.request(
+                    ":asset/textures/"
+                    "kloofendal_48d_partly_cloudy_puresky_1k.hdr",
+                    false
+                );
 
             desc_set_ = desc_pool_.alloc(
                 desclayouts.get("env_sky:main").layout(), device.logi_device()
