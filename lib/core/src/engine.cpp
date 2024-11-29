@@ -200,12 +200,15 @@ namespace {
                     0.6559,
                     0.0913,
                 };
-                d.view_.rot_ = glm::dquat{
-                    -0.921,
-                    -0.051,
-                    0.3848,
-                    -0.021,
-                } * 5.0;
+                d.view_.rot_ = glm::normalize(
+                    glm::dquat{
+                        -0.921,
+                        -0.051,
+                        0.3848,
+                        -0.021,
+                    } *
+                    5.0
+                );
                 d.proj_.near_ = 0.1;
                 d.proj_.far_ = 1000;
             }
