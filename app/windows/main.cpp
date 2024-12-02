@@ -420,12 +420,12 @@ namespace {
             mirinae::EngineCreateInfo create_info;
 
             create_info.filesys_ = std::make_shared<dal::Filesystem>();
-            create_info.filesys_->add_subsys(dal::create_filesubsys_std(
-                ":asset", ::find_asset_folder(), *create_info.filesys_
-            ));
-            create_info.filesys_->add_subsys(dal::create_filesubsys_std(
-                "", ::get_documents_path("Mirinapp"), *create_info.filesys_
-            ));
+            create_info.filesys_->add_subsys(
+                dal::create_filesubsys_std(":asset", ::find_asset_folder())
+            );
+            create_info.filesys_->add_subsys(
+                dal::create_filesubsys_std("", ::get_documents_path("Mirinapp"))
+            );
 
             create_info.osio_ = std::make_shared<OsInputOutput>(window_);
             create_info.instance_extensions_ = ::get_glfw_extensions();
