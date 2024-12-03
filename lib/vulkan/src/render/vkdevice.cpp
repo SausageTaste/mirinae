@@ -1163,12 +1163,13 @@ namespace mirinae {
         }
 
         spdlog::info(
-            "Swapchain created: {}*{}, {}, {} images, present_mode={}",
+            "Swapchain created: {}*{}, {}, {} images, {}, {}",
             extent_.width,
             extent_.height,
             sung::lstrip(to_str(format_), "VK_FORMAT_"),
             images_.size(),
-            static_cast<int>(cinfo.presentMode)
+            to_str(cinfo.presentMode),
+            to_str(cinfo.preTransform)
         );
 
         // Create views
@@ -1484,6 +1485,85 @@ namespace mirinae {
             CASE_ENUM_STR(VK_FORMAT_MAX_ENUM);
             default:
                 return "Unknown format";
+        }
+    }
+
+    const char* to_str(VkResult result) {
+        switch (result) {
+            CASE_ENUM_STR(VK_SUCCESS);
+            CASE_ENUM_STR(VK_NOT_READY);
+            CASE_ENUM_STR(VK_TIMEOUT);
+            CASE_ENUM_STR(VK_EVENT_SET);
+            CASE_ENUM_STR(VK_EVENT_RESET);
+            CASE_ENUM_STR(VK_INCOMPLETE);
+            CASE_ENUM_STR(VK_ERROR_OUT_OF_HOST_MEMORY);
+            CASE_ENUM_STR(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+            CASE_ENUM_STR(VK_ERROR_INITIALIZATION_FAILED);
+            CASE_ENUM_STR(VK_ERROR_DEVICE_LOST);
+            CASE_ENUM_STR(VK_ERROR_MEMORY_MAP_FAILED);
+            CASE_ENUM_STR(VK_ERROR_LAYER_NOT_PRESENT);
+            CASE_ENUM_STR(VK_ERROR_EXTENSION_NOT_PRESENT);
+            CASE_ENUM_STR(VK_ERROR_FEATURE_NOT_PRESENT);
+            CASE_ENUM_STR(VK_ERROR_INCOMPATIBLE_DRIVER);
+            CASE_ENUM_STR(VK_ERROR_TOO_MANY_OBJECTS);
+            CASE_ENUM_STR(VK_ERROR_FORMAT_NOT_SUPPORTED);
+            CASE_ENUM_STR(VK_ERROR_FRAGMENTED_POOL);
+            CASE_ENUM_STR(VK_ERROR_UNKNOWN);
+            CASE_ENUM_STR(VK_ERROR_OUT_OF_POOL_MEMORY);
+            CASE_ENUM_STR(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+            CASE_ENUM_STR(VK_ERROR_FRAGMENTATION);
+            CASE_ENUM_STR(VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS);
+            CASE_ENUM_STR(VK_ERROR_SURFACE_LOST_KHR);
+            CASE_ENUM_STR(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
+            CASE_ENUM_STR(VK_SUBOPTIMAL_KHR);
+            CASE_ENUM_STR(VK_ERROR_OUT_OF_DATE_KHR);
+            CASE_ENUM_STR(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
+            CASE_ENUM_STR(VK_ERROR_VALIDATION_FAILED_EXT);
+            CASE_ENUM_STR(VK_ERROR_INVALID_SHADER_NV);
+            CASE_ENUM_STR(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT
+            );
+            CASE_ENUM_STR(VK_ERROR_NOT_PERMITTED_EXT);
+            CASE_ENUM_STR(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT);
+            CASE_ENUM_STR(VK_THREAD_IDLE_KHR);
+            CASE_ENUM_STR(VK_THREAD_DONE_KHR);
+            CASE_ENUM_STR(VK_OPERATION_DEFERRED_KHR);
+            CASE_ENUM_STR(VK_OPERATION_NOT_DEFERRED_KHR);
+            CASE_ENUM_STR(VK_PIPELINE_COMPILE_REQUIRED_EXT);
+            default:
+                return "Unknown result";
+        }
+    }
+
+    const char* to_str(VkPresentModeKHR mode) {
+        switch (mode) {
+            CASE_ENUM_STR(VK_PRESENT_MODE_IMMEDIATE_KHR);
+            CASE_ENUM_STR(VK_PRESENT_MODE_MAILBOX_KHR);
+            CASE_ENUM_STR(VK_PRESENT_MODE_FIFO_KHR);
+            CASE_ENUM_STR(VK_PRESENT_MODE_FIFO_RELAXED_KHR);
+            default:
+                return "Unknown present mode";
+        }
+    }
+
+    const char* to_str(VkSurfaceTransformFlagBitsKHR transform_flag) {
+        switch (transform_flag) {
+            CASE_ENUM_STR(VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
+            CASE_ENUM_STR(VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR);
+            CASE_ENUM_STR(VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR);
+            CASE_ENUM_STR(VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR);
+            CASE_ENUM_STR(VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_BIT_KHR);
+            CASE_ENUM_STR(
+                VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR
+            );
+            CASE_ENUM_STR(
+                VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR
+            );
+            CASE_ENUM_STR(
+                VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR
+            );
+            CASE_ENUM_STR(VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR);
+            default:
+                return "Unknown surface transform flag";
         }
     }
 
