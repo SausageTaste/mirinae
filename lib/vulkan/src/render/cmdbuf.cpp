@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include "mirinae/render/mem_alloc.hpp"
+#include "mirinae/render/vkdevice.hpp"
 
 
 // Viewport
@@ -358,11 +359,13 @@ namespace mirinae {
             case VK_SUCCESS:
                 break;
             case VK_SUBOPTIMAL_KHR:
+                spdlog::warn("Queue present failed: Swapchain is suboptimal");
+                break;
             case VK_ERROR_OUT_OF_DATE_KHR:
                 spdlog::warn("Queue present failed: Swapchain is invalid");
                 break;
             default:
-                spdlog::critical("Queue present failed: {}", static_cast<int>(res));
+                spdlog::warn("Queue present failed: {}", to_str(res));
                 break;
         }
     }
