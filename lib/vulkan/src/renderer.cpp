@@ -951,41 +951,15 @@ namespace {
             auto& scene = cosmos_->scene();
             auto& reg = cosmos_->reg();
 
-            for (auto eid : scene.entt_without_model_) {
-                if (const auto src = reg.try_get<cpnt::StaticModelActor>(eid)) {
-                    auto model = model_man_.request_static(
-                        src->model_path_, desclayout_, tex_man_
-                    );
-                    if (!model) {
-                        spdlog::warn(
-                            "Failed to load model: {}",
-                            src->model_path_.u8string()
-                        );
-                        continue;
-                    }
+            for (auto e : reg.view<cpnt::StaticModelActor>()) {
+                const auto mavk = reg.try_get<cpnt::StaticActorVk>(e);
+                if (mavk)
+                    continue;
 
-                    auto& d = reg.emplace<cpnt::StaticActorVk>(eid);
-                    d.model_ = model;
-                    d.actor_ = std::make_shared<mirinae::RenderActor>(device_);
-                    d.actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                } else if (const auto src = reg.try_get<SrcSkinn>(eid)) {
-                    auto model = model_man_.request_skinned(
-                        src->model_path_, desclayout_, tex_man_
-                    );
-                    if (!model) {
-                        spdlog::warn(
-                            "Failed to load model: {}",
-                            src->model_path_.u8string()
-                        );
-                        continue;
-                    }
-
-                    auto& d = reg.emplace<cpnt::SkinnedActorVk>(eid);
-                    d.model_ = model;
-                    d.actor_ = std::make_shared<RenderActorSkinned>(device_);
-                    d.actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                    src->anim_state_.set_skel_anim(d.model_->skel_anim_);
-                }
+                const auto& moac = reg.get<cpnt::StaticModelActor>(e);
+                auto model = model_man_.request_static(
+                    moac.model_path_, desclayout_, tex_man_
+                );
             }
 
             scene.entt_without_model_.clear();
