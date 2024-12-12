@@ -5,10 +5,10 @@
 #include <string>
 #include <vector>
 
+#include <daltools/filesys/res_mgr.hpp>
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/create_info.hpp"
 #include "mirinae/lightweight/input_proc.hpp"
-#include "mirinae/platform/filesys.hpp"
 
 
 namespace mirinae {
@@ -25,6 +25,7 @@ namespace mirinae {
 
     std::unique_ptr<IRenderer> create_vk_renderer(
         EngineCreateInfo&& cinfo,
+        std::shared_ptr<dal::IResourceManager>& res_mgr,
         std::shared_ptr<ScriptEngine>& script,
         std::shared_ptr<CosmosSimulator>& cosmos
     );

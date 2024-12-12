@@ -486,12 +486,14 @@ namespace {
     public:
         RendererVulkan(
             mirinae::EngineCreateInfo&& cinfo,
+            std::shared_ptr<dal::IResourceManager>& res_mgr,
             std::shared_ptr<mirinae::ScriptEngine>& script,
             std::shared_ptr<mirinae::CosmosSimulator>& cosmos,
             int init_width,
             int init_height
         )
             : device_(std::move(cinfo))
+            , res_mgr_(res_mgr)
             , script_(script)
             , cosmos_(cosmos)
             , tex_man_(device_)
@@ -1085,6 +1087,7 @@ namespace {
 
         // This must be the first member variable
         mirinae::VulkanDevice device_;
+        std::shared_ptr<dal::IResourceManager>& res_mgr_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
@@ -1120,13 +1123,14 @@ namespace mirinae {
 
     std::unique_ptr<IRenderer> create_vk_renderer(
         EngineCreateInfo&& cinfo,
+        std::shared_ptr<dal::IResourceManager>& res_mgr,
         std::shared_ptr<ScriptEngine>& script,
         std::shared_ptr<CosmosSimulator>& cosmos
     ) {
         const auto w = cinfo.init_width_;
         const auto h = cinfo.init_height_;
         return std::make_unique<::RendererVulkan>(
-            std::move(cinfo), script, cosmos, w, h
+            std::move(cinfo), res_mgr, script, cosmos, w, h
         );
     }
 
