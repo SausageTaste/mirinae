@@ -611,12 +611,16 @@ namespace {
 
 
 // TextureManager
-namespace mirinae {
+namespace {
 
-    class TextureManager::Pimpl {
+    class TextureManager : public mirinae::ITextureManager {
 
     public:
-        Pimpl(VulkanDevice& device) : device_(device) {
+        TextureManager(
+            std::shared_ptr<dal::IResourceManager> res_mgr,
+            mirinae::VulkanDevice& device
+        )
+            : res_mgr_(res_mgr), device_(device) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -636,13 +640,15 @@ namespace mirinae {
             }
         }
 
-        ~Pimpl() {
+        ~TextureManager() {
             this->destroy_all();
             ktxVulkanDeviceInfo_Destruct(&ktx_device_);
             cmd_pool_.destroy(device_.logi_device());
         }
 
-        std::shared_ptr<ITexture> request(const respath_t& res_id, bool srgb) {
+        std::shared_ptr<mirinae::ITexture> request(
+            const mirinae::respath_t& res_id, bool srgb
+        ) override {
             if (auto index = this->find_index(res_id))
                 return textures_.at(index.value());
 
@@ -688,9 +694,9 @@ namespace mirinae {
             return nullptr;
         }
 
-        std::unique_ptr<ITexture> create_image(
+        std::unique_ptr<mirinae::ITexture> create_image(
             const std::string& id, const dal::IImage2D& image, bool srgb
-        ) {
+        ) override {
             if (auto img = image.as<dal::TDataImage2D<uint8_t>>()) {
                 auto output = std::make_unique<TextureData>(device_);
                 output->init_iimage2d(id, *img, srgb, cmd_pool_);
@@ -702,7 +708,7 @@ namespace mirinae {
         }
 
     private:
-        std::optional<size_t> find_index(const respath_t& id) {
+        std::optional<size_t> find_index(const mirinae::respath_t& id) {
             for (size_t i = 0; i < textures_.size(); ++i) {
                 if (textures_.at(i)->id() == id.u8string())
                     return i;
@@ -722,31 +728,15 @@ namespace mirinae {
             textures_.clear();
         }
 
-        VulkanDevice& device_;
-        CommandPool cmd_pool_;
+        std::shared_ptr<dal::IResourceManager> res_mgr_;
+        mirinae::VulkanDevice& device_;
+        mirinae::CommandPool cmd_pool_;
         ktxVulkanDeviceInfo ktx_device_;
         std::vector<std::shared_ptr<ITextureData>> textures_;
     };
 
 
-    TextureManager::TextureManager(VulkanDevice& device)
-        : pimpl_(std::make_unique<Pimpl>(device)) {}
-
-    TextureManager::~TextureManager() {}
-
-    std::shared_ptr<ITexture> TextureManager::request(
-        const respath_t& res_id, bool srgb
-    ) {
-        return pimpl_->request(res_id, srgb);
-    }
-
-    std::unique_ptr<ITexture> TextureManager::create_image(
-        const std::string& id, const dal::IImage2D& image, bool srgb
-    ) {
-        return pimpl_->create_image(id, image, srgb);
-    }
-
-}  // namespace mirinae
+}  // namespace
 
 
 namespace mirinae {
@@ -770,6 +760,13 @@ namespace mirinae {
         auto output = std::make_unique<TextureData>(device);
         output->init_attachment(width, height, format, usage, name);
         return output;
+    }
+
+
+    std::shared_ptr<ITextureManager> create_tex_mgr(
+        std::shared_ptr<dal::IResourceManager> res_mgr, VulkanDevice& device
+    ) {
+        return std::make_shared<::TextureManager>(res_mgr, device);
     }
 
 }  // namespace mirinae

@@ -22,7 +22,7 @@ namespace mirinae::rp::envmap {
 
         virtual void init(
             IRenderPassRegistry& rp_pkg,
-            TextureManager& tex_man,
+            ITextureManager& tex_man,
             DesclayoutManager& desclayouts,
             VulkanDevice& device
         ) = 0;

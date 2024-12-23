@@ -1,6 +1,6 @@
 #pragma once
 
-#include <daltools/img/img2d.hpp>
+#include <daltools/filesys/res_mgr.hpp>
 
 #include "mirinae/render/vkdevice.hpp"
 
@@ -45,20 +45,21 @@ namespace mirinae {
     );
 
 
-    class TextureManager {
+    struct ITextureManager {
+        virtual ~ITextureManager() = default;
 
-    public:
-        TextureManager(VulkanDevice& device);
-        ~TextureManager();
+        virtual std::shared_ptr<ITexture> request(
+            const respath_t& res_id, bool srgb
+        ) = 0;
 
-        std::shared_ptr<ITexture> request(const respath_t& res_id, bool srgb);
-        std::unique_ptr<ITexture> create_image(
+        virtual std::unique_ptr<ITexture> create_image(
             const std::string& id, const dal::IImage2D& image, bool srgb
-        );
-
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> pimpl_;
+        ) = 0;
     };
+
+    using HTexMgr = std::shared_ptr<ITextureManager>;
+    HTexMgr create_tex_mgr(
+        std::shared_ptr<dal::IResourceManager> res_mgr, VulkanDevice& device
+    );
 
 }  // namespace mirinae

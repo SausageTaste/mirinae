@@ -742,7 +742,7 @@ namespace {
 
     public:
         void init(
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         ) override {
