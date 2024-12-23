@@ -952,7 +952,7 @@ namespace {
             auto& reg = cosmos_->reg();
 
             for (auto e : reg.view<cpnt::StaticModelActor>()) {
-                const auto mavk = reg.try_get<cpnt::StaticActorVk>(e);
+                auto mavk = reg.try_get<cpnt::StaticActorVk>(e);
                 if (mavk)
                     continue;
 
@@ -960,6 +960,34 @@ namespace {
                 auto model = model_man_.request_static(
                     moac.model_path_, desclayout_, *tex_man_
                 );
+                if (!model)
+                    continue;
+
+                mavk = &reg.emplace<cpnt::StaticActorVk>(e);
+                mavk->model_ = model;
+                mavk->actor_ = std::make_shared<mirinae::RenderActor>(device_);
+                mavk->actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+            }
+
+            for (auto e : reg.view<cpnt::SkinnedModelActor>()) {
+                auto mavk = reg.try_get<cpnt::SkinnedActorVk>(e);
+                if (mavk)
+                    continue;
+
+                auto& moac = reg.get<cpnt::SkinnedModelActor>(e);
+                auto model = model_man_.request_skinned(
+                    moac.model_path_, desclayout_, *tex_man_
+                );
+                if (!model)
+                    continue;
+
+                mavk = &reg.emplace<cpnt::SkinnedActorVk>(e);
+                mavk->model_ = model;
+                mavk->actor_ = std::make_shared<mirinae::RenderActorSkinned>(
+                    device_
+                );
+                mavk->actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                moac.anim_state_.set_skel_anim(model->skel_anim_);
             }
 
             scene.entt_without_model_.clear();
