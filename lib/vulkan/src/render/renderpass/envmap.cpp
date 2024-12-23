@@ -950,7 +950,9 @@ namespace {
                     fbuf_face_views_[i].reset(iv_builder, device);
                 }
 
-                depth_map_ = tex_man.create_depth(img_.width(), img_.height());
+                depth_map_ = mirinae::create_tex_depth(
+                    img_.width(), img_.height(), device
+                );
 
                 for (uint32_t i = 0; i < 6; i++) {
                     mirinae::FbufCinfo fbuf_cinfo;

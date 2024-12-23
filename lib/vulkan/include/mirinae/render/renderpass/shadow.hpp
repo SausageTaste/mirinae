@@ -76,9 +76,7 @@ namespace mirinae::rp::shadow {
             Item& at(size_t index);
             VkImageView get_img_view_at(size_t index) const;
 
-            void add(
-                uint32_t width, uint32_t height, TextureManager& tex_man
-            );
+            void add(uint32_t width, uint32_t height, VulkanDevice& device);
 
             void recreate_fbufs(
                 const IRenderPassBundle& rp, VulkanDevice& device

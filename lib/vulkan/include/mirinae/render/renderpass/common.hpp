@@ -68,34 +68,38 @@ namespace mirinae {
             mirinae::TextureManager& tex_man,
             mirinae::VulkanDevice& device
         ) {
-            depth_ = tex_man.create_depth(width, height);
-            albedo_ = tex_man.create_attachment(
+            depth_ = create_tex_depth(width, height, device);
+            albedo_ = create_tex_attach(
                 width,
                 height,
                 VK_FORMAT_R8G8B8A8_UNORM,
                 mirinae::FbufUsage::color_attachment,
-                "albedo"
+                "albedo",
+                device
             );
-            normal_ = tex_man.create_attachment(
+            normal_ = create_tex_attach(
                 width,
                 height,
                 VK_FORMAT_R8G8B8A8_UNORM,
                 mirinae::FbufUsage::color_attachment,
-                "normal"
+                "normal",
+                device
             );
-            material_ = tex_man.create_attachment(
+            material_ = create_tex_attach(
                 width,
                 height,
                 VK_FORMAT_R8G8B8A8_UNORM,
                 mirinae::FbufUsage::color_attachment,
-                "material"
+                "material",
+                device
             );
-            compo_ = tex_man.create_attachment(
+            compo_ = create_tex_attach(
                 width,
                 height,
                 device.img_formats().rgb_hdr(),
                 mirinae::FbufUsage::color_attachment,
-                "compo"
+                "compo",
+                device
             );
         }
 

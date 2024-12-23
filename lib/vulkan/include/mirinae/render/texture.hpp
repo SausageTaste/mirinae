@@ -31,6 +31,20 @@ namespace mirinae {
     };
 
 
+    std::unique_ptr<ITexture> create_tex_depth(
+        uint32_t width, uint32_t height, VulkanDevice& device
+    );
+
+    std::unique_ptr<ITexture> create_tex_attach(
+        uint32_t width,
+        uint32_t height,
+        VkFormat,
+        FbufUsage,
+        const char* name,
+        VulkanDevice& device
+    );
+
+
     class TextureManager {
 
     public:
@@ -40,14 +54,6 @@ namespace mirinae {
         std::shared_ptr<ITexture> request(const respath_t& res_id, bool srgb);
         std::unique_ptr<ITexture> create_image(
             const std::string& id, const dal::IImage2D& image, bool srgb
-        );
-        std::unique_ptr<ITexture> create_depth(uint32_t width, uint32_t height);
-        std::unique_ptr<ITexture> create_attachment(
-            uint32_t width,
-            uint32_t height,
-            VkFormat,
-            FbufUsage,
-            const char* name
         );
 
     private:
