@@ -80,7 +80,7 @@ namespace mirinae {
             VkImageView mask_view,
             VkSampler sampler,
             DesclayoutManager& desclayouts,
-            TextureManager& tex_man
+            ITextureManager& tex_man
         );
         void destroy();
 
@@ -138,13 +138,13 @@ namespace mirinae {
         std::shared_ptr<RenderModel> request_static(
             const mirinae::respath_t& res_id,
             DesclayoutManager& desclayouts,
-            TextureManager& tex_man
+            ITextureManager& tex_man
         );
 
         std::shared_ptr<RenderModelSkinned> request_skinned(
             const mirinae::respath_t& res_id,
             DesclayoutManager& desclayouts,
-            TextureManager& tex_man
+            ITextureManager& tex_man
         );
 
     private:

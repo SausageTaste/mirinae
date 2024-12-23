@@ -626,7 +626,7 @@ namespace {
     public:
         void init(
             mirinae::IRenderPassRegistry& rp_pkg,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         ) override {
@@ -729,7 +729,7 @@ namespace {
                 uint32_t width,
                 uint32_t height,
                 mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::TextureManager& tex_man,
+                mirinae::ITextureManager& tex_man,
                 mirinae::VulkanDevice& device
             ) {
                 mirinae::ImageCreateInfo cinfo;
@@ -802,7 +802,7 @@ namespace {
                 uint32_t base_width,
                 uint32_t base_height,
                 mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::TextureManager& tex_man,
+                mirinae::ITextureManager& tex_man,
                 mirinae::VulkanDevice& device
             ) {
                 constexpr uint32_t MAX_MIP_LEVELS = 4;
@@ -915,7 +915,7 @@ namespace {
                 uint32_t width,
                 uint32_t height,
                 mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::TextureManager& tex_man,
+                mirinae::ITextureManager& tex_man,
                 mirinae::VulkanDevice& device
             ) {
                 mirinae::ImageCreateInfo cinfo;
@@ -1006,7 +1006,7 @@ namespace {
         public:
             bool init(
                 mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::TextureManager& tex_man,
+                mirinae::ITextureManager& tex_man,
                 mirinae::DescPool& desc_pool,
                 mirinae::DesclayoutManager& desclayouts,
                 mirinae::VulkanDevice& device

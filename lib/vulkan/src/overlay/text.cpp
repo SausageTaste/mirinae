@@ -62,7 +62,7 @@ namespace mirinae {
     void TextRenderData::init_ascii(
         FontLibrary& fonts,
         mirinae::DesclayoutManager& desclayout,
-        mirinae::TextureManager& tex_man,
+        mirinae::ITextureManager& tex_man,
         mirinae::VulkanDevice& device
     ) {
         constexpr int w = 256;

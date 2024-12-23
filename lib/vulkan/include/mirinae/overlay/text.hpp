@@ -31,7 +31,7 @@ namespace mirinae {
         void init_ascii(
             FontLibrary& fonts,
             mirinae::DesclayoutManager& desclayout,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::VulkanDevice& device
         );
 

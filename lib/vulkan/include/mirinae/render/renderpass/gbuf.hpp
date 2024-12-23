@@ -96,7 +96,7 @@ namespace mirinae::rp::gbuf {
         virtual ~IRpMasterTerrain() = default;
 
         virtual void init(
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         ) = 0;

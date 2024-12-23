@@ -65,7 +65,7 @@ namespace mirinae {
         void init(
             uint32_t width,
             uint32_t height,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::VulkanDevice& device
         ) {
             depth_ = create_tex_depth(width, height, device);

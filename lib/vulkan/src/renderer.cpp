@@ -496,11 +496,11 @@ namespace {
             , res_mgr_(res_mgr)
             , script_(script)
             , cosmos_(cosmos)
-            , tex_man_(device_)
+            , tex_man_(mirinae::create_tex_mgr(res_mgr_, device_))
             , model_man_(device_)
             , desclayout_(device_)
             , overlay_man_(
-                  init_width, init_height, desclayout_, tex_man_, device_
+                  init_width, init_height, desclayout_, *tex_man_, device_
               )
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
@@ -534,7 +534,7 @@ namespace {
                 auto w = mirinae::create_dev_console(
                     overlay_man_.text_render_data(),
                     desclayout_,
-                    tex_man_,
+                    *tex_man_,
                     *script,
                     device_
                 );
@@ -819,7 +819,7 @@ namespace {
             const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                 swapchain_.width(), swapchain_.height(), 0.9
             );
-            fbuf_images_.init(gbuf_width, gbuf_height, tex_man_, device_);
+            fbuf_images_.init(gbuf_width, gbuf_height, *tex_man_, device_);
 
             mirinae::rp::gbuf::create_rp(
                 rp_,
@@ -854,9 +854,9 @@ namespace {
 
             rpm_.shadow().pool().recreate_fbufs(rp_.get("shadowmap"), device_);
 
-            rpm_.envmap().init(rp_, tex_man_, desclayout_, device_);
+            rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
             rpm_.gbuf_basic().init();
-            rpm_.gbuf_terrain().init(tex_man_, desclayout_, device_);
+            rpm_.gbuf_terrain().init(*tex_man_, desclayout_, device_);
             rpm_.compo_basic().init(
                 desclayout_,
                 fbuf_images_,
@@ -958,7 +958,7 @@ namespace {
 
                 const auto& moac = reg.get<cpnt::StaticModelActor>(e);
                 auto model = model_man_.request_static(
-                    moac.model_path_, desclayout_, tex_man_
+                    moac.model_path_, desclayout_, *tex_man_
                 );
             }
 
@@ -1065,7 +1065,7 @@ namespace {
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
-        mirinae::TextureManager tex_man_;
+        mirinae::HTexMgr tex_man_;
         mirinae::ModelManager model_man_;
         mirinae::DesclayoutManager desclayout_;
         mirinae::FbufImageBundle fbuf_images_;

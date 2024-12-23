@@ -16,7 +16,7 @@ namespace mirinae {
     std::unique_ptr<IDevConsole> create_dev_console(
         mirinae::TextRenderData& text_render_data,
         mirinae::DesclayoutManager& desclayout,
-        mirinae::TextureManager& tex_man,
+        mirinae::ITextureManager& tex_man,
         mirinae::ScriptEngine& script,
         mirinae::VulkanDevice& device
     );
@@ -29,7 +29,7 @@ namespace mirinae {
             uint32_t win_width,
             uint32_t win_height,
             mirinae::DesclayoutManager& desclayout,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::VulkanDevice& device
         );
         ~OverlayManager();

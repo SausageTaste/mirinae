@@ -66,7 +66,7 @@ namespace {
         void fetch(
             const mirinae::respath_t& res_id,
             const dal::parser::Material& src_material,
-            mirinae::TextureManager& tex_man
+            mirinae::ITextureManager& tex_man
         ) {
             albedo_map_ = this->request_texture(
                 res_id,
@@ -107,7 +107,7 @@ namespace {
             const std::string& file_name,
             const std::string& fallback_path,
             const bool srgb,
-            mirinae::TextureManager& tex_man
+            mirinae::ITextureManager& tex_man
         ) {
             if (file_name.empty())
                 return tex_man.request(fallback_path, srgb);
@@ -280,7 +280,7 @@ namespace mirinae {
         VkImageView mask_view,
         VkSampler sampler,
         DesclayoutManager& desclayouts,
-        TextureManager& tex_man
+        ITextureManager& tex_man
     ) {
         auto& desclayout = desclayouts.get("overlay:main");
         desc_pool_.init(
@@ -374,7 +374,7 @@ namespace mirinae {
         std::shared_ptr<RenderModel> request_static(
             const mirinae::respath_t& res_id,
             DesclayoutManager& desclayouts,
-            TextureManager& tex_man
+            ITextureManager& tex_man
         ) {
             auto found = models_.find(res_id);
             if (models_.end() != found)
@@ -503,7 +503,7 @@ namespace mirinae {
         std::shared_ptr<RenderModelSkinned> request_skinned(
             const mirinae::respath_t& res_id,
             DesclayoutManager& desclayouts,
-            TextureManager& tex_man
+            ITextureManager& tex_man
         ) {
             auto found = skin_models_.find(res_id);
             if (skin_models_.end() != found)
@@ -621,7 +621,7 @@ namespace mirinae {
     std::shared_ptr<RenderModel> ModelManager::request_static(
         const mirinae::respath_t& res_id,
         DesclayoutManager& desclayouts,
-        TextureManager& tex_man
+        ITextureManager& tex_man
     ) {
         return pimpl_->request_static(res_id, desclayouts, tex_man);
     }
@@ -629,7 +629,7 @@ namespace mirinae {
     std::shared_ptr<RenderModelSkinned> ModelManager::request_skinned(
         const mirinae::respath_t& res_id,
         DesclayoutManager& desclayouts,
-        TextureManager& tex_man
+        ITextureManager& tex_man
     ) {
         return pimpl_->request_skinned(res_id, desclayouts, tex_man);
     }

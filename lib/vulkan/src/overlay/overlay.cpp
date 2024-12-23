@@ -15,7 +15,7 @@ namespace {
     public:
         ImageViewWidget(
             mirinae::DesclayoutManager& desclayout,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::VulkanDevice& device
         ) {
             auto& overlay = render_units_.emplace_back(device);
@@ -35,7 +35,7 @@ namespace {
             VkImageView color_img,
             VkImageView mask_img,
             mirinae::DesclayoutManager& desclayout,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::VulkanDevice& device
         ) {
             auto& overlay = render_units_.emplace_back(device);
@@ -92,7 +92,7 @@ namespace {
         LineEdit(
             mirinae::TextRenderData& text_render_data,
             mirinae::DesclayoutManager& desclayout,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::VulkanDevice& device
         )
             : bg_img_(desclayout, tex_man, device)
@@ -157,7 +157,7 @@ namespace {
         DevConsole(
             mirinae::TextRenderData& text_render_data,
             mirinae::DesclayoutManager& desclayout,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::ScriptEngine& script,
             mirinae::VulkanDevice& device
         )
@@ -289,7 +289,7 @@ namespace mirinae {
     std::unique_ptr<IDevConsole> create_dev_console(
         mirinae::TextRenderData& text_render_data,
         mirinae::DesclayoutManager& desclayout,
-        mirinae::TextureManager& tex_man,
+        mirinae::ITextureManager& tex_man,
         mirinae::ScriptEngine& script,
         mirinae::VulkanDevice& device
     ) {
@@ -306,7 +306,7 @@ namespace mirinae {
             uint32_t win_width,
             uint32_t win_height,
             mirinae::DesclayoutManager& desclayout,
-            mirinae::TextureManager& tex_man,
+            mirinae::ITextureManager& tex_man,
             mirinae::VulkanDevice& device
         )
             : device_(device)
@@ -327,7 +327,7 @@ namespace mirinae {
         }
 
         VulkanDevice& device_;
-        TextureManager& tex_man_;
+        ITextureManager& tex_man_;
         DesclayoutManager& desclayout_;
 
         WindowDimInfo win_dim_;
@@ -345,7 +345,7 @@ namespace mirinae {
         uint32_t win_width,
         uint32_t win_height,
         mirinae::DesclayoutManager& desclayout,
-        mirinae::TextureManager& tex_man,
+        mirinae::ITextureManager& tex_man,
         mirinae::VulkanDevice& device
     )
         : pimpl_(std::make_unique<Impl>(
