@@ -2,11 +2,13 @@
 
 #ifdef _MSC_VER
 
+#include <array>
+#include <string>
+
 #include <crtdbg.h>
 #include <dbghelp.h>
 #include <stdio.h>
 #include <tchar.h>
-#include <cstring>
 
 
 namespace {
@@ -36,6 +38,14 @@ namespace {
         bool operator!() const { return this->is_ready(); }
         HANDLE operator*() { return handle_; }
         bool is_ready() const { return INVALID_HANDLE_VALUE == handle_; }
+
+        std::string get_full_path() {
+            std::array<TCHAR, 1024> path;
+            const auto res = GetFinalPathNameByHandleA(
+                handle_, path.data(), path.size(), 0
+            );
+            return std::string{ path.data(), path.data() + res };
+        }
 
     private:
         HANDLE handle_ = INVALID_HANDLE_VALUE;
@@ -74,10 +84,12 @@ namespace mirinae { namespace windows {
             0
         );
 
-        if (result)
-            _tprintf(_T("Minidump 'dying_msg.dmp' created\n"));
-        else
+        if (result) {
+            const auto full_path = file.get_full_path();
+            _tprintf(_T("Minidump '%s' created\n"), full_path.c_str());
+        } else {
             _tprintf(_T("MiniDumpWriteDump failed (%u)\n"), GetLastError());
+        }
     }
 
 }}  // namespace mirinae::windows
