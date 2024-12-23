@@ -509,8 +509,8 @@ namespace {
 
             framesync_.init(device_.logi_device());
 
-            rpm_.shadow().pool().add(4096, 4096, tex_man_);
-            rpm_.shadow().pool().add(256, 256, tex_man_);
+            rpm_.shadow().pool().add(4096, 4096, device_);
+            rpm_.shadow().pool().add(256, 256, device_);
 
             this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
 

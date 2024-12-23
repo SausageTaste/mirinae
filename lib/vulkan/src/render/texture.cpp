@@ -701,26 +701,6 @@ namespace mirinae {
             }
         }
 
-        std::unique_ptr<ITexture> create_depth(
-            uint32_t width, uint32_t height
-        ) {
-            auto output = std::make_unique<TextureData>(device_);
-            output->init_depth(width, height);
-            return output;
-        }
-
-        std::unique_ptr<ITexture> create_attachment(
-            uint32_t width,
-            uint32_t height,
-            VkFormat format,
-            FbufUsage usage,
-            const char* name
-        ) {
-            auto output = std::make_unique<TextureData>(device_);
-            output->init_attachment(width, height, format, usage, name);
-            return output;
-        }
-
     private:
         std::optional<size_t> find_index(const respath_t& id) {
             for (size_t i = 0; i < textures_.size(); ++i) {
@@ -766,20 +746,30 @@ namespace mirinae {
         return pimpl_->create_image(id, image, srgb);
     }
 
-    std::unique_ptr<ITexture> TextureManager::create_depth(
-        uint32_t width, uint32_t height
+}  // namespace mirinae
+
+
+namespace mirinae {
+
+    std::unique_ptr<ITexture> create_tex_depth(
+        uint32_t width, uint32_t height, VulkanDevice& device
     ) {
-        return pimpl_->create_depth(width, height);
+        auto output = std::make_unique<TextureData>(device);
+        output->init_depth(width, height);
+        return output;
     }
 
-    std::unique_ptr<ITexture> TextureManager::create_attachment(
+    std::unique_ptr<ITexture> create_tex_attach(
         uint32_t width,
         uint32_t height,
         VkFormat format,
         FbufUsage usage,
-        const char* name
+        const char* name,
+        VulkanDevice& device
     ) {
-        return pimpl_->create_attachment(width, height, format, usage, name);
+        auto output = std::make_unique<TextureData>(device);
+        output->init_attachment(width, height, format, usage, name);
+        return output;
     }
 
 }  // namespace mirinae

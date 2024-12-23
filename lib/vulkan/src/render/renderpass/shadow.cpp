@@ -489,9 +489,9 @@ namespace mirinae::rp::shadow {
         return shadow_maps_.at(index).tex_->image_view();
     }
 
-    void CLS::add(uint32_t width, uint32_t height, TextureManager& tex_man) {
+    void CLS::add(uint32_t width, uint32_t height, VulkanDevice& device) {
         auto& added = shadow_maps_.emplace_back();
-        added.tex_ = tex_man.create_depth(width, height);
+        added.tex_ = create_tex_depth(width, height, device);
     }
 
     void CLS::recreate_fbufs(
