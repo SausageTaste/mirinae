@@ -136,6 +136,8 @@ namespace mirinae {
     struct IModelManager {
         virtual ~IModelManager() = default;
 
+        virtual dal::ReqResult request(const respath_t& res_id) = 0;
+
         virtual HRenMdlStatic request_static(const respath_t& res_id) = 0;
         virtual HRenMdlSkinned request_skinned(const respath_t& res_id) = 0;
     };
