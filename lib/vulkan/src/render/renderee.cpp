@@ -357,25 +357,25 @@ namespace mirinae {
 
 
 // ModelManager
-namespace mirinae {
+namespace {
 
-    class ModelManager::Pimpl {
+    class ModelManager : public mirinae::IModelManager {
 
     public:
-        Pimpl(VulkanDevice& device) : device_(device) {
+        ModelManager(mirinae::VulkanDevice& device) : device_(device) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
             );
         }
 
-        ~Pimpl() { cmd_pool_.destroy(device_.logi_device()); }
+        ~ModelManager() override { cmd_pool_.destroy(device_.logi_device()); }
 
-        std::shared_ptr<RenderModel> request_static(
+        mirinae::HRenMdlStatic request_static(
             const mirinae::respath_t& res_id,
-            DesclayoutManager& desclayouts,
-            ITextureManager& tex_man
-        ) {
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::ITextureManager& tex_man
+        ) override {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return found->second;
@@ -398,10 +398,10 @@ namespace mirinae {
                 return nullptr;
             }
 
-            auto output = std::make_shared<RenderModel>(device_);
+            auto output = std::make_shared<mirinae::RenderModel>(device_);
 
             for (const auto& src_unit : parsed_model.units_indexed_) {
-                VerticesStaticPair dst_vertices;
+                mirinae::VerticesStaticPair dst_vertices;
                 dst_vertices.indices_.assign(
                     src_unit.mesh_.indices_.begin(),
                     src_unit.mesh_.indices_.end()
@@ -429,7 +429,7 @@ namespace mirinae {
                     }
                 }
 
-                MaterialResources mat_res;
+                ::MaterialResources mat_res;
                 mat_res.fetch(res_id, src_unit.material_, tex_man);
 
                 auto& dst_unit =
@@ -450,7 +450,7 @@ namespace mirinae {
             }
 
             for (const auto& src_unit : parsed_model.units_indexed_joint_) {
-                VerticesStaticPair dst_vertices;
+                mirinae::VerticesStaticPair dst_vertices;
                 dst_vertices.indices_.assign(
                     src_unit.mesh_.indices_.begin(),
                     src_unit.mesh_.indices_.end()
@@ -476,7 +476,7 @@ namespace mirinae {
                     ::calc_tangents(v0, v1, v2);
                 }
 
-                MaterialResources mat_res;
+                ::MaterialResources mat_res;
                 mat_res.fetch(res_id, src_unit.material_, tex_man);
 
                 auto& dst_unit =
@@ -500,11 +500,11 @@ namespace mirinae {
             return output;
         }
 
-        std::shared_ptr<RenderModelSkinned> request_skinned(
+        mirinae::HRenMdlSkinned request_skinned(
             const mirinae::respath_t& res_id,
-            DesclayoutManager& desclayouts,
-            ITextureManager& tex_man
-        ) {
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::ITextureManager& tex_man
+        ) override {
             auto found = skin_models_.find(res_id);
             if (skin_models_.end() != found)
                 return found->second;
@@ -527,7 +527,8 @@ namespace mirinae {
                 return nullptr;
             }
 
-            auto output = std::make_shared<RenderModelSkinned>(device_);
+            auto output = std::make_shared<mirinae::RenderModelSkinned>(device_
+            );
 
             if (!parsed_model.units_indexed_.empty()) {
                 spdlog::warn(
@@ -547,7 +548,7 @@ namespace mirinae {
                     continue;
                 }
 
-                VerticesSkinnedPair dst_vertices;
+                mirinae::VerticesSkinnedPair dst_vertices;
 
                 dst_vertices.indices_.assign(
                     src_unit.mesh_.indices_.begin(),
@@ -578,7 +579,7 @@ namespace mirinae {
                     }
                 }
 
-                MaterialResources mat_res;
+                ::MaterialResources mat_res;
                 mat_res.fetch(res_id, src_unit.material_, tex_man);
 
                 auto& dst_unit = src_unit.material_.transparency_
@@ -605,36 +606,14 @@ namespace mirinae {
         }
 
     private:
-        VulkanDevice& device_;
-        CommandPool cmd_pool_;
+        mirinae::VulkanDevice& device_;
+        mirinae::CommandPool cmd_pool_;
 
-        std::map<respath_t, std::shared_ptr<RenderModel>> models_;
-        std::map<respath_t, std::shared_ptr<RenderModelSkinned>> skin_models_;
+        std::map<mirinae::respath_t, mirinae::HRenMdlStatic> models_;
+        std::map<mirinae::respath_t, mirinae::HRenMdlSkinned> skin_models_;
     };
 
-
-    ModelManager::ModelManager(VulkanDevice& device)
-        : pimpl_(std::make_unique<Pimpl>(device)) {}
-
-    ModelManager::~ModelManager() {}
-
-    std::shared_ptr<RenderModel> ModelManager::request_static(
-        const mirinae::respath_t& res_id,
-        DesclayoutManager& desclayouts,
-        ITextureManager& tex_man
-    ) {
-        return pimpl_->request_static(res_id, desclayouts, tex_man);
-    }
-
-    std::shared_ptr<RenderModelSkinned> ModelManager::request_skinned(
-        const mirinae::respath_t& res_id,
-        DesclayoutManager& desclayouts,
-        ITextureManager& tex_man
-    ) {
-        return pimpl_->request_skinned(res_id, desclayouts, tex_man);
-    }
-
-}  // namespace mirinae
+}  // namespace
 
 
 // RenderActor
@@ -728,6 +707,16 @@ namespace mirinae {
 
     VkDescriptorSet RenderActorSkinned::get_desc_set(size_t index) {
         return desc_sets_.at(index);
+    }
+
+}  // namespace mirinae
+
+
+// Free functions
+namespace mirinae {
+
+    HMdlMgr create_model_mgr(VulkanDevice& device) {
+        return std::make_shared<ModelManager>(device);
     }
 
 }  // namespace mirinae

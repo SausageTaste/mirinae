@@ -129,28 +129,28 @@ namespace mirinae {
     };
 
 
-    class ModelManager {
+    using HRenMdlStatic = std::shared_ptr<RenderModel>;
+    using HRenMdlSkinned = std::shared_ptr<RenderModelSkinned>;
 
-    public:
-        ModelManager(VulkanDevice& device);
-        ~ModelManager();
 
-        std::shared_ptr<RenderModel> request_static(
+    struct IModelManager {
+        virtual ~IModelManager() = default;
+
+        virtual HRenMdlStatic request_static(
             const mirinae::respath_t& res_id,
             DesclayoutManager& desclayouts,
             ITextureManager& tex_man
-        );
+        ) = 0;
 
-        std::shared_ptr<RenderModelSkinned> request_skinned(
+        virtual HRenMdlSkinned request_skinned(
             const mirinae::respath_t& res_id,
             DesclayoutManager& desclayouts,
             ITextureManager& tex_man
-        );
-
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> pimpl_;
+        ) = 0;
     };
+
+    using HMdlMgr = std::shared_ptr<IModelManager>;
+    HMdlMgr create_model_mgr(VulkanDevice& device);
 
 
     class RenderActor {
