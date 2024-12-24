@@ -1,6 +1,8 @@
 #pragma once
 
-#ifdef _MSC_VER
+#include <Windows.h>
+
+#ifdef SHIT
 
 #include <Windows.h>
 

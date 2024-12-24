@@ -750,10 +750,10 @@ namespace {
             desc_pool_.init(3, layout.size_info(), device.logi_device());
             desc_set_ = desc_pool_.alloc(layout.layout(), device.logi_device());
 
-            albedo_map_ = tex_man.request(
+            albedo_map_ = tex_man.block_for_tex(
                 ":asset/textures/mountains512.png", false
             );
-            height_map_ = tex_man.request(
+            height_map_ = tex_man.block_for_tex(
                 ":asset/textures/mountains512.png", false
             );
 

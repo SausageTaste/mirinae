@@ -646,50 +646,62 @@ namespace {
             cmd_pool_.destroy(device_.logi_device());
         }
 
-        std::shared_ptr<mirinae::ITexture> request(
-            const mirinae::respath_t& res_id, bool srgb
-        ) override {
+        dal::ReqResult request(const mirinae::respath_t& res_id, bool srgb)
+            override {
             if (auto index = this->find_index(res_id))
-                return textures_.at(index.value());
+                return dal::ReqResult::ready;
 
-            const auto img_data = device_.filesys().read_file(res_id.c_str());
-            if (!img_data.has_value()) {
-                spdlog::warn(
-                    "Failed to read image file: {}", res_id.u8string()
-                );
-                return nullptr;
+            const auto res_result = res_mgr_->request(res_id);
+            switch (res_result) {
+                case dal::ReqResult::ready:
+                    break;
+                case dal::ReqResult::loading:
+                    return dal::ReqResult::loading;
+                default:
+                    spdlog::warn(
+                        "Failed to request resource: {}", res_id.u8string()
+                    );
+                    return res_result;
             }
-            const auto id = res_id.u8string();
 
-            dal::ImageParseInfo parse_info;
-            parse_info.file_path_ = id;
-            parse_info.data_ = img_data->data();
-            parse_info.size_ = img_data->size();
-            parse_info.force_rgba_ = true;
-            const auto img = dal::parse_img(parse_info);
+            auto img_item = res_mgr_->get_img_mut(res_id);
+            if (!img_item) {
+                spdlog::warn("Resource is not an image: {}", res_id.u8string());
+                return dal::ReqResult::not_supported_file;
+            }
+            auto img = &(img_item->first.get());
+            const auto id = res_id.u8string();
 
             if (auto kts_img = img->as<dal::KtxImage>()) {
                 auto out = std::make_shared<KtxTextureData>(device_);
                 if (out->init(id, *kts_img, ktx_device_)) {
                     textures_.push_back(out);
-                    return out;
+                    return dal::ReqResult::ready;
                 } else {
-                    return nullptr;
+                    return dal::ReqResult::not_supported_file;
                 }
             } else if (auto raw_img = img->as<dal::TDataImage2D<uint8_t>>()) {
                 auto out = std::make_shared<TextureData>(device_);
                 out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
                 textures_.push_back(out);
-                return out;
+                return dal::ReqResult::ready;
             } else if (auto raw_img = img->as<dal::TDataImage2D<float>>()) {
                 auto out = std::make_shared<TextureData>(device_);
                 out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
                 textures_.push_back(out);
-                return out;
+                return dal::ReqResult::ready;
             } else {
                 spdlog::error("Unsupported image type: {}", id);
-                return nullptr;
+                return dal::ReqResult::not_supported_file;
             }
+
+            return dal::ReqResult::unknown_error;
+        }
+
+        std::shared_ptr<mirinae::ITexture> get(const mirinae::respath_t& res_id
+        ) override {
+            if (auto index = this->find_index(res_id))
+                return textures_.at(index.value());
 
             return nullptr;
         }
