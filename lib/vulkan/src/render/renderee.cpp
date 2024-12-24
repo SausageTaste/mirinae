@@ -367,11 +367,15 @@ namespace {
         using HRenMdlSkinned = mirinae::HRenMdlSkinned;
 
         ModelManager(
+            dal::HResMgr res_mgr,
             mirinae::HTexMgr tex_man,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), desclayouts_(desclayouts), tex_man_(tex_man) {
+            : device_(device)
+            , desclayouts_(desclayouts)
+            , res_mgr_(res_mgr)
+            , tex_man_(tex_man) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -609,6 +613,7 @@ namespace {
     private:
         mirinae::VulkanDevice& device_;
         mirinae::DesclayoutManager& desclayouts_;
+        dal::HResMgr res_mgr_;
         mirinae::HTexMgr tex_man_;
         mirinae::CommandPool cmd_pool_;
 
@@ -719,9 +724,14 @@ namespace mirinae {
 namespace mirinae {
 
     HMdlMgr create_model_mgr(
-        HTexMgr tex_man, DesclayoutManager& desclayouts, VulkanDevice& device
+        dal::HResMgr res_mgr,
+        HTexMgr tex_man,
+        DesclayoutManager& desclayouts,
+        VulkanDevice& device
     ) {
-        return std::make_shared<ModelManager>(tex_man, desclayouts, device);
+        return std::make_shared<ModelManager>(
+            res_mgr, tex_man, desclayouts, device
+        );
     }
 
 }  // namespace mirinae

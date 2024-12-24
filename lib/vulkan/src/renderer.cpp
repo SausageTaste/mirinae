@@ -498,9 +498,9 @@ namespace {
             , cosmos_(cosmos)
             , desclayout_(device_)
             , tex_man_(mirinae::create_tex_mgr(res_mgr_, device_))
-            , model_man_(
-                  mirinae::create_model_mgr(tex_man_, desclayout_, device_)
-              )
+            , model_man_(mirinae::create_model_mgr(
+                  res_mgr_, tex_man_, desclayout_, device_
+              ))
             , overlay_man_(
                   init_width, init_height, desclayout_, *tex_man_, device_
               )

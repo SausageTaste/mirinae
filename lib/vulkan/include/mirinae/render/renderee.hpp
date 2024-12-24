@@ -142,7 +142,10 @@ namespace mirinae {
 
     using HMdlMgr = std::shared_ptr<IModelManager>;
     HMdlMgr create_model_mgr(
-        HTexMgr tex_man, DesclayoutManager& desclayouts, VulkanDevice& device
+        dal::HResMgr res_mgr,
+        HTexMgr tex_man,
+        DesclayoutManager& desclayouts,
+        VulkanDevice& device
     );
 
 
