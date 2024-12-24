@@ -85,7 +85,8 @@ namespace mirinae {
 
         render_unit_.init(
             mirinae::MAX_FRAMES_IN_FLIGHT,
-            tex_man.request(":asset/textures/white.png", false)->image_view(),
+            tex_man.block_for_tex(":asset/textures/white.png", false)
+                ->image_view(),
             texture_->image_view(),
             device.samplers().get_linear(),
             desclayout,

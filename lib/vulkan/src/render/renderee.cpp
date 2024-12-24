@@ -110,15 +110,15 @@ namespace {
             mirinae::ITextureManager& tex_man
         ) {
             if (file_name.empty())
-                return tex_man.request(fallback_path, srgb);
+                return tex_man.block_for_tex(fallback_path, srgb);
 
             const auto full_path = mirinae::replace_file_name_ext(
                 res_id, file_name
             );
 
-            auto output = tex_man.request(full_path, srgb);
+            auto output = tex_man.block_for_tex(full_path, srgb);
             if (!output)
-                return tex_man.request(fallback_path, srgb);
+                return tex_man.block_for_tex(fallback_path, srgb);
 
             return output;
         }
