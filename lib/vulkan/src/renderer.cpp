@@ -959,6 +959,17 @@ namespace {
                     continue;
 
                 const auto& moac = reg.get<cpnt::StaticModelActor>(e);
+                const auto res_result = model_man_->request(moac.model_path_);
+                if (dal::ReqResult::loading == res_result)
+                    continue;
+                else if (dal::ReqResult::ready != res_result) {
+                    spdlog::warn(
+                        "Failed to get model: {}", moac.model_path_.u8string()
+                    );
+                    reg.destroy(e);
+                    continue;
+                }
+
                 auto model = model_man_->request_static(moac.model_path_);
                 if (!model)
                     continue;
@@ -975,6 +986,17 @@ namespace {
                     continue;
 
                 auto& moac = reg.get<cpnt::SkinnedModelActor>(e);
+                const auto res_result = model_man_->request(moac.model_path_);
+                if (dal::ReqResult::loading == res_result)
+                    continue;
+                else if (dal::ReqResult::ready != res_result) {
+                    spdlog::warn(
+                        "Failed to get model: {}", moac.model_path_.u8string()
+                    );
+                    reg.destroy(e);
+                    continue;
+                }
+
                 auto model = model_man_->request_skinned(moac.model_path_);
                 if (!model)
                     continue;

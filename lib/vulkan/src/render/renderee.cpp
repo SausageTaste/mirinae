@@ -1,5 +1,7 @@
 #include "mirinae/render/renderee.hpp"
 
+#include <set>
+
 #include <daltools/dmd/parser.h>
 #include <spdlog/spdlog.h>
 #include <sung/general/stringtool.hpp>
@@ -384,6 +386,70 @@ namespace {
 
         ~ModelManager() override { cmd_pool_.destroy(device_.logi_device()); }
 
+        dal::ReqResult request(const respath& res_id) override {
+            auto found = models_.find(res_id);
+            if (models_.end() != found)
+                return dal::ReqResult::ready;
+
+            const auto res_result = res_mgr_->request(res_id);
+            switch (res_result) {
+                case dal::ReqResult::ready:
+                    break;
+                case dal::ReqResult::loading:
+                    return dal::ReqResult::loading;
+                default:
+                    spdlog::warn(
+                        "Failed to request resource: {}", res_id.u8string()
+                    );
+                    return res_result;
+            }
+
+            const auto dmd = res_mgr_->get_dmd(res_id);
+            if (!dmd) {
+                spdlog::warn("Failed to get dmd: {}", res_id.u8string());
+                return dal::ReqResult::cannot_read_file;
+            }
+
+            std::set<std::string> tex_ids;
+            std::set<std::string> tex_ids_srgb;
+            for (const auto& unit : dmd->units_straight_) {
+                tex_ids_srgb.insert(unit.material_.albedo_map_);
+                tex_ids.insert(unit.material_.normal_map_);
+                tex_ids.insert(unit.material_.roughness_map_);
+            }
+            for (const auto& unit : dmd->units_indexed_) {
+                tex_ids_srgb.insert(unit.material_.albedo_map_);
+                tex_ids.insert(unit.material_.normal_map_);
+                tex_ids.insert(unit.material_.roughness_map_);
+            }
+            for (const auto& unit : dmd->units_straight_joint_) {
+                tex_ids_srgb.insert(unit.material_.albedo_map_);
+                tex_ids.insert(unit.material_.normal_map_);
+                tex_ids.insert(unit.material_.roughness_map_);
+            }
+            for (const auto& unit : dmd->units_indexed_joint_) {
+                tex_ids_srgb.insert(unit.material_.albedo_map_);
+                tex_ids.insert(unit.material_.normal_map_);
+                tex_ids.insert(unit.material_.roughness_map_);
+            }
+
+            bool loading = false;
+            for (const auto& tex_id : tex_ids) {
+                const auto tex_path = res_id.parent_path() / tex_id;
+                const auto res_result = tex_man_->request(tex_path, false);
+                loading |= (dal::ReqResult::loading == res_result);
+            }
+            for (const auto& tex_id : tex_ids_srgb) {
+                const auto tex_path = res_id.parent_path() / tex_id;
+                const auto res_result = tex_man_->request(tex_path, true);
+                loading |= (dal::ReqResult::loading == res_result);
+            }
+            if (loading)
+                return dal::ReqResult::loading;
+
+            return dal::ReqResult::ready;
+        }
+
         HRenMdlStatic request_static(const respath& res_id) override {
             auto found = models_.find(res_id);
             if (models_.end() != found)
@@ -406,6 +472,7 @@ namespace {
                 );
                 return nullptr;
             }
+
 
             auto output = std::make_shared<mirinae::RenderModel>(device_);
 
