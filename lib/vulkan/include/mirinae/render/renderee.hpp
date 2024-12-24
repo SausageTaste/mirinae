@@ -136,21 +136,14 @@ namespace mirinae {
     struct IModelManager {
         virtual ~IModelManager() = default;
 
-        virtual HRenMdlStatic request_static(
-            const mirinae::respath_t& res_id,
-            DesclayoutManager& desclayouts,
-            ITextureManager& tex_man
-        ) = 0;
-
-        virtual HRenMdlSkinned request_skinned(
-            const mirinae::respath_t& res_id,
-            DesclayoutManager& desclayouts,
-            ITextureManager& tex_man
-        ) = 0;
+        virtual HRenMdlStatic request_static(const respath_t& res_id) = 0;
+        virtual HRenMdlSkinned request_skinned(const respath_t& res_id) = 0;
     };
 
     using HMdlMgr = std::shared_ptr<IModelManager>;
-    HMdlMgr create_model_mgr(VulkanDevice& device);
+    HMdlMgr create_model_mgr(
+        HTexMgr tex_man, DesclayoutManager& desclayouts, VulkanDevice& device
+    );
 
 
     class RenderActor {

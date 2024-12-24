@@ -362,7 +362,16 @@ namespace {
     class ModelManager : public mirinae::IModelManager {
 
     public:
-        ModelManager(mirinae::VulkanDevice& device) : device_(device) {
+        using respath = mirinae::respath_t;
+        using HRenMdlStatic = mirinae::HRenMdlStatic;
+        using HRenMdlSkinned = mirinae::HRenMdlSkinned;
+
+        ModelManager(
+            mirinae::HTexMgr tex_man,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device), desclayouts_(desclayouts), tex_man_(tex_man) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -371,11 +380,7 @@ namespace {
 
         ~ModelManager() override { cmd_pool_.destroy(device_.logi_device()); }
 
-        mirinae::HRenMdlStatic request_static(
-            const mirinae::respath_t& res_id,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::ITextureManager& tex_man
-        ) override {
+        HRenMdlStatic request_static(const respath& res_id) override {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return found->second;
@@ -430,7 +435,7 @@ namespace {
                 }
 
                 ::MaterialResources mat_res;
-                mat_res.fetch(res_id, src_unit.material_, tex_man);
+                mat_res.fetch(res_id, src_unit.material_, *tex_man_);
 
                 auto& dst_unit =
                     ((src_unit.material_.transparency_)
@@ -444,7 +449,7 @@ namespace {
                     mat_res.normal_map_->image_view(),
                     mat_res.orm_map_->image_view(),
                     cmd_pool_,
-                    desclayouts,
+                    desclayouts_,
                     device_
                 );
             }
@@ -477,7 +482,7 @@ namespace {
                 }
 
                 ::MaterialResources mat_res;
-                mat_res.fetch(res_id, src_unit.material_, tex_man);
+                mat_res.fetch(res_id, src_unit.material_, *tex_man_);
 
                 auto& dst_unit =
                     ((src_unit.material_.transparency_)
@@ -491,7 +496,7 @@ namespace {
                     mat_res.normal_map_->image_view(),
                     mat_res.orm_map_->image_view(),
                     cmd_pool_,
-                    desclayouts,
+                    desclayouts_,
                     device_
                 );
             }
@@ -500,11 +505,7 @@ namespace {
             return output;
         }
 
-        mirinae::HRenMdlSkinned request_skinned(
-            const mirinae::respath_t& res_id,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::ITextureManager& tex_man
-        ) override {
+        HRenMdlSkinned request_skinned(const respath& res_id) override {
             auto found = skin_models_.find(res_id);
             if (skin_models_.end() != found)
                 return found->second;
@@ -580,7 +581,7 @@ namespace {
                 }
 
                 ::MaterialResources mat_res;
-                mat_res.fetch(res_id, src_unit.material_, tex_man);
+                mat_res.fetch(res_id, src_unit.material_, *tex_man_);
 
                 auto& dst_unit = src_unit.material_.transparency_
                                      ? output->runits_alpha_.emplace_back()
@@ -593,7 +594,7 @@ namespace {
                     mat_res.normal_map_->image_view(),
                     mat_res.orm_map_->image_view(),
                     cmd_pool_,
-                    desclayouts,
+                    desclayouts_,
                     device_
                 );
             }
@@ -607,10 +608,12 @@ namespace {
 
     private:
         mirinae::VulkanDevice& device_;
+        mirinae::DesclayoutManager& desclayouts_;
+        mirinae::HTexMgr tex_man_;
         mirinae::CommandPool cmd_pool_;
 
-        std::map<mirinae::respath_t, mirinae::HRenMdlStatic> models_;
-        std::map<mirinae::respath_t, mirinae::HRenMdlSkinned> skin_models_;
+        std::map<respath, mirinae::HRenMdlStatic> models_;
+        std::map<respath, mirinae::HRenMdlSkinned> skin_models_;
     };
 
 }  // namespace
@@ -715,8 +718,10 @@ namespace mirinae {
 // Free functions
 namespace mirinae {
 
-    HMdlMgr create_model_mgr(VulkanDevice& device) {
-        return std::make_shared<ModelManager>(device);
+    HMdlMgr create_model_mgr(
+        HTexMgr tex_man, DesclayoutManager& desclayouts, VulkanDevice& device
+    ) {
+        return std::make_shared<ModelManager>(tex_man, desclayouts, device);
     }
 
 }  // namespace mirinae

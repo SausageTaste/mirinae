@@ -496,9 +496,11 @@ namespace {
             , res_mgr_(res_mgr)
             , script_(script)
             , cosmos_(cosmos)
-            , tex_man_(mirinae::create_tex_mgr(res_mgr_, device_))
-            , model_man_(mirinae::create_model_mgr(device_))
             , desclayout_(device_)
+            , tex_man_(mirinae::create_tex_mgr(res_mgr_, device_))
+            , model_man_(
+                  mirinae::create_model_mgr(tex_man_, desclayout_, device_)
+              )
             , overlay_man_(
                   init_width, init_height, desclayout_, *tex_man_, device_
               )
@@ -957,9 +959,7 @@ namespace {
                     continue;
 
                 const auto& moac = reg.get<cpnt::StaticModelActor>(e);
-                auto model = model_man_->request_static(
-                    moac.model_path_, desclayout_, *tex_man_
-                );
+                auto model = model_man_->request_static(moac.model_path_);
                 if (!model)
                     continue;
 
@@ -975,9 +975,7 @@ namespace {
                     continue;
 
                 auto& moac = reg.get<cpnt::SkinnedModelActor>(e);
-                auto model = model_man_->request_skinned(
-                    moac.model_path_, desclayout_, *tex_man_
-                );
+                auto model = model_man_->request_skinned(moac.model_path_);
                 if (!model)
                     continue;
 
@@ -1093,9 +1091,9 @@ namespace {
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
+        mirinae::DesclayoutManager desclayout_;
         mirinae::HTexMgr tex_man_;
         mirinae::HMdlMgr model_man_;
-        mirinae::DesclayoutManager desclayout_;
         mirinae::FbufImageBundle fbuf_images_;
         mirinae::OverlayManager overlay_man_;
         mirinae::RenderPassPackage rp_;
