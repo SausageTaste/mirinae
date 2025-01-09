@@ -65,12 +65,26 @@ namespace {
     class MaterialResources {
 
     public:
+        static void forward_request(
+            const mirinae::respath_t& res_id,
+            const dal::parser::Material& src_material,
+            mirinae::ITextureManager& tex_man
+        ) {
+            request_texture(res_id, src_material.albedo_map_, true, tex_man);
+
+            request_texture(res_id, src_material.normal_map_, false, tex_man);
+
+            request_texture(
+                res_id, src_material.roughness_map_, false, tex_man
+            );
+        }
+
         void fetch(
             const mirinae::respath_t& res_id,
             const dal::parser::Material& src_material,
             mirinae::ITextureManager& tex_man
         ) {
-            albedo_map_ = this->request_texture(
+            albedo_map_ = this->block_for_tex(
                 res_id,
                 src_material.albedo_map_,
                 ":asset/textures/missing_texture.ktx",
@@ -78,7 +92,7 @@ namespace {
                 tex_man
             );
 
-            normal_map_ = this->request_texture(
+            normal_map_ = this->block_for_tex(
                 res_id,
                 src_material.normal_map_,
                 ":asset/textures/null_normal_map.png",
@@ -86,7 +100,7 @@ namespace {
                 tex_man
             );
 
-            orm_map_ = this->request_texture(
+            orm_map_ = this->block_for_tex(
                 res_id,
                 src_material.roughness_map_,
                 ":asset/textures/white.png",
@@ -104,7 +118,22 @@ namespace {
         std::shared_ptr<mirinae::ITexture> orm_map_;
 
     private:
-        static std::shared_ptr<mirinae::ITexture> request_texture(
+        static void request_texture(
+            const mirinae::respath_t& res_id,
+            const std::string& file_name,
+            const bool srgb,
+            mirinae::ITextureManager& tex_man
+        ) {
+            if (file_name.empty())
+                return;
+
+            const auto full_path = mirinae::replace_file_name_ext(
+                res_id, file_name
+            );
+            tex_man.request(full_path, srgb);
+        }
+
+        static std::shared_ptr<mirinae::ITexture> block_for_tex(
             const mirinae::respath_t& res_id,
             const std::string& file_name,
             const std::string& fallback_path,
@@ -473,6 +502,20 @@ namespace {
                 return nullptr;
             }
 
+            // Forward texture requests
+            {
+                for (const auto& src_unit : parsed_model.units_indexed_) {
+                    ::MaterialResources::forward_request(
+                        res_id, src_unit.material_, *tex_man_
+                    );
+                }
+
+                for (const auto& src_unit : parsed_model.units_indexed_joint_) {
+                    ::MaterialResources::forward_request(
+                        res_id, src_unit.material_, *tex_man_
+                    );
+                }
+            }
 
             auto output = std::make_shared<mirinae::RenderModel>(device_);
 
@@ -597,6 +640,15 @@ namespace {
                     static_cast<int>(parse_result)
                 );
                 return nullptr;
+            }
+
+            // Forward texture requests
+            {
+                for (const auto& src_unit : parsed_model.units_indexed_joint_) {
+                    ::MaterialResources::forward_request(
+                        res_id, src_unit.material_, *tex_man_
+                    );
+                }
             }
 
             auto output = std::make_shared<mirinae::RenderModelSkinned>(device_
