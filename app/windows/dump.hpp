@@ -2,7 +2,7 @@
 
 #include <Windows.h>
 
-#ifdef SHIT
+#if true
 
 #include <Windows.h>
 
