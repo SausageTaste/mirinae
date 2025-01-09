@@ -61,7 +61,7 @@ namespace mirinae {
                 const auto res = this->request(res_id, srgb);
                 switch (res) {
                     case dal::ReqResult::loading:
-                        break;
+                        continue;
                     case dal::ReqResult::ready:
                         return true;
                     default:

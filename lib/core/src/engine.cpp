@@ -161,7 +161,9 @@ namespace {
             filesys_ = cinfo.filesys_;
             camera_controller_.osio_ = cinfo.osio_;
 
-            res_mgr_ = dal::create_resmgr(filesys_);
+            sung::HTaskSche task_sche = sung::create_task_scheduler();
+            sung::HDataCentral datacen = sung::create_data_central();
+            res_mgr_ = dal::create_resmgr(filesys_, task_sche, datacen);
             client_ = mirinae::create_client();
             script_ = std::make_shared<mirinae::ScriptEngine>();
             cosmos_ = std::make_shared<mirinae::CosmosSimulator>(*script_);
