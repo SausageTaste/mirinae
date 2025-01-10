@@ -4,10 +4,10 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <spdlog/spdlog.h>
 #include <sung/general/aabb.hpp>
 
 #include "dump.hpp"
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 namespace {
@@ -102,7 +102,7 @@ namespace {
             );
 
             if (VK_SUCCESS != result) {
-                spdlog::error("Failed to create window surface");
+                SPDLOG_ERROR("Failed to create window surface");
                 return VK_NULL_HANDLE;
             }
             return surface;
@@ -248,7 +248,7 @@ namespace {
                     e.button_ = mirinae::mouse::ButtonCode::middle;
                     break;
                 default:
-                    spdlog::warn("Unknown mouse button type: {}", button);
+                    SPDLOG_WARN("Unknown mouse button type: {}", button);
                     e.button_ = mirinae::mouse::ButtonCode::eoe;
                     break;
             }

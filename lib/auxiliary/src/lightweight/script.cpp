@@ -2,8 +2,9 @@
 
 #include <sstream>
 
-#include <spdlog/spdlog.h>
 #include <sung/general/time.hpp>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 namespace {
@@ -74,7 +75,7 @@ namespace { namespace lua { namespace global {
             buf->append(str);
             buf->append('\n');
         }
-        spdlog::info("Lua print: {}", str);
+        SPDLOG_INFO("Lua print: {}", str);
 
         return 0;
     }
@@ -157,7 +158,7 @@ namespace mirinae {
     void ScriptEngine::exec(const char* script) {
         if (luaL_dostring(pimpl_->state_, script)) {
             const auto err = lua_tostring(pimpl_->state_, -1);
-            spdlog::warn("Lua error: {}", err);
+            SPDLOG_WARN("Lua error: {}", err);
             if (auto buf = pimpl_->output_buf_.get()) {
                 buf->append(err);
                 buf->append('\n');
@@ -174,7 +175,7 @@ namespace mirinae {
         lua_pushlightuserdata(L, ptr);
         lua_setglobal(L, name);
 
-        spdlog::debug(
+        SPDLOG_DEBUG(
             "Registered global pointer: {} -> {}",
             name,
             reinterpret_cast<size_t>(ptr)

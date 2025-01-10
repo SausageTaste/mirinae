@@ -1,11 +1,10 @@
 #include "mirinae/renderer.hpp"
 
-#include <spdlog/spdlog.h>
-
 #include <daltools/common/util.h>
 #include <sung/general/time.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/script.hpp"
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
@@ -964,7 +963,7 @@ namespace {
                 if (dal::ReqResult::loading == res_result)
                     continue;
                 else if (dal::ReqResult::ready != res_result) {
-                    spdlog::warn(
+                    SPDLOG_WARN(
                         "Failed to get model: {}", moac.model_path_.u8string()
                     );
                     reg.destroy(e);
@@ -991,7 +990,7 @@ namespace {
                 if (dal::ReqResult::loading == res_result)
                     continue;
                 else if (dal::ReqResult::ready != res_result) {
-                    spdlog::warn(
+                    SPDLOG_WARN(
                         "Failed to get model: {}", moac.model_path_.u8string()
                     );
                     reg.destroy(e);

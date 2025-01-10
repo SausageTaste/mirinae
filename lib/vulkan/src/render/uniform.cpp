@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include <spdlog/spdlog.h>
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 // DescSizeInfo

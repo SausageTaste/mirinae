@@ -2,8 +2,7 @@
 
 #include <string_view>
 
-#include <spdlog/spdlog.h>
-
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/overlay/text.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 
@@ -232,7 +231,7 @@ namespace {
                     const auto line = line_edit->flush_str();
                     if (!line.empty()) {
                         auto tb = widgets_.find_by_type<mirinae::TextBox>();
-                        spdlog::info("Console command: '{}'", line);
+                        SPDLOG_INFO("Console command: '{}'", line);
                         tb->add_text(">> ");
                         tb->add_text(line);
                         tb->add_text("\n");

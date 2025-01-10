@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include <spdlog/spdlog.h>
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 // Semaphore
@@ -48,7 +48,7 @@ namespace mirinae {
 
     void Fence::wait(VkDevice logi_device) {
         if (VK_NULL_HANDLE == handle_) {
-            spdlog::warn("Tried to wait on a fence that is not created");
+            SPDLOG_WARN("Tried to wait on a fence that is not created");
             return;
         }
 
@@ -57,7 +57,7 @@ namespace mirinae {
 
     void Fence::reset(VkDevice logi_device) {
         if (VK_NULL_HANDLE == handle_) {
-            spdlog::warn("Tried to reset a fence that is not created");
+            SPDLOG_WARN("Tried to reset a fence that is not created");
             return;
         }
 
@@ -225,7 +225,7 @@ namespace mirinae {
 
     ImageView::~ImageView() {
         if (VK_NULL_HANDLE != handle_)
-            spdlog::warn(
+            SPDLOG_WARN(
                 "ImageView object is being destroyed without being reset"
             );
     }
@@ -273,22 +273,22 @@ namespace mirinae {
 
     bool FbufCinfo::is_valid() const {
         if (VK_NULL_HANDLE == cinfo_.renderPass) {
-            spdlog::error("renderPass is not set");
+            SPDLOG_ERROR("renderPass is not set");
             return false;
         }
 
         if (0 == cinfo_.attachmentCount) {
-            spdlog::error("attachmentCount is not set");
+            SPDLOG_ERROR("attachmentCount is not set");
             return false;
         }
 
         if (nullptr == cinfo_.pAttachments) {
-            spdlog::error("pAttachments is not set");
+            SPDLOG_ERROR("pAttachments is not set");
             return false;
         }
 
         if (0 == cinfo_.width || 0 == cinfo_.height) {
-            spdlog::error("Framebuffer dimensions are not set");
+            SPDLOG_ERROR("Framebuffer dimensions are not set");
             return false;
         }
 
@@ -371,7 +371,7 @@ namespace mirinae {
 
     Fbuf::~Fbuf() {
         if (VK_NULL_HANDLE != handle_) {
-            spdlog::warn("Fbuf object is being destroyed without being reset");
+            SPDLOG_WARN("Fbuf object is being destroyed without being reset");
         }
     }
 

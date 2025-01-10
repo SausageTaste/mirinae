@@ -1,11 +1,12 @@
 #include "mirinae/render/texture.hpp"
 
 #include <ktxvulkan.h>
-#include <spdlog/spdlog.h>
 #include <daltools/img/backend/ktx.hpp>
 #include <daltools/img/backend/stb.hpp>
 #include <sung/general/stringtool.hpp>
+#include <sung/general/time.hpp>
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
@@ -349,7 +350,7 @@ namespace {
                 device_.logi_device(), texture_.image(), &mem_req
             );
 
-            spdlog::debug(
+            SPDLOG_DEBUG(
                 "Raw texture loaded: {}*{}, {}, {}, {} levels, '{}'",
                 texture_.width(),
                 texture_.height(),
@@ -406,7 +407,7 @@ namespace {
                 device_.logi_device(), texture_.image(), &mem_req
             );
 
-            spdlog::debug(
+            SPDLOG_DEBUG(
                 "Raw texture loaded: {}*{}, {}, {}, {} levels, '{}'",
                 texture_.width(),
                 texture_.height(),
@@ -493,7 +494,7 @@ namespace {
             id_ = id;
 
             if (src.need_transcoding()) {
-                spdlog::error("KTX image needs transcoding: {}", id);
+                SPDLOG_ERROR("KTX image needs transcoding: {}", id);
                 return false;
             }
 
@@ -507,7 +508,7 @@ namespace {
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             );
             if (KTX_SUCCESS != res) {
-                spdlog::critical(
+                SPDLOG_CRITICAL(
                     "Failed to upload KTX ({}): {}", static_cast<int>(res), id
                 );
                 return false;
@@ -524,7 +525,7 @@ namespace {
                 device_.logi_device(), data_->image, &mem_req
             );
 
-            spdlog::debug(
+            SPDLOG_DEBUG(
                 "KTX texture loaded: {}*{}, {}, {}, {} levels, '{}'",
                 src.base_width(),
                 src.base_height(),
@@ -620,6 +621,8 @@ namespace {
             : filesys_(&filesys), path_(path), df_(device_features) {}
 
         sung::TaskStatus tick() override {
+            sung::MonotonicRealtimeTimer timer;
+
             if (path_.empty())
                 return this->fail("Path is empty");
             if (!filesys_)
@@ -649,6 +652,9 @@ namespace {
                 }
             }
 
+            SPDLOG_INFO(
+                "Image loaded: {} ({} sec)", path_.u8string(), timer.elapsed()
+            );
             return this->success();
         }
 
@@ -735,7 +741,7 @@ namespace {
                 nullptr
             );
             if (KTX_SUCCESS != res) {
-                spdlog::critical("Failed to construct KTX device info");
+                SPDLOG_CRITICAL("Failed to construct KTX device info");
                 throw std::runtime_error("Failed to construct KTX device info");
             }
         }
@@ -762,7 +768,7 @@ namespace {
             const auto id = res_id.u8string();
             auto img = task->try_get_img();
             if (!img) {
-                spdlog::error(
+                SPDLOG_ERROR(
                     "Failed to load image ({}): {}", id, task->err_msg()
                 );
                 return dal::ReqResult::cannot_read_file;
@@ -787,7 +793,7 @@ namespace {
                 textures_.push_back(out);
                 return dal::ReqResult::ready;
             } else {
-                spdlog::error("Unsupported image type: {}", id);
+                SPDLOG_ERROR("Unsupported image type: {}", id);
                 return dal::ReqResult::not_supported_file;
             }
 
@@ -810,7 +816,7 @@ namespace {
                 output->init_iimage2d(id, *img, srgb, cmd_pool_);
                 return output;
             } else {
-                spdlog::error("Unsupported image type: {}", id);
+                SPDLOG_ERROR("Unsupported image type: {}", id);
                 return nullptr;
             }
         }
@@ -827,7 +833,7 @@ namespace {
         void destroy_all() {
             for (auto& tex : textures_) {
                 if (tex.use_count() > 1)
-                    spdlog::warn(
+                    SPDLOG_WARN(
                         "Want to destroy texture '{}' is still in use",
                         tex->id()
                     );

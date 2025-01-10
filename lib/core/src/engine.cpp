@@ -1,8 +1,8 @@
 #include "mirinae/engine.hpp"
 
-#include <spdlog/spdlog.h>
 #include <daltools/common/glm_tool.hpp>
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/network.hpp"
 #include "mirinae/renderer.hpp"
 
