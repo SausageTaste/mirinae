@@ -609,7 +609,7 @@ namespace {
     }
 
 
-    class ImageLoadTask : public sung::ITask {
+    class ImageLoadTask : public sung::StandardLoadTask {
 
     public:
         ImageLoadTask(
@@ -617,10 +617,7 @@ namespace {
             dal::Filesystem& filesys,
             const VkPhysicalDeviceFeatures& device_features
         )
-            : filesys_(&filesys)
-            , path_(path)
-            , df_(device_features)
-            , done_(false) {}
+            : filesys_(&filesys), path_(path), df_(device_features) {}
 
         sung::TaskStatus tick() override {
             if (path_.empty())
@@ -655,14 +652,8 @@ namespace {
             return this->success();
         }
 
-        bool is_done() { return done_; }
-
-        const std::string& err_msg() const { return err_msg_; }
-
         std::shared_ptr<dal::IImage> try_get_img() {
-            if (!done_)
-                return nullptr;
-            if (!err_msg_.empty())
+            if (!this->has_succeeded())
                 return nullptr;
             if (!img_)
                 return nullptr;
@@ -670,27 +661,11 @@ namespace {
         }
 
     private:
-        sung::TaskStatus success() {
-            err_msg_.clear();
-            done_ = true;
-            return sung::TaskStatus::finished;
-        }
-
-        sung::TaskStatus fail(const char* err_msg) {
-            err_msg_ = err_msg;
-            done_ = true;
-            return sung::TaskStatus::finished;
-        }
-
         fs::path path_;
         dal::Filesystem* filesys_;
         VkPhysicalDeviceFeatures df_;
         std::vector<std::byte> raw_data_;
         std::shared_ptr<dal::IImage> img_;
-        std::string err_msg_;
-
-        // This is enough for now instead of a mutex.
-        std::atomic_bool done_;
     };
 
 
