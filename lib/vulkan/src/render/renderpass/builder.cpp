@@ -1,7 +1,6 @@
 #include "mirinae/render/renderpass/builder.hpp"
 
-#include <spdlog/spdlog.h>
-
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/meshdata.hpp"
 
 

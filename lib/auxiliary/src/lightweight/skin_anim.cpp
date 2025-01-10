@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include <spdlog/spdlog.h>
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 namespace {
@@ -350,7 +350,7 @@ namespace mirinae {
 
         auto& anim = this->anims()[*anim_idx];
         if (buf_size < this->skel().joints_.size()) {
-            spdlog::warn(
+            SPDLOG_WARN(
                 "Buffer size ({}) is too small to store all joint matrices "
                 "({}) in '{}'",
                 buf_size,

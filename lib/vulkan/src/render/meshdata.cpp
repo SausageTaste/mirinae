@@ -1,8 +1,8 @@
 #include "mirinae/render/meshdata.hpp"
 
-#include <spdlog/spdlog.h>
-
 #include <daltools/dmd/parser.h>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 // VerticesStaticPair
@@ -11,7 +11,7 @@ namespace mirinae {
     void VerticesStaticPair::append_vertex(const VertexStatic& vertex) {
         const auto cur_index = vertices_.size();
         if ((std::numeric_limits<VertIndexType_t>::max)() < cur_index)
-            spdlog::warn("Index overflow: {}", cur_index);
+            SPDLOG_WARN("Index overflow: {}", cur_index);
 
         indices_.push_back(static_cast<uint16_t>(vertices_.size()));
         vertices_.push_back(vertex);
@@ -20,7 +20,7 @@ namespace mirinae {
     void VerticesSkinnedPair::append_vertex(const VertexSkinned& vertex) {
         const auto cur_index = vertices_.size();
         if ((std::numeric_limits<VertIndexType_t>::max)() < cur_index)
-            spdlog::warn("Index overflow: {}", cur_index);
+            SPDLOG_WARN("Index overflow: {}", cur_index);
 
         indices_.push_back(static_cast<uint16_t>(vertices_.size()));
         vertices_.push_back(vertex);
@@ -39,22 +39,22 @@ namespace mirinae {
             parsed_model, file_content, content_size
         );
         if (dal::parser::ModelParseResult::success != parse_result) {
-            spdlog::error(
+            SPDLOG_ERROR(
                 "Failed to parse dmd file: {}", static_cast<int>(parse_result)
             );
             return std::nullopt;
         }
 
         if (!parsed_model.units_straight_joint_.empty())
-            spdlog::warn(
+            SPDLOG_WARN(
                 "Parsing static DMD model but skinned straight mesh found"
             );
         if (!parsed_model.units_indexed_joint_.empty())
-            spdlog::warn(
+            SPDLOG_WARN(
                 "Parsing static DMD model but skinned indexed mesh found"
             );
         if (!parsed_model.units_straight_.empty())
-            spdlog::warn(
+            SPDLOG_WARN(
                 "Parsing static DMD model that has straight mesh, which will "
                 "cause performance issue"
             );
@@ -80,7 +80,7 @@ namespace mirinae {
         for (const auto& unit : parsed_model.units_indexed_) {
             for (const auto index : unit.mesh_.indices_) {
                 if ((std::numeric_limits<VertIndexType_t>::max)() < index)
-                    spdlog::warn("Index overflow: {}", index);
+                    SPDLOG_WARN("Index overflow: {}", index);
 
                 output.indices_.push_back(index);
             }

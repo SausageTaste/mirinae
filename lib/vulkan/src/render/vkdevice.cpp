@@ -5,9 +5,9 @@
 #include <set>
 #include <sstream>
 
-#include <spdlog/spdlog.h>
 #include <sung/general/stringtool.hpp>
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/konsts.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
@@ -116,7 +116,7 @@ namespace {
             vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")
         );
         if (nullptr == func) {
-            spdlog::error(
+            SPDLOG_ERROR(
                 "Failed to get Vulkan function: vkCreateDebugUtilsMessengerEXT"
             );
             return VK_NULL_HANDLE;
@@ -127,7 +127,7 @@ namespace {
 
         VkDebugUtilsMessengerEXT debug_messenger;
         if (VK_SUCCESS != func(instance, &cinfo, nullptr, &debug_messenger)) {
-            spdlog::error("Failed to create debug utils messenger");
+            SPDLOG_ERROR("Failed to create debug utils messenger");
             return VK_NULL_HANDLE;
         }
 
@@ -206,7 +206,7 @@ namespace {
     public:
         void set(VkPhysicalDevice handle, const VkSurfaceKHR surface) {
             if (nullptr == handle) {
-                spdlog::error("PhysDevice::set has recieved a nullptr");
+                SPDLOG_ERROR("PhysDevice::set has recieved a nullptr");
                 this->clear();
                 return;
             }
@@ -403,7 +403,7 @@ namespace {
             }
 
             for (auto& ext_name : required_extensions)
-                spdlog::warn(
+                SPDLOG_WARN(
                     "Required extension not available in physical device: {}",
                     ext_name
                 );
@@ -541,7 +541,7 @@ namespace {
             uint32_t count = 0;
             vkEnumeratePhysicalDevices(instance_, &count, nullptr);
             if (0 == count) {
-                spdlog::error("There is no GPU with Vulkan support");
+                SPDLOG_ERROR("There is no GPU with Vulkan support");
                 return VK_NULL_HANDLE;
             }
 
@@ -974,7 +974,7 @@ namespace mirinae {
             : create_info_(std::move(create_info)) {
             // Check engine creation info
             if (!create_info_.filesys_) {
-                spdlog::critical("Filesystem is not set");
+                SPDLOG_CRITICAL("Filesystem is not set");
                 throw std::runtime_error{ "Filesystem is not set" };
             }
 
@@ -994,7 +994,7 @@ namespace mirinae {
                 create_info_.surface_creator_(instance_.get())
             );
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
-            spdlog::info(
+            SPDLOG_INFO(
                 "Physical device selected: {}\n{}",
                 phys_device_.name(),
                 phys_device_.make_report_str()
@@ -1162,7 +1162,7 @@ namespace mirinae {
             );
         }
 
-        spdlog::info(
+        SPDLOG_INFO(
             "Swapchain created: {}*{}, {}, {} images, {}, {}",
             extent_.width,
             extent_.height,
@@ -1209,10 +1209,10 @@ namespace mirinae {
             case VK_SUBOPTIMAL_KHR:
                 return ShainImageIndex{ imageIndex };
             case VK_ERROR_OUT_OF_DATE_KHR:
-                spdlog::info("Swapchain out of date");
+                SPDLOG_INFO("Swapchain out of date");
                 return std::nullopt;
             default:
-                spdlog::error(
+                SPDLOG_ERROR(
                     "Failed to acquire next image: {}", static_cast<int>(result)
                 );
                 return std::nullopt;

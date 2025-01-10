@@ -1,8 +1,8 @@
 #include "mirinae/scene/scene.hpp"
 
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
-#include <spdlog/spdlog.h>
 #include <sung/general/aabb.hpp>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 #define GET_SCENE_PTR()                                  \

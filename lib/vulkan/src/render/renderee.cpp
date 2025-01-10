@@ -3,9 +3,9 @@
 #include <set>
 
 #include <daltools/dmd/parser.h>
-#include <spdlog/spdlog.h>
 #include <sung/general/stringtool.hpp>
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 
 
@@ -427,7 +427,7 @@ namespace {
                 case dal::ReqResult::loading:
                     return dal::ReqResult::loading;
                 default:
-                    spdlog::warn(
+                    SPDLOG_WARN(
                         "Failed to request resource: {}", res_id.u8string()
                     );
                     return res_result;
@@ -435,7 +435,7 @@ namespace {
 
             const auto dmd = res_mgr_->get_dmd(res_id);
             if (!dmd) {
-                spdlog::warn("Failed to get dmd: {}", res_id.u8string());
+                SPDLOG_WARN("Failed to get dmd: {}", res_id.u8string());
                 return dal::ReqResult::cannot_read_file;
             }
 
@@ -486,7 +486,7 @@ namespace {
 
             const auto content = device_.filesys().read_file(res_id);
             if (!content.has_value()) {
-                spdlog::warn("Failed to read dmd file: {}", res_id.u8string());
+                SPDLOG_WARN("Failed to read dmd file: {}", res_id.u8string());
                 return nullptr;
             }
 
@@ -495,7 +495,7 @@ namespace {
                 parsed_model, content->data(), content->size()
             );
             if (dal::parser::ModelParseResult::success != parse_result) {
-                spdlog::warn(
+                SPDLOG_WARN(
                     "Failed to parse dmd file: {}",
                     static_cast<int>(parse_result)
                 );
@@ -626,7 +626,7 @@ namespace {
 
             const auto content = device_.filesys().read_file(res_id);
             if (!content.has_value()) {
-                spdlog::warn("Failed to read dmd file: {}", res_id.u8string());
+                SPDLOG_WARN("Failed to read dmd file: {}", res_id.u8string());
                 return nullptr;
             }
 
@@ -635,7 +635,7 @@ namespace {
                 parsed_model, content->data(), content->size()
             );
             if (dal::parser::ModelParseResult::success != parse_result) {
-                spdlog::warn(
+                SPDLOG_WARN(
                     "Failed to parse dmd file: {}",
                     static_cast<int>(parse_result)
                 );
@@ -655,7 +655,7 @@ namespace {
             );
 
             if (!parsed_model.units_indexed_.empty()) {
-                spdlog::warn(
+                SPDLOG_WARN(
                     "Skinned model '{}' has static units, which are ignored",
                     res_id.u8string()
                 );
@@ -663,7 +663,7 @@ namespace {
 
             for (const auto& src_unit : parsed_model.units_indexed_joint_) {
                 if (src_unit.mesh_.indices_.empty()) {
-                    spdlog::warn(
+                    SPDLOG_WARN(
                         "Skinned model '{}' has a render unit with no indices: "
                         "'{}'",
                         res_id.u8string(),

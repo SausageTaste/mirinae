@@ -2,8 +2,7 @@
 
 #include <stdexcept>
 
-#include <spdlog/spdlog.h>
-
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/renderpass/common.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 

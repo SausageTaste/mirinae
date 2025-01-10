@@ -1,12 +1,11 @@
 #include "mirinae/overlay/text.hpp"
 
-#include <spdlog/spdlog.h>
-
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
 
 #include <sstream>
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 
 
@@ -227,15 +226,15 @@ namespace mirinae {
                     if (osio_)
                         osio_->set_clipboard(this->make_str());
                     else
-                        spdlog::error("OsIo was not given");
+                        SPDLOG_ERROR("OsIo was not given");
                 } else if (e.key == KeyCode::v) {
                     if (osio_) {
                         if (const auto str = osio_->get_clipboard())
                             this->add_text(str.value());
                         else
-                            spdlog::error("OsIo failed to get clipboard");
+                            SPDLOG_ERROR("OsIo failed to get clipboard");
                     } else {
-                        spdlog::error("OsIo was not given");
+                        SPDLOG_ERROR("OsIo was not given");
                     }
                 }
             } else {
