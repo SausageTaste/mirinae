@@ -94,9 +94,7 @@ namespace mirinae {
                               &allocation_,
                               nullptr
                           )) {
-            throw std::runtime_error(
-                "failed to create VMA buffer as staging buffer"
-            );
+            MIRINAE_ABORT("failed to create VMA buffer as staging buffer");
         }
 
         data_size_ = size;
@@ -124,9 +122,7 @@ namespace mirinae {
                               &allocation_,
                               nullptr
                           )) {
-            throw std::runtime_error(
-                "failed to create VMA buffer as uniform buffer"
-            );
+            MIRINAE_ABORT("failed to create VMA buffer as uniform buffer");
         }
 
         data_size_ = size;
@@ -155,9 +151,7 @@ namespace mirinae {
                               &allocation_,
                               nullptr
                           )) {
-            throw std::runtime_error(
-                "failed to create VMA buffer as vertex buffer"
-            );
+            MIRINAE_ABORT("failed to create VMA buffer as vertex buffer");
         }
 
         data_size_ = size;
@@ -186,9 +180,7 @@ namespace mirinae {
                               &allocation_,
                               nullptr
                           )) {
-            throw std::runtime_error(
-                "failed to create VMA buffer as index buffer"
-            );
+            MIRINAE_ABORT("failed to create VMA buffer as index buffer");
         }
 
         data_size_ = size;
@@ -334,14 +326,13 @@ namespace mirinae {
         else if (img.channels() == 1 && img.value_type_size() == sizeof(float))
             info_.format = VK_FORMAT_R32_SFLOAT;
         else {
-            const auto msg = fmt::format(
+            MIRINAE_ABORT(
                 "Cannot determine image format for IImage2D{{ channel={}, "
                 "value_type_size={}, sRGB={} }}",
                 img.channels(),
                 img.value_type_size(),
                 srgb
             );
-            throw std::runtime_error(msg);
         }
 
         return *this;

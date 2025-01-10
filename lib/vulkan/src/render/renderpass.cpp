@@ -298,17 +298,17 @@ namespace {
         ) {
             const auto spv = device.filesys().read_file(spv_path);
             if (!spv) {
-                throw std::runtime_error{ fmt::format(
+                MIRINAE_ABORT(
                     "Failed to read a shader file: {}", spv_path.u8string()
-                ) };
+                );
             }
 
             const auto sha = create_shader_module(*spv, device.logi_device());
             if (!sha) {
-                throw std::runtime_error{ fmt::format(
+                MIRINAE_ABORT(
                     "Failed to create shader module with given data: {}",
                     spv_path.u8string()
-                ) };
+                );
             }
 
             return sha.value();
@@ -1703,8 +1703,7 @@ namespace mirinae {
     ) const {
         auto it = data_.find(name);
         if (it == data_.end()) {
-            auto msg = fmt::format("Render pass bundle not found: '{}'", name);
-            throw std::runtime_error(msg);
+            MIRINAE_ABORT("Render pass bundle not found: '{}'", name);
         }
         return *it->second;
     }

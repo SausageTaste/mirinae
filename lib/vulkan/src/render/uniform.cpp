@@ -118,9 +118,7 @@ namespace mirinae {
         if (vkCreateDescriptorSetLayout(
                 logi_device, &create_info, nullptr, &handle
             ) != VK_SUCCESS) {
-            throw std::runtime_error{
-                fmt::format("Failed to create descriptor set layout: {}", name_)
-            };
+            MIRINAE_ABORT("Failed to create descriptor set layout: {}", name_);
         }
 
         return handle;
@@ -156,9 +154,7 @@ namespace mirinae {
                 return item;
         }
 
-        throw std::runtime_error{
-            fmt::format("Failed to find descriptor set layout: {}", name)
-        };
+        MIRINAE_ABORT("Failed to find descriptor set layout: {}", name);
     }
 
 }  // namespace mirinae

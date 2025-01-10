@@ -53,9 +53,7 @@ namespace {
                 break;
 
             default:
-                throw std::runtime_error(
-                    fmt::format("unsupported framebuffer usage: {}", (int)usage)
-                );
+                MIRINAE_ABORT("unsupported framebuffer usage: {}", (int)usage);
         }
 
         return std::make_tuple(flag, aspect_mask, image_layout);
@@ -80,7 +78,7 @@ namespace {
             return i;
         }
 
-        throw std::runtime_error("failed to find suitable memory type!");
+        MIRINAE_ABORT("failed to find suitable memory type!");
     }
 
     bool create_vk_image(
@@ -742,7 +740,7 @@ namespace {
             );
             if (KTX_SUCCESS != res) {
                 SPDLOG_CRITICAL("Failed to construct KTX device info");
-                throw std::runtime_error("Failed to construct KTX device info");
+                MIRINAE_ABORT("Failed to construct KTX device info");
             }
         }
 

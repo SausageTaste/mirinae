@@ -24,7 +24,7 @@ namespace {
             }
         }
 
-        throw std::runtime_error("Failed to find asset path");
+        MIRINAE_ABORT("Failed to find asset path");
     }
 
     std::filesystem::path get_documents_path(const char* app_name) {
@@ -33,14 +33,14 @@ namespace {
 
             if (!std::filesystem::is_directory(path)) {
                 if (!std::filesystem::create_directories(path)) {
-                    throw std::runtime_error("Failed to create directory");
+                    MIRINAE_ABORT("Failed to create directory");
                 }
             }
 
             return path;
         }
 
-        throw std::runtime_error("Failed to get user profile path");
+        MIRINAE_ABORT("Failed to get user profile path");
     }
 
     auto get_glfw_extensions() {

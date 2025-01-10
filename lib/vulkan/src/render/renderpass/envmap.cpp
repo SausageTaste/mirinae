@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/envmap.hpp"
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 
@@ -653,7 +654,7 @@ namespace {
                 sky_tex_ = tex_man.block_for_tex(alt_path, false);
             }
             if (!sky_tex_) {
-                throw std::runtime_error("Failed to load sky texture");
+                MIRINAE_ABORT("Failed to load sky texture");
             }
 
             desc_set_ = desc_pool_.alloc(

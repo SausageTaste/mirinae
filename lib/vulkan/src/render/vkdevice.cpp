@@ -428,7 +428,7 @@ namespace {
                 }
             }
 
-            throw std::runtime_error("Failed to find supported format!");
+            MIRINAE_ABORT("Failed to find supported format!");
         }
 
         bool is_texture_format_supported(VkFormat format) const {
@@ -973,10 +973,8 @@ namespace mirinae {
         Pimpl(mirinae::EngineCreateInfo&& create_info)
             : create_info_(std::move(create_info)) {
             // Check engine creation info
-            if (!create_info_.filesys_) {
-                SPDLOG_CRITICAL("Filesystem is not set");
-                throw std::runtime_error{ "Filesystem is not set" };
-            }
+            if (!create_info_.filesys_)
+                MIRINAE_ABORT("Filesystem is not set");
 
             ::InstanceFactory instance_factory;
             if (create_info_.enable_validation_layers_) {
@@ -1003,7 +1001,7 @@ namespace mirinae {
             std::vector<std::string> device_extensions;
             device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
             if (phys_device_.count_unsupported_extensions(device_extensions))
-                throw std::runtime_error{ "Some extensions are not supported" };
+                MIRINAE_ABORT("Some extensions are not supported");
 
             logi_device_.init(phys_device_, device_extensions);
             mem_allocator_ = mirinae::create_vma_allocator(
@@ -1012,9 +1010,8 @@ namespace mirinae {
 
             ::SwapChainSupportDetails swapchain_details;
             swapchain_details.init(surface_, phys_device_.get());
-            if (!swapchain_details.is_complete()) {
-                throw std::runtime_error{ "The swapchain is not complete" };
-            }
+            if (!swapchain_details.is_complete())
+                MIRINAE_ABORT("The swapchain is not complete");
 
             samplers_.init(phys_device_, logi_device_);
             img_formats_.init(phys_device_);
