@@ -1,6 +1,8 @@
 #pragma once
 
 #include <daltools/filesys/res_mgr.hpp>
+#include <sung/general/expected.hpp>
+#include <sung/general/threading.hpp>
 
 #include "mirinae/render/vkdevice.hpp"
 
@@ -81,8 +83,6 @@ namespace mirinae {
     };
 
     using HTexMgr = std::shared_ptr<ITextureManager>;
-    HTexMgr create_tex_mgr(
-        std::shared_ptr<dal::IResourceManager> res_mgr, VulkanDevice& device
-    );
+    HTexMgr create_tex_mgr(sung::HTaskSche task_sche, VulkanDevice& device);
 
 }  // namespace mirinae

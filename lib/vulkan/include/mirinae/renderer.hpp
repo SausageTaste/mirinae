@@ -24,10 +24,11 @@ namespace mirinae {
 
 
     std::unique_ptr<IRenderer> create_vk_renderer(
-        EngineCreateInfo&& cinfo,
-        std::shared_ptr<dal::IResourceManager>& res_mgr,
-        std::shared_ptr<ScriptEngine>& script,
-        std::shared_ptr<CosmosSimulator>& cosmos
+        mirinae::EngineCreateInfo&& cinfo,
+        sung::HTaskSche task_sche,
+        std::shared_ptr<dal::IResourceManager> res_mgr,
+        std::shared_ptr<mirinae::ScriptEngine> script,
+        std::shared_ptr<mirinae::CosmosSimulator> cosmos
     );
 
 }  // namespace mirinae

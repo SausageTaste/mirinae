@@ -659,14 +659,14 @@ namespace {
 
         const std::string& err_msg() const { return err_msg_; }
 
-        dal::IImage* try_get_img() {
+        std::shared_ptr<dal::IImage> try_get_img() {
             if (!done_)
                 return nullptr;
             if (!err_msg_.empty())
                 return nullptr;
             if (!img_)
                 return nullptr;
-            return img_.get();
+            return img_;
         }
 
     private:
@@ -697,8 +697,11 @@ namespace {
     class LoadTaskManager {
 
     public:
-        LoadTaskManager(mirinae::VulkanDevice& device)
-            : filesys_(&device.filesys())
+        LoadTaskManager(
+            sung::HTaskSche task_sche, mirinae::VulkanDevice& device
+        )
+            : task_sche_(task_sche)
+            , filesys_(&device.filesys())
             , device_features_(device.phys_device_features()) {}
 
         bool add_task(const fs::path& path) {
@@ -708,7 +711,7 @@ namespace {
             auto task = std::make_shared<ImageLoadTask>(
                 path, *filesys_, device_features_
             );
-            task->tick();
+            task_sche_->add_task(task);
             tasks_.emplace(path, task);
             return true;
         }
@@ -719,15 +722,16 @@ namespace {
 
         void remove_task(const fs::path& path) { tasks_.erase(path); }
 
-        ImageLoadTask* try_get_task(const fs::path& path) {
+        std::shared_ptr<ImageLoadTask> try_get_task(const fs::path& path) {
             const auto it = tasks_.find(path);
             if (it == tasks_.end())
                 return nullptr;
-            return it->second.get();
+            return it->second;
         }
 
     private:
         std::unordered_map<fs::path, std::shared_ptr<ImageLoadTask>> tasks_;
+        sung::HTaskSche task_sche_;
         dal::Filesystem* filesys_;
         VkPhysicalDeviceFeatures device_features_;
     };
@@ -737,15 +741,11 @@ namespace {
 
 // TextureManager
 namespace {
-
     class TextureManager : public mirinae::ITextureManager {
 
     public:
-        TextureManager(
-            std::shared_ptr<dal::IResourceManager> res_mgr,
-            mirinae::VulkanDevice& device
-        )
-            : device_(device), loader_mgr_(device) {
+        TextureManager(sung::HTaskSche task_sche, mirinae::VulkanDevice& device)
+            : device_(device), loader_mgr_(task_sche, device) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -898,9 +898,9 @@ namespace mirinae {
 
 
     std::shared_ptr<ITextureManager> create_tex_mgr(
-        std::shared_ptr<dal::IResourceManager> res_mgr, VulkanDevice& device
+        sung::HTaskSche task_sche, VulkanDevice& device
     ) {
-        return std::make_shared<::TextureManager>(res_mgr, device);
+        return std::make_shared<::TextureManager>(task_sche, device);
     }
 
 }  // namespace mirinae

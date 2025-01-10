@@ -486,9 +486,10 @@ namespace {
     public:
         RendererVulkan(
             mirinae::EngineCreateInfo&& cinfo,
-            std::shared_ptr<dal::IResourceManager>& res_mgr,
-            std::shared_ptr<mirinae::ScriptEngine>& script,
-            std::shared_ptr<mirinae::CosmosSimulator>& cosmos,
+            sung::HTaskSche task_sche,
+            std::shared_ptr<dal::IResourceManager> res_mgr,
+            std::shared_ptr<mirinae::ScriptEngine> script,
+            std::shared_ptr<mirinae::CosmosSimulator> cosmos,
             int init_width,
             int init_height
         )
@@ -497,7 +498,7 @@ namespace {
             , script_(script)
             , cosmos_(cosmos)
             , desclayout_(device_)
-            , tex_man_(mirinae::create_tex_mgr(res_mgr_, device_))
+            , tex_man_(mirinae::create_tex_mgr(task_sche, device_))
             , model_man_(mirinae::create_model_mgr(
                   res_mgr_, tex_man_, desclayout_, device_
               ))
@@ -1144,15 +1145,16 @@ namespace {
 namespace mirinae {
 
     std::unique_ptr<IRenderer> create_vk_renderer(
-        EngineCreateInfo&& cinfo,
-        std::shared_ptr<dal::IResourceManager>& res_mgr,
-        std::shared_ptr<ScriptEngine>& script,
-        std::shared_ptr<CosmosSimulator>& cosmos
+        mirinae::EngineCreateInfo&& cinfo,
+        sung::HTaskSche task_sche,
+        std::shared_ptr<dal::IResourceManager> res_mgr,
+        std::shared_ptr<mirinae::ScriptEngine> script,
+        std::shared_ptr<mirinae::CosmosSimulator> cosmos
     ) {
         const auto w = cinfo.init_width_;
         const auto h = cinfo.init_height_;
         return std::make_unique<::RendererVulkan>(
-            std::move(cinfo), res_mgr, script, cosmos, w, h
+            std::move(cinfo), task_sche, res_mgr, script, cosmos, w, h
         );
     }
 
