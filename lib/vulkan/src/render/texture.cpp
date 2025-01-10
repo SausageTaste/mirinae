@@ -619,8 +619,6 @@ namespace {
             : filesys_(&filesys), path_(path), df_(device_features) {}
 
         sung::TaskStatus tick() override {
-            sung::MonotonicRealtimeTimer timer;
-
             if (path_.empty())
                 return this->fail("Path is empty");
             if (!filesys_)
@@ -650,9 +648,6 @@ namespace {
                 }
             }
 
-            SPDLOG_INFO(
-                "Image loaded: {} ({} sec)", path_.u8string(), timer.elapsed()
-            );
             return this->success();
         }
 
@@ -720,6 +715,7 @@ namespace {
 
 // TextureManager
 namespace {
+
     class TextureManager : public mirinae::ITextureManager {
 
     public:
