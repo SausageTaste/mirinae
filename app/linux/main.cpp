@@ -25,7 +25,7 @@ namespace {
             }
         }
 
-        throw std::runtime_error("Failed to find asset path");
+        MIRINAE_ABORT("Failed to find asset path");
     }
 
     std::filesystem::path get_home_path() {

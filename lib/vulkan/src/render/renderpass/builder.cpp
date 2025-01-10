@@ -140,7 +140,7 @@ namespace mirinae {
         VkRenderPass output = VK_NULL_HANDLE;
         const auto res = vkCreateRenderPass(logi_device, &cinfo, NULL, &output);
         if (VK_SUCCESS != res) {
-            throw std::runtime_error("failed to create render pass.");
+            MIRINAE_ABORT("failed to create render pass.");
         }
 
         return output;
@@ -208,17 +208,17 @@ namespace mirinae {
     ) {
         const auto spv = device.filesys().read_file(spv_path);
         if (!spv) {
-            throw std::runtime_error{ fmt::format(
+            MIRINAE_ABORT(
                 "Failed to read a shader file: {}", spv_path.u8string()
-            ) };
+            );
         }
 
         const auto sha = create_shader_module(*spv, device.logi_device());
         if (!sha) {
-            throw std::runtime_error{ fmt::format(
+            MIRINAE_ABORT(
                 "Failed to create shader module with given data: {}",
                 spv_path.u8string()
-            ) };
+            );
         }
 
         return sha.value();
@@ -648,7 +648,7 @@ namespace mirinae {
             device_.logi_device(), VK_NULL_HANDLE, 1, &cinfo, nullptr, &out
         );
         if (VK_SUCCESS != res) {
-            throw std::runtime_error("failed to create graphics pipeline.");
+            MIRINAE_ABORT("failed to create graphics pipeline.");
         }
 
         return out;

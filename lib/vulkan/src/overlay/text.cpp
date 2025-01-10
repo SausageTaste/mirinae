@@ -42,7 +42,7 @@ namespace mirinae {
     FontLibrary::FontLibrary(dal::Filesystem& filesys) {
         const auto font_path = ":asset/font/SeoulNamsanM.ttf";
         if (!filesys.read_file(font_path, file_data_))
-            throw std::runtime_error("failed to load font file");
+            MIRINAE_ABORT("failed to load font file");
 
         stbtt_InitFont(
             &font_, reinterpret_cast<const unsigned char*>(file_data_.data()), 0
