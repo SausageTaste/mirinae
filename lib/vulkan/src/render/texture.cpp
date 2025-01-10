@@ -285,6 +285,7 @@ namespace {
 }  // namespace
 
 
+// Texture data
 namespace {
 
     struct ITextureData : public mirinae::ITexture {
@@ -492,16 +493,8 @@ namespace {
             id_ = id;
 
             if (src.need_transcoding()) {
-                const auto tf = this->determine_transcode_format(src);
-                if (!tf) {
-                    spdlog::error("Failed to find transcode format: {}", id);
-                    return false;
-                }
-
-                if (!src.transcode(tf.value())) {
-                    spdlog::error("Failed to transcode KTX: {}", id);
-                    return false;
-                }
+                spdlog::error("KTX image needs transcoding: {}", id);
+                return false;
             }
 
             data_ = ktxVulkanTexture{};
@@ -565,46 +558,178 @@ namespace {
         const std::string& id() const override { return id_; }
 
     private:
-        std::optional<ktx_texture_transcode_fmt_e> determine_transcode_format(
-            dal::KtxImage& src
-        ) {
-            auto ktx2 = src.ktx2();
-            if (!ktx2)
-                return std::nullopt;
-
-            auto& df = device_.phys_device_features();
-            const auto cm = ktxTexture2_GetColorModel_e(ktx2);
-            const auto num_cpnt = src.num_cpnts();
-
-            if (cm == KHR_DF_MODEL_UASTC && df.textureCompressionASTC_LDR)
-                return KTX_TTF_ASTC_4x4_RGBA;
-            else if (cm == KHR_DF_MODEL_ETC1S && df.textureCompressionETC2)
-                return KTX_TTF_ETC;
-            else if (df.textureCompressionASTC_LDR)
-                return KTX_TTF_ASTC_4x4_RGBA;
-            else if (df.textureCompressionETC2)
-                return KTX_TTF_ETC2_RGBA;
-            else if (df.textureCompressionBC) {
-                switch (num_cpnt) {
-                    case 1:
-                        return KTX_TTF_BC4_R;
-                    case 2:
-                        return KTX_TTF_BC5_RG;
-                    case 3:
-                        return KTX_TTF_BC1_RGB;
-                    case 4:
-                        return KTX_TTF_BC3_RGBA;
-                    default:
-                        return std::nullopt;
-                }
-            } else
-                return std::nullopt;
-        }
-
         mirinae::VulkanDevice& device_;
         std::string id_;
         std::optional<ktxVulkanTexture> data_;
         mirinae::ImageView texture_view_;
+    };
+
+}  // namespace
+
+
+// Loader
+namespace {
+
+    namespace fs = std::filesystem;
+
+
+    std::optional<ktx_texture_transcode_fmt_e> determine_transcode_format(
+        dal::KtxImage& src, const VkPhysicalDeviceFeatures& df
+    ) {
+        auto ktx2 = src.ktx2();
+        if (!ktx2)
+            return std::nullopt;
+
+        const auto cm = ktxTexture2_GetColorModel_e(ktx2);
+        const auto num_cpnt = src.num_cpnts();
+
+        if (cm == KHR_DF_MODEL_UASTC && df.textureCompressionASTC_LDR)
+            return KTX_TTF_ASTC_4x4_RGBA;
+        else if (cm == KHR_DF_MODEL_ETC1S && df.textureCompressionETC2)
+            return KTX_TTF_ETC;
+        else if (df.textureCompressionASTC_LDR)
+            return KTX_TTF_ASTC_4x4_RGBA;
+        else if (df.textureCompressionETC2)
+            return KTX_TTF_ETC2_RGBA;
+        else if (df.textureCompressionBC) {
+            switch (num_cpnt) {
+                case 1:
+                    return KTX_TTF_BC4_R;
+                case 2:
+                    return KTX_TTF_BC5_RG;
+                case 3:
+                    return KTX_TTF_BC1_RGB;
+                case 4:
+                    return KTX_TTF_BC3_RGBA;
+                default:
+                    return std::nullopt;
+            }
+        } else
+            return std::nullopt;
+    }
+
+
+    class ImageLoadTask : public sung::ITask {
+
+    public:
+        ImageLoadTask(
+            const fs::path& path,
+            dal::Filesystem& filesys,
+            const VkPhysicalDeviceFeatures& device_features
+        )
+            : filesys_(&filesys)
+            , path_(path)
+            , df_(device_features)
+            , done_(false) {}
+
+        sung::TaskStatus tick() override {
+            if (path_.empty())
+                return this->fail("Path is empty");
+            if (!filesys_)
+                return this->fail("Filesystem is not set");
+
+            filesys_->read_file(path_, raw_data_);
+            if (raw_data_.empty())
+                return this->fail("Failed to read file");
+
+            dal::ImageParseInfo pinfo;
+            pinfo.file_path_ = path_.u8string();
+            pinfo.data_ = reinterpret_cast<uint8_t*>(raw_data_.data());
+            pinfo.size_ = raw_data_.size();
+            pinfo.force_rgba_ = true;
+
+            img_ = dal::parse_img(pinfo);
+            if (!img_)
+                return this->fail("Failed to parse image");
+
+            if (auto ktx = img_->as<dal::KtxImage>()) {
+                if (ktx->need_transcoding()) {
+                    auto tf = ::determine_transcode_format(*ktx, df_);
+                    if (!tf)
+                        return this->fail("Failed to find transcode format");
+                    if (!ktx->transcode(tf.value()))
+                        return this->fail("Failed to transcode KTX");
+                }
+            }
+
+            return this->success();
+        }
+
+        bool is_done() { return done_; }
+
+        const std::string& err_msg() const { return err_msg_; }
+
+        dal::IImage* try_get_img() {
+            if (!done_)
+                return nullptr;
+            if (!err_msg_.empty())
+                return nullptr;
+            if (!img_)
+                return nullptr;
+            return img_.get();
+        }
+
+    private:
+        sung::TaskStatus success() {
+            err_msg_.clear();
+            done_ = true;
+            return sung::TaskStatus::finished;
+        }
+
+        sung::TaskStatus fail(const char* err_msg) {
+            err_msg_ = err_msg;
+            done_ = true;
+            return sung::TaskStatus::finished;
+        }
+
+        fs::path path_;
+        dal::Filesystem* filesys_;
+        VkPhysicalDeviceFeatures df_;
+        std::vector<std::byte> raw_data_;
+        std::shared_ptr<dal::IImage> img_;
+        std::string err_msg_;
+
+        // This is enough for now instead of a mutex.
+        std::atomic_bool done_;
+    };
+
+
+    class LoadTaskManager {
+
+    public:
+        LoadTaskManager(mirinae::VulkanDevice& device)
+            : filesys_(&device.filesys())
+            , device_features_(device.phys_device_features()) {}
+
+        bool add_task(const fs::path& path) {
+            if (this->has_task(path))
+                return false;
+
+            auto task = std::make_shared<ImageLoadTask>(
+                path, *filesys_, device_features_
+            );
+            task->tick();
+            tasks_.emplace(path, task);
+            return true;
+        }
+
+        bool has_task(const fs::path& path) {
+            return tasks_.find(path) != tasks_.end();
+        }
+
+        void remove_task(const fs::path& path) { tasks_.erase(path); }
+
+        ImageLoadTask* try_get_task(const fs::path& path) {
+            const auto it = tasks_.find(path);
+            if (it == tasks_.end())
+                return nullptr;
+            return it->second.get();
+        }
+
+    private:
+        std::unordered_map<fs::path, std::shared_ptr<ImageLoadTask>> tasks_;
+        dal::Filesystem* filesys_;
+        VkPhysicalDeviceFeatures device_features_;
     };
 
 }  // namespace
@@ -620,7 +745,7 @@ namespace {
             std::shared_ptr<dal::IResourceManager> res_mgr,
             mirinae::VulkanDevice& device
         )
-            : res_mgr_(res_mgr), device_(device) {
+            : device_(device), loader_mgr_(device) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -651,26 +776,22 @@ namespace {
             if (auto index = this->find_index(res_id))
                 return dal::ReqResult::ready;
 
-            const auto res_result = res_mgr_->request(res_id);
-            switch (res_result) {
-                case dal::ReqResult::ready:
-                    break;
-                case dal::ReqResult::loading:
-                    return dal::ReqResult::loading;
-                default:
-                    spdlog::warn(
-                        "Failed to request resource: {}", res_id.u8string()
-                    );
-                    return res_result;
+            auto task = loader_mgr_.try_get_task(res_id);
+            if (!task) {
+                loader_mgr_.add_task(res_id);
+                return dal::ReqResult::loading;
             }
+            if (!task->is_done())
+                return dal::ReqResult::loading;
 
-            auto img_item = res_mgr_->get_img_mut(res_id);
-            if (!img_item) {
-                spdlog::warn("Resource is not an image: {}", res_id.u8string());
-                return dal::ReqResult::not_supported_file;
-            }
-            auto img = &(img_item->first.get());
             const auto id = res_id.u8string();
+            auto img = task->try_get_img();
+            if (!img) {
+                spdlog::error(
+                    "Failed to load image ({}): {}", id, task->err_msg()
+                );
+                return dal::ReqResult::cannot_read_file;
+            }
 
             if (auto kts_img = img->as<dal::KtxImage>()) {
                 auto out = std::make_shared<KtxTextureData>(device_);
@@ -740,8 +861,9 @@ namespace {
             textures_.clear();
         }
 
-        std::shared_ptr<dal::IResourceManager> res_mgr_;
+        // std::shared_ptr<dal::IResourceManager> res_mgr_;
         mirinae::VulkanDevice& device_;
+        LoadTaskManager loader_mgr_;
         mirinae::CommandPool cmd_pool_;
         ktxVulkanDeviceInfo ktx_device_;
         std::vector<std::shared_ptr<ITextureData>> textures_;
