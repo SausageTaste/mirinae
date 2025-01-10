@@ -168,7 +168,7 @@ namespace {
             script_ = std::make_shared<mirinae::ScriptEngine>();
             cosmos_ = std::make_shared<mirinae::CosmosSimulator>(*script_);
             renderer_ = mirinae::create_vk_renderer(
-                std::move(cinfo), res_mgr_, script_, cosmos_
+                std::move(cinfo), task_sche, res_mgr_, script_, cosmos_
             );
 
             auto& reg = cosmos_->reg();
