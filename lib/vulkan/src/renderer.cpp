@@ -499,7 +499,7 @@ namespace {
             , desclayout_(device_)
             , tex_man_(mirinae::create_tex_mgr(task_sche, device_))
             , model_man_(mirinae::create_model_mgr(
-                  res_mgr_, tex_man_, desclayout_, device_
+                  res_mgr_, task_sche, tex_man_, desclayout_, device_
               ))
             , overlay_man_(
                   init_width, init_height, desclayout_, *tex_man_, device_
@@ -959,7 +959,9 @@ namespace {
                     continue;
 
                 const auto& moac = reg.get<cpnt::StaticModelActor>(e);
-                const auto res_result = model_man_->request(moac.model_path_);
+                const auto res_result = model_man_->request_static(
+                    moac.model_path_
+                );
                 if (dal::ReqResult::loading == res_result)
                     continue;
                 else if (dal::ReqResult::ready != res_result) {
@@ -970,7 +972,7 @@ namespace {
                     continue;
                 }
 
-                auto model = model_man_->request_static(moac.model_path_);
+                auto model = model_man_->get_static(moac.model_path_);
                 if (!model)
                     continue;
 
@@ -978,6 +980,7 @@ namespace {
                 mavk->model_ = model;
                 mavk->actor_ = std::make_shared<mirinae::RenderActor>(device_);
                 mavk->actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                return;
             }
 
             for (auto e : reg.view<cpnt::SkinnedModelActor>()) {
@@ -986,7 +989,9 @@ namespace {
                     continue;
 
                 auto& moac = reg.get<cpnt::SkinnedModelActor>(e);
-                const auto res_result = model_man_->request(moac.model_path_);
+                const auto res_result = model_man_->request_skinned(
+                    moac.model_path_
+                );
                 if (dal::ReqResult::loading == res_result)
                     continue;
                 else if (dal::ReqResult::ready != res_result) {
@@ -997,7 +1002,7 @@ namespace {
                     continue;
                 }
 
-                auto model = model_man_->request_skinned(moac.model_path_);
+                auto model = model_man_->get_skinned(moac.model_path_);
                 if (!model)
                     continue;
 
@@ -1008,6 +1013,7 @@ namespace {
                 );
                 mavk->actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
                 moac.anim_state_.set_skel_anim(model->skel_anim_);
+                return;
             }
 
             scene.entt_without_model_.clear();

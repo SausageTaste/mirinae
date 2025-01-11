@@ -390,6 +390,199 @@ namespace mirinae {
 // ModelManager
 namespace {
 
+    class ModelLoadTask : public sung::StandardLoadTask {
+
+    public:
+        ModelLoadTask(const mirinae::respath_t& path, dal::Filesystem& filesys)
+            : filesys_(filesys), path_(path) {}
+
+        sung::TaskStatus tick() override {
+            if (path_.empty())
+                return this->fail("Path is empty");
+
+            filesys_.read_file(path_, raw_data_);
+            if (raw_data_.empty())
+                return this->fail("Failed to read file");
+
+            const auto result = dal::parser::parse_dmd(
+                dmd_,
+                reinterpret_cast<const uint8_t*>(raw_data_.data()),
+                raw_data_.size()
+            );
+            switch (result) {
+                case dal::parser::ModelParseResult::success:
+                    break;
+                case dal::parser::ModelParseResult::magic_numbers_dont_match:
+                    return this->fail("Cannot read file");
+                case dal::parser::ModelParseResult::decompression_failed:
+                    return this->fail("Not supported file");
+                case dal::parser::ModelParseResult::corrupted_content:
+                    return this->fail("Corrupted content");
+                default:
+                    return this->fail("Unknown error");
+            }
+
+            for (const auto& unit : dmd_.units_straight_) {
+                tex_ids_srgb.insert(unit.material_.albedo_map_);
+                tex_ids.insert(unit.material_.normal_map_);
+                tex_ids.insert(unit.material_.roughness_map_);
+            }
+            for (const auto& unit : dmd_.units_indexed_) {
+                tex_ids_srgb.insert(unit.material_.albedo_map_);
+                tex_ids.insert(unit.material_.normal_map_);
+                tex_ids.insert(unit.material_.roughness_map_);
+            }
+            for (const auto& unit : dmd_.units_straight_joint_) {
+                tex_ids_srgb.insert(unit.material_.albedo_map_);
+                tex_ids.insert(unit.material_.normal_map_);
+                tex_ids.insert(unit.material_.roughness_map_);
+            }
+            for (const auto& unit : dmd_.units_indexed_joint_) {
+                tex_ids_srgb.insert(unit.material_.albedo_map_);
+                tex_ids.insert(unit.material_.normal_map_);
+                tex_ids.insert(unit.material_.roughness_map_);
+            }
+
+            for (auto& src_unit : dmd_.units_indexed_) {
+                auto& dst_vertices = units_indexed_.emplace_back();
+
+                dst_vertices.indices_.assign(
+                    src_unit.mesh_.indices_.begin(),
+                    src_unit.mesh_.indices_.end()
+                );
+
+                for (auto& src_vertex : src_unit.mesh_.vertices_) {
+                    auto& dst_vertex = dst_vertices.vertices_.emplace_back();
+                    dst_vertex.pos_ = src_vertex.pos_;
+                    dst_vertex.normal_ = src_vertex.normal_;
+                    dst_vertex.texcoord_ = src_vertex.uv_;
+                }
+
+                {
+                    const auto tri_count = dst_vertices.indices_.size() / 3;
+                    for (size_t i = 0; i < tri_count; ++i) {
+                        const auto i0 = dst_vertices.indices_.at(i * 3 + 0);
+                        const auto i1 = dst_vertices.indices_.at(i * 3 + 1);
+                        const auto i2 = dst_vertices.indices_.at(i * 3 + 2);
+
+                        auto& v0 = dst_vertices.vertices_.at(i0);
+                        auto& v1 = dst_vertices.vertices_.at(i1);
+                        auto& v2 = dst_vertices.vertices_.at(i2);
+
+                        ::calc_tangents(v0, v1, v2);
+                    }
+                }
+            }
+
+            for (const auto& src_unit : dmd_.units_indexed_joint_) {
+                auto& dst_vertices = units_indexed_joint_.emplace_back();
+
+                dst_vertices.indices_.assign(
+                    src_unit.mesh_.indices_.begin(),
+                    src_unit.mesh_.indices_.end()
+                );
+
+                for (auto& src_vertex : src_unit.mesh_.vertices_) {
+                    auto& dst_vertex = dst_vertices.vertices_.emplace_back();
+                    dst_vertex.pos_ = src_vertex.pos_;
+                    dst_vertex.normal_ = src_vertex.normal_;
+                    dst_vertex.uv_ = src_vertex.uv_;
+                    dst_vertex.joint_indices_ = src_vertex.joint_indices_;
+                    dst_vertex.joint_weights_ = src_vertex.joint_weights_;
+                }
+
+                {
+                    const auto tri_count = dst_vertices.indices_.size() / 3;
+                    for (size_t i = 0; i < tri_count; ++i) {
+                        const auto i0 = dst_vertices.indices_.at(i * 3 + 0);
+                        const auto i1 = dst_vertices.indices_.at(i * 3 + 1);
+                        const auto i2 = dst_vertices.indices_.at(i * 3 + 2);
+
+                        auto& v0 = dst_vertices.vertices_.at(i0);
+                        auto& v1 = dst_vertices.vertices_.at(i1);
+                        auto& v2 = dst_vertices.vertices_.at(i2);
+
+                        ::calc_tangents(v0, v1, v2);
+                    }
+                }
+            }
+
+            return this->success();
+        }
+
+        const dal::parser::Model* try_get_dmd() const {
+            if (!this->has_succeeded())
+                return nullptr;
+            return &dmd_;
+        }
+
+        const std::set<std::string>& get_tex_ids() const { return tex_ids; }
+        const std::set<std::string>& get_tex_ids_srgb() const {
+            return tex_ids_srgb;
+        }
+
+        const std::vector<mirinae::VerticesStaticPair>& units_indexed() const {
+            return units_indexed_;
+        }
+
+        const std::vector<mirinae::VerticesSkinnedPair>& units_indexed_joint(
+        ) const {
+            return units_indexed_joint_;
+        }
+
+    private:
+        dal::Filesystem& filesys_;
+        mirinae::respath_t path_;
+        std::vector<std::byte> raw_data_;
+        dal::parser::Model dmd_;
+        std::set<std::string> tex_ids;
+        std::set<std::string> tex_ids_srgb;
+        std::vector<mirinae::VerticesStaticPair> units_indexed_;
+        std::vector<mirinae::VerticesSkinnedPair> units_indexed_joint_;
+    };
+
+
+    class LoadTaskManager {
+
+    public:
+        LoadTaskManager(
+            sung::HTaskSche task_sche, mirinae::VulkanDevice& device
+        )
+            : task_sche_(task_sche), filesys_(&device.filesys()) {}
+
+        bool add_task(const mirinae::respath_t& path) {
+            if (this->has_task(path))
+                return false;
+
+            auto task = std::make_shared<ModelLoadTask>(path, *filesys_);
+            task_sche_->add_task(task);
+            tasks_.emplace(path, task);
+            return true;
+        }
+
+        bool has_task(const mirinae::respath_t& path) {
+            return tasks_.find(path) != tasks_.end();
+        }
+
+        void remove_task(const mirinae::respath_t& path) { tasks_.erase(path); }
+
+        std::shared_ptr<ModelLoadTask> try_get_task(
+            const mirinae::respath_t& path
+        ) {
+            const auto it = tasks_.find(path);
+            if (it == tasks_.end())
+                return nullptr;
+            return it->second;
+        }
+
+    private:
+        std::unordered_map<mirinae::respath_t, std::shared_ptr<ModelLoadTask>>
+            tasks_;
+        sung::HTaskSche task_sche_;
+        dal::Filesystem* filesys_;
+    };
+
+
     class ModelManager : public mirinae::IModelManager {
 
     public:
@@ -399,13 +592,16 @@ namespace {
 
         ModelManager(
             dal::HResMgr res_mgr,
+            sung::HTaskSche task_sche,
             mirinae::HTexMgr tex_man,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
             : device_(device)
             , desclayouts_(desclayouts)
+            , load_tasks_(task_sche, device)
             , res_mgr_(res_mgr)
+            , task_sche_(task_sche)
             , tex_man_(tex_man) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
@@ -415,60 +611,32 @@ namespace {
 
         ~ModelManager() override { cmd_pool_.destroy(device_.logi_device()); }
 
-        dal::ReqResult request(const respath& res_id) override {
+        dal::ReqResult request_static(const mirinae::respath_t& res_id
+        ) override {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return dal::ReqResult::ready;
 
-            const auto res_result = res_mgr_->request(res_id);
-            switch (res_result) {
-                case dal::ReqResult::ready:
-                    break;
-                case dal::ReqResult::loading:
-                    return dal::ReqResult::loading;
-                default:
-                    SPDLOG_WARN(
-                        "Failed to request resource: {}", res_id.u8string()
-                    );
-                    return res_result;
+            auto task = load_tasks_.try_get_task(res_id);
+            if (!task) {
+                if (!load_tasks_.add_task(res_id))
+                    return dal::ReqResult::unknown_error;
+                return dal::ReqResult::loading;
             }
+            if (!task->is_done())
+                return dal::ReqResult::loading;
 
-            const auto dmd = res_mgr_->get_dmd(res_id);
-            if (!dmd) {
-                SPDLOG_WARN("Failed to get dmd: {}", res_id.u8string());
+            const auto dmd = task->try_get_dmd();
+            if (!dmd)
                 return dal::ReqResult::cannot_read_file;
-            }
-
-            std::set<std::string> tex_ids;
-            std::set<std::string> tex_ids_srgb;
-            for (const auto& unit : dmd->units_straight_) {
-                tex_ids_srgb.insert(unit.material_.albedo_map_);
-                tex_ids.insert(unit.material_.normal_map_);
-                tex_ids.insert(unit.material_.roughness_map_);
-            }
-            for (const auto& unit : dmd->units_indexed_) {
-                tex_ids_srgb.insert(unit.material_.albedo_map_);
-                tex_ids.insert(unit.material_.normal_map_);
-                tex_ids.insert(unit.material_.roughness_map_);
-            }
-            for (const auto& unit : dmd->units_straight_joint_) {
-                tex_ids_srgb.insert(unit.material_.albedo_map_);
-                tex_ids.insert(unit.material_.normal_map_);
-                tex_ids.insert(unit.material_.roughness_map_);
-            }
-            for (const auto& unit : dmd->units_indexed_joint_) {
-                tex_ids_srgb.insert(unit.material_.albedo_map_);
-                tex_ids.insert(unit.material_.normal_map_);
-                tex_ids.insert(unit.material_.roughness_map_);
-            }
 
             bool loading = false;
-            for (const auto& tex_id : tex_ids) {
+            for (const auto& tex_id : task->get_tex_ids()) {
                 const auto tex_path = res_id.parent_path() / tex_id;
                 const auto res_result = tex_man_->request(tex_path, false);
                 loading |= (dal::ReqResult::loading == res_result);
             }
-            for (const auto& tex_id : tex_ids_srgb) {
+            for (const auto& tex_id : task->get_tex_ids_srgb()) {
                 const auto tex_path = res_id.parent_path() / tex_id;
                 const auto res_result = tex_man_->request(tex_path, true);
                 loading |= (dal::ReqResult::loading == res_result);
@@ -476,13 +644,108 @@ namespace {
             if (loading)
                 return dal::ReqResult::loading;
 
+            auto output = std::make_shared<mirinae::RenderModel>(device_);
+
+            for (size_t i = 0; i < dmd->units_indexed_.size(); ++i) {
+                const auto& src_unit = dmd->units_indexed_.at(i);
+                const auto& dst_vertices = task->units_indexed().at(i);
+
+                ::MaterialResources mat_res;
+                mat_res.fetch(res_id, src_unit.material_, *tex_man_);
+
+                auto& dst_unit =
+                    ((src_unit.material_.transparency_)
+                         ? output->render_units_alpha_.emplace_back()
+                         : output->render_units_.emplace_back());
+                dst_unit.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    dst_vertices,
+                    mat_res.model_ubuf_,
+                    mat_res.albedo_map_->image_view(),
+                    mat_res.normal_map_->image_view(),
+                    mat_res.orm_map_->image_view(),
+                    cmd_pool_,
+                    desclayouts_,
+                    device_
+                );
+            }
+
+            models_[res_id] = output;
             return dal::ReqResult::ready;
         }
 
-        HRenMdlStatic request_static(const respath& res_id) override {
+        dal::ReqResult request_skinned(const mirinae::respath_t& res_id
+        ) override {
+            auto found = models_.find(res_id);
+            if (models_.end() != found)
+                return dal::ReqResult::ready;
+
+            auto task = load_tasks_.try_get_task(res_id);
+            if (!task) {
+                if (!load_tasks_.add_task(res_id))
+                    return dal::ReqResult::unknown_error;
+                return dal::ReqResult::loading;
+            }
+            if (!task->is_done())
+                return dal::ReqResult::loading;
+
+            const auto dmd = task->try_get_dmd();
+            if (!dmd)
+                return dal::ReqResult::cannot_read_file;
+
+            bool loading = false;
+            for (const auto& tex_id : task->get_tex_ids()) {
+                const auto tex_path = res_id.parent_path() / tex_id;
+                const auto res_result = tex_man_->request(tex_path, false);
+                loading |= (dal::ReqResult::loading == res_result);
+            }
+            for (const auto& tex_id : task->get_tex_ids_srgb()) {
+                const auto tex_path = res_id.parent_path() / tex_id;
+                const auto res_result = tex_man_->request(tex_path, true);
+                loading |= (dal::ReqResult::loading == res_result);
+            }
+            if (loading)
+                return dal::ReqResult::loading;
+
+            auto output = std::make_shared<mirinae::RenderModelSkinned>(device_
+            );
+
+            for (size_t i = 0; i < dmd->units_indexed_joint_.size(); ++i) {
+                const auto& src_unit = dmd->units_indexed_joint_.at(i);
+                const auto& dst_vertices = task->units_indexed_joint().at(i);
+
+                ::MaterialResources mat_res;
+                mat_res.fetch(res_id, src_unit.material_, *tex_man_);
+
+                auto& dst_unit = src_unit.material_.transparency_
+                                     ? output->runits_alpha_.emplace_back()
+                                     : output->runits_.emplace_back();
+                dst_unit.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    dst_vertices,
+                    mat_res.model_ubuf_,
+                    mat_res.albedo_map_->image_view(),
+                    mat_res.normal_map_->image_view(),
+                    mat_res.orm_map_->image_view(),
+                    cmd_pool_,
+                    desclayouts_,
+                    device_
+                );
+            }
+
+            output->skel_anim_->skel_ = dmd->skeleton_;
+            output->skel_anim_->anims_ = dmd->animations_;
+
+            skin_models_[res_id] = output;
+            return dal::ReqResult::ready;
+        }
+
+        HRenMdlStatic get_static(const respath& res_id) override {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return found->second;
+
+            return nullptr;
 
             const auto content = device_.filesys().read_file(res_id);
             if (!content.has_value()) {
@@ -619,10 +882,12 @@ namespace {
             return output;
         }
 
-        HRenMdlSkinned request_skinned(const respath& res_id) override {
+        HRenMdlSkinned get_skinned(const respath& res_id) override {
             auto found = skin_models_.find(res_id);
             if (skin_models_.end() != found)
                 return found->second;
+
+            return nullptr;
 
             const auto content = device_.filesys().read_file(res_id);
             if (!content.has_value()) {
@@ -732,7 +997,9 @@ namespace {
     private:
         mirinae::VulkanDevice& device_;
         mirinae::DesclayoutManager& desclayouts_;
+        ::LoadTaskManager load_tasks_;
         dal::HResMgr res_mgr_;
+        sung::HTaskSche task_sche_;
         mirinae::HTexMgr tex_man_;
         mirinae::CommandPool cmd_pool_;
 
@@ -844,12 +1111,13 @@ namespace mirinae {
 
     HMdlMgr create_model_mgr(
         dal::HResMgr res_mgr,
+        sung::HTaskSche task_sche,
         HTexMgr tex_man,
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
         return std::make_shared<ModelManager>(
-            res_mgr, tex_man, desclayouts, device
+            res_mgr, task_sche, tex_man, desclayouts, device
         );
     }
 
