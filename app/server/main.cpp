@@ -1,4 +1,4 @@
-#include <sung/general/os_detect.hpp>
+#include <sung/basic/os_detect.hpp>
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/network.hpp"

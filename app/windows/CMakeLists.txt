@@ -1,3 +1,6 @@
+find_package(glfw3 CONFIG REQUIRED)
+
+
 add_library(mirinapp_windows STATIC
     dump.cpp
 )

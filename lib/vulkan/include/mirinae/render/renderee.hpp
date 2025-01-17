@@ -145,7 +145,6 @@ namespace mirinae {
 
     using HMdlMgr = std::shared_ptr<IModelManager>;
     HMdlMgr create_model_mgr(
-        dal::HResMgr res_mgr,
         sung::HTaskSche task_sche,
         HTexMgr tex_man,
         DesclayoutManager& desclayouts,

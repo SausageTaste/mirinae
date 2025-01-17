@@ -13,9 +13,8 @@ target_include_directories(mirinae_aux PUBLIC
 )
 target_link_libraries(mirinae_aux PUBLIC
     ${LUA_LIBRARIES}
+    dalbaragi::dalbaragi_tools
     uni-algo::uni-algo
-    dalbaragi::daltools
-    sungtools::general
 )
 target_compile_features(mirinae_aux PUBLIC cxx_std_17)
 add_library(mirinae::aux ALIAS mirinae_aux)

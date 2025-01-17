@@ -1,8 +1,8 @@
 #pragma once
 
 #include <daltools/filesys/res_mgr.hpp>
-#include <sung/general/expected.hpp>
-#include <sung/general/threading.hpp>
+#include <sung/basic/expected.hpp>
+#include <sung/basic/threading.hpp>
 
 #include "mirinae/render/vkdevice.hpp"
 

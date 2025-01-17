@@ -3,8 +3,8 @@
 #include <ktxvulkan.h>
 #include <daltools/img/backend/ktx.hpp>
 #include <daltools/img/backend/stb.hpp>
-#include <sung/general/stringtool.hpp>
-#include <sung/general/time.hpp>
+#include <sung/basic/stringtool.hpp>
+#include <sung/basic/time.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"

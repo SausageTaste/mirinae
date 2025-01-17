@@ -1,6 +1,6 @@
 #include "mirinae/render/renderpass/gbuf.hpp"
 
-#include <sung/general/time.hpp>
+#include <sung/basic/time.hpp>
 
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"

@@ -8,7 +8,7 @@ set(MIRINAE_ENABLE_TEST OFF CACHE BOOL "Enable testing")
 set(MIRINAE_BUILD_APP OFF CACHE BOOL "Build projects in app folder")
 
 
-add_subdirectory(extern/DalbaragiTools)
+add_subdirectory(extern/dalbaragi)
 
 find_package(EnTT CONFIG REQUIRED)
 find_package(Lua REQUIRED)

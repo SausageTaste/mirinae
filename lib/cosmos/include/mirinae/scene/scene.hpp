@@ -1,7 +1,7 @@
 #pragma once
 
 #include <entt/entt.hpp>
-#include <sung/general/geometry3d.hpp>
+#include <sung/basic/geometry3d.hpp>
 
 #include "mirinae/lightweight/script.hpp"
 #include "mirinae/lightweight/skin_anim.hpp"

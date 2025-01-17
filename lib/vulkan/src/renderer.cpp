@@ -1,7 +1,7 @@
 #include "mirinae/renderer.hpp"
 
 #include <daltools/common/util.h>
-#include <sung/general/time.hpp>
+#include <sung/basic/time.hpp>
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
@@ -486,20 +486,18 @@ namespace {
         RendererVulkan(
             mirinae::EngineCreateInfo&& cinfo,
             sung::HTaskSche task_sche,
-            std::shared_ptr<dal::IResourceManager> res_mgr,
             std::shared_ptr<mirinae::ScriptEngine> script,
             std::shared_ptr<mirinae::CosmosSimulator> cosmos,
             int init_width,
             int init_height
         )
             : device_(std::move(cinfo))
-            , res_mgr_(res_mgr)
             , script_(script)
             , cosmos_(cosmos)
             , desclayout_(device_)
             , tex_man_(mirinae::create_tex_mgr(task_sche, device_))
             , model_man_(mirinae::create_model_mgr(
-                  res_mgr_, task_sche, tex_man_, desclayout_, device_
+                  task_sche, tex_man_, desclayout_, device_
               ))
             , overlay_man_(
                   init_width, init_height, desclayout_, *tex_man_, device_
@@ -1115,7 +1113,6 @@ namespace {
 
         // This must be the first member variable
         mirinae::VulkanDevice device_;
-        std::shared_ptr<dal::IResourceManager>& res_mgr_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
@@ -1152,14 +1149,13 @@ namespace mirinae {
     std::unique_ptr<IRenderer> create_vk_renderer(
         mirinae::EngineCreateInfo&& cinfo,
         sung::HTaskSche task_sche,
-        std::shared_ptr<dal::IResourceManager> res_mgr,
         std::shared_ptr<mirinae::ScriptEngine> script,
         std::shared_ptr<mirinae::CosmosSimulator> cosmos
     ) {
         const auto w = cinfo.init_width_;
         const auto h = cinfo.init_height_;
         return std::make_unique<::RendererVulkan>(
-            std::move(cinfo), task_sche, res_mgr, script, cosmos, w, h
+            std::move(cinfo), task_sche, script, cosmos, w, h
         );
     }
 

@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-#include <sung/general/time.hpp>
+#include <sung/basic/time.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 
