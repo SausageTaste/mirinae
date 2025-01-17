@@ -1,14 +1,23 @@
 cmake_minimum_required(VERSION 3.12)
 
 set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+set(VCPKG_OVERLAY_PORTS
+    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/ports
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/dalbaragi/vcpkg/ports
+)
 
 project(mirinae)
 
 set(MIRINAE_ENABLE_TEST OFF CACHE BOOL "Enable testing")
 set(MIRINAE_BUILD_APP OFF CACHE BOOL "Build projects in app folder")
+set(MIRINAE_USE_DALBARAGI_SUBMODULE OFF CACHE BOOL "Path to dalbaragi submodule")
 
 
-add_subdirectory(extern/dalbaragi)
+if (MIRINAE_USE_DALBARAGI_SUBMODULE)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/extern/dalbaragi)
+else()
+    find_package(dalbaragi CONFIG REQUIRED)
+endif()
 
 find_package(EnTT CONFIG REQUIRED)
 find_package(Lua REQUIRED)
