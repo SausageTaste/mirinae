@@ -5,7 +5,7 @@
 #include <set>
 #include <sstream>
 
-#include <sung/general/stringtool.hpp>
+#include <sung/basic/stringtool.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/konsts.hpp"

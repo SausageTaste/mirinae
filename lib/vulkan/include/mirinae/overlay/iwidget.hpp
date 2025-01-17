@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sung/general/aabb.hpp>
+#include <sung/basic/aabb.hpp>
 
 #include "mirinae/lightweight/input_proc.hpp"
 #include "mirinae/render/renderee.hpp"

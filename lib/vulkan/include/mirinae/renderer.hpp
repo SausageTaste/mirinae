@@ -26,7 +26,6 @@ namespace mirinae {
     std::unique_ptr<IRenderer> create_vk_renderer(
         mirinae::EngineCreateInfo&& cinfo,
         sung::HTaskSche task_sche,
-        std::shared_ptr<dal::IResourceManager> res_mgr,
         std::shared_ptr<mirinae::ScriptEngine> script,
         std::shared_ptr<mirinae::CosmosSimulator> cosmos
     );

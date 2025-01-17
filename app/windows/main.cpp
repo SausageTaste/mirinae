@@ -4,7 +4,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <sung/general/aabb.hpp>
+#include <sung/basic/aabb.hpp>
 
 #include "dump.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"

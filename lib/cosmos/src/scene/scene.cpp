@@ -1,6 +1,6 @@
 #include "mirinae/scene/scene.hpp"
 
-#include <sung/general/aabb.hpp>
+#include <sung/basic/aabb.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 

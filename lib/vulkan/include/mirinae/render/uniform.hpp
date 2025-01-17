@@ -3,7 +3,7 @@
 #include <list>
 #include <map>
 
-#include <sung/general/angle.hpp>
+#include <sung/basic/angle.hpp>
 
 #include "mirinae/math/include_glm.hpp"
 #include "vkmajorplayers.hpp"

@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <vulkan/vulkan.h>
-#include <sung/general/linalg.hpp>
+#include <sung/basic/linalg.hpp>
 
 
 namespace mirinae {

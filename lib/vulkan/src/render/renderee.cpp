@@ -3,7 +3,7 @@
 #include <set>
 
 #include <daltools/dmd/parser.h>
-#include <sung/general/stringtool.hpp>
+#include <sung/basic/stringtool.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
@@ -591,7 +591,6 @@ namespace {
         using HRenMdlSkinned = mirinae::HRenMdlSkinned;
 
         ModelManager(
-            dal::HResMgr res_mgr,
             sung::HTaskSche task_sche,
             mirinae::HTexMgr tex_man,
             mirinae::DesclayoutManager& desclayouts,
@@ -600,7 +599,6 @@ namespace {
             : device_(device)
             , desclayouts_(desclayouts)
             , load_tasks_(task_sche, device)
-            , res_mgr_(res_mgr)
             , task_sche_(task_sche)
             , tex_man_(tex_man) {
             cmd_pool_.init(
@@ -998,7 +996,6 @@ namespace {
         mirinae::VulkanDevice& device_;
         mirinae::DesclayoutManager& desclayouts_;
         ::LoadTaskManager load_tasks_;
-        dal::HResMgr res_mgr_;
         sung::HTaskSche task_sche_;
         mirinae::HTexMgr tex_man_;
         mirinae::CommandPool cmd_pool_;
@@ -1110,14 +1107,13 @@ namespace mirinae {
 namespace mirinae {
 
     HMdlMgr create_model_mgr(
-        dal::HResMgr res_mgr,
         sung::HTaskSche task_sche,
         HTexMgr tex_man,
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
         return std::make_shared<ModelManager>(
-            res_mgr, task_sche, tex_man, desclayouts, device
+            task_sche, tex_man, desclayouts, device
         );
     }
 

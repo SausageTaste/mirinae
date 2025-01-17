@@ -162,13 +162,11 @@ namespace {
             camera_controller_.osio_ = cinfo.osio_;
 
             sung::HTaskSche task_sche = sung::create_task_scheduler();
-            sung::HDataCentral datacen = sung::create_data_central();
-            res_mgr_ = dal::create_resmgr(filesys_, task_sche, datacen);
             client_ = mirinae::create_client();
             script_ = std::make_shared<mirinae::ScriptEngine>();
             cosmos_ = std::make_shared<mirinae::CosmosSimulator>(*script_);
             renderer_ = mirinae::create_vk_renderer(
-                std::move(cinfo), task_sche, res_mgr_, script_, cosmos_
+                std::move(cinfo), task_sche, script_, cosmos_
             );
 
             auto& reg = cosmos_->reg();
@@ -340,7 +338,6 @@ namespace {
 
     private:
         std::shared_ptr<dal::Filesystem> filesys_;
-        std::shared_ptr<dal::IResourceManager> res_mgr_;
         std::unique_ptr<mirinae::INetworkClient> client_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
