@@ -1,0 +1,24 @@
+{
+    "name": "dalbaragi",
+    "version-string": "0.1.2",
+    "description": "Sungmin's C++ Game engine helper library",
+    "homepage": "https://github.com/SausageTaste/dalbaragi",
+    "dependencies": [
+        "aklomp-base64",
+        "argparse",
+        "brotli",
+        "glm",
+        "gtest",
+        "nlohmann-json",
+        "spdlog",
+        "stb",
+        "sungtools",
+        "zlib",
+        {
+            "name": "ktx",
+            "features": [
+                "vulkan"
+            ]
+        }
+    ]
+}
