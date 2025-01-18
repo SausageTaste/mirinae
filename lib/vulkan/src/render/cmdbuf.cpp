@@ -178,6 +178,11 @@ namespace mirinae {
 
     CLS::CLS(VkPipelineLayout layout) : layout_(layout) {}
 
+    DescSetBindInfo& CLS::bind_point(VkPipelineBindPoint point) {
+        bind_point_ = point;
+        return *this;
+    }
+
     DescSetBindInfo& CLS::layout(VkPipelineLayout layout) {
         layout_ = layout;
         return *this;
@@ -207,7 +212,7 @@ namespace mirinae {
     void CLS::record(VkCommandBuffer cmdbuf) {
         vkCmdBindDescriptorSets(
             cmdbuf,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            bind_point_,
             layout_,
             first_set_,
             static_cast<uint32_t>(desc_sets_.size()),

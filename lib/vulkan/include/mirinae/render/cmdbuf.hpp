@@ -282,8 +282,8 @@ namespace mirinae {
         DescSetBindInfo() = default;
         DescSetBindInfo(VkPipelineLayout layout);
 
+        DescSetBindInfo& bind_point(VkPipelineBindPoint point);
         DescSetBindInfo& layout(VkPipelineLayout layout);
-
         DescSetBindInfo& first_set(uint32_t set);
 
         DescSetBindInfo& set(VkDescriptorSet set);
@@ -294,6 +294,7 @@ namespace mirinae {
 
     private:
         std::vector<VkDescriptorSet> desc_sets_;
+        VkPipelineBindPoint bind_point_ = VK_PIPELINE_BIND_POINT_GRAPHICS;
         VkPipelineLayout layout_ = VK_NULL_HANDLE;
         uint32_t first_set_ = 0;
     };
