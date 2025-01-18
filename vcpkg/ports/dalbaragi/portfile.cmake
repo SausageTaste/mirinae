@@ -1,8 +1,8 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO SausageTaste/dalbaragi
-    REF v0.1.2
-    SHA512 2bddf960fdc1161d3fdd67a11ecd78aee22e225a4c3e18360159ecd5eed1f240e22c5b4c412fa6f49a7ca6adde58dc52ff03d65859963274b18016a9e78495cb
+    REF main
+    SHA512 094e2cb4e441b88ff37c22cae60ddad3de2ace026586ed60ee3544eae96463e656cf3ed6e09ee951c03fa51bf1b790be39d1c191bd00bce5d86c1348c1cde645
 )
 
 vcpkg_install_copyright(FILE_LIST ${SOURCE_PATH}/LICENSE)
