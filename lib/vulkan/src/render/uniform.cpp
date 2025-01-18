@@ -59,6 +59,9 @@ namespace mirinae {
 
     DescLayoutBuilder::DescLayoutBuilder(const char* name) : name_(name) {}
 
+    DescLayoutBuilder::DescLayoutBuilder(const std::string& name)
+        : name_(name) {}
+
     DescLayoutBuilder& DescLayoutBuilder::new_binding() {
         auto& binding = bindings_.emplace_back();
         binding.binding = static_cast<uint32_t>(bindings_.size() - 1);

@@ -505,9 +505,6 @@ namespace {
             , overlay_man_(
                   init_width, init_height, desclayout_, *tex_man_, device_
               )
-            , rp_states_ocean_test_(
-                  mirinae::rp::ocean::create_rp_states_ocean_test()
-              )
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
             // This must be the first member variable right after vtable pointer
@@ -900,11 +897,19 @@ namespace {
             rp_states_debug_mesh_.init(device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
 
-            mirinae::rp::ocean::RpCreateParams params;
-            params.device_ = &device_;
-            params.rp_res_ = &rp_res_;
-            params.desclayouts_ = &desclayout_;
-            rp_states_ocean_test_->init(params);
+            rp_states_ocean_test_ =
+                mirinae::rp::ocean::create_rp_states_ocean_test(
+                    rp_res_, desclayout_, device_
+                );
+
+            rp_states_ocean_tess_ =
+                mirinae::rp::ocean::create_rp_states_ocean_tess(
+                    swapchain_.views_count(),
+                    fbuf_images_,
+                    rp_res_,
+                    desclayout_,
+                    device_
+                );
         }
 
         void destroy_swapchain_and_relatives() {
@@ -912,7 +917,8 @@ namespace {
 
             rpm_.shadow().pool().destroy_fbufs(device_);
 
-            rp_states_ocean_test_->destroy(rp_res_, device_);
+            rp_states_ocean_tess_.reset();
+            rp_states_ocean_test_.reset();
             rp_states_fillscreen_.destroy(device_);
             rp_states_debug_mesh_.destroy(device_);
             rp_states_transp_.destroy(device_);
@@ -1148,6 +1154,7 @@ namespace {
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         std::unique_ptr<mirinae::rp::ocean::IRpStates> rp_states_ocean_test_;
+        std::unique_ptr<mirinae::rp::ocean::IRpStates> rp_states_ocean_tess_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         mirinae::CommandPool cmd_pool_;

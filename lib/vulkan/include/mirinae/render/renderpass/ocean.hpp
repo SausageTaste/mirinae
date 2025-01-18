@@ -21,14 +21,22 @@ namespace mirinae::rp::ocean {
 
     struct IRpStates {
         virtual ~IRpStates() = default;
-
-        virtual bool init(RpCreateParams& params) = 0;
-        virtual void destroy(RpResources& rp_res, VulkanDevice& device) = 0;
         virtual void record(const RpContext& context) = 0;
-
         virtual const std::string& name() const = 0;
     };
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_test();
+    std::unique_ptr<IRpStates> create_rp_states_ocean_test(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    );
+
+    std::unique_ptr<IRpStates> create_rp_states_ocean_tess(
+        size_t swapchain_count,
+        mirinae::FbufImageBundle& fbuf_bundle,
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    );
 
 }  // namespace mirinae::rp::ocean

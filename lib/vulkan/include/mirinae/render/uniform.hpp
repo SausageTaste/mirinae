@@ -301,6 +301,7 @@ namespace mirinae {
 
     public:
         explicit DescLayoutBuilder(const char* name);
+        explicit DescLayoutBuilder(const std::string& name);
 
         // Raw
         DescLayoutBuilder& new_binding();
