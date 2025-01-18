@@ -38,9 +38,9 @@ namespace mirinae {
             return;
 
         auto& r = it->second;
-        r.writers_.erase(id);
-        r.readers_.erase(id);
-        SPDLOG_INFO("RpImage '{}' is not used by '{}'", id, user_id);
+        r.writers_.erase(user_id);
+        r.readers_.erase(user_id);
+        SPDLOG_INFO("RpImage '{}' is no longer used by '{}'", id, user_id);
 
         if (r.writers_.empty() && r.readers_.empty()) {
             r.destroy(device_);

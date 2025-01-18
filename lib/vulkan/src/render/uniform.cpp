@@ -239,6 +239,26 @@ namespace mirinae {
         return *this;
     }
 
+    DescWriteInfoBuilder& DescWriteInfoBuilder::add_img_sampler_general(
+        VkImageView image_view, VkSampler sampler
+    ) {
+        auto& image_info = image_info_.emplace_back();
+        image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        image_info.imageView = image_view;
+        image_info.sampler = sampler;
+
+        auto& write = data_.emplace_back();
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = descset_;
+        write.dstBinding = binding_index_++;
+        write.dstArrayElement = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write.descriptorCount = 1;
+        write.pImageInfo = &image_info;
+
+        return *this;
+    }
+
     DescWriteInfoBuilder& DescWriteInfoBuilder::add_input_attach(
         VkImageView image_view
     ) {

@@ -360,6 +360,9 @@ namespace mirinae {
         DescWriteInfoBuilder& add_ubuf(const mirinae::Buffer& buffer);
         // Combinded image sampler
         DescWriteInfoBuilder& add_img_sampler(VkImageView img, VkSampler sam);
+        DescWriteInfoBuilder& add_img_sampler_general(
+            VkImageView img, VkSampler sam
+        );
         DescWriteInfoBuilder& add_input_attach(VkImageView image_view);
         DescWriteInfoBuilder& add_storage_img(VkImageView image_view);
 
