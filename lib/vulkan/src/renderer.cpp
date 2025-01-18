@@ -10,6 +10,7 @@
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass.hpp"
+#include "mirinae/render/renderpass/builder.hpp"
 #include "mirinae/render/renderpass/compo.hpp"
 #include "mirinae/render/renderpass/envmap.hpp"
 #include "mirinae/render/renderpass/gbuf.hpp"
@@ -474,6 +475,28 @@ namespace {
         std::vector<VkDescriptorSet> desc_sets_;
     };
 
+
+    class RpStatesOceanTest {
+
+    public:
+        void init(mirinae::VulkanDevice& device) {
+            mirinae::ImageCreateInfo cinfo;
+            cinfo.set_dimensions(128, 128)
+                .set_format(VK_FORMAT_R32G32B32_SFLOAT)
+                .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
+                .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
+
+            img_.init(cinfo.get(), device.mem_alloc());
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            img_.destroy(device.mem_alloc());
+        }
+
+    private:
+        mirinae::Image img_;
+    };
+
 }  // namespace
 
 
@@ -886,6 +909,7 @@ namespace {
             );
             rp_states_debug_mesh_.init(device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
+            rp_states_ocean_test_.init(device_);
         }
 
         void destroy_swapchain_and_relatives() {
@@ -893,6 +917,7 @@ namespace {
 
             rpm_.shadow().pool().destroy_fbufs(device_);
 
+            rp_states_ocean_test_.destroy(device_);
             rp_states_fillscreen_.destroy(device_);
             rp_states_debug_mesh_.destroy(device_);
             rp_states_transp_.destroy(device_);
@@ -1126,6 +1151,7 @@ namespace {
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
+        ::RpStatesOceanTest rp_states_ocean_test_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         mirinae::CommandPool cmd_pool_;
