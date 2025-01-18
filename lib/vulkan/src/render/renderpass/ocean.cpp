@@ -10,11 +10,12 @@ namespace {
     class RpStatesOceanTest : public mirinae::rp::ocean::IRpStates {
 
     public:
-        bool init(mirinae::rp::ocean::RpCreateParams& params) override {
-            auto& device = *params.device_;
-            auto& rp_res = *params.rp_res_;
-            auto& desclayouts = *params.desclayouts_;
-
+        RpStatesOceanTest(
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device), rp_res_(rp_res) {
             // Images
             {
                 mirinae::ImageCreateInfo cinfo;
@@ -37,6 +38,7 @@ namespace {
                 }
             }
 
+            // Image transitions
             {
                 mirinae::ImageMemoryBarrier barrier;
                 barrier.set_src_access(0)
@@ -128,25 +130,23 @@ namespace {
                 MIRINAE_ASSERT(res == VK_SUCCESS);
             }
 
-            return true;
+            return;
         }
 
-        void destroy(
-            mirinae::RpResources& rp_res, mirinae::VulkanDevice& device
-        ) override {
-            for (auto& img : imgs_) rp_res.free_img(img->id(), this->name());
+        ~RpStatesOceanTest() override {
+            for (auto& img : imgs_) rp_res_.free_img(img->id(), this->name());
             imgs_.clear();
 
-            desc_pool_.destroy(device.logi_device());
+            desc_pool_.destroy(device_.logi_device());
 
             if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device.logi_device(), pipeline_, nullptr);
+                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
                 pipeline_ = VK_NULL_HANDLE;
             }
 
             if (VK_NULL_HANDLE != pipeline_layout_) {
                 vkDestroyPipelineLayout(
-                    device.logi_device(), pipeline_layout_, nullptr
+                    device_.logi_device(), pipeline_layout_, nullptr
                 );
                 pipeline_layout_ = VK_NULL_HANDLE;
             }
@@ -177,6 +177,9 @@ namespace {
         }
 
     private:
+        mirinae::VulkanDevice& device_;
+        mirinae::RpResources& rp_res_;
+
         std::vector<mirinae::HRpImage> imgs_;
         std::vector<VkDescriptorSet> desc_sets_;
         mirinae::DescPool desc_pool_;
@@ -185,10 +188,244 @@ namespace {
     };
 
 }  // namespace
+
+
+// Ocean tessellation
+namespace {
+
+    struct U_OceanTessPushConst {
+        glm::mat4 pvm_;
+        glm::mat4 view_;
+        glm::mat4 model_;
+        glm::vec4 tile_index_count_;
+        glm::vec4 height_map_size_fbuf_size_;
+        float height_scale_;
+    };
+
+
+    class RpStatesOceanTess : public mirinae::rp::ocean::IRpStates {
+
+    public:
+        RpStatesOceanTess(
+            size_t swapchain_count,
+            mirinae::FbufImageBundle& fbuf_bundle,
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device), rp_res_(rp_res) {
+            // Images
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                const auto img_name = fmt::format(
+                    "ocean_test:height_map_f#{}", i
+                );
+                auto img = rp_res.get_img_reader(img_name, this->name());
+                MIRINAE_ASSERT(nullptr != img);
+                height_maps_.push_back(img);
+            }
+
+            // Descriptor layout
+            {
+                mirinae::DescLayoutBuilder builder{ this->name() + ":main" };
+                builder
+                    .new_binding()  // Height map
+                    .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .set_count(1)
+                    .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .add_stage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+                    .finish_binding();
+
+                desclayouts.add(builder, device.logi_device());
+            }
+
+            // Desciptor Sets
+            {
+                desc_pool_.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    desclayouts.get(name() + ":main").size_info(),
+                    device.logi_device()
+                );
+
+                desc_sets_ = desc_pool_.alloc(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    desclayouts.get(name() + ":main").layout(),
+                    device.logi_device()
+                );
+
+                mirinae::DescWriteInfoBuilder builder;
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    builder.set_descset(desc_sets_[i])
+                        .add_img_sampler(
+                            height_maps_[i]->view_.get(),
+                            device.samplers().get_linear()
+                        );
+                }
+                builder.apply_all(device.logi_device());
+            }
+
+            // Render pass
+            {
+                mirinae::RenderPassBuilder builder;
+
+                builder.attach_desc()
+                    .add(fbuf_bundle.compo().format())
+                    .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .op_pair_load_store();
+                builder.attach_desc()
+                    .add(fbuf_bundle.depth().format())
+                    .ini_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .op_pair_load_store();
+
+                builder.color_attach_ref().add_color_attach(0);
+                builder.depth_attach_ref().set(1);
+
+                builder.subpass_dep().add().preset_single();
+
+                render_pass_ = builder.build(device.logi_device());
+            }
+
+            // Pipeline layout
+            {
+                pipe_layout_ =
+                    mirinae::PipelineLayoutBuilder{}
+                        .desc(desclayouts.get(name() + ":main").layout())
+                        .add_vertex_flag()
+                        .add_tesc_flag()
+                        .add_tese_flag()
+                        .add_frag_flag()
+                        .pc<U_OceanTessPushConst>(0)
+                        .build(device);
+            }
+
+            // Pipeline
+            {
+                mirinae::PipelineBuilder builder{ device };
+
+                builder.shader_stages()
+                    .add_vert(":asset/spv/ocean_tess_vert.spv")
+                    .add_tesc(":asset/spv/ocean_tess_tesc.spv")
+                    .add_tese(":asset/spv/ocean_tess_tese.spv")
+                    .add_frag(":asset/spv/ocean_tess_frag.spv");
+
+                builder.input_assembly_state().topology_patch_list();
+
+                builder.tes_state().patch_ctrl_points(4);
+
+                builder.rasterization_state().cull_mode_back();
+
+                builder.depth_stencil_state()
+                    .depth_test_enable(true)
+                    .depth_write_enable(true);
+
+                builder.color_blend_state().add(false, 1);
+
+                builder.dynamic_state()
+                    .add(VK_DYNAMIC_STATE_LINE_WIDTH)
+                    .add_viewport()
+                    .add_scissor();
+
+                pipeline_ = builder.build(render_pass_, pipe_layout_);
+            }
+
+            // Framebuffers
+            {
+                mirinae::FbufCinfo cinfo;
+                cinfo.set_rp(render_pass_)
+                    .add_attach(fbuf_bundle.compo().image_view())
+                    .add_attach(fbuf_bundle.depth().image_view())
+                    .set_dim(fbuf_bundle.width(), fbuf_bundle.height());
+                for (int i = 0; i < swapchain_count; ++i)
+                    fbufs_.push_back(cinfo.build(device));
+            }
+
+            // Misc
+            {
+                clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+                clear_values_.at(1).depthStencil = { 1.0f, 0 };
+            }
+
+            return;
+        }
+
+        ~RpStatesOceanTess() override {
+            for (auto& img : height_maps_)
+                rp_res_.free_img(img->id(), this->name());
+            height_maps_.clear();
+
+            desc_pool_.destroy(device_.logi_device());
+
+            if (VK_NULL_HANDLE != pipeline_) {
+                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
+                pipeline_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != pipe_layout_) {
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), pipe_layout_, nullptr
+                );
+                pipe_layout_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != render_pass_) {
+                vkDestroyRenderPass(
+                    device_.logi_device(), render_pass_, nullptr
+                );
+                render_pass_ = VK_NULL_HANDLE;
+            }
+
+            for (auto& handle : fbufs_) {
+                vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
+            }
+            fbufs_.clear();
+        }
+
+        void record(const mirinae::rp::ocean::RpContext& context) override {}
+
+        const std::string& name() const override {
+            static const std::string name = "ocean_tess";
+            return name;
+        }
+
+    private:
+        mirinae::VulkanDevice& device_;
+        mirinae::RpResources& rp_res_;
+
+        std::vector<mirinae::HRpImage> height_maps_;
+        std::vector<VkDescriptorSet> desc_sets_;
+        mirinae::DescPool desc_pool_;
+        VkRenderPass render_pass_ = VK_NULL_HANDLE;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
+
+        std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
+        std::array<VkClearValue, 2> clear_values_;
+    };
+
+}  // namespace
+
+
 namespace mirinae::rp::ocean {
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_test() {
-        return std::make_unique<RpStatesOceanTest>();
+    std::unique_ptr<IRpStates> create_rp_states_ocean_test(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<RpStatesOceanTest>(rp_res, desclayouts, device);
+    }
+
+    std::unique_ptr<IRpStates> create_rp_states_ocean_tess(
+        size_t swapchain_count,
+        mirinae::FbufImageBundle& fbuf_bundle,
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<RpStatesOceanTess>(
+            swapchain_count, fbuf_bundle, rp_res, desclayouts, device
+        );
     }
 
 }  // namespace mirinae::rp::ocean

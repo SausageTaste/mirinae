@@ -50,7 +50,7 @@ namespace mirinae {
     }
 
     HRpImage RpResources::new_img(const str& name, const str& user_id) {
-        const auto id = name + ":" + user_id;
+        const auto id = user_id + ":" + name;
 
         auto it = imgs_.find(id);
         if (it != imgs_.end()) {
