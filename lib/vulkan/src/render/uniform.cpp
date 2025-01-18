@@ -16,6 +16,15 @@ namespace mirinae {
         return output;
     }
 
+    DescSizeInfo& DescSizeInfo::add(VkDescriptorType type, uint32_t cnt) {
+        const auto it = data_.find(type);
+        if (it == data_.end())
+            data_[type] = cnt;
+        else
+            it->second += cnt;
+        return *this;
+    }
+
     void DescSizeInfo::multiply_counts(uint32_t factor) {
         for (auto& [type, cnt] : data_) cnt *= factor;
     }
@@ -42,14 +51,6 @@ namespace mirinae {
         data_[type] = cnt;
     }
 
-    void DescSizeInfo::add(VkDescriptorType type, uint32_t cnt) {
-        const auto it = data_.find(type);
-        if (it == data_.end())
-            data_[type] = cnt;
-        else
-            it->second += cnt;
-    }
-
 }  // namespace mirinae
 
 
@@ -58,31 +59,57 @@ namespace mirinae {
 
     DescLayoutBuilder::DescLayoutBuilder(const char* name) : name_(name) {}
 
+    DescLayoutBuilder& DescLayoutBuilder::new_binding() {
+        auto& binding = bindings_.emplace_back();
+        binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        binding.descriptorCount = 0;
+        binding.stageFlags = 0;
+        binding.pImmutableSamplers = nullptr;
+        return *this;
+    }
+
+    DescLayoutBuilder& DescLayoutBuilder::set_type(VkDescriptorType type) {
+        bindings_.back().descriptorType = type;
+        return *this;
+    }
+
+    DescLayoutBuilder& DescLayoutBuilder::set_count(uint32_t cnt) {
+        bindings_.back().descriptorCount = cnt;
+        return *this;
+    }
+
+    DescLayoutBuilder& DescLayoutBuilder::set_stage(VkShaderStageFlags stage) {
+        bindings_.back().stageFlags = stage;
+        return *this;
+    }
+
+    DescLayoutBuilder& DescLayoutBuilder::add_stage(VkShaderStageFlags stage) {
+        bindings_.back().stageFlags |= stage;
+        return *this;
+    }
+
     DescLayoutBuilder& DescLayoutBuilder::add_ubuf(
         VkShaderStageFlags stage_flags, uint32_t count
     ) {
-        auto& binding = bindings_.emplace_back();
-        binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        binding.descriptorCount = count;
-        binding.stageFlags = stage_flags;
-        binding.pImmutableSamplers = nullptr;
+        this->new_binding()
+            .set_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            .set_count(count)
+            .set_stage(stage_flags);
 
-        size_info_.add_ubuf(count);
+        size_info_.add(bindings_.back().descriptorType, count);
         return *this;
     }
 
     DescLayoutBuilder& DescLayoutBuilder::add_img(
         VkShaderStageFlags stage_flags, uint32_t count
     ) {
-        auto& binding = bindings_.emplace_back();
-        binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        binding.descriptorCount = count;
-        binding.stageFlags = stage_flags;
-        binding.pImmutableSamplers = nullptr;
+        this->new_binding()
+            .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+            .set_count(count)
+            .set_stage(stage_flags);
 
-        size_info_.add_img(count);
+        size_info_.add(bindings_.back().descriptorType, count);
         return *this;
     }
 
@@ -97,14 +124,12 @@ namespace mirinae {
     DescLayoutBuilder& DescLayoutBuilder::add_input_att(
         VkShaderStageFlags stage_flags, uint32_t count
     ) {
-        auto& binding = bindings_.emplace_back();
-        binding.binding = static_cast<uint32_t>(bindings_.size() - 1);
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        binding.descriptorCount = count;
-        binding.stageFlags = stage_flags;
-        binding.pImmutableSamplers = nullptr;
+        this->new_binding()
+            .set_type(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+            .set_count(count)
+            .set_stage(stage_flags);
 
-        size_info_.add_input_att(count);
+        size_info_.add(bindings_.back().descriptorType, count);
         return *this;
     }
 
