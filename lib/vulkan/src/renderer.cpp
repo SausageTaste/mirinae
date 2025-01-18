@@ -703,6 +703,8 @@ namespace {
                 rp_
             );
 
+            rp_states_ocean_tess_->record(render_context);
+
             rp_states_transp_.record_static(
                 cur_cmd_buf,
                 fbuf_images_.extent(),
@@ -720,8 +722,6 @@ namespace {
                 image_index,
                 rp_
             );
-
-            rp_states_ocean_tess_->record(render_context);
 
             rp_states_debug_mesh_.begin_record(
                 cur_cmd_buf, fbuf_images_.extent(), image_index, rp_
