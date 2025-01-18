@@ -502,6 +502,31 @@ namespace {
                 }
             }
 
+            {
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.set_src_access(0)
+                    .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .layer_count(1)
+                    .mip_count(1);
+
+                mirinae::CommandPool cmd_pool;
+                cmd_pool.init(device);
+                auto cmdbuf = cmd_pool.begin_single_time(device);
+                for (auto img : imgs_) {
+                    barrier.image(img.image());
+                    barrier.record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
+                    );
+                }
+                cmd_pool.end_single_time(cmdbuf, device);
+                cmd_pool.destroy(device.logi_device());
+            }
+
             // Desc layouts
             {
                 mirinae::DescLayoutBuilder builder{ "ocean_test:main" };
@@ -585,6 +610,23 @@ namespace {
                 );
                 pipeline_layout_ = VK_NULL_HANDLE;
             }
+        }
+
+        void record(VkCommandBuffer cmdbuf, const mirinae::FrameIndex f_index) {
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
+            );
+            vkCmdBindDescriptorSets(
+                cmdbuf,
+                VK_PIPELINE_BIND_POINT_COMPUTE,
+                pipeline_layout_,
+                0,
+                1,
+                &desc_sets_[f_index.get()],
+                0,
+                0
+            );
+            vkCmdDispatch(cmdbuf, 128, 128, 1);
         }
 
     private:
@@ -762,6 +804,10 @@ namespace {
                 clear_values[1].color = { 0.f, 0.f, 0.f, 1.f };
                 clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
             }
+
+            rp_states_ocean_test_.record(
+                cur_cmd_buf, framesync_.get_frame_index()
+            );
 
             rpm_.envmap().record(
                 cur_cmd_buf,

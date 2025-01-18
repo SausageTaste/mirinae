@@ -2,8 +2,11 @@
 
 layout (binding = 0, rgba8) uniform writeonly image2D out_image;
 
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
 
 void main() {
-    vec4 pixel = vec4(0.8, 0.6, 0.2, 1);
-    imageStore(out_image, ivec2(gl_GlobalInvocationID.xy), pixel);
+    ivec2 local_idx = ivec2(gl_GlobalInvocationID.xy);
+    vec4 pixel = vec4(local_idx / 128.0, 0.2, 1);
+    imageStore(out_image, local_idx, pixel);
 }
