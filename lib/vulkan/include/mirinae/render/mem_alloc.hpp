@@ -28,6 +28,35 @@ namespace mirinae {
     void destroy_vma_allocator(VulkanMemoryAllocator allocator);
 
 
+    class BufferCreateInfo {
+
+    public:
+        BufferCreateInfo();
+
+        BufferCreateInfo& reset();
+
+        BufferCreateInfo& set_size(VkDeviceSize size);
+        BufferCreateInfo& add_usage(VkBufferUsageFlags usage);
+
+        BufferCreateInfo& preset_staging(VkDeviceSize size);
+        BufferCreateInfo& preset_ubuf(VkDeviceSize size);
+        BufferCreateInfo& preset_vertices(VkDeviceSize size);
+        BufferCreateInfo& preset_indices(VkDeviceSize size);
+
+        bool build(
+            VkBuffer& out_buffer,
+            VmaAllocation& out_alloc,
+            VulkanMemoryAllocator allocator
+        ) const;
+
+        VkDeviceSize size() const { return buffer_.size; }
+
+    private:
+        VkBufferCreateInfo buffer_ = {};
+        VmaAllocationCreateInfo alloc_ = {};
+    };
+
+
     class Buffer {
 
     public:
@@ -56,9 +85,9 @@ namespace mirinae {
         );
 
     private:
+        BufferCreateInfo cinfo_;
         VkBuffer buffer_ = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;
-        VkDeviceSize data_size_ = 0;
     };
 
 

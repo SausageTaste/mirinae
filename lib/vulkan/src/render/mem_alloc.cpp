@@ -68,6 +68,100 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// BufferCreateInfo
+namespace mirinae {
+
+    BufferCreateInfo::BufferCreateInfo() { this->reset(); }
+
+    BufferCreateInfo& BufferCreateInfo::reset() {
+        buffer_ = {};
+        buffer_.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+
+        alloc_ = {};
+        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
+
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::set_size(VkDeviceSize size) {
+        buffer_.size = size;
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::add_usage(VkBufferUsageFlags usage) {
+        buffer_.usage |= usage;
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::preset_staging(VkDeviceSize size) {
+        this->reset();
+
+        buffer_.size = size;
+        buffer_.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
+        alloc_.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::preset_ubuf(VkDeviceSize size) {
+        this->reset();
+
+        buffer_.size = size;
+        buffer_.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                        VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
+        alloc_.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::preset_vertices(VkDeviceSize size) {
+        this->reset();
+
+        buffer_.size = size;
+        buffer_.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
+
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::preset_indices(VkDeviceSize size) {
+        this->reset();
+
+        buffer_.size = size;
+        buffer_.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                        VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
+
+        return *this;
+    }
+
+    bool BufferCreateInfo::build(
+        VkBuffer& out_buffer,
+        VmaAllocation& out_alloc,
+        VulkanMemoryAllocator allocator
+    ) const {
+        const auto res = vmaCreateBuffer(
+            allocator->get(),
+            &buffer_,
+            &alloc_,
+            &out_buffer,
+            &out_alloc,
+            nullptr
+        );
+
+        return VK_SUCCESS == res;
+    }
+
+}  // namespace mirinae
+
+
 // Buffer
 namespace mirinae {
 
@@ -75,125 +169,50 @@ namespace mirinae {
         VkDeviceSize size, VulkanMemoryAllocator allocator
     ) {
         this->destroy(allocator);
+        cinfo_.preset_staging(size);
 
-        VkBufferCreateInfo buffer_info = {};
-        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_info.size = size;
-        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-        VmaAllocationCreateInfo alloc_info = {};
-        alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
-        alloc_info.flags =
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-        if (VK_SUCCESS != vmaCreateBuffer(
-                              allocator->get(),
-                              &buffer_info,
-                              &alloc_info,
-                              &buffer_,
-                              &allocation_,
-                              nullptr
-                          )) {
+        if (!cinfo_.build(buffer_, allocation_, allocator))
             MIRINAE_ABORT("failed to create VMA buffer as staging buffer");
-        }
-
-        data_size_ = size;
     }
 
     void Buffer::init_ubuf(VkDeviceSize size, VulkanMemoryAllocator allocator) {
         this->destroy(allocator);
+        cinfo_.preset_ubuf(size);
 
-        VkBufferCreateInfo buffer_info = {};
-        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_info.size = size;
-        buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                            VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-        VmaAllocationCreateInfo alloc_info = {};
-        alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
-        alloc_info.flags =
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-        if (VK_SUCCESS != vmaCreateBuffer(
-                              allocator->get(),
-                              &buffer_info,
-                              &alloc_info,
-                              &buffer_,
-                              &allocation_,
-                              nullptr
-                          )) {
+        if (!cinfo_.build(buffer_, allocation_, allocator))
             MIRINAE_ABORT("failed to create VMA buffer as uniform buffer");
-        }
-
-        data_size_ = size;
     }
 
     void Buffer::init_vertices(
         VkDeviceSize size, VulkanMemoryAllocator allocator
     ) {
         this->destroy(allocator);
+        cinfo_.preset_vertices(size);
 
-        VkBufferCreateInfo buffer_info = {};
-        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_info.size = size;
-        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        VmaAllocationCreateInfo alloc_info = {};
-        alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
-
-        if (VK_SUCCESS != vmaCreateBuffer(
-                              allocator->get(),
-                              &buffer_info,
-                              &alloc_info,
-                              &buffer_,
-                              &allocation_,
-                              nullptr
-                          )) {
+        if (!cinfo_.build(buffer_, allocation_, allocator))
             MIRINAE_ABORT("failed to create VMA buffer as vertex buffer");
-        }
-
-        data_size_ = size;
     }
 
     void Buffer::init_indices(
         VkDeviceSize size, VulkanMemoryAllocator allocator
     ) {
         this->destroy(allocator);
+        cinfo_.preset_indices(size);
 
-        VkBufferCreateInfo buffer_info = {};
-        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_info.size = size;
-        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                            VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        VmaAllocationCreateInfo alloc_info = {};
-        alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
-
-        if (VK_SUCCESS != vmaCreateBuffer(
-                              allocator->get(),
-                              &buffer_info,
-                              &alloc_info,
-                              &buffer_,
-                              &allocation_,
-                              nullptr
-                          )) {
+        if (!cinfo_.build(buffer_, allocation_, allocator))
             MIRINAE_ABORT("failed to create VMA buffer as index buffer");
-        }
-
-        data_size_ = size;
     }
 
     void Buffer::destroy(VulkanMemoryAllocator allocator) {
+        cinfo_.reset();
+
         if (buffer_ != VK_NULL_HANDLE) {
             vmaDestroyBuffer(allocator->get(), buffer_, allocation_);
             buffer_ = VK_NULL_HANDLE;
         }
     }
 
-    VkDeviceSize Buffer::size() const { return data_size_; }
+    VkDeviceSize Buffer::size() const { return cinfo_.size(); }
 
     void Buffer::set_data(
         const void* data, size_t size, VulkanMemoryAllocator allocator
