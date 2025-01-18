@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.12)
 
-set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-set(VCPKG_OVERLAY_PORTS
-    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/ports
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/dalbaragi/vcpkg/ports
-)
+if (NOT CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    set(VCPKG_OVERLAY_PORTS
+        ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/ports
+        ${CMAKE_CURRENT_SOURCE_DIR}/extern/dalbaragi/vcpkg/ports
+    )
+endif()
 
 project(mirinae)
 
