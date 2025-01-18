@@ -5,6 +5,7 @@
 #include <set>
 #include <sstream>
 
+#include <daltools/common/util.h>
 #include <sung/basic/stringtool.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
@@ -201,6 +202,44 @@ namespace {
     };
 
 
+    const char* get_format_feature_name(VkFormatFeatureFlags f) {
+        switch (f) {
+            case VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT:
+                return "Sampled img";
+            case VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT:
+                return "Strg img";
+            case VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT:
+                return "Strg img atomic";
+            case VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT:
+                return "Uniform texel buf";
+            case VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT:
+                return "Strg texel buf";
+            case VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT:
+                return "Strg texel buf atomic";
+            case VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT:
+                return "Vtx buf";
+            case VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT:
+                return "Color attach";
+            case VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT:
+                return "Color attach blend";
+            case VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT:
+                return "Depth attach";
+            case VK_FORMAT_FEATURE_BLIT_SRC_BIT:
+                return "Blit src";
+            case VK_FORMAT_FEATURE_BLIT_DST_BIT:
+                return "Blit dst";
+            case VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT:
+                return "Sample linear";
+            case VK_FORMAT_FEATURE_TRANSFER_SRC_BIT:
+                return "Transfer src";
+            case VK_FORMAT_FEATURE_TRANSFER_DST_BIT:
+                return "Transfer dst";
+            default:
+                return "Unknown";
+        }
+    }
+
+
     class PhysDevice {
 
     public:
@@ -240,106 +279,131 @@ namespace {
         VkPhysicalDevice get() { return handle_; }
 
         std::string make_report_str() const {
-            std::stringstream ss;
+            dal::ValuesReport report;
+            report.set_title(properties_.deviceName);
 
-            ss << "==================================\n";
-            ss << properties_.deviceName << '\n';
-            ss << "----------------------------------\n";
-
-            ss << "Device type                               ";
             switch (properties_.deviceType) {
                 case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-                    ss << "Integrated\n";
+                    report.add(0, "Device type", "Integrated");
                     break;
                 case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-                    ss << "Descrete\n";
+                    report.add(0, "Device type", "Discrete");
                     break;
                 case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
-                    ss << "Virtual\n";
+                    report.add(0, "Device type", "Virtual");
                     break;
                 case VK_PHYSICAL_DEVICE_TYPE_CPU:
-                    ss << "CPU\n";
+                    report.add(0, "Device type", "CPU");
                     break;
                 default:
-                    ss << "Unknown\n";
+                    report.new_entry(0, "Device type")
+                        .set_value("Unknown")
+                        .add_value(properties_.deviceType);
                     break;
             }
 
-            ss << "Features\n";
+            report.add(0, "Features");
+            if (features_.samplerAnisotropy)
+                report.add_value("Anisotropic");
             if (features_.geometryShader)
-                ss << "  * Geometry\n";
+                report.add_value("Geometry");
             if (features_.tessellationShader)
-                ss << "  * Tessellation\n";
+                report.add_value("Tessellation");
+            if (features_.textureCompressionETC2)
+                report.add_value("ETC2");
+            if (features_.textureCompressionASTC_LDR)
+                report.add_value("ASTC");
 
-            ss << "Max image 2D dimension                    "
-               << properties_.limits.maxImageDimension2D << '\n';
-            ss << "    push constant                         "
-               << properties_.limits.maxPushConstantsSize << '\n';
-            ss << "    memory alloc count                    "
-               << properties_.limits.maxMemoryAllocationCount << '\n';
-            ss << "    sampler alloc count                   "
-               << properties_.limits.maxSamplerAllocationCount << '\n';
-            ss << "    bound descriptor sets                 "
-               << properties_.limits.maxBoundDescriptorSets << '\n';
-            ss << "    per stage descriptor samplers         "
-               << properties_.limits.maxPerStageDescriptorSamplers << '\n';
-            ss << "    per stage descriptor uniform buffers  "
-               << properties_.limits.maxPerStageDescriptorUniformBuffers
-               << '\n';
+            report.add(0, "Compute shader")
+                .new_entry(2, "Max work group size")
+                .set_value(properties_.limits.maxComputeWorkGroupSize[0])
+                .add_value(properties_.limits.maxComputeWorkGroupSize[1])
+                .add_value(properties_.limits.maxComputeWorkGroupSize[1])
+                .new_entry(2, "Max work group count")
+                .set_value(properties_.limits.maxComputeWorkGroupCount[0])
+                .add_value(properties_.limits.maxComputeWorkGroupCount[1])
+                .add_value(properties_.limits.maxComputeWorkGroupCount[2])
+                .new_entry(2, "Max work group invocations")
+                .set_value(properties_.limits.maxComputeWorkGroupInvocations);
 
-            ss << "ASTC LDR supported                        "
-               << features_.textureCompressionASTC_LDR << '\n';
-            ss << "  * ASTC 4x4 UNorm                        "
-               << this->is_texture_format_supported(
-                      VK_FORMAT_ASTC_4x4_UNORM_BLOCK
-                  )
-               << '\n';
-            ss << "  * ASTC 4x4 UNorm sRGB                   "
-               << this->is_texture_format_supported(
-                      VK_FORMAT_ASTC_4x4_SRGB_BLOCK
-                  )
-               << '\n';
+            auto& limits = properties_.limits;
 
-            ss << "ASTC HDR\n";
-            ss << "  * ASTC 4x4 SFloat                       "
-               << this->is_texture_format_supported(
-                      VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK
-                  )
-               << '\n';
+            report.add(0, "Limits")
+                .new_entry(2, "Image 2D dimension")
+                .set_value(limits.maxImageDimension2D)
+                .new_entry(2, "Push constant")
+                .set_value(limits.maxPushConstantsSize)
+                .new_entry(2, "Memory alloc count")
+                .set_value(limits.maxMemoryAllocationCount)
+                .new_entry(2, "Sampler alloc count")
+                .set_value(limits.maxSamplerAllocationCount)
+                .new_entry(2, "Bound descriptor sets")
+                .set_value(limits.maxBoundDescriptorSets)
+                .new_entry(2, "Per stage descriptor samplers")
+                .set_value(limits.maxPerStageDescriptorSamplers)
+                .new_entry(2, "Per stage descriptor uniform buffers")
+                .set_value(limits.maxPerStageDescriptorUniformBuffers);
 
-            ss << "BC supported                              "
-               << features_.textureCompressionBC << '\n';
-            ss << "  * BC1 RGB                               "
-               << this->is_texture_format_supported(
-                      VK_FORMAT_BC1_RGB_UNORM_BLOCK
-                  )
-               << '\n';
-            ss << "  * BC1 RGB sRGB                          "
-               << this->is_texture_format_supported(VK_FORMAT_BC1_RGB_SRGB_BLOCK
-                  )
-               << '\n';
-            ss << "  * BC1 RGBA                              "
-               << this->is_texture_format_supported(
-                      VK_FORMAT_BC1_RGBA_UNORM_BLOCK
-                  )
-               << '\n';
-            ss << "  * BC1 RGBA sRGB                         "
-               << this->is_texture_format_supported(
-                      VK_FORMAT_BC1_RGBA_SRGB_BLOCK
-                  )
-               << '\n';
-            ss << "  * BC3 RGBA                              "
-               << this->is_texture_format_supported(VK_FORMAT_BC3_UNORM_BLOCK)
-               << '\n';
-            ss << "  * BC3 RGBA sRGB                         "
-               << this->is_texture_format_supported(VK_FORMAT_BC3_SRGB_BLOCK)
-               << '\n';
+            static const std::vector<VkFormat> formats{
+                VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK,
+                VK_FORMAT_ASTC_4x4_SRGB_BLOCK,
+                VK_FORMAT_ASTC_4x4_UNORM_BLOCK,
+                VK_FORMAT_BC1_RGBA_SRGB_BLOCK,
+                VK_FORMAT_BC1_RGBA_UNORM_BLOCK,
+                VK_FORMAT_BC3_SRGB_BLOCK,
+                VK_FORMAT_BC3_UNORM_BLOCK,
+                VK_FORMAT_BC7_SRGB_BLOCK,
+                VK_FORMAT_BC7_UNORM_BLOCK,
+                VK_FORMAT_D32_SFLOAT_S8_UINT,
+                VK_FORMAT_D32_SFLOAT,
+                VK_FORMAT_R16_SFLOAT,
+                VK_FORMAT_R16G16_SFLOAT,
+                VK_FORMAT_R16G16B16_SFLOAT,
+                VK_FORMAT_R16G16B16A16_SFLOAT,
+                VK_FORMAT_R32_SFLOAT,
+                VK_FORMAT_R32G32_SFLOAT,
+                VK_FORMAT_R32G32B32_SFLOAT,
+                VK_FORMAT_R32G32B32A32_SFLOAT,
+                VK_FORMAT_R8G8B8A8_SRGB,
+                VK_FORMAT_R8G8B8A8_UNORM,
+            };
 
-            ss << "ETC2 supported                            "
-               << features_.textureCompressionETC2 << '\n';
+            static const std::vector<VkFormatFeatureFlags> feature_flags{
+                VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT,
+                VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT,
+                VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT,
+                // VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT,
+                // VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT,
+                // VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT,
+                VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT,
+                VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT,
+                VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT,
+                VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                VK_FORMAT_FEATURE_BLIT_SRC_BIT,
+                VK_FORMAT_FEATURE_BLIT_DST_BIT,
+                VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT,
+                VK_FORMAT_FEATURE_TRANSFER_SRC_BIT,
+                VK_FORMAT_FEATURE_TRANSFER_DST_BIT,
+            };
 
-            ss << "==================================";
-            return ss.str();
+            report.add(0, "Formats");
+            for (auto format : formats) {
+                const ::FormatProperties fmt_prop(handle_, format);
+
+                report.new_entry(2, mirinae::to_str(format))
+                    .add(4, "[Linear tiling]");
+                for (auto& flag : feature_flags) {
+                    if (fmt_prop.check_linear_tiling_feature(flag))
+                        report.add_value(::get_format_feature_name(flag));
+                }
+                report.add(4, "[Optimal tiling]");
+                for (auto& flag : feature_flags) {
+                    if (fmt_prop.check_optimal_tiling_feature(flag))
+                        report.add_value(::get_format_feature_name(flag));
+                }
+            }
+
+            return report.build_str();
         }
 
         const char* name() const { return properties_.deviceName; }
@@ -457,6 +521,7 @@ namespace {
         VkPhysicalDevice handle_ = nullptr;
         VkPhysicalDeviceProperties properties_{};
         VkPhysicalDeviceFeatures features_{};
+        VkPhysicalDeviceLimits limits_{};
         std::optional<uint32_t> graphics_family_index_;
         std::optional<uint32_t> present_family_index_;
     };
