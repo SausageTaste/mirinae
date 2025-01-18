@@ -163,4 +163,50 @@ namespace mirinae {
         }
     };
 
+
+    class RpResources {
+
+    public:
+        using str = std::string;
+
+        class Image {
+
+        public:
+            Image(const str& id) : id_(id) {}
+            const std::string& id() const { return id_; }
+
+            mirinae::Image img_;
+            mirinae::ImageView view_;
+
+        private:
+            std::string id_;
+        };
+        using HImage = std::shared_ptr<Image>;
+
+    public:
+        RpResources(VulkanDevice& device);
+        ~RpResources();
+
+        // Remove the user from user list of the image.
+        // If the user list becomes empty, the image will be freed.
+        void free_img(const str& id, const str& user_id);
+
+        // The user will be a writer.
+        // The ID will be made like this: `<user_id>:<name>`.
+        HImage new_img(const str& name, const str& user_id);
+
+        // The user will be a reader.
+        // Returns nullptr if the image does not exist.
+        HImage get_img_reader(const str& id, const str& user_id);
+
+    private:
+        class ImageRecord;
+
+        VulkanDevice& device_;
+        std::map<str, ImageRecord> imgs_;
+    };
+
+    using RpImage = RpResources::Image;
+    using HRpImage = std::shared_ptr<RpImage>;
+
 }  // namespace mirinae

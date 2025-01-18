@@ -12,6 +12,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/compo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/envmap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/gbuf.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/ocean.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/shadow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/texture.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/uniform.cpp
