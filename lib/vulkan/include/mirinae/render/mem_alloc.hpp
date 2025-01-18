@@ -97,6 +97,7 @@ namespace mirinae {
         ImageCreateInfo();
         const VkImageCreateInfo& get() const { return info_; }
 
+        VkFormat format() const { return info_.format; }
         uint32_t mip_levels() const { return info_.mipLevels; }
 
         ImageCreateInfo& set_dimensions(uint32_t width, uint32_t height);
