@@ -205,6 +205,7 @@ namespace mirinae {
             ShaderStagesBuilder& add_frag(const dal::path& spv_path);
             ShaderStagesBuilder& add_tesc(const dal::path& spv_path);
             ShaderStagesBuilder& add_tese(const dal::path& spv_path);
+            ShaderStagesBuilder& add_comp(const dal::path& spv_path);
 
             const VkPipelineShaderStageCreateInfo* data() const;
             uint32_t size() const;

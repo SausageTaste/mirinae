@@ -188,6 +188,10 @@ namespace mirinae {
         return this->add(spv_path, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
     }
 
+    CLS& CLS::add_comp(const dal::path& spv_path) {
+        return this->add(spv_path, VK_SHADER_STAGE_COMPUTE_BIT);
+    }
+
     const VkPipelineShaderStageCreateInfo* CLS::data() const {
         return stages_.data();
     }
