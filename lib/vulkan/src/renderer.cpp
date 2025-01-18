@@ -479,22 +479,46 @@ namespace {
     class RpStatesOceanTest {
 
     public:
-        void init(mirinae::VulkanDevice& device) {
-            mirinae::ImageCreateInfo cinfo;
-            cinfo.set_dimensions(128, 128)
-                .set_format(VK_FORMAT_R32G32B32_SFLOAT)
-                .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
-                .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
+        void init(
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        ) {
+            // Desc layouts
+            {
+                mirinae::DescLayoutBuilder builder{ "ocean_test:main" };
+                builder.new_binding()
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .set_count(1);
+                desclayouts.add(builder, device.logi_device());
+            }
 
-            img_.init(cinfo.get(), device.mem_alloc());
+            // Images
+            {
+                mirinae::ImageCreateInfo cinfo;
+                cinfo.set_dimensions(128, 128)
+                    .set_format(VK_FORMAT_R32G32B32_SFLOAT)
+                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
+                    .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
+
+                for (auto& img : imgs_) {
+                    img.init(cinfo.get(), device.mem_alloc());
+                }
+            }
+
+            mirinae::PipelineBuilder::ShaderStagesBuilder shader_builder{
+                device
+            };
+            shader_builder.add_comp(":asset/spv/ocean_test_comp.spv");
         }
 
         void destroy(mirinae::VulkanDevice& device) {
-            img_.destroy(device.mem_alloc());
+            for (auto& img : imgs_) img.destroy(device.mem_alloc());
         }
 
     private:
-        mirinae::Image img_;
+        std::array<mirinae::Image, 2> imgs_;
     };
 
 }  // namespace
@@ -909,7 +933,7 @@ namespace {
             );
             rp_states_debug_mesh_.init(device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
-            rp_states_ocean_test_.init(device_);
+            rp_states_ocean_test_.init(desclayout_, device_);
         }
 
         void destroy_swapchain_and_relatives() {
