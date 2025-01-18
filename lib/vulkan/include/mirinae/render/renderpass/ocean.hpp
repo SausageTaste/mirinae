@@ -13,9 +13,11 @@ namespace mirinae::rp::ocean {
 
 
     struct RpContext {
-        mirinae::FrameIndex f_index;
-        mirinae::ShainImageIndex i_index;
-        VkCommandBuffer cmdbuf;
+        mirinae::FrameIndex f_index_;
+        mirinae::ShainImageIndex i_index_;
+        glm::dmat4 proj_mat_;
+        glm::dmat4 view_mat_;
+        VkCommandBuffer cmdbuf_;
     };
 
 

@@ -158,7 +158,7 @@ namespace {
         }
 
         void record(const mirinae::rp::ocean::RpContext& ctxt) override {
-            auto cmdbuf = ctxt.cmdbuf;
+            auto cmdbuf = ctxt.cmdbuf_;
 
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
@@ -169,7 +169,7 @@ namespace {
                 pipeline_layout_,
                 0,
                 1,
-                &desc_sets_[ctxt.f_index.get()],
+                &desc_sets_[ctxt.f_index_.get()],
                 0,
                 0
             );
@@ -193,7 +193,50 @@ namespace {
 // Ocean tessellation
 namespace {
 
-    struct U_OceanTessPushConst {
+    class U_OceanTessPushConst {
+
+    public:
+        U_OceanTessPushConst& pvm(
+            const glm::dmat4& proj,
+            const glm::dmat4& view,
+            const glm::dmat4& model
+        ) {
+            pvm_ = proj * view * model;
+            view_ = view;
+            model_ = model;
+            return *this;
+        }
+
+        U_OceanTessPushConst& tile_index(int x, int y) {
+            tile_index_count_.x = static_cast<float>(x);
+            tile_index_count_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_OceanTessPushConst& tile_count(int x, int y) {
+            tile_index_count_.z = static_cast<float>(x);
+            tile_index_count_.w = static_cast<float>(y);
+            return *this;
+        }
+
+        U_OceanTessPushConst& height_map_size(uint32_t x, uint32_t y) {
+            height_map_size_fbuf_size_.x = static_cast<float>(x);
+            height_map_size_fbuf_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_OceanTessPushConst& fbuf_size(const VkExtent2D& x) {
+            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
+            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
+            return *this;
+        }
+
+        U_OceanTessPushConst& height_scale(float x) {
+            height_scale_ = x;
+            return *this;
+        }
+
+    private:
         glm::mat4 pvm_;
         glm::mat4 view_;
         glm::mat4 model_;
@@ -255,7 +298,7 @@ namespace {
                 mirinae::DescWriteInfoBuilder builder;
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     builder.set_descset(desc_sets_[i])
-                        .add_img_sampler(
+                        .add_img_sampler_general(
                             height_maps_[i]->view_.get(),
                             device.samplers().get_linear()
                         );
@@ -331,11 +374,14 @@ namespace {
 
             // Framebuffers
             {
+                fbuf_width_ = fbuf_bundle.width();
+                fbuf_height_ = fbuf_bundle.height();
+
                 mirinae::FbufCinfo cinfo;
                 cinfo.set_rp(render_pass_)
                     .add_attach(fbuf_bundle.compo().image_view())
                     .add_attach(fbuf_bundle.depth().image_view())
-                    .set_dim(fbuf_bundle.width(), fbuf_bundle.height());
+                    .set_dim(fbuf_width_, fbuf_height_);
                 for (int i = 0; i < swapchain_count; ++i)
                     fbufs_.push_back(cinfo.build(device));
             }
@@ -381,7 +427,58 @@ namespace {
             fbufs_.clear();
         }
 
-        void record(const mirinae::rp::ocean::RpContext& context) override {}
+        void record(const mirinae::rp::ocean::RpContext& ctxt) override {
+            auto cmdbuf = ctxt.cmdbuf_;
+
+            mirinae::RenderPassBeginInfo{}
+                .rp(render_pass_)
+                .fbuf(fbufs_.at(ctxt.i_index_.get()))
+                .wh(fbuf_width_, fbuf_height_)
+                .clear_value_count(clear_values_.size())
+                .clear_values(clear_values_.data())
+                .record_begin(cmdbuf);
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
+            );
+
+            const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
+            mirinae::Viewport{ fbuf_exd }.record_single(cmdbuf);
+            mirinae::Rect2D{ fbuf_exd }.record_scissor(cmdbuf);
+
+            mirinae::DescSetBindInfo{}
+                .layout(pipe_layout_)
+                .add(desc_sets_.at(ctxt.f_index_.get()))
+                .record(cmdbuf);
+
+            mirinae::PushConstInfo pc_info;
+            pc_info.layout(pipe_layout_)
+                .add_stage_vert()
+                .add_stage_tesc()
+                .add_stage_tese()
+                .add_stage_frag();
+
+            const auto model_mat = glm::translate(
+                glm::dmat4{ 1 }, glm::dvec3{ -360 + 100, -5, -360 - 400 }
+            );
+
+            U_OceanTessPushConst pc;
+            pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
+                .tile_count(24, 24)
+                .height_map_size(128, 128)
+                .fbuf_size(fbuf_exd)
+                .height_scale(64);
+
+            for (int x = 0; x < 24; ++x) {
+                for (int y = 0; y < 24; ++y) {
+                    pc.tile_index(x, y);
+                    pc_info.record(cmdbuf, pc);
+                    vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                }
+            }
+
+            vkCmdEndRenderPass(cmdbuf);
+        }
 
         const std::string& name() const override {
             static const std::string name = "ocean_tess";
@@ -401,6 +498,8 @@ namespace {
 
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
         std::array<VkClearValue, 2> clear_values_;
+        uint32_t fbuf_width_ = 0;
+        uint32_t fbuf_height_ = 0;
     };
 
 }  // namespace

@@ -645,9 +645,11 @@ namespace {
             }
 
             mirinae::rp::ocean::RpContext render_context;
-            render_context.cmdbuf = cur_cmd_buf;
-            render_context.f_index = framesync_.get_frame_index();
-            render_context.i_index = image_index;
+            render_context.f_index_ = framesync_.get_frame_index();
+            render_context.i_index_ = image_index;
+            render_context.proj_mat_ = proj_mat;
+            render_context.view_mat_ = view_mat;
+            render_context.cmdbuf_ = cur_cmd_buf;
 
             rp_states_ocean_test_->record(render_context);
 
@@ -718,6 +720,8 @@ namespace {
                 image_index,
                 rp_
             );
+
+            rp_states_ocean_tess_->record(render_context);
 
             rp_states_debug_mesh_.begin_record(
                 cur_cmd_buf, fbuf_images_.extent(), image_index, rp_
