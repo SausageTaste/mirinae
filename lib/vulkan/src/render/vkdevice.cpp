@@ -217,7 +217,7 @@ namespace {
 
             const auto queue_family = ::get_queue_family_props(handle_);
             for (int i = 0; i < queue_family.size(); ++i) {
-                if (queue_family[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                if (this->is_queue_flag_applicable(queue_family[i].queueFlags))
                     graphics_family_index_ = i;
 
                 VkBool32 present_support = false;
@@ -445,6 +445,15 @@ namespace {
         auto& features() const { return features_; }
 
     private:
+        static bool is_queue_flag_applicable(const VkQueueFlags flags) {
+            if (0 == (flags & VK_QUEUE_GRAPHICS_BIT))
+                return false;
+            else if (0 == (flags & VK_QUEUE_COMPUTE_BIT))
+                return false;
+
+            return true;
+        }
+
         VkPhysicalDevice handle_ = nullptr;
         VkPhysicalDeviceProperties properties_{};
         VkPhysicalDeviceFeatures features_{};
