@@ -257,31 +257,13 @@ namespace mirinae {
 
     public:
         DescSizeInfo operator+(const DescSizeInfo& rhs) const;
-
-        // Uniform buffer
-        DescSizeInfo& add_ubuf(uint32_t cnt) {
-            this->add(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, cnt);
-            return *this;
-        }
-        // Combined image sampler
-        DescSizeInfo& add_img(uint32_t cnt) {
-            this->add(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, cnt);
-            return *this;
-        }
-        // Input attachment
-        DescSizeInfo& add_input_att(uint32_t cnt) {
-            this->add(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, cnt);
-            return *this;
-        }
-
+        DescSizeInfo& add(VkDescriptorType type, uint32_t cnt);
         void multiply_counts(uint32_t factor);
-
         std::vector<VkDescriptorPoolSize> create_arr() const;
 
     private:
         uint32_t get(VkDescriptorType type) const;
         void set(VkDescriptorType type, uint32_t cnt);
-        void add(VkDescriptorType type, uint32_t cnt);
 
         std::map<VkDescriptorType, uint32_t> data_;
     };
@@ -320,6 +302,13 @@ namespace mirinae {
     public:
         explicit DescLayoutBuilder(const char* name);
 
+        // Raw
+        DescLayoutBuilder& new_binding();
+        DescLayoutBuilder& set_type(VkDescriptorType type);
+        DescLayoutBuilder& set_count(uint32_t cnt);
+        DescLayoutBuilder& set_stage(VkShaderStageFlags stage);
+        DescLayoutBuilder& add_stage(VkShaderStageFlags stage);
+
         // Uniform buffer
         DescLayoutBuilder& add_ubuf(VkShaderStageFlags, uint32_t cnt);
 
@@ -334,7 +323,7 @@ namespace mirinae {
         VkDescriptorSetLayout build(VkDevice logi_device) const;
 
         auto& name() const { return name_; }
-        auto& size_info() const { return size_info_; }
+        DescSizeInfo size_info() const { return size_info_; }
 
     private:
         std::string name_;
