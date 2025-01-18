@@ -308,6 +308,7 @@ namespace mirinae {
         DescLayoutBuilder& set_count(uint32_t cnt);
         DescLayoutBuilder& set_stage(VkShaderStageFlags stage);
         DescLayoutBuilder& add_stage(VkShaderStageFlags stage);
+        DescLayoutBuilder& finish_binding();
 
         // Uniform buffer
         DescLayoutBuilder& add_ubuf(VkShaderStageFlags, uint32_t cnt);
@@ -323,7 +324,7 @@ namespace mirinae {
         VkDescriptorSetLayout build(VkDevice logi_device) const;
 
         auto& name() const { return name_; }
-        DescSizeInfo size_info() const { return size_info_; }
+        auto& size_info() const { return size_info_; }
 
     private:
         std::string name_;
@@ -359,6 +360,7 @@ namespace mirinae {
         // Combinded image sampler
         DescWriteInfoBuilder& add_img_sampler(VkImageView img, VkSampler sam);
         DescWriteInfoBuilder& add_input_attach(VkImageView image_view);
+        DescWriteInfoBuilder& add_storage_img(VkImageView image_view);
 
         void apply_all(VkDevice logi_device);
 

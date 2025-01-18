@@ -89,28 +89,30 @@ namespace mirinae {
         return *this;
     }
 
+    DescLayoutBuilder& DescLayoutBuilder::finish_binding() {
+        auto& binding = bindings_.back();
+        size_info_.add(binding.descriptorType, binding.descriptorCount);
+        return *this;
+    }
+
     DescLayoutBuilder& DescLayoutBuilder::add_ubuf(
         VkShaderStageFlags stage_flags, uint32_t count
     ) {
-        this->new_binding()
+        return this->new_binding()
             .set_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
             .set_count(count)
-            .set_stage(stage_flags);
-
-        size_info_.add(bindings_.back().descriptorType, count);
-        return *this;
+            .set_stage(stage_flags)
+            .finish_binding();
     }
 
     DescLayoutBuilder& DescLayoutBuilder::add_img(
         VkShaderStageFlags stage_flags, uint32_t count
     ) {
-        this->new_binding()
+        return this->new_binding()
             .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
             .set_count(count)
-            .set_stage(stage_flags);
-
-        size_info_.add(bindings_.back().descriptorType, count);
-        return *this;
+            .set_stage(stage_flags)
+            .finish_binding();
     }
 
     DescLayoutBuilder& DescLayoutBuilder::add_img_tesc(uint32_t cnt) {
@@ -124,13 +126,11 @@ namespace mirinae {
     DescLayoutBuilder& DescLayoutBuilder::add_input_att(
         VkShaderStageFlags stage_flags, uint32_t count
     ) {
-        this->new_binding()
+        return this->new_binding()
             .set_type(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
             .set_count(count)
-            .set_stage(stage_flags);
-
-        size_info_.add(bindings_.back().descriptorType, count);
-        return *this;
+            .set_stage(stage_flags)
+            .finish_binding();
     }
 
     VkDescriptorSetLayout DescLayoutBuilder::build(VkDevice logi_device) const {
@@ -250,6 +250,26 @@ namespace mirinae {
         write.dstBinding = binding_index_++;
         write.dstArrayElement = 0;
         write.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        write.descriptorCount = 1;
+        write.pImageInfo = &image_info;
+
+        return *this;
+    }
+
+    DescWriteInfoBuilder& DescWriteInfoBuilder::add_storage_img(
+        VkImageView image_view
+    ) {
+        auto& image_info = image_info_.emplace_back();
+        image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        image_info.imageView = image_view;
+        image_info.sampler = VK_NULL_HANDLE;
+
+        auto& write = data_.emplace_back();
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = descset_;
+        write.dstBinding = binding_index_++;
+        write.dstArrayElement = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         write.descriptorCount = 1;
         write.pImageInfo = &image_info;
 
