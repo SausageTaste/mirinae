@@ -14,8 +14,8 @@ layout (push_constant) uniform U_OceanTessPushConst {
 } u_pc;
 
 
-const float TILE_SIZE_X = 60.0;
-const float TILE_SIZE_Y = 60.0;
+const float TILE_SIZE_X = 20.0;
+const float TILE_SIZE_Y = 20.0;
 
 const vec3[] POSITIONS = vec3[4](
     vec3(          0, 0,           0),
@@ -45,7 +45,7 @@ void main() {
         1.0 / u_pc.tile_index_count.w
     );
     const vec2 uv_start = uv_cell_size * u_pc.tile_index_count.xy;
-    v_uv = uv_start + TEX_COORDS[gl_VertexIndex] * uv_cell_size;
+    v_uv = TEX_COORDS[gl_VertexIndex];
 
     v_normal = vec3(0, 1, 0);
 }

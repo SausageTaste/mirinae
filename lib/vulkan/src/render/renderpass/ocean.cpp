@@ -1,11 +1,21 @@
 #include "mirinae/render/renderpass/ocean.hpp"
 
+#include <sung/basic/time.hpp>
+
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 
 
 namespace {
+
+    constexpr uint32_t OCEAN_TEX_DIM = 256;
+
+
+    struct U_OceanTestPushConst {
+        float time_;
+    };
+
 
     class RpStatesOceanTest : public mirinae::rp::ocean::IRpStates {
 
@@ -19,7 +29,7 @@ namespace {
             // Images
             {
                 mirinae::ImageCreateInfo cinfo;
-                cinfo.set_dimensions(128, 128)
+                cinfo.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                     .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
                     .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
                     .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
@@ -102,6 +112,8 @@ namespace {
             {
                 pipeline_layout_ =
                     mirinae::PipelineLayoutBuilder{}
+                        .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
+                        .pc<U_OceanTestPushConst>()
                         .desc(desclayouts.get("ocean_test:main").layout())
                         .build(device);
                 MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
@@ -163,17 +175,22 @@ namespace {
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
             );
-            vkCmdBindDescriptorSets(
-                cmdbuf,
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-                pipeline_layout_,
-                0,
-                1,
-                &desc_sets_[ctxt.f_index_.get()],
-                0,
-                0
-            );
-            vkCmdDispatch(cmdbuf, 128, 128, 1);
+
+            mirinae::DescSetBindInfo{}
+                .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
+                .layout(pipeline_layout_)
+                .add(desc_sets_.at(ctxt.f_index_.get()))
+                .record(cmdbuf);
+
+            ::U_OceanTestPushConst pc;
+            pc.time_ = timer_.elapsed();
+
+            mirinae::PushConstInfo pc_info;
+            pc_info.layout(pipeline_layout_)
+                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                .record(cmdbuf, pc);
+
+            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
         }
 
     private:
@@ -185,6 +202,8 @@ namespace {
         mirinae::DescPool desc_pool_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+
+        sung::MonotonicRealtimeTimer timer_;
     };
 
 }  // namespace
@@ -357,6 +376,7 @@ namespace {
                 builder.tes_state().patch_ctrl_points(4);
 
                 builder.rasterization_state().cull_mode_back();
+                // builder.rasterization_state().polygon_mode(VK_POLYGON_MODE_LINE);
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
@@ -459,18 +479,18 @@ namespace {
                 .add_stage_frag();
 
             const auto model_mat = glm::translate(
-                glm::dmat4{ 1 }, glm::dvec3{ -360 + 100, -5, -360 - 400 }
+                glm::dmat4{ 1 }, glm::dvec3{ -180, 0, -180 }
             );
 
             U_OceanTessPushConst pc;
             pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
-                .tile_count(24, 24)
-                .height_map_size(128, 128)
+                .tile_count(10, 10)
+                .height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                 .fbuf_size(fbuf_exd)
-                .height_scale(64);
+                .height_scale(1);
 
-            for (int x = 0; x < 24; ++x) {
-                for (int y = 0; y < 24; ++y) {
+            for (int x = 0; x < 10; ++x) {
+                for (int y = 0; y < 10; ++y) {
                     pc.tile_index(x, y);
                     pc_info.record(cmdbuf, pc);
                     vkCmdDraw(cmdbuf, 4, 1, 0, 0);
