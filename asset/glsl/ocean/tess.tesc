@@ -20,7 +20,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
 
 
 void main() {
-    const float MAX_TESS_LEVEL = 64;
+    const float MAX_TESS_LEVEL = 128;
 
     if (gl_InvocationID == 0) {
         vec4 p00 = u_pc.pvm * gl_in[0].gl_Position;
