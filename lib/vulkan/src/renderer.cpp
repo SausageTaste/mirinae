@@ -14,6 +14,7 @@
 #include "mirinae/render/renderpass/compo.hpp"
 #include "mirinae/render/renderpass/envmap.hpp"
 #include "mirinae/render/renderpass/gbuf.hpp"
+#include "mirinae/render/renderpass/ocean.hpp"
 #include "mirinae/render/renderpass/shadow.hpp"
 
 
@@ -475,169 +476,6 @@ namespace {
         std::vector<VkDescriptorSet> desc_sets_;
     };
 
-
-    class RpStatesOceanTest {
-
-    public:
-        void init(
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::VulkanDevice& device
-        ) {
-            // Images
-            {
-                mirinae::ImageCreateInfo cinfo;
-                cinfo.set_dimensions(128, 128)
-                    .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
-                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
-                    .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
-
-                mirinae::ImageViewBuilder builder;
-                builder.format(cinfo.format())
-                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
-
-                for (size_t i = 0; i < imgs_.size(); i++) {
-                    imgs_[i].init(cinfo.get(), device.mem_alloc());
-                    builder.image(imgs_[i].image());
-                    img_views_[i].reset(builder, device);
-                }
-            }
-
-            {
-                mirinae::ImageMemoryBarrier barrier;
-                barrier.set_src_access(0)
-                    .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
-                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .new_layout(VK_IMAGE_LAYOUT_GENERAL)
-                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .layer_count(1)
-                    .mip_count(1);
-
-                mirinae::CommandPool cmd_pool;
-                cmd_pool.init(device);
-                auto cmdbuf = cmd_pool.begin_single_time(device);
-                for (auto img : imgs_) {
-                    barrier.image(img.image());
-                    barrier.record_single(
-                        cmdbuf,
-                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT
-                    );
-                }
-                cmd_pool.end_single_time(cmdbuf, device);
-                cmd_pool.destroy(device.logi_device());
-            }
-
-            // Desc layouts
-            {
-                mirinae::DescLayoutBuilder builder{ "ocean_test:main" };
-                builder.new_binding()
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .set_count(1)
-                    .finish_binding();
-                desclayouts.add(builder, device.logi_device());
-            }
-
-            // Desciptor Sets
-            {
-                desc_pool_.init(
-                    static_cast<uint32_t>(imgs_.size()),
-                    desclayouts.get("ocean_test:main").size_info(),
-                    device.logi_device()
-                );
-
-                desc_sets_ = desc_pool_.alloc(
-                    static_cast<uint32_t>(imgs_.size()),
-                    desclayouts.get("ocean_test:main").layout(),
-                    device.logi_device()
-                );
-
-                mirinae::DescWriteInfoBuilder builder;
-                for (size_t i = 0; i < imgs_.size(); i++) {
-                    builder.set_descset(desc_sets_[i])
-                        .add_storage_img(img_views_[i].get());
-                }
-                builder.apply_all(device.logi_device());
-            }
-
-            // Pipeline Layout
-            {
-                pipeline_layout_ =
-                    mirinae::PipelineLayoutBuilder{}
-                        .desc(desclayouts.get("ocean_test:main").layout())
-                        .build(device);
-                MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
-            }
-
-            // Pipeline
-            {
-                mirinae::PipelineBuilder::ShaderStagesBuilder shader_builder{
-                    device
-                };
-                shader_builder.add_comp(":asset/spv/ocean_test_comp.spv");
-
-                VkComputePipelineCreateInfo cinfo{};
-                cinfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-                cinfo.layout = pipeline_layout_;
-                cinfo.stage = *shader_builder.data();
-
-                const auto res = vkCreateComputePipelines(
-                    device.logi_device(),
-                    VK_NULL_HANDLE,
-                    1,
-                    &cinfo,
-                    nullptr,
-                    &pipeline_
-                );
-                MIRINAE_ASSERT(res == VK_SUCCESS);
-            }
-        }
-
-        void destroy(mirinae::VulkanDevice& device) {
-            for (auto& img : imgs_) img.destroy(device.mem_alloc());
-            for (auto& img_view : img_views_) img_view.destroy(device);
-            desc_pool_.destroy(device.logi_device());
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipeline_layout_) {
-                vkDestroyPipelineLayout(
-                    device.logi_device(), pipeline_layout_, nullptr
-                );
-                pipeline_layout_ = VK_NULL_HANDLE;
-            }
-        }
-
-        void record(VkCommandBuffer cmdbuf, const mirinae::FrameIndex f_index) {
-            vkCmdBindPipeline(
-                cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
-            );
-            vkCmdBindDescriptorSets(
-                cmdbuf,
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-                pipeline_layout_,
-                0,
-                1,
-                &desc_sets_[f_index.get()],
-                0,
-                0
-            );
-            vkCmdDispatch(cmdbuf, 128, 128, 1);
-        }
-
-    private:
-        std::array<mirinae::Image, 2> imgs_;
-        std::array<mirinae::ImageView, 2> img_views_;
-        std::vector<VkDescriptorSet> desc_sets_;
-        mirinae::DescPool desc_pool_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
-    };
-
 }  // namespace
 
 
@@ -658,6 +496,7 @@ namespace {
             : device_(std::move(cinfo))
             , script_(script)
             , cosmos_(cosmos)
+            , rp_res_(device_)
             , desclayout_(device_)
             , tex_man_(mirinae::create_tex_mgr(task_sche, device_))
             , model_man_(mirinae::create_model_mgr(
@@ -665,6 +504,9 @@ namespace {
               ))
             , overlay_man_(
                   init_width, init_height, desclayout_, *tex_man_, device_
+              )
+            , rp_states_ocean_test_(
+                  mirinae::rp::ocean::create_rp_states_ocean_test()
               )
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
@@ -805,9 +647,12 @@ namespace {
                 clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
             }
 
-            rp_states_ocean_test_.record(
-                cur_cmd_buf, framesync_.get_frame_index()
-            );
+            mirinae::rp::ocean::RpContext render_context;
+            render_context.cmdbuf = cur_cmd_buf;
+            render_context.f_index = framesync_.get_frame_index();
+            render_context.i_index = image_index;
+
+            rp_states_ocean_test_->record(render_context);
 
             rpm_.envmap().record(
                 cur_cmd_buf,
@@ -1054,7 +899,12 @@ namespace {
             );
             rp_states_debug_mesh_.init(device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
-            rp_states_ocean_test_.init(desclayout_, device_);
+
+            mirinae::rp::ocean::RpCreateParams params;
+            params.device_ = &device_;
+            params.rp_res_ = &rp_res_;
+            params.desclayouts_ = &desclayout_;
+            rp_states_ocean_test_->init(params);
         }
 
         void destroy_swapchain_and_relatives() {
@@ -1062,7 +912,7 @@ namespace {
 
             rpm_.shadow().pool().destroy_fbufs(device_);
 
-            rp_states_ocean_test_.destroy(device_);
+            rp_states_ocean_test_->destroy(rp_res_, device_);
             rp_states_fillscreen_.destroy(device_);
             rp_states_debug_mesh_.destroy(device_);
             rp_states_transp_.destroy(device_);
@@ -1286,6 +1136,7 @@ namespace {
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
+        mirinae::RpResources rp_res_;
         mirinae::DesclayoutManager desclayout_;
         mirinae::HTexMgr tex_man_;
         mirinae::HMdlMgr model_man_;
@@ -1296,7 +1147,7 @@ namespace {
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
-        ::RpStatesOceanTest rp_states_ocean_test_;
+        std::unique_ptr<mirinae::rp::ocean::IRpStates> rp_states_ocean_test_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         mirinae::CommandPool cmd_pool_;
