@@ -8,7 +8,10 @@ if (NOT CMAKE_TOOLCHAIN_FILE)
     )
 endif()
 
-project(mirinae)
+project(mirinae
+    VERSION 0.1.0
+    LANGUAGES CXX
+)
 
 set(MIRINAE_ENABLE_TEST OFF CACHE BOOL "Enable testing")
 set(MIRINAE_BUILD_APP OFF CACHE BOOL "Build projects in app folder")
