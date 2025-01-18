@@ -746,7 +746,7 @@ namespace {
             cmd_pool_.destroy(device_.logi_device());
         }
 
-        dal::ReqResult request(const mirinae::respath_t& res_id, bool srgb)
+        dal::ReqResult request(const dal::path& res_id, bool srgb)
             override {
             if (auto index = this->find_index(res_id))
                 return dal::ReqResult::ready;
@@ -794,7 +794,7 @@ namespace {
             return dal::ReqResult::unknown_error;
         }
 
-        std::shared_ptr<mirinae::ITexture> get(const mirinae::respath_t& res_id
+        std::shared_ptr<mirinae::ITexture> get(const dal::path& res_id
         ) override {
             if (auto index = this->find_index(res_id))
                 return textures_.at(index.value());
@@ -816,7 +816,7 @@ namespace {
         }
 
     private:
-        std::optional<size_t> find_index(const mirinae::respath_t& id) {
+        std::optional<size_t> find_index(const dal::path& id) {
             for (size_t i = 0; i < textures_.size(); ++i) {
                 if (textures_.at(i)->id() == id.u8string())
                     return i;

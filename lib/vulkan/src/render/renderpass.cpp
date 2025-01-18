@@ -266,13 +266,13 @@ namespace {
             modules_.clear();
         }
 
-        ShaderStagesBuilder& add_vert(const mirinae::respath_t& spv_path) {
+        ShaderStagesBuilder& add_vert(const dal::path& spv_path) {
             modules_.push_back(this->load_spv(spv_path, device_));
             this->add_stage(VK_SHADER_STAGE_VERTEX_BIT, modules_.back());
             return *this;
         }
 
-        ShaderStagesBuilder& add_frag(const mirinae::respath_t& spv_path) {
+        ShaderStagesBuilder& add_frag(const dal::path& spv_path) {
             modules_.push_back(this->load_spv(spv_path, device_));
             this->add_stage(VK_SHADER_STAGE_FRAGMENT_BIT, modules_.back());
             return *this;
@@ -294,7 +294,7 @@ namespace {
         }
 
         static VkShaderModule load_spv(
-            const mirinae::respath_t& spv_path, mirinae::VulkanDevice& device
+            const dal::path& spv_path, mirinae::VulkanDevice& device
         ) {
             const auto spv = device.filesys().read_file(spv_path);
             if (!spv) {

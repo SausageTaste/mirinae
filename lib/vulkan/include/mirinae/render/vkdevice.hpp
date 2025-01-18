@@ -6,7 +6,7 @@
 #include "mirinae/lightweight/create_info.hpp"
 #include "mirinae/lightweight/lightweights.hpp"
 
-#include "mem_alloc.hpp"
+#include "mirinae/render/mem_alloc.hpp"
 
 
 namespace mirinae {

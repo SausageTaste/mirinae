@@ -7,7 +7,6 @@
 
 #include "mirinae/lightweight/create_info.hpp"
 #include "mirinae/lightweight/input_proc.hpp"
-#include "mirinae/platform/filesys.hpp"
 
 
 namespace mirinae {

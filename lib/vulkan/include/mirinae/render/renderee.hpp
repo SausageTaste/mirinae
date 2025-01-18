@@ -136,11 +136,11 @@ namespace mirinae {
     struct IModelManager {
         virtual ~IModelManager() = default;
 
-        virtual dal::ReqResult request_static(const respath_t& res_id) = 0;
-        virtual dal::ReqResult request_skinned(const respath_t& res_id) = 0;
+        virtual dal::ReqResult request_static(const dal::path& res_id) = 0;
+        virtual dal::ReqResult request_skinned(const dal::path& res_id) = 0;
 
-        virtual HRenMdlStatic get_static(const respath_t& res_id) = 0;
-        virtual HRenMdlSkinned get_skinned(const respath_t& res_id) = 0;
+        virtual HRenMdlStatic get_static(const dal::path& res_id) = 0;
+        virtual HRenMdlSkinned get_skinned(const dal::path& res_id) = 0;
     };
 
     using HMdlMgr = std::shared_ptr<IModelManager>;

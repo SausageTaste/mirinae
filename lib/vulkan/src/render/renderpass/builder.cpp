@@ -165,26 +165,26 @@ namespace mirinae {
     }
 
     CLS& CLS::add(
-        const mirinae::respath_t& spv_path, const VkShaderStageFlagBits stage
+        const dal::path& spv_path, const VkShaderStageFlagBits stage
     ) {
         modules_.push_back(this->load_spv(spv_path, device_));
         this->add_stage(stage, modules_.back());
         return *this;
     }
 
-    CLS& CLS::add_vert(const mirinae::respath_t& spv_path) {
+    CLS& CLS::add_vert(const dal::path& spv_path) {
         return this->add(spv_path, VK_SHADER_STAGE_VERTEX_BIT);
     }
 
-    CLS& CLS::add_frag(const mirinae::respath_t& spv_path) {
+    CLS& CLS::add_frag(const dal::path& spv_path) {
         return this->add(spv_path, VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
-    CLS& CLS::add_tesc(const mirinae::respath_t& spv_path) {
+    CLS& CLS::add_tesc(const dal::path& spv_path) {
         return this->add(spv_path, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
     }
 
-    CLS& CLS::add_tese(const mirinae::respath_t& spv_path) {
+    CLS& CLS::add_tese(const dal::path& spv_path) {
         return this->add(spv_path, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
     }
 
@@ -204,7 +204,7 @@ namespace mirinae {
     }
 
     VkShaderModule CLS::load_spv(
-        const mirinae::respath_t& spv_path, mirinae::VulkanDevice& device
+        const dal::path& spv_path, mirinae::VulkanDevice& device
     ) {
         const auto spv = device.filesys().read_file(spv_path);
         if (!spv) {

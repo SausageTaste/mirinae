@@ -198,14 +198,13 @@ namespace mirinae {
             ~ShaderStagesBuilder();
 
             ShaderStagesBuilder& add(
-                const mirinae::respath_t& spv_path,
-                const VkShaderStageFlagBits stage
+                const dal::path& spv_path, const VkShaderStageFlagBits stage
             );
 
-            ShaderStagesBuilder& add_vert(const mirinae::respath_t& spv_path);
-            ShaderStagesBuilder& add_frag(const mirinae::respath_t& spv_path);
-            ShaderStagesBuilder& add_tesc(const mirinae::respath_t& spv_path);
-            ShaderStagesBuilder& add_tese(const mirinae::respath_t& spv_path);
+            ShaderStagesBuilder& add_vert(const dal::path& spv_path);
+            ShaderStagesBuilder& add_frag(const dal::path& spv_path);
+            ShaderStagesBuilder& add_tesc(const dal::path& spv_path);
+            ShaderStagesBuilder& add_tese(const dal::path& spv_path);
 
             const VkPipelineShaderStageCreateInfo* data() const;
             uint32_t size() const;
@@ -214,8 +213,7 @@ namespace mirinae {
             void add_stage(VkShaderStageFlagBits stage, VkShaderModule module);
 
             static VkShaderModule load_spv(
-                const mirinae::respath_t& spv_path,
-                mirinae::VulkanDevice& device
+                const dal::path& spv_path, mirinae::VulkanDevice& device
             );
 
             static std::optional<VkShaderModule> create_shader_module(

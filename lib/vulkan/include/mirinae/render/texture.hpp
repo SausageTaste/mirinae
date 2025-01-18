@@ -50,15 +50,15 @@ namespace mirinae {
     struct ITextureManager {
         virtual ~ITextureManager() = default;
 
-        virtual dal::ReqResult request(const respath_t& res_id, bool srgb) = 0;
+        virtual dal::ReqResult request(const dal::path& res_id, bool srgb) = 0;
 
-        virtual std::shared_ptr<ITexture> get(const respath_t& res_id) = 0;
+        virtual std::shared_ptr<ITexture> get(const dal::path& res_id) = 0;
 
         virtual std::unique_ptr<ITexture> create_image(
             const std::string& id, const dal::IImage2D& image, bool srgb
         ) = 0;
 
-        bool request_blck(const respath_t& res_id, bool srgb) {
+        bool request_blck(const dal::path& res_id, bool srgb) {
             while (true) {
                 const auto res = this->request(res_id, srgb);
                 switch (res) {
@@ -73,7 +73,7 @@ namespace mirinae {
         }
 
         std::shared_ptr<ITexture> block_for_tex(
-            const respath_t& res_id, bool srgb
+            const dal::path& res_id, bool srgb
         ) {
             if (this->request_blck(res_id, srgb))
                 return this->get(res_id);
