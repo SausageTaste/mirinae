@@ -66,7 +66,7 @@ namespace {
 
     public:
         static void forward_request(
-            const mirinae::respath_t& res_id,
+            const dal::path& res_id,
             const dal::parser::Material& src_material,
             mirinae::ITextureManager& tex_man
         ) {
@@ -80,7 +80,7 @@ namespace {
         }
 
         void fetch(
-            const mirinae::respath_t& res_id,
+            const dal::path& res_id,
             const dal::parser::Material& src_material,
             mirinae::ITextureManager& tex_man
         ) {
@@ -119,7 +119,7 @@ namespace {
 
     private:
         static void request_texture(
-            const mirinae::respath_t& res_id,
+            dal::path res_id,
             const std::string& file_name,
             const bool srgb,
             mirinae::ITextureManager& tex_man
@@ -127,14 +127,12 @@ namespace {
             if (file_name.empty())
                 return;
 
-            const auto full_path = mirinae::replace_file_name_ext(
-                res_id, file_name
-            );
-            tex_man.request(full_path, srgb);
+            res_id.replace_filename(file_name);
+            tex_man.request(res_id, srgb);
         }
 
         static std::shared_ptr<mirinae::ITexture> block_for_tex(
-            const mirinae::respath_t& res_id,
+            dal::path res_id,
             const std::string& file_name,
             const std::string& fallback_path,
             const bool srgb,
@@ -143,11 +141,8 @@ namespace {
             if (file_name.empty())
                 return tex_man.block_for_tex(fallback_path, srgb);
 
-            const auto full_path = mirinae::replace_file_name_ext(
-                res_id, file_name
-            );
-
-            auto output = tex_man.block_for_tex(full_path, srgb);
+            res_id.replace_filename(file_name);
+            auto output = tex_man.block_for_tex(res_id, srgb);
             if (!output)
                 return tex_man.block_for_tex(fallback_path, srgb);
 
@@ -393,7 +388,7 @@ namespace {
     class ModelLoadTask : public sung::StandardLoadTask {
 
     public:
-        ModelLoadTask(const mirinae::respath_t& path, dal::Filesystem& filesys)
+        ModelLoadTask(const dal::path& path, dal::Filesystem& filesys)
             : filesys_(filesys), path_(path) {}
 
         sung::TaskStatus tick() override {
@@ -532,7 +527,7 @@ namespace {
 
     private:
         dal::Filesystem& filesys_;
-        mirinae::respath_t path_;
+        dal::path path_;
         std::vector<std::byte> raw_data_;
         dal::parser::Model dmd_;
         std::set<std::string> tex_ids;
@@ -550,7 +545,7 @@ namespace {
         )
             : task_sche_(task_sche), filesys_(&device.filesys()) {}
 
-        bool add_task(const mirinae::respath_t& path) {
+        bool add_task(const dal::path& path) {
             if (this->has_task(path))
                 return false;
 
@@ -560,15 +555,13 @@ namespace {
             return true;
         }
 
-        bool has_task(const mirinae::respath_t& path) {
+        bool has_task(const dal::path& path) {
             return tasks_.find(path) != tasks_.end();
         }
 
-        void remove_task(const mirinae::respath_t& path) { tasks_.erase(path); }
+        void remove_task(const dal::path& path) { tasks_.erase(path); }
 
-        std::shared_ptr<ModelLoadTask> try_get_task(
-            const mirinae::respath_t& path
-        ) {
+        std::shared_ptr<ModelLoadTask> try_get_task(const dal::path& path) {
             const auto it = tasks_.find(path);
             if (it == tasks_.end())
                 return nullptr;
@@ -576,8 +569,7 @@ namespace {
         }
 
     private:
-        std::unordered_map<mirinae::respath_t, std::shared_ptr<ModelLoadTask>>
-            tasks_;
+        std::unordered_map<dal::path, std::shared_ptr<ModelLoadTask>> tasks_;
         sung::HTaskSche task_sche_;
         dal::Filesystem* filesys_;
     };
@@ -586,7 +578,6 @@ namespace {
     class ModelManager : public mirinae::IModelManager {
 
     public:
-        using respath = mirinae::respath_t;
         using HRenMdlStatic = mirinae::HRenMdlStatic;
         using HRenMdlSkinned = mirinae::HRenMdlSkinned;
 
@@ -609,8 +600,7 @@ namespace {
 
         ~ModelManager() override { cmd_pool_.destroy(device_.logi_device()); }
 
-        dal::ReqResult request_static(const mirinae::respath_t& res_id
-        ) override {
+        dal::ReqResult request_static(const dal::path& res_id) override {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return dal::ReqResult::ready;
@@ -672,8 +662,7 @@ namespace {
             return dal::ReqResult::ready;
         }
 
-        dal::ReqResult request_skinned(const mirinae::respath_t& res_id
-        ) override {
+        dal::ReqResult request_skinned(const dal::path& res_id) override {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return dal::ReqResult::ready;
@@ -738,7 +727,7 @@ namespace {
             return dal::ReqResult::ready;
         }
 
-        HRenMdlStatic get_static(const respath& res_id) override {
+        HRenMdlStatic get_static(const dal::path& res_id) override {
             auto found = models_.find(res_id);
             if (models_.end() != found)
                 return found->second;
@@ -880,7 +869,7 @@ namespace {
             return output;
         }
 
-        HRenMdlSkinned get_skinned(const respath& res_id) override {
+        HRenMdlSkinned get_skinned(const dal::path& res_id) override {
             auto found = skin_models_.find(res_id);
             if (skin_models_.end() != found)
                 return found->second;
@@ -1000,8 +989,8 @@ namespace {
         mirinae::HTexMgr tex_man_;
         mirinae::CommandPool cmd_pool_;
 
-        std::map<respath, mirinae::HRenMdlStatic> models_;
-        std::map<respath, mirinae::HRenMdlSkinned> skin_models_;
+        std::map<dal::path, mirinae::HRenMdlStatic> models_;
+        std::map<dal::path, mirinae::HRenMdlSkinned> skin_models_;
     };
 
 }  // namespace

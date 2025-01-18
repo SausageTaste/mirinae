@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include <entt/entt.hpp>
 #include <sung/basic/geometry3d.hpp>
 
@@ -7,7 +9,6 @@
 #include "mirinae/lightweight/skin_anim.hpp"
 #include "mirinae/lightweight/time.hpp"
 #include "mirinae/math/mamath.hpp"
-#include "mirinae/platform/filesys.hpp"
 
 
 namespace mirinae::cpnt {
@@ -54,11 +55,11 @@ namespace mirinae::cpnt {
     };
 
     struct StaticModelActor {
-        respath_t model_path_;
+        std::filesystem::path model_path_;
     };
 
     struct SkinnedModelActor {
-        respath_t model_path_;
+        std::filesystem::path model_path_;
         SkinAnimState anim_state_;
     };
 
