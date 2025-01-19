@@ -9,6 +9,18 @@
 
 namespace mirinae {
 
+    // Copy staging buffer to image and transition image layout, generate
+    // mipmaps.
+    void record_img_buf_copy_mip(
+        const VkCommandBuffer cmdbuf,
+        const uint32_t width,
+        const uint32_t height,
+        const uint32_t mip_levels,
+        const VkImage dst_image,
+        const VkBuffer src_buffer
+    );
+
+
     enum class FbufUsage {
         color_attachment,
         depth_attachment,
