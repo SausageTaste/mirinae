@@ -1,0 +1,71 @@
+#version 450
+
+#include "../utils/konst.glsl"
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout (binding = 0, rgba8) uniform writeonly image2D out_hkt_dxdy;
+layout (binding = 1, rgba8) uniform writeonly image2D out_hkt_dz;
+layout (binding = 2, rgba8) uniform readonly image2D in_hk;
+
+
+layout (push_constant) uniform U_OceanTildeHKtPushConst {
+    float time;
+} u_pc;
+
+const int N = 256;
+const int L = 256;
+
+
+struct Complex {
+    float re;
+    float im;
+};
+
+Complex complex_mul(Complex a, Complex b) {
+    return Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
+}
+
+Complex complex_add(Complex a, Complex b) {
+    return Complex(a.re + b.re, a.im + b.im);
+}
+
+Complex complex_conj(Complex a) {
+    return Complex(a.re, -a.im);
+}
+
+
+void main() {
+    const ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
+
+    const vec2 x = ivec2(gl_GlobalInvocationID.xy) - float(N) / 2.0;
+    const vec2 k = vec2(2.0 * PI * x.x/L, 2.0 * PI * x.y/L);
+    float mag = length(k);
+    if (mag < 0.00001)
+        mag = 0.00001;
+
+    const float w = sqrt(GRAVITY_EARTH * mag);
+    const vec4 h0k_texel = imageLoad(in_hk, global_idx);
+    const Complex fourier_cmp = Complex(h0k_texel.x, h0k_texel.y);
+    const Complex fourier_cmp_conj = Complex(h0k_texel.z, h0k_texel.w);
+
+    const float cos_wt = cos(w * u_pc.time);
+    const float sin_wt = sin(w * u_pc.time);
+
+    Complex exp_iwt = Complex(cos_wt, sin_wt);
+    Complex exp_iwt_inv = Complex(cos_wt, -sin_wt);
+
+    Complex hkt_dy = complex_add(
+        complex_mul(fourier_cmp, exp_iwt),
+        complex_mul(fourier_cmp_conj, exp_iwt_inv)
+    );
+
+    Complex dx = Complex(0, -k.x / mag);
+    Complex hkt_dx = complex_mul(dx, hkt_dy);
+
+    Complex dy = Complex(0, -k.y / mag);
+    Complex hkt_dz = complex_mul(dy, hkt_dy);
+
+    imageStore(out_hkt_dxdy, global_idx, vec4(hkt_dx.re, hkt_dx.im, hkt_dy.re, hkt_dy.im));
+    imageStore(out_hkt_dz, global_idx, vec4(hkt_dz.re, hkt_dz.im, 0, 1));
+}
