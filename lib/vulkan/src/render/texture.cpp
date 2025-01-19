@@ -59,79 +59,6 @@ namespace {
         return std::make_tuple(flag, aspect_mask, image_layout);
     }
 
-    uint32_t find_memory_type(
-        uint32_t typeFilter,
-        VkMemoryPropertyFlags properties,
-        VkPhysicalDevice phys_device
-    ) {
-        VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(phys_device, &memProperties);
-
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-            if (0 == (typeFilter & (1 << i)))
-                continue;
-
-            const auto& mem_type = memProperties.memoryTypes[i];
-            if ((mem_type.propertyFlags & properties) != properties)
-                continue;
-
-            return i;
-        }
-
-        MIRINAE_ABORT("failed to find suitable memory type!");
-    }
-
-    bool create_vk_image(
-        uint32_t width,
-        uint32_t height,
-        VkFormat format,
-        VkImageTiling tiling,
-        VkImageUsageFlags usage,
-        VkMemoryPropertyFlags properties,
-        VkImage& image,
-        VkDeviceMemory& imageMemory,
-        VkPhysicalDevice phys_device,
-        VkDevice logi_device
-    ) {
-        VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent.width = width;
-        imageInfo.extent.height = height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.format = format;
-        imageInfo.tiling = tiling;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.usage = usage;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateImage(logi_device, &imageInfo, nullptr, &image) !=
-            VK_SUCCESS) {
-            return false;
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(logi_device, image, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = ::find_memory_type(
-            memRequirements.memoryTypeBits, properties, phys_device
-        );
-
-        if (vkAllocateMemory(logi_device, &allocInfo, nullptr, &imageMemory) !=
-            VK_SUCCESS) {
-            return false;
-        }
-
-        vkBindImageMemory(logi_device, image, imageMemory, 0);
-        return true;
-    }
-
     void copy_buffer_to_image(
         const VkCommandBuffer cmdbuf,
         const VkImage dst_image,
@@ -245,42 +172,6 @@ namespace {
         );
     }
 
-    void copy_to_img_and_transition(
-        VkImage image,
-        uint32_t width,
-        uint32_t height,
-        uint32_t mip_levels,
-        VkFormat format,
-        VkBuffer staging_buffer,
-        mirinae::CommandPool& cmd_pool,
-        VkQueue graphics_queue,
-        VkDevice logi_device
-    ) {
-        auto cmdbuf = cmd_pool.begin_single_time(logi_device);
-
-        mirinae::ImageMemoryBarrier barrier;
-        barrier.image(image)
-            .set_src_access(0)
-            .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
-            .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-            .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-            .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-            .mip_base(0)
-            .mip_count(mip_levels)
-            .layer_base(0)
-            .layer_count(1);
-        barrier.record_single(
-            cmdbuf,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT
-        );
-
-        ::copy_buffer_to_image(cmdbuf, image, staging_buffer, width, height, 0);
-        ::generate_mipmaps(cmdbuf, image, width, height, mip_levels);
-
-        cmd_pool.end_single_time(cmdbuf, graphics_queue, logi_device);
-    }
-
 }  // namespace
 
 
@@ -324,17 +215,16 @@ namespace {
                 .add_usage_sampled();
             texture_.init(img_info.get(), device_.mem_alloc());
 
-            ::copy_to_img_and_transition(
-                texture_.image(),
+            auto cmdbuf = cmd_pool.begin_single_time(device_.logi_device());
+            mirinae::record_img_buf_copy_mip(
+                cmdbuf,
                 texture_.width(),
                 texture_.height(),
                 texture_.mip_levels(),
-                texture_.format(),
-                staging_buffer.buffer(),
-                cmd_pool,
-                device_.graphics_queue(),
-                device_.logi_device()
+                texture_.image(),
+                staging_buffer.buffer()
             );
+            cmd_pool.end_single_time(cmdbuf, device_);
             staging_buffer.destroy(device_.mem_alloc());
 
             mirinae::ImageViewBuilder iv_builder;
@@ -381,17 +271,16 @@ namespace {
                 .add_usage_sampled();
             texture_.init(img_info.get(), device_.mem_alloc());
 
-            ::copy_to_img_and_transition(
-                texture_.image(),
+            auto cmdbuf = cmd_pool.begin_single_time(device_.logi_device());
+            mirinae::record_img_buf_copy_mip(
+                cmdbuf,
                 texture_.width(),
                 texture_.height(),
                 texture_.mip_levels(),
-                texture_.format(),
-                staging_buffer.buffer(),
-                cmd_pool,
-                device_.graphics_queue(),
-                device_.logi_device()
+                texture_.image(),
+                staging_buffer.buffer()
             );
+            cmd_pool.end_single_time(cmdbuf, device_);
             staging_buffer.destroy(device_.mem_alloc());
 
             mirinae::ImageViewBuilder iv_builder;
@@ -746,8 +635,7 @@ namespace {
             cmd_pool_.destroy(device_.logi_device());
         }
 
-        dal::ReqResult request(const dal::path& res_id, bool srgb)
-            override {
+        dal::ReqResult request(const dal::path& res_id, bool srgb) override {
             if (auto index = this->find_index(res_id))
                 return dal::ReqResult::ready;
 
@@ -849,6 +737,36 @@ namespace {
 
 
 namespace mirinae {
+
+    void record_img_buf_copy_mip(
+        const VkCommandBuffer cmdbuf,
+        const uint32_t width,
+        const uint32_t height,
+        const uint32_t mip_levels,
+        const VkImage dst_image,
+        const VkBuffer src_buffer
+    ) {
+        mirinae::ImageMemoryBarrier barrier;
+        barrier.image(dst_image)
+            .set_src_access(0)
+            .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+            .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+            .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+            .mip_base(0)
+            .mip_count(mip_levels)
+            .layer_base(0)
+            .layer_count(1);
+        barrier.record_single(
+            cmdbuf,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT
+        );
+
+        ::copy_buffer_to_image(cmdbuf, dst_image, src_buffer, width, height, 0);
+        ::generate_mipmaps(cmdbuf, dst_image, width, height, mip_levels);
+    }
+
 
     std::unique_ptr<ITexture> create_tex_depth(
         uint32_t width, uint32_t height, VulkanDevice& device
