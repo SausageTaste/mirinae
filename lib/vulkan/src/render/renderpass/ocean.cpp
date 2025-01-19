@@ -26,7 +26,64 @@ namespace {
             mirinae::VulkanDevice& device
         )
             : device_(device), rp_res_(rp_res) {
-            // Images
+            mirinae::CommandPool cmd_pool;
+            cmd_pool.init(device);
+
+            // Noise textures
+            {
+                std::array<uint8_t, 256 * 256 * 1> noise_data;
+                mirinae::Buffer staging_buffer;
+                staging_buffer.init_staging(
+                    noise_data.size(), device_.mem_alloc()
+                );
+
+                mirinae::ImageCreateInfo img_info;
+                img_info.set_dimensions(256, 256)
+                    .set_format(VK_FORMAT_R8_UNORM)
+                    .deduce_mip_levels()
+                    .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                    .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                    .add_usage_sampled();
+
+                mirinae::ImageViewBuilder iv_builder;
+                iv_builder.format(img_info.format())
+                    .mip_levels(img_info.mip_levels());
+
+                for (size_t i = 0; i < noise_textures_.size(); ++i) {
+                    for (size_t i = 0; i < noise_data.size(); i++)
+                        noise_data[i] = static_cast<uint8_t>(rand() % 256);
+
+                    staging_buffer.set_data(
+                        noise_data.data(),
+                        noise_data.size(),
+                        device_.mem_alloc()
+                    );
+
+                    const auto img_name = fmt::format("ocean_noise_{}", i);
+                    auto img = rp_res.new_img(img_name, this->name());
+                    MIRINAE_ASSERT(nullptr != img);
+                    noise_textures_[i] = img;
+                    img->img_.init(img_info.get(), device_.mem_alloc());
+
+                    auto cmdbuf = cmd_pool.begin_single_time(device_);
+                    mirinae::record_img_buf_copy_mip(
+                        cmdbuf,
+                        256,
+                        256,
+                        img_info.mip_levels(),
+                        img->img_.image(),
+                        staging_buffer.buffer()
+                    );
+                    cmd_pool.end_single_time(cmdbuf, device_);
+
+                    iv_builder.image(img->img_.image());
+                    img->view_.reset(iv_builder, device_);
+                }
+
+                staging_buffer.destroy(device_.mem_alloc());
+            }
+
+            // Storage images
             {
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
@@ -82,7 +139,11 @@ namespace {
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                     .set_count(1)
-                    .finish_binding();
+                    .finish_binding()
+                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1)
+                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1)
+                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1)
+                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);
                 desclayouts.add(builder, device.logi_device());
             }
 
@@ -103,7 +164,23 @@ namespace {
                 mirinae::DescWriteInfoBuilder builder;
                 for (size_t i = 0; i < imgs_.size(); i++) {
                     builder.set_descset(desc_sets_[i])
-                        .add_storage_img(imgs_[i]->view_.get());
+                        .add_storage_img(imgs_[i]->view_.get())
+                        .add_img_sampler(
+                            noise_textures_[0]->view_.get(),
+                            device.samplers().get_nearest()
+                        )
+                        .add_img_sampler(
+                            noise_textures_[1]->view_.get(),
+                            device.samplers().get_nearest()
+                        )
+                        .add_img_sampler(
+                            noise_textures_[2]->view_.get(),
+                            device.samplers().get_nearest()
+                        )
+                        .add_img_sampler(
+                            noise_textures_[3]->view_.get(),
+                            device.samplers().get_nearest()
+                        );
                 }
                 builder.apply_all(device.logi_device());
             }
@@ -142,10 +219,13 @@ namespace {
                 MIRINAE_ASSERT(res == VK_SUCCESS);
             }
 
+            cmd_pool.destroy(device.logi_device());
             return;
         }
 
         ~RpStatesOceanTest() override {
+            for (auto& img : noise_textures_)
+                rp_res_.free_img(img->id(), this->name());
             for (auto& img : imgs_) rp_res_.free_img(img->id(), this->name());
             imgs_.clear();
 
@@ -197,6 +277,7 @@ namespace {
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
 
+        std::array<mirinae::HRpImage, 4> noise_textures_;
         std::vector<mirinae::HRpImage> imgs_;
         std::vector<VkDescriptorSet> desc_sets_;
         mirinae::DescPool desc_pool_;
