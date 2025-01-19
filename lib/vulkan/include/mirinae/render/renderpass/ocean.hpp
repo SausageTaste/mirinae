@@ -33,6 +33,12 @@ namespace mirinae::rp::ocean {
         mirinae::VulkanDevice& device
     );
 
+    std::unique_ptr<IRpStates> create_rp_states_ocean_tilde_hkt(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    );
+
     std::unique_ptr<IRpStates> create_rp_states_ocean_tess(
         size_t swapchain_count,
         mirinae::FbufImageBundle& fbuf_bundle,
