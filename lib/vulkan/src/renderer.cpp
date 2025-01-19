@@ -651,7 +651,7 @@ namespace {
             render_context.view_mat_ = view_mat;
             render_context.cmdbuf_ = cur_cmd_buf;
 
-            rp_states_ocean_test_->record(render_context);
+            rp_states_ocean_tilde_h->record(render_context);
 
             rpm_.envmap().record(
                 cur_cmd_buf,
@@ -901,8 +901,8 @@ namespace {
             rp_states_debug_mesh_.init(device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
 
-            rp_states_ocean_test_ =
-                mirinae::rp::ocean::create_rp_states_ocean_test(
+            rp_states_ocean_tilde_h =
+                mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
                     rp_res_, desclayout_, device_
                 );
 
@@ -922,7 +922,7 @@ namespace {
             rpm_.shadow().pool().destroy_fbufs(device_);
 
             rp_states_ocean_tess_.reset();
-            rp_states_ocean_test_.reset();
+            rp_states_ocean_tilde_h.reset();
             rp_states_fillscreen_.destroy(device_);
             rp_states_debug_mesh_.destroy(device_);
             rp_states_transp_.destroy(device_);
@@ -1157,7 +1157,7 @@ namespace {
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
-        std::unique_ptr<mirinae::rp::ocean::IRpStates> rp_states_ocean_test_;
+        std::unique_ptr<mirinae::rp::ocean::IRpStates> rp_states_ocean_tilde_h;
         std::unique_ptr<mirinae::rp::ocean::IRpStates> rp_states_ocean_tess_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;

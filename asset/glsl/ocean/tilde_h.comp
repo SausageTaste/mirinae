@@ -12,7 +12,7 @@ layout(set = 0, binding = 3) uniform sampler2D u_noise2;
 layout(set = 0, binding = 4) uniform sampler2D u_noise3;
 
 
-layout (push_constant) uniform U_OceanTestPushConst {
+layout (push_constant) uniform U_OceanTildeHPushConst {
     float time;
 } u_pc;
 

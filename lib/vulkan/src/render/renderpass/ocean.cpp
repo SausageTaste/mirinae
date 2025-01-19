@@ -12,15 +12,15 @@ namespace {
     constexpr uint32_t OCEAN_TEX_DIM = 256;
 
 
-    struct U_OceanTestPushConst {
+    struct U_OceanTildeHPushConst {
         float time_;
     };
 
 
-    class RpStatesOceanTest : public mirinae::rp::ocean::IRpStates {
+    class RpStatesOceanTildeH : public mirinae::rp::ocean::IRpStates {
 
     public:
-        RpStatesOceanTest(
+        RpStatesOceanTildeH(
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
@@ -133,7 +133,7 @@ namespace {
 
             // Desc layouts
             {
-                mirinae::DescLayoutBuilder builder{ "ocean_test:main" };
+                mirinae::DescLayoutBuilder builder{ name() + ":main" };
                 builder.new_binding()
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
@@ -149,15 +149,17 @@ namespace {
 
             // Desciptor Sets
             {
+                auto& layout = desclayouts.get(name() + ":main");
+
                 desc_pool_.init(
                     static_cast<uint32_t>(imgs_.size()),
-                    desclayouts.get("ocean_test:main").size_info(),
+                    layout.size_info(),
                     device.logi_device()
                 );
 
                 desc_sets_ = desc_pool_.alloc(
                     static_cast<uint32_t>(imgs_.size()),
-                    desclayouts.get("ocean_test:main").layout(),
+                    layout.layout(),
                     device.logi_device()
                 );
 
@@ -190,8 +192,8 @@ namespace {
                 pipeline_layout_ =
                     mirinae::PipelineLayoutBuilder{}
                         .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .pc<U_OceanTestPushConst>()
-                        .desc(desclayouts.get("ocean_test:main").layout())
+                        .pc<U_OceanTildeHPushConst>()
+                        .desc(desclayouts.get(name() + ":main").layout())
                         .build(device);
                 MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
             }
@@ -201,7 +203,7 @@ namespace {
                 mirinae::PipelineBuilder::ShaderStagesBuilder shader_builder{
                     device
                 };
-                shader_builder.add_comp(":asset/spv/ocean_test_comp.spv");
+                shader_builder.add_comp(":asset/spv/ocean_tilde_h_comp.spv");
 
                 VkComputePipelineCreateInfo cinfo{};
                 cinfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -223,7 +225,7 @@ namespace {
             return;
         }
 
-        ~RpStatesOceanTest() override {
+        ~RpStatesOceanTildeH() override {
             for (auto& img : noise_textures_)
                 rp_res_.free_img(img->id(), this->name());
             for (auto& img : imgs_) rp_res_.free_img(img->id(), this->name());
@@ -245,7 +247,7 @@ namespace {
         }
 
         const std::string& name() const override {
-            static const std::string name = "ocean_test";
+            static const std::string name = "ocean_tilde_h";
             return name;
         }
 
@@ -262,7 +264,7 @@ namespace {
                 .add(desc_sets_.at(ctxt.f_index_.get()))
                 .record(cmdbuf);
 
-            ::U_OceanTestPushConst pc;
+            ::U_OceanTildeHPushConst pc;
             pc.time_ = timer_.elapsed();
 
             mirinae::PushConstInfo pc_info;
@@ -360,7 +362,7 @@ namespace {
             // Images
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 const auto img_name = fmt::format(
-                    "ocean_test:height_map_f#{}", i
+                    "ocean_tilde_h:height_map_f#{}", i
                 );
                 auto img = rp_res.get_img_reader(img_name, this->name());
                 MIRINAE_ASSERT(nullptr != img);
@@ -608,12 +610,14 @@ namespace {
 
 namespace mirinae::rp::ocean {
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_test(
+    std::unique_ptr<IRpStates> create_rp_states_ocean_tilde_h(
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
-        return std::make_unique<RpStatesOceanTest>(rp_res, desclayouts, device);
+        return std::make_unique<RpStatesOceanTildeH>(
+            rp_res, desclayouts, device
+        );
     }
 
     std::unique_ptr<IRpStates> create_rp_states_ocean_tess(
