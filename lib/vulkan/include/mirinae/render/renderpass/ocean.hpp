@@ -27,7 +27,7 @@ namespace mirinae::rp::ocean {
         virtual const std::string& name() const = 0;
     };
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_test(
+    std::unique_ptr<IRpStates> create_rp_states_ocean_tilde_h(
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
