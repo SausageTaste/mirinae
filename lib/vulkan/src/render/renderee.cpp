@@ -437,6 +437,8 @@ namespace {
                 tex_ids.insert(unit.material_.normal_map_);
                 tex_ids.insert(unit.material_.roughness_map_);
             }
+            tex_ids.erase("");
+            tex_ids_srgb.erase("");
 
             for (auto& src_unit : dmd_.units_indexed_) {
                 auto& dst_vertices = units_indexed_.emplace_back();
