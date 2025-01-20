@@ -564,7 +564,7 @@ namespace {
                 .record(cmdbuf);
 
             ::U_OceanTildeHktPushConst pc;
-            pc.time_ = 5;
+            pc.time_ = timer_.elapsed();
 
             mirinae::PushConstInfo pc_info;
             pc_info.layout(pipeline_layout_)
@@ -1166,8 +1166,7 @@ namespace {
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(1)
-                    .finish_binding()
-                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);  // butfly_cache
+                    .finish_binding();
                 desclayouts.add(builder, device.logi_device());
             }
 
@@ -1374,7 +1373,7 @@ namespace {
             // Images
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 const auto img_name = fmt::format(
-                    "ocean_tilde_h:height_map_f#{}", i
+                    "ocean_finalize:displacement_f#{}", i
                 );
                 auto img = rp_res.get_img_reader(img_name, this->name());
                 MIRINAE_ASSERT(nullptr != img);
