@@ -3,9 +3,9 @@
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout (binding = 1, rgba8) uniform writeonly image2D out_displacement;
-layout (binding = 2, rgba8) uniform readonly image2D in_hkt_dxdy;
-layout (binding = 3, rgba8) uniform readonly image2D in_hkt_dz;
+layout (binding = 0, rgba8) uniform writeonly image2D out_displacement;
+layout (binding = 1, rgba8) uniform readonly image2D in_hkt_dxdy;
+layout (binding = 2, rgba8) uniform readonly image2D in_hkt_dz;
 
 
 void main() {
