@@ -7,7 +7,7 @@ layout (binding = 0, rgba8) uniform writeonly image2D out_displacement;
 layout (binding = 1, rgba8) uniform readonly image2D in_hkt_dxdy;
 layout (binding = 2, rgba8) uniform readonly image2D in_hkt_dz;
 
-const int N = 1024;
+const int N = 256;
 
 
 void main() {
@@ -17,9 +17,10 @@ void main() {
     int index = int(mod((int(global_idx.x) + int(global_idx.y)), 2));
     float perm = perms[index];
 
-    vec4 texel = imageLoad(in_hkt_dxdy, global_idx);
-    float h = texel.x;
-    vec4 color = texel * perm / float(N * N);
+    vec4 texel_dxdy = imageLoad(in_hkt_dxdy, global_idx);
+    vec4 texel_dz = imageLoad(in_hkt_dz, global_idx);
+    vec3 xyz_comp = vec3(texel_dxdy.xz, texel_dz.x);
+    vec3 color = xyz_comp * perm / float(N * N);
 
-    imageStore(out_displacement, global_idx, color);
+    imageStore(out_displacement, global_idx, vec4(color, 1));
 }

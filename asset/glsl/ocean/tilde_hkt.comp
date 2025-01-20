@@ -13,7 +13,7 @@ layout (push_constant) uniform U_OceanTildeHKtPushConst {
     float time;
 } u_pc;
 
-const int N = 1024;
+const int N = 256;
 const int L = 1000;
 
 
@@ -39,7 +39,7 @@ void main() {
     const ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
 
     const vec2 x = ivec2(gl_GlobalInvocationID.xy) - float(N) / 2.0;
-    const vec2 k = vec2(2.0 * PI * x.x/L, 2.0 * PI * x.y/L);
+    const vec2 k = x * 2.0 * PI / float(L);
     float mag = length(k);
     if (mag < 0.00001)
         mag = 0.00001;
