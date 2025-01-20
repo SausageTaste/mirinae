@@ -1,0 +1,103 @@
+#version 450
+
+#include "../utils/complex.glsl"
+#include "../utils/konst.glsl"
+
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout (binding = 0, rgba8) uniform image2D out_pingpong;
+layout (binding = 1, rgba8) uniform image2D in_hkt_dxdy;
+
+layout(set = 0, binding = 2) uniform sampler2D u_butterfly_cache;
+
+layout (push_constant) uniform U_OceanButterflyPushConst {
+    int stage;
+    int pingpong;
+    int direction;
+} u_pc;
+
+
+void horizontalButterflies() {
+    Complex H;
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+    if (u_pc.pingpong == 0) {
+        vec4 data = texelFetch(u_butterfly_cache, ivec2(u_pc.stage, texel.x), 0).rgba;
+        vec2 p_ = imageLoad(out_pingpong, ivec2(data.z, texel.y)).rg;
+        vec2 q_ = imageLoad(out_pingpong, ivec2(data.w, texel.y)).rg;
+        vec2 w_ = vec2(data.x, data.y);
+
+        Complex p = Complex(p_.x, p_.y);
+        Complex q = Complex(q_.x, q_.y);
+        Complex w = Complex(w_.x, w_.y);
+
+        H = complex_add(p, complex_mul(w, q));
+
+        //imageStore(in_hkt_dxdy, texel, vec4(1) - imageLoad(out_pingpong, texel) - vec4(0.1));
+        imageStore(in_hkt_dxdy, texel, vec4(H.re, H.im, 0, 1));
+    }
+    else if (u_pc.pingpong == 1)
+    {
+        vec4 data = texelFetch(u_butterfly_cache, ivec2(u_pc.stage, texel.x), 0).rgba;
+        vec2 p_ = imageLoad(in_hkt_dxdy, ivec2(data.z, texel.y)).rg;
+        vec2 q_ = imageLoad(in_hkt_dxdy, ivec2(data.w, texel.y)).rg;
+        vec2 w_ = vec2(data.x, data.y);
+
+        Complex p = Complex(p_.x, p_.y);
+        Complex q = Complex(q_.x, q_.y);
+        Complex w = Complex(w_.x, w_.y);
+
+        H = complex_add(p, complex_mul(w, q));
+
+        //imageStore(out_pingpong, texel, vec4(1) - imageLoad(in_hkt_dxdy, texel) - vec4(0.1);
+        imageStore(out_pingpong, texel, vec4(H.re, H.im, 0, 1));
+    }
+}
+
+void verticalButterflies()
+{
+    Complex H;
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+    if (u_pc.pingpong == 0)
+    {
+        vec4 data = texelFetch(u_butterfly_cache, ivec2(u_pc.stage, texel.y), 0).rgba;
+        vec2 p_ = imageLoad(out_pingpong, ivec2(texel.x, data.z)).rg;
+        vec2 q_ = imageLoad(out_pingpong, ivec2(texel.x, data.w)).rg;
+        vec2 w_ = vec2(data.x, data.y);
+
+        Complex p = Complex(p_.x, p_.y);
+        Complex q = Complex(q_.x, q_.y);
+        Complex w = Complex(w_.x, w_.y);
+
+        H = complex_add(p, complex_mul(w, q));
+
+        //imageStore(in_hkt_dxdy, texel, vec4(1) - imageLoad(out_pingpong, texel)  - vec4(0.1));
+        imageStore(in_hkt_dxdy, texel, vec4(H.re, H.im, 0, 1));
+    }
+    else if (u_pc.pingpong == 1)
+    {
+        vec4 data = texelFetch(u_butterfly_cache, ivec2(u_pc.stage, texel.y), 0).rgba;
+        vec2 p_ = imageLoad(in_hkt_dxdy, ivec2(texel.x, data.z)).rg;
+        vec2 q_ = imageLoad(in_hkt_dxdy, ivec2(texel.x, data.w)).rg;
+        vec2 w_ = vec2(data.x, data.y);
+
+        Complex p = Complex(p_.x, p_.y);
+        Complex q = Complex(q_.x, q_.y);
+        Complex w = Complex(w_.x, w_.y);
+
+        H = complex_add(p, complex_mul(w, q));
+
+        //imageStore(out_pingpong, texel, vec4(1) - imageLoad(in_hkt_dxdy, texel) - vec4(0.1));
+        imageStore(out_pingpong, texel, vec4(H.re, H.im, 0, 1));
+    }
+}
+
+void main() {
+    if (u_pc.direction == 0) {
+        horizontalButterflies();
+    } else if (u_pc.direction == 1) {
+        verticalButterflies();
+    }
+}
