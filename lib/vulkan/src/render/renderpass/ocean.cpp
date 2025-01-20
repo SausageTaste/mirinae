@@ -626,11 +626,11 @@ namespace {
         uint32_t width, uint32_t height
     ) {
         std::vector<int> bit_reversed_indices(height);
-        int bits = (width);
-        for (int i = 0; i < height; i++) {
-            unsigned int x = reverse_bits(i);
-            x = (x << bits) | (x >> (sizeof(int) - bits));
-            bit_reversed_indices[i] = x;
+        const int bits = width;
+        const int right_shift = sizeof(int) * 8 - bits;
+        for (uint32_t i = 0; i < height; i++) {
+            int x = reverse_bits(i);
+            bit_reversed_indices[i] = (x << bits) | (x >> right_shift);
         }
 
         dal::TDataImage2D<float> out;
@@ -952,8 +952,7 @@ namespace {
             VkMemoryBarrier mem_bar = {};
             mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
             mem_bar.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-            mem_bar.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT |
-                                    VK_ACCESS_MEMORY_WRITE_BIT;
+            mem_bar.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
             ::U_OceanButterflyPushConst pc;
             pc.stage_ = 0;
