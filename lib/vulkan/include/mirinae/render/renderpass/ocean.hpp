@@ -48,6 +48,12 @@ namespace mirinae::rp::ocean {
         mirinae::VulkanDevice& device
     );
 
+    URpStates create_rp_states_ocean_finalize(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    );
+
     URpStates create_rp_states_ocean_tess(
         size_t swapchain_count,
         mirinae::FbufImageBundle& fbuf_bundle,

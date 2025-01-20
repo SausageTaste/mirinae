@@ -1066,6 +1066,244 @@ namespace {
 }  // namespace
 
 
+// Ocean Finalize
+namespace {
+
+    class RpStatesOceanFinalize : public mirinae::rp::ocean::IRpStates {
+
+    public:
+        RpStatesOceanFinalize(
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device), rp_res_(rp_res) {
+            mirinae::CommandPool cmd_pool;
+            cmd_pool.init(device);
+
+            // Reference images
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& fd = fdata_[i];
+
+                fd.hkt_dxdy_ = rp_res.get_img_reader(
+                    fmt::format("ocean_tilde_hkt:hkt_dxdy_f#{}", i), name()
+                );
+                MIRINAE_ASSERT(nullptr != fd.hkt_dxdy_);
+                fd.hkt_dz_ = rp_res.get_img_reader(
+                    fmt::format("ocean_tilde_hkt:hkt_dz_f#{}", i), name()
+                );
+                MIRINAE_ASSERT(nullptr != fd.hkt_dz_);
+            }
+
+            // Storage images
+            {
+                mirinae::ImageCreateInfo cinfo;
+                cinfo.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
+                    .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
+                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
+                    .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
+
+                mirinae::ImageViewBuilder builder;
+                builder.format(cinfo.format())
+                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
+
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    auto& fd = fdata_[i];
+
+                    const auto i_name = fmt::format("displacement_f#{}", i);
+                    fd.displacement_ = rp_res.new_img(i_name, name());
+                    MIRINAE_ASSERT(nullptr != fd.displacement_);
+
+                    auto& img = fd.displacement_->img_;
+                    img.init(cinfo.get(), device.mem_alloc());
+                    builder.image(img.image());
+
+                    fd.displacement_->view_.reset(builder, device);
+                }
+            }
+
+            // Image transitions
+            {
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.set_src_access(0)
+                    .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .layer_count(1)
+                    .mip_count(1);
+
+                mirinae::CommandPool cmd_pool;
+                cmd_pool.init(device);
+                auto cmdbuf = cmd_pool.begin_single_time(device);
+                for (auto fd : fdata_) {
+                    barrier.image(fd.displacement_->img_.image());
+                    barrier.record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
+                    );
+                }
+                cmd_pool.end_single_time(cmdbuf, device);
+                cmd_pool.destroy(device.logi_device());
+            }
+
+            // Desc layouts
+            {
+                mirinae::DescLayoutBuilder builder{ name() + ":main" };
+                builder
+                    .new_binding()  // displacement
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(1)
+                    .finish_binding()
+                    .new_binding()  // hkt dxdy
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(1)
+                    .finish_binding()
+                    .new_binding()  // hkt dz
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(1)
+                    .finish_binding()
+                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);  // butfly_cache
+                desclayouts.add(builder, device.logi_device());
+            }
+
+            // Desciptor Sets
+            {
+                auto& layout = desclayouts.get(name() + ":main");
+
+                desc_pool_.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    layout.size_info(),
+                    device.logi_device()
+                );
+
+                auto sets = desc_pool_.alloc(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    layout.layout(),
+                    device.logi_device()
+                );
+
+                mirinae::DescWriteInfoBuilder builder;
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    auto& fd = fdata_[i];
+                    fd.desc_set_ = sets[i];
+
+                    builder.set_descset(fd.desc_set_)
+                        .add_storage_img(fd.displacement_->view_.get())
+                        .add_storage_img(fd.hkt_dxdy_->view_.get())
+                        .add_storage_img(fd.hkt_dz_->view_.get());
+                }
+                builder.apply_all(device.logi_device());
+            }
+
+            // Pipeline
+            {
+                pipeline_layout_ =
+                    mirinae::PipelineLayoutBuilder{}
+                        .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
+                        .pc<U_OceanButterflyPushConst>()
+                        .desc(desclayouts.get(name() + ":main").layout())
+                        .build(device);
+                MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
+
+                pipeline_ = ::create_compute_pipeline(
+                    ":asset/spv/ocean_finalize_comp.spv",
+                    pipeline_layout_,
+                    device
+                );
+            }
+
+            cmd_pool.destroy(device.logi_device());
+            return;
+        }
+
+        ~RpStatesOceanFinalize() override {
+            for (auto& fdata : fdata_) {
+                rp_res_.free_img(fdata.hkt_dxdy_->id(), this->name());
+                rp_res_.free_img(fdata.hkt_dz_->id(), this->name());
+                rp_res_.free_img(fdata.displacement_->id(), this->name());
+                fdata.desc_set_ = VK_NULL_HANDLE;
+            }
+
+            desc_pool_.destroy(device_.logi_device());
+
+            if (VK_NULL_HANDLE != pipeline_) {
+                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
+                pipeline_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != pipeline_layout_) {
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), pipeline_layout_, nullptr
+                );
+                pipeline_layout_ = VK_NULL_HANDLE;
+            }
+        }
+
+        const std::string& name() const override {
+            static const std::string name = "ocean_finalize";
+            return name;
+        }
+
+        void record(const mirinae::rp::ocean::RpContext& ctxt) override {
+            auto cmdbuf = ctxt.cmdbuf_;
+            auto& fd = fdata_[ctxt.f_index_.get()];
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
+            );
+
+            mirinae::DescSetBindInfo{}
+                .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
+                .layout(pipeline_layout_)
+                .add(fd.desc_set_)
+                .record(cmdbuf);
+
+            VkMemoryBarrier mem_bar = {};
+            mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+            mem_bar.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+            mem_bar.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+            vkCmdPipelineBarrier(
+                cmdbuf,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                0,
+                1,
+                &mem_bar,
+                0,
+                nullptr,
+                0,
+                nullptr
+            );
+
+            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
+        }
+
+    private:
+        struct FrameData {
+            mirinae::HRpImage hkt_dxdy_;
+            mirinae::HRpImage hkt_dz_;
+            mirinae::HRpImage displacement_;
+            VkDescriptorSet desc_set_;
+        };
+
+        mirinae::VulkanDevice& device_;
+        mirinae::RpResources& rp_res_;
+
+        std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
+        mirinae::DescPool desc_pool_;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+    };
+
+}  // namespace
+
+
 // Ocean tessellation
 namespace {
 
@@ -1410,6 +1648,16 @@ namespace mirinae::rp::ocean {
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<RpStatesOceanButterfly>(
+            rp_res, desclayouts, device
+        );
+    }
+
+    URpStates create_rp_states_ocean_finalize(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<RpStatesOceanFinalize>(
             rp_res, desclayouts, device
         );
     }
