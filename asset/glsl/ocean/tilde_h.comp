@@ -16,7 +16,7 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
     float time;
 } u_pc;
 
-const int N = 1024;
+const int N = 256;
 const int L = 1000;
 const float A = 4;
 const float wind_speed = 40;
@@ -41,8 +41,8 @@ vec4 gauseRnd() {
 
 
 void main() {
-    const vec2 x = vec2(gl_GlobalInvocationID.xy) - float(N) / 2.0;
-    const vec2 k = vec2(2.0 * PI * x.x/L, 2.0 * PI * x.y/L);
+    const vec2 x = vec2(gl_GlobalInvocationID.xy) - float(N) * 0.5;
+    const vec2 k = x * 2.0 * PI / float(L);
 
     const float L_ = (wind_speed * wind_speed) / GRAVITY_EARTH;
     float mag = length(k);
@@ -51,23 +51,23 @@ void main() {
     const float mgSq = mag * mag;
 
     const float h0k = clamp(sqrt((A / (mgSq * mgSq))
-        * pow(dot(normalize(k), normalize(wind_direc)), 2.0)
+        * pow(dot(normalize(k), normalize(wind_direc)), 2)
+        * pow(dot(normalize(k), normalize(wind_direc)), 2)
+        * pow(dot(normalize(k), normalize(wind_direc)), 2)
         * exp(-(1.0 / (mgSq * L_ * L_)))
-        * exp(-mgSq * pow(L / 2000.0, 2.0))) / sqrt(2.0), -4000, 4000);
+        * exp(-mgSq * pow(L / 2000, 2.0))) / sqrt(2.0), -4000.0, 4000.0);
 
     const float h0minusk = clamp(sqrt((A / (mgSq * mgSq))
-        * pow(dot(normalize(-k), normalize(wind_direc)), 2.0)
+        * pow(dot(normalize(-k), normalize(wind_direc)), 2)
+        * pow(dot(normalize(-k), normalize(wind_direc)), 2)
+        * pow(dot(normalize(-k), normalize(wind_direc)), 2)
         * exp(-(1.0 / (mgSq * L_ * L_)))
-        * exp(-mgSq * pow(L / 2000.0, 2.0))) / sqrt(2.0), -4000, 4000);
+        * exp(-mgSq * pow(L / 2000, 2.0))) / sqrt(2.0), -4000.0, 4000.0);
 
     const vec4 gause_random = gauseRnd();
     const vec2 h0k_vec = gause_random.xy * h0k;
     const vec2 h0minusk_vec = gause_random.zw * h0minusk;
 
-    vec4 pixel = vec4(0);
-    pixel.xy = h0k_vec;
-    pixel.zw = h0minusk_vec;
-
     const ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
-    imageStore(out_image, global_idx, pixel);
+    imageStore(out_image, global_idx, vec4(h0k_vec, h0minusk_vec));
 }

@@ -37,7 +37,7 @@ namespace {
 // Ocean Tilde H
 namespace {
 
-    constexpr uint32_t OCEAN_TEX_DIM = 1024;
+    constexpr uint32_t OCEAN_TEX_DIM = 256;
     const uint32_t OCEAN_TEX_DIM_LOG2 = std::log(OCEAN_TEX_DIM) / std::log(2);
 
 
@@ -1582,7 +1582,7 @@ namespace {
                 .tile_count(100, 100)
                 .height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                 .fbuf_size(fbuf_exd)
-                .height_scale(100);
+                .height_scale(3);
 
             for (int x = 0; x < 10; ++x) {
                 for (int y = 0; y < 10; ++y) {
