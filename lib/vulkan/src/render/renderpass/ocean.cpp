@@ -37,7 +37,8 @@ namespace {
 // Ocean Tilde H
 namespace {
 
-    constexpr uint32_t OCEAN_TEX_DIM = 256;
+    constexpr uint32_t OCEAN_TEX_DIM = 1024;
+    const uint32_t OCEAN_TEX_DIM_LOG2 = std::log(OCEAN_TEX_DIM) / std::log(2);
 
 
     struct U_OceanTildeHPushConst {
@@ -59,14 +60,14 @@ namespace {
 
             // Noise textures
             {
-                std::array<uint8_t, 256 * 256 * 1> noise_data;
+                std::vector<uint8_t> noise_data(OCEAN_TEX_DIM * OCEAN_TEX_DIM);
                 mirinae::Buffer staging_buffer;
                 staging_buffer.init_staging(
                     noise_data.size(), device_.mem_alloc()
                 );
 
                 mirinae::ImageCreateInfo img_info;
-                img_info.set_dimensions(256, 256)
+                img_info.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                     .set_format(VK_FORMAT_R8_UNORM)
                     .deduce_mip_levels()
                     .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
@@ -96,8 +97,8 @@ namespace {
                     auto cmdbuf = cmd_pool.begin_single_time(device_);
                     mirinae::record_img_buf_copy_mip(
                         cmdbuf,
-                        256,
-                        256,
+                        OCEAN_TEX_DIM,
+                        OCEAN_TEX_DIM,
                         img_info.mip_levels(),
                         img->img_.image(),
                         staging_buffer.buffer()
@@ -728,7 +729,7 @@ namespace {
             // Butterfly cache texture
             {
                 const auto bufffly_img = ::create_butterfly_cache_tex(
-                    std::log(OCEAN_TEX_DIM) / std::log(2), OCEAN_TEX_DIM
+                    OCEAN_TEX_DIM_LOG2, OCEAN_TEX_DIM
                 );
 
                 mirinae::ImageCreateInfo img_info;
@@ -993,7 +994,7 @@ namespace {
             pc.direction_ = 0;
 
             // one dimensional FFT in horizontal direction
-            for (int stage = 0; stage < 8; stage++) {
+            for (int stage = 0; stage < OCEAN_TEX_DIM_LOG2; stage++) {
                 pc.direction_ = 0;
                 pc.stage_ = stage;
                 pc_info.record(cmdbuf, pc);
@@ -1018,7 +1019,7 @@ namespace {
                 pc.pingpong_ = !pc.pingpong_;
             }
 
-            for (int stage = 0; stage < 8; stage++) {
+            for (int stage = 0; stage < OCEAN_TEX_DIM_LOG2; stage++) {
                 pc.direction_ = 1;
                 pc.stage_ = stage;
                 pc_info.record(cmdbuf, pc);
@@ -1581,7 +1582,7 @@ namespace {
                 .tile_count(100, 100)
                 .height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                 .fbuf_size(fbuf_exd)
-                .height_scale(5);
+                .height_scale(100);
 
             for (int x = 0; x < 10; ++x) {
                 for (int y = 0; y < 10; ++y) {

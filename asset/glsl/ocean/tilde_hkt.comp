@@ -13,7 +13,7 @@ layout (push_constant) uniform U_OceanTildeHKtPushConst {
     float time;
 } u_pc;
 
-const int N = 256;
+const int N = 1024;
 const int L = 1000;
 
 
