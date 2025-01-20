@@ -14,8 +14,8 @@ layout (push_constant) uniform U_OceanTessPushConst {
 } u_pc;
 
 
-const float TILE_SIZE_X = 20.0;
-const float TILE_SIZE_Y = 20.0;
+const float TILE_SIZE_X = 100.0;
+const float TILE_SIZE_Y = 100.0;
 
 const vec3[] POSITIONS = vec3[4](
     vec3(          0, 0,           0),
