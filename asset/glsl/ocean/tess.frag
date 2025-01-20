@@ -22,6 +22,7 @@ layout(set = 0, binding = 1) uniform sampler2D u_normal_map;
 void main() {
     vec3 normal = textureLod(u_normal_map, i_uv, 0).xyz;
     normal = normalize(normal);
-    vec3 light_dir = normalize(mat3(u_pc.view) * vec3(1, 1, 0));
+    vec3 light_dir = normalize(vec3(1, 1, 0));
     f_color.xyz = vec3(0.1) + vec3(0.9) * max(0, dot(normal, light_dir));
+    //f_color = vec4(1);
 }

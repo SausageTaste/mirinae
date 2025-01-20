@@ -18,7 +18,7 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
 
 const int N = 256;
 const int L = 1000;
-const float A = 4;
+const float A = 100;
 const float wind_speed = 40;
 const vec2 wind_direc = vec2(1, 1);
 
@@ -26,10 +26,10 @@ const vec2 wind_direc = vec2(1, 1);
 vec4 gauseRnd() {
     const vec2 tex_coord = vec2(gl_GlobalInvocationID.xy) / float(N);
 
-    const float noise0 = clamp(texture(u_noise0, tex_coord).r, 0.001, 1.0);
-    const float noise1 = clamp(texture(u_noise1, tex_coord).r, 0.001, 1.0);
-    const float noise2 = clamp(texture(u_noise2, tex_coord).r, 0.001, 1.0);
-    const float noise3 = clamp(texture(u_noise3, tex_coord).r, 0.001, 1.0);
+    const float noise0 = clamp(textureLod(u_noise0, tex_coord, 0).r, 0.001, 1.0);
+    const float noise1 = clamp(textureLod(u_noise1, tex_coord, 0).r, 0.001, 1.0);
+    const float noise2 = clamp(textureLod(u_noise2, tex_coord, 0).r, 0.001, 1.0);
+    const float noise3 = clamp(textureLod(u_noise3, tex_coord, 0).r, 0.001, 1.0);
 
     const float u0 = 2.0 * PI * noise0;
     const float v0 = sqrt(-2.0 * log(noise1));
@@ -49,20 +49,21 @@ void main() {
     if (mag < 0.00001)
         mag = 0.00001;
     const float mgSq = mag * mag;
+    const float l2 = L_ * L_ * 0.001 * 0.001;
 
-    const float h0k = clamp(sqrt((A / (mgSq * mgSq))
+    const float h0k = sqrt((A / (mgSq * mgSq))
         * pow(dot(normalize(k), normalize(wind_direc)), 2)
         * pow(dot(normalize(k), normalize(wind_direc)), 2)
         * pow(dot(normalize(k), normalize(wind_direc)), 2)
         * exp(-(1.0 / (mgSq * L_ * L_)))
-        * exp(-mgSq * pow(L / 2000, 2.0))) / sqrt(2.0), -4000.0, 4000.0);
+        * exp(-mgSq * l2)) / sqrt(2.0);
 
-    const float h0minusk = clamp(sqrt((A / (mgSq * mgSq))
+    const float h0minusk = sqrt((A / (mgSq * mgSq))
         * pow(dot(normalize(-k), normalize(wind_direc)), 2)
         * pow(dot(normalize(-k), normalize(wind_direc)), 2)
         * pow(dot(normalize(-k), normalize(wind_direc)), 2)
         * exp(-(1.0 / (mgSq * L_ * L_)))
-        * exp(-mgSq * pow(L / 2000, 2.0))) / sqrt(2.0), -4000.0, 4000.0);
+        * exp(-mgSq * l2)) / sqrt(2.0);
 
     const vec4 gause_random = gauseRnd();
     const vec2 h0k_vec = gause_random.xy * h0k;

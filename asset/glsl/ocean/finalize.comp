@@ -25,9 +25,9 @@ void main() {
     vec3 color = xyz_comp * perm / float(N * N);
 
     vec4 texel_ddxddz = imageLoad(in_hkt_ddxddz, global_idx);
-    vec3 normal = vec3(0 - texel_ddxddz.x * perm, 1, 0 - texel_ddxddz.z * perm);
+    vec3 normal = vec3(0 - texel_ddxddz.x * perm, 5000, 0 - texel_ddxddz.z * perm);
     normal = normal;
 
-    imageStore(out_displacement, global_idx, vec4(color, 1));
+    imageStore(out_displacement, global_idx, vec4(-color.x, color.y, -color.z, 1));
     imageStore(out_normal, global_idx, vec4(normal, 1));
 }

@@ -61,11 +61,8 @@ void main() {
         complex_mul(fourier_cmp_conj, exp_iwt_inv)
     );
 
-    Complex dx = Complex(0, -k.x / mag);
-    Complex hkt_dx = complex_mul(dx, hkt_dy);
-
-    Complex dy = Complex(0, -k.y / mag);
-    Complex hkt_dz = complex_mul(dy, hkt_dy);
+    Complex hkt_dx = complex_mul(Complex(0, -k.x / mag), hkt_dy);
+    Complex hkt_dz = complex_mul(Complex(0, -k.y / mag), hkt_dy);
 
     imageStore(out_hkt_dxdy, global_idx, vec4(hkt_dx.re, hkt_dx.im, hkt_dy.re, hkt_dy.im));
     imageStore(out_hkt_dz, global_idx, vec4(hkt_dz.re, hkt_dz.im, 0, 1));
