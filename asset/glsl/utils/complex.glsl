@@ -3,6 +3,10 @@ struct Complex {
     float im;
 };
 
+Complex complex_init(vec2 real_img) {
+    return Complex(real_img.x, real_img.y);
+}
+
 Complex complex_mul(Complex a, Complex b) {
     return Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
 }

@@ -364,7 +364,7 @@ namespace {
                     }
 
                     {
-                        const auto img_name = fmt::format("hkt_dx_f#{}", i);
+                        const auto img_name = fmt::format("hkt_dz_f#{}", i);
                         auto img = rp_res.new_img(img_name, this->name());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
@@ -713,12 +713,16 @@ namespace {
 
             // Reference images
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                const auto img_name = fmt::format(
-                    "ocean_tilde_hkt:hkt_dxdy_f#{}", i
+                auto& fd = fdata_[i];
+
+                fd.hkt_dxdy_ = rp_res.get_img_reader(
+                    fmt::format("ocean_tilde_hkt:hkt_dxdy_f#{}", i), name()
                 );
-                auto img = rp_res.get_img_reader(img_name, this->name());
-                MIRINAE_ASSERT(nullptr != img);
-                hkt_dxdy_.push_back(img);
+                MIRINAE_ASSERT(nullptr != fd.hkt_dxdy_);
+                fd.hkt_dz_ = rp_res.get_img_reader(
+                    fmt::format("ocean_tilde_hkt:hkt_dz_f#{}", i), name()
+                );
+                MIRINAE_ASSERT(nullptr != fd.hkt_dz_);
             }
 
             // Butterfly cache texture
@@ -786,12 +790,31 @@ namespace {
                     .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
 
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                    const auto img_name = fmt::format("pingpong_f#{}", i);
-                    auto img = rp_res.new_img(img_name, this->name());
-                    img->img_.init(cinfo.get(), device.mem_alloc());
-                    builder.image(img->img_.image());
-                    img->view_.reset(builder, device);
-                    pingpongs_.push_back(std::move(img));
+                    auto& fd = fdata_[i];
+
+                    {
+                        const auto i_name = fmt::format("pingpong_xy_f#{}", i);
+                        fd.pingpong_xy_ = rp_res.new_img(i_name, name());
+                        MIRINAE_ASSERT(nullptr != fd.pingpong_xy_);
+
+                        auto& img = fd.pingpong_xy_->img_;
+                        img.init(cinfo.get(), device.mem_alloc());
+                        builder.image(img.image());
+
+                        fd.pingpong_xy_->view_.reset(builder, device);
+                    }
+
+                    {
+                        const auto i_name = fmt::format("pingpong_z_f#{}", i);
+                        fd.pingpong_z_ = rp_res.new_img(i_name, name());
+                        MIRINAE_ASSERT(nullptr != fd.pingpong_z_);
+
+                        auto& img = fd.pingpong_z_->img_;
+                        img.init(cinfo.get(), device.mem_alloc());
+                        builder.image(img.image());
+
+                        fd.pingpong_z_->view_.reset(builder, device);
+                    }
                 }
             }
 
@@ -809,8 +832,15 @@ namespace {
                 mirinae::CommandPool cmd_pool;
                 cmd_pool.init(device);
                 auto cmdbuf = cmd_pool.begin_single_time(device);
-                for (auto p_img : pingpongs_) {
-                    barrier.image(p_img->img_.image());
+                for (auto fd : fdata_) {
+                    barrier.image(fd.pingpong_xy_->img_.image());
+                    barrier.record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
+                    );
+
+                    barrier.image(fd.pingpong_z_->img_.image());
                     barrier.record_single(
                         cmdbuf,
                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -825,12 +855,22 @@ namespace {
             {
                 mirinae::DescLayoutBuilder builder{ name() + ":main" };
                 builder
-                    .new_binding()  // pingpong
+                    .new_binding()  // pingpong xy
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(1)
                     .finish_binding()
-                    .new_binding()  // hkt
+                    .new_binding()  // pingpong z
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(1)
+                    .finish_binding()
+                    .new_binding()  // hkt dxdy
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(1)
+                    .finish_binding()
+                    .new_binding()  // hkt dz
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(1)
@@ -849,7 +889,7 @@ namespace {
                     device.logi_device()
                 );
 
-                desc_sets_ = desc_pool_.alloc(
+                auto sets = desc_pool_.alloc(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     layout.layout(),
                     device.logi_device()
@@ -857,9 +897,14 @@ namespace {
 
                 mirinae::DescWriteInfoBuilder builder;
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                    builder.set_descset(desc_sets_[i])
-                        .add_storage_img(pingpongs_[i]->view_.get())
-                        .add_storage_img(hkt_dxdy_[i]->view_.get())
+                    auto& fd = fdata_[i];
+                    fd.desc_set_ = sets[i];
+
+                    builder.set_descset(fd.desc_set_)
+                        .add_storage_img(fd.pingpong_xy_->view_.get())
+                        .add_storage_img(fd.pingpong_z_->view_.get())
+                        .add_storage_img(fd.hkt_dxdy_->view_.get())
+                        .add_storage_img(fd.hkt_dz_->view_.get())
                         .add_img_sampler(
                             butterfly_cache_->view_.get(),
                             device.samplers().get_nearest()
@@ -890,11 +935,15 @@ namespace {
         }
 
         ~RpStatesOceanButterfly() override {
-            for (auto& img : hkt_dxdy_)
-                rp_res_.free_img(img->id(), this->name());
-            for (auto& img : pingpongs_)
-                rp_res_.free_img(img->id(), this->name());
+            for (auto& fdata : fdata_) {
+                rp_res_.free_img(fdata.hkt_dxdy_->id(), this->name());
+                rp_res_.free_img(fdata.hkt_dz_->id(), this->name());
+                rp_res_.free_img(fdata.pingpong_xy_->id(), this->name());
+                rp_res_.free_img(fdata.pingpong_z_->id(), this->name());
+                fdata.desc_set_ = VK_NULL_HANDLE;
+            }
 
+            rp_res_.free_img(butterfly_cache_->id(), this->name());
             desc_pool_.destroy(device_.logi_device());
 
             if (VK_NULL_HANDLE != pipeline_) {
@@ -917,23 +966,7 @@ namespace {
 
         void record(const mirinae::rp::ocean::RpContext& ctxt) override {
             auto cmdbuf = ctxt.cmdbuf_;
-
-            mirinae::ImageMemoryBarrier barrier;
-            barrier.image(hkt_dxdy_[ctxt.f_index_.get()]->img_.image())
-                .set_src_access(0)
-                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
-                .old_layout(VK_IMAGE_LAYOUT_GENERAL)
-                .new_layout(VK_IMAGE_LAYOUT_GENERAL)
-                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .mip_base(0)
-                .mip_count(1)
-                .layer_base(0)
-                .layer_count(1);
-            barrier.record_single(
-                cmdbuf,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
-            );
+            auto& fd = fdata_[ctxt.f_index_.get()];
 
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
@@ -942,7 +975,7 @@ namespace {
             mirinae::DescSetBindInfo{}
                 .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
                 .layout(pipeline_layout_)
-                .add(desc_sets_.at(ctxt.f_index_.get()))
+                .add(fd.desc_set_)
                 .record(cmdbuf);
 
             mirinae::PushConstInfo pc_info;
@@ -965,10 +998,6 @@ namespace {
                 pc.stage_ = stage;
                 pc_info.record(cmdbuf, pc);
 
-                vkCmdDispatch(
-                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
-                );
-
                 vkCmdPipelineBarrier(
                     cmdbuf,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -980,6 +1009,10 @@ namespace {
                     nullptr,
                     0,
                     nullptr
+                );
+
+                vkCmdDispatch(
+                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
                 );
 
                 pc.pingpong_ = !pc.pingpong_;
@@ -990,10 +1023,6 @@ namespace {
                 pc.stage_ = stage;
                 pc_info.record(cmdbuf, pc);
 
-                vkCmdDispatch(
-                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
-                );
-
                 vkCmdPipelineBarrier(
                     cmdbuf,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -1007,19 +1036,29 @@ namespace {
                     nullptr
                 );
 
+                vkCmdDispatch(
+                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
+                );
+
                 pc.pingpong_ = !pc.pingpong_;
             }
         }
 
     private:
+        struct FrameData {
+            mirinae::HRpImage hkt_dxdy_;
+            mirinae::HRpImage hkt_dz_;
+            mirinae::HRpImage pingpong_xy_;
+            mirinae::HRpImage pingpong_z_;
+            VkDescriptorSet desc_set_;
+        };
+
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
 
-        std::vector<mirinae::HRpImage> hkt_dxdy_;
-        std::vector<mirinae::HRpImage> pingpongs_;
+        std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
         mirinae::HRpImage butterfly_cache_;
         mirinae::DescPool desc_pool_;
-        std::vector<VkDescriptorSet> desc_sets_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
     };
