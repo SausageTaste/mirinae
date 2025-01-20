@@ -7,6 +7,33 @@
 #include "mirinae/render/renderpass/builder.hpp"
 
 
+namespace {
+
+    VkPipeline create_compute_pipeline(
+        const dal::path& spv_path,
+        const VkPipelineLayout pipeline_layout,
+        mirinae::VulkanDevice& device
+    ) {
+        mirinae::PipelineBuilder::ShaderStagesBuilder shader_builder{ device };
+        shader_builder.add_comp(spv_path);
+
+        VkComputePipelineCreateInfo cinfo{};
+        cinfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        cinfo.layout = pipeline_layout;
+        cinfo.stage = *shader_builder.data();
+
+        VkPipeline pipeline = VK_NULL_HANDLE;
+        const auto res = vkCreateComputePipelines(
+            device.logi_device(), VK_NULL_HANDLE, 1, &cinfo, nullptr, &pipeline
+        );
+        MIRINAE_ASSERT(res == VK_SUCCESS);
+
+        return pipeline;
+    }
+
+}  // namespace
+
+
 // Ocean Tilde H
 namespace {
 
@@ -569,6 +596,202 @@ namespace {
 }  // namespace
 
 
+// Ocean Butterfly
+namespace {
+
+    class ComplexNum {
+
+    public:
+        ComplexNum() = default;
+
+        ComplexNum(double real, double imaginary) : re_(real), im_(imaginary) {}
+
+        double re_ = 0;
+        double im_ = 0;
+    };
+
+
+    unsigned int reverse_bits(unsigned int num) {
+        const unsigned int num_of_bits = sizeof(num) * 8;
+        unsigned int reverse_num = 0;
+
+        for (int i = 0; i < num_of_bits; i++) {
+            if ((num & (1 << i)))
+                reverse_num |= 1 << ((num_of_bits - 1) - i);
+        }
+
+        return reverse_num;
+    }
+
+    dal::TDataImage2D<float> create_butterfly_cache_tex(
+        uint32_t width, uint32_t height
+    ) {
+        std::vector<int> bit_reversed_indices(height);
+        const int bits = width;
+        for (int i = 0; i < height; i++) {
+            auto x = ::reverse_bits(i);
+            x = (x << bits) | (x >> (sizeof(int) - bits));
+            bit_reversed_indices[i] = x;
+        }
+
+        dal::TDataImage2D<float> out;
+        out.init(nullptr, width, height, 4);
+
+        const double N = height;
+
+        for (size_t x = 0; x < width; ++x) {
+            for (size_t y = 0; y < height; ++y) {
+                const auto k = std::fmod(y * (N / std::pow(2, x + 1)), N);
+                auto twiddle = ComplexNum(
+                    std::cos((2.0 * SUNG_PI * k) / N),
+                    std::sin((2.0 * SUNG_PI * k) / N)
+                );
+
+                int butterflyspan = int(pow(2, x));
+                int butterflywing = 0;
+                if (std::fmod(y, std::pow(2, x + 1)) < std::pow(2, x)) {
+                    butterflywing = 1;
+                }
+
+                if (x == 0) {
+                    if (butterflywing == 1) {
+                        auto texel = out.texel_ptr(x, y);
+                        texel[0] = twiddle.re_;
+                        texel[1] = twiddle.im_;
+                        texel[2] = bit_reversed_indices[y];
+                        texel[3] = bit_reversed_indices[y + 1];
+                    } else {
+                        auto texel = out.texel_ptr(x, y);
+                        texel[0] = twiddle.re_;
+                        texel[1] = twiddle.im_;
+                        texel[2] = bit_reversed_indices[y - 1];
+                        texel[3] = bit_reversed_indices[y];
+                    }
+                } else {
+                    if (butterflywing == 1) {
+                        auto texel = out.texel_ptr(x, y);
+                        texel[0] = twiddle.re_;
+                        texel[1] = twiddle.im_;
+                        texel[2] = y;
+                        texel[3] = y + butterflyspan;
+                    } else {
+                        auto texel = out.texel_ptr(x, y);
+                        texel[0] = twiddle.re_;
+                        texel[1] = twiddle.im_;
+                        texel[2] = y - butterflyspan;
+                        texel[3] = y;
+                    }
+                }
+            }
+        }
+
+        return out;
+    }
+
+
+    class RpStatesOceanButterfly : public mirinae::rp::ocean::IRpStates {
+
+    public:
+        RpStatesOceanButterfly(
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device), rp_res_(rp_res) {
+            mirinae::CommandPool cmd_pool;
+            cmd_pool.init(device);
+
+            // Butterfly cache texture
+            {
+                const auto bufffly_img = ::create_butterfly_cache_tex(
+                    std::log(OCEAN_TEX_DIM) / std::log(2), OCEAN_TEX_DIM
+                );
+
+                mirinae::ImageCreateInfo img_info;
+                img_info
+                    .set_dimensions(bufffly_img.width(), bufffly_img.height())
+                    .deduce_mip_levels()
+                    .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
+                    .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                    .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                    .add_usage_sampled();
+
+                mirinae::Buffer staging_buffer;
+                staging_buffer.init_staging(
+                    bufffly_img.data_size(), device_.mem_alloc()
+                );
+                staging_buffer.set_data(
+                    bufffly_img.data(),
+                    bufffly_img.data_size(),
+                    device_.mem_alloc()
+                );
+
+                butterfly_cache_ = rp_res.new_img(
+                    "butterfly_cache", this->name()
+                );
+                MIRINAE_ASSERT(nullptr != butterfly_cache_);
+                butterfly_cache_->img_.init(
+                    img_info.get(), device_.mem_alloc()
+                );
+
+                auto cmdbuf = cmd_pool.begin_single_time(device_);
+                mirinae::record_img_buf_copy_mip(
+                    cmdbuf,
+                    bufffly_img.width(),
+                    bufffly_img.height(),
+                    img_info.mip_levels(),
+                    butterfly_cache_->img_.image(),
+                    staging_buffer.buffer()
+                );
+                cmd_pool.end_single_time(cmdbuf, device_);
+                staging_buffer.destroy(device_.mem_alloc());
+
+                mirinae::ImageViewBuilder iv_builder;
+                iv_builder.format(img_info.format())
+                    .mip_levels(img_info.mip_levels())
+                    .image(butterfly_cache_->img_.image());
+                butterfly_cache_->view_.reset(iv_builder, device_);
+            }
+
+            cmd_pool.destroy(device.logi_device());
+            return;
+        }
+
+        ~RpStatesOceanButterfly() override {
+            if (VK_NULL_HANDLE != pipeline_) {
+                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
+                pipeline_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != pipeline_layout_) {
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), pipeline_layout_, nullptr
+                );
+                pipeline_layout_ = VK_NULL_HANDLE;
+            }
+        }
+
+        const std::string& name() const override {
+            static const std::string name = "ocean_butterfly";
+            return name;
+        }
+
+        void record(const mirinae::rp::ocean::RpContext& ctxt) override {
+            auto cmdbuf = ctxt.cmdbuf_;
+        }
+
+    private:
+        mirinae::VulkanDevice& device_;
+        mirinae::RpResources& rp_res_;
+
+        mirinae::HRpImage butterfly_cache_;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+    };
+
+}  // namespace
+
+
 // Ocean tessellation
 namespace {
 
@@ -887,7 +1110,7 @@ namespace {
 
 namespace mirinae::rp::ocean {
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_tilde_h(
+    URpStates create_rp_states_ocean_tilde_h(
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
@@ -897,7 +1120,7 @@ namespace mirinae::rp::ocean {
         );
     }
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_tilde_hkt(
+    URpStates create_rp_states_ocean_tilde_hkt(
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
@@ -907,7 +1130,17 @@ namespace mirinae::rp::ocean {
         );
     }
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_tess(
+    URpStates create_rp_states_ocean_butterfly(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<RpStatesOceanButterfly>(
+            rp_res, desclayouts, device
+        );
+    }
+
+    URpStates create_rp_states_ocean_tess(
         size_t swapchain_count,
         mirinae::FbufImageBundle& fbuf_bundle,
         mirinae::RpResources& rp_res,
