@@ -6,7 +6,8 @@ layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout (binding = 0, rgba8) uniform writeonly image2D out_hkt_dxdy;
 layout (binding = 1, rgba8) uniform writeonly image2D out_hkt_dz;
-layout (binding = 2, rgba8) uniform readonly image2D in_hk;
+layout (binding = 2, rgba8) uniform writeonly image2D out_hkt_ddxddz;
+layout (binding = 3, rgba8) uniform readonly image2D in_hk;
 
 
 layout (push_constant) uniform U_OceanTildeHKtPushConst {
@@ -68,4 +69,12 @@ void main() {
 
     imageStore(out_hkt_dxdy, global_idx, vec4(hkt_dx.re, hkt_dx.im, hkt_dy.re, hkt_dy.im));
     imageStore(out_hkt_dz, global_idx, vec4(hkt_dz.re, hkt_dz.im, 0, 1));
+
+    Complex x_slope = Complex(0, k.x);
+    Complex hkt_slopex = complex_mul(x_slope, hkt_dy);
+
+    Complex z_slope = Complex(0, k.y);
+    Complex hkt_slopez = complex_mul(z_slope, hkt_dy);
+
+    imageStore(out_hkt_ddxddz, global_idx, vec4(hkt_slopex.re, hkt_slopex.im, hkt_slopez.re, hkt_slopez.im));
 }

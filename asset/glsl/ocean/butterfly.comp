@@ -8,10 +8,12 @@ layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout (binding = 0, rgba8) uniform image2D out_ppong_xy;
 layout (binding = 1, rgba8) uniform image2D out_ppong_z;
-layout (binding = 2, rgba8) uniform image2D in_hkt_dxdy;
-layout (binding = 3, rgba8) uniform image2D in_hkt_dz;
+layout (binding = 2, rgba8) uniform image2D out_ppong_dxdz;
+layout (binding = 3, rgba8) uniform image2D in_hkt_dxdy;
+layout (binding = 4, rgba8) uniform image2D in_hkt_dz;
+layout (binding = 5, rgba8) uniform image2D in_hkt_ddxddz;
 
-layout(set = 0, binding = 4) uniform sampler2D u_butterfly_cache;
+layout(set = 0, binding = 6) uniform sampler2D u_butterfly_cache;
 
 layout (push_constant) uniform U_OceanButterflyPushConst {
     int stage;
@@ -40,25 +42,35 @@ void horizontalButterflies() {
         const vec4 qxy_sample = imageLoad(out_ppong_xy, q_coord);
         const vec4 pz_sample = imageLoad(out_ppong_z, p_coord);
         const vec4 qz_sample = imageLoad(out_ppong_z, q_coord);
+        const vec4 pdxdz_sample = imageLoad(out_ppong_dxdz, p_coord);
+        const vec4 qdxdz_sample = imageLoad(out_ppong_dxdz, q_coord);
 
         const vec2 Hx = calc_h(pxy_sample.xy, qxy_sample.xy, w);
         const vec2 Hy = calc_h(pxy_sample.zw, qxy_sample.zw, w);
         const vec2 Hz = calc_h(pz_sample.xy, qz_sample.xy, w);
+        const vec2 Hdx = calc_h(pdxdz_sample.xy, qdxdz_sample.xy, w);
+        const vec2 Hdz = calc_h(pdxdz_sample.zw, qdxdz_sample.zw, w);
 
         imageStore(in_hkt_dxdy, texel, vec4(Hx, Hy));
         imageStore(in_hkt_dz, texel, vec4(Hz, 0, 1));
+        imageStore(in_hkt_ddxddz, texel, vec4(Hdx, Hdz));
     } else if (u_pc.pingpong == 1) {
         const vec4 pxy_sample = imageLoad(in_hkt_dxdy, p_coord);
         const vec4 qxy_sample = imageLoad(in_hkt_dxdy, q_coord);
         const vec4 pz_sample = imageLoad(in_hkt_dz, p_coord);
         const vec4 qz_sample = imageLoad(in_hkt_dz, q_coord);
+        const vec4 pdxdz_sample = imageLoad(in_hkt_ddxddz, p_coord);
+        const vec4 qdxdz_sample = imageLoad(in_hkt_ddxddz, q_coord);
 
         const vec2 Hx = calc_h(pxy_sample.xy, qxy_sample.xy, w);
         const vec2 Hy = calc_h(pxy_sample.zw, qxy_sample.zw, w);
         const vec2 Hz = calc_h(pz_sample.xy, qz_sample.xy, w);
+        const vec2 Hdx = calc_h(pdxdz_sample.xy, qdxdz_sample.xy, w);
+        const vec2 Hdz = calc_h(pdxdz_sample.zw, qdxdz_sample.zw, w);
 
         imageStore(out_ppong_xy, texel, vec4(Hx, Hy));
         imageStore(out_ppong_z, texel, vec4(Hz, 0, 1));
+        imageStore(out_ppong_dxdz, texel, vec4(Hdx, Hdz));
     }
 }
 
@@ -74,25 +86,35 @@ void verticalButterflies() {
         const vec4 qxy_sample = imageLoad(out_ppong_xy, q_coord);
         const vec4 pz_sample = imageLoad(out_ppong_z, p_coord);
         const vec4 qz_sample = imageLoad(out_ppong_z, q_coord);
+        const vec4 pdxdz_sample = imageLoad(out_ppong_dxdz, p_coord);
+        const vec4 qdxdz_sample = imageLoad(out_ppong_dxdz, q_coord);
 
         const vec2 Hx = calc_h(pxy_sample.xy, qxy_sample.xy, w);
         const vec2 Hy = calc_h(pxy_sample.zw, qxy_sample.zw, w);
         const vec2 Hz = calc_h(pz_sample.xy, qz_sample.xy, w);
+        const vec2 Hdx = calc_h(pdxdz_sample.xy, qdxdz_sample.xy, w);
+        const vec2 Hdz = calc_h(pdxdz_sample.zw, qdxdz_sample.zw, w);
 
         imageStore(in_hkt_dxdy, texel, vec4(Hx, Hy));
         imageStore(in_hkt_dz, texel, vec4(Hz, 0, 1));
+        imageStore(in_hkt_ddxddz, texel, vec4(Hdx, Hdz));
     } else if (u_pc.pingpong == 1) {
         const vec4 pxy_sample = imageLoad(in_hkt_dxdy, p_coord);
         const vec4 qxy_sample = imageLoad(in_hkt_dxdy, q_coord);
         const vec4 pz_sample = imageLoad(in_hkt_dz, p_coord);
         const vec4 qz_sample = imageLoad(in_hkt_dz, q_coord);
+        const vec4 pdxdz_sample = imageLoad(in_hkt_ddxddz, p_coord);
+        const vec4 qdxdz_sample = imageLoad(in_hkt_ddxddz, q_coord);
 
         const vec2 Hx = calc_h(pxy_sample.xy, qxy_sample.xy, w);
         const vec2 Hy = calc_h(pxy_sample.zw, qxy_sample.zw, w);
         const vec2 Hz = calc_h(pz_sample.xy, qz_sample.xy, w);
+        const vec2 Hdx = calc_h(pdxdz_sample.xy, qdxdz_sample.xy, w);
+        const vec2 Hdz = calc_h(pdxdz_sample.zw, qdxdz_sample.zw, w);
 
         imageStore(out_ppong_xy, texel, vec4(Hx, Hy));
         imageStore(out_ppong_z, texel, vec4(Hz, 0, 1));
+        imageStore(out_ppong_dxdz, texel, vec4(Hdx, Hdz));
     }
 }
 
