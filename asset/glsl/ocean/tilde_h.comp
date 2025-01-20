@@ -24,12 +24,12 @@ const vec2 wind_direc = vec2(1, 1);
 
 
 vec4 gauseRnd() {
-    const vec2 tex_coord = vec2(gl_GlobalInvocationID.xy) / float(N);
+    const ivec2 tex_coord = ivec2(gl_GlobalInvocationID.xy);
 
-    const float noise0 = clamp(textureLod(u_noise0, tex_coord, 0).r, 0.001, 1.0);
-    const float noise1 = clamp(textureLod(u_noise1, tex_coord, 0).r, 0.001, 1.0);
-    const float noise2 = clamp(textureLod(u_noise2, tex_coord, 0).r, 0.001, 1.0);
-    const float noise3 = clamp(textureLod(u_noise3, tex_coord, 0).r, 0.001, 1.0);
+    const float noise0 = clamp(texelFetch(u_noise0, tex_coord, 0).r, 0.001, 1.0);
+    const float noise1 = clamp(texelFetch(u_noise1, tex_coord, 0).r, 0.001, 1.0);
+    const float noise2 = clamp(texelFetch(u_noise2, tex_coord, 0).r, 0.001, 1.0);
+    const float noise3 = clamp(texelFetch(u_noise3, tex_coord, 0).r, 0.001, 1.0);
 
     const float u0 = 2.0 * PI * noise0;
     const float v0 = sqrt(-2.0 * log(noise1));
