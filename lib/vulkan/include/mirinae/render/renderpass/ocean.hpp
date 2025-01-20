@@ -27,19 +27,22 @@ namespace mirinae::rp::ocean {
         virtual const std::string& name() const = 0;
     };
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_tilde_h(
+    using URpStates = std::unique_ptr<IRpStates>;
+
+
+    URpStates create_rp_states_ocean_tilde_h(
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     );
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_tilde_hkt(
+    URpStates create_rp_states_ocean_tilde_hkt(
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     );
 
-    std::unique_ptr<IRpStates> create_rp_states_ocean_tess(
+    URpStates create_rp_states_ocean_tess(
         size_t swapchain_count,
         mirinae::FbufImageBundle& fbuf_bundle,
         mirinae::RpResources& rp_res,

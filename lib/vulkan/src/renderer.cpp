@@ -116,6 +116,44 @@ namespace {
             envmap_ = mirinae::rp::envmap::create_rp_master();
         }
 
+        void create_std_rp(
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::FbufImageBundle& fbuf_bundle,
+            mirinae::Swapchain& swapchain,
+            mirinae::VulkanDevice& device
+        ) {
+            this->destroy_std_rp();
+
+            rp_states_.push_back(
+                mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
+                    rp_res, desclayouts, device
+                )
+            );
+
+            rp_states_.push_back(
+                mirinae::rp::ocean::create_rp_states_ocean_tilde_hkt(
+                    rp_res, desclayouts, device
+                )
+            );
+
+            rp_states_.push_back(
+                mirinae::rp::ocean::create_rp_states_ocean_tess(
+                    swapchain.views_count(),
+                    fbuf_bundle,
+                    rp_res,
+                    desclayouts,
+                    device
+                )
+            );
+            ocean_tess_ = rp_states_.back().get();
+        }
+
+        void destroy_std_rp() {
+            rp_states_.clear();
+            ocean_tess_ = nullptr;
+        }
+
         mirinae::rp::gbuf::IRpMasterBasic& gbuf_basic() { return *gbuf_basic_; }
         mirinae::rp::gbuf::IRpMasterTerrain& gbuf_terrain() {
             return *gbuf_terrain_;
@@ -127,6 +165,16 @@ namespace {
         }
         mirinae::rp::compo::RpMasterSky& compo_sky() { return compo_sky_; }
 
+        mirinae::rp::ocean::IRpStates& ocean_tess() { return *ocean_tess_; }
+
+        void record_computes(const mirinae::rp::ocean::RpContext& ctxt) {
+            for (auto& rp : rp_states_) {
+                if (rp.get() == ocean_tess_)
+                    continue;
+                rp->record(ctxt);
+            }
+        }
+
     private:
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterBasic> gbuf_basic_;
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterTerrain> gbuf_terrain_;
@@ -134,6 +182,9 @@ namespace {
         mirinae::rp::shadow::RpMaster shadow_;
         mirinae::rp::compo::RpMasterBasic compo_basic_;
         mirinae::rp::compo::RpMasterSky compo_sky_;
+
+        std::vector<mirinae::rp::ocean::URpStates> rp_states_;
+        mirinae::rp::ocean::IRpStates* ocean_tess_ = nullptr;
     };
 
 
@@ -651,8 +702,7 @@ namespace {
             render_context.view_mat_ = view_mat;
             render_context.cmdbuf_ = cur_cmd_buf;
 
-            rp_states_ocean_tilde_h->record(render_context);
-            rp_states_ocean_tilde_hkt_->record(render_context);
+            rpm_.record_computes(render_context);
 
             rpm_.envmap().record(
                 cur_cmd_buf,
@@ -704,7 +754,7 @@ namespace {
                 rp_
             );
 
-            rp_states_ocean_tess_->record(render_context);
+            rpm_.ocean_tess().record(render_context);
 
             rp_states_transp_.record_static(
                 cur_cmd_buf,
@@ -902,24 +952,9 @@ namespace {
             rp_states_debug_mesh_.init(device_);
             rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
 
-            rp_states_ocean_tilde_h =
-                mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
-                    rp_res_, desclayout_, device_
-                );
-
-            rp_states_ocean_tilde_hkt_ =
-                mirinae::rp::ocean::create_rp_states_ocean_tilde_hkt(
-                    rp_res_, desclayout_, device_
-                );
-
-            rp_states_ocean_tess_ =
-                mirinae::rp::ocean::create_rp_states_ocean_tess(
-                    swapchain_.views_count(),
-                    fbuf_images_,
-                    rp_res_,
-                    desclayout_,
-                    device_
-                );
+            rpm_.create_std_rp(
+                rp_res_, desclayout_, fbuf_images_, swapchain_, device_
+            );
         }
 
         void destroy_swapchain_and_relatives() {
@@ -927,9 +962,7 @@ namespace {
 
             rpm_.shadow().pool().destroy_fbufs(device_);
 
-            rp_states_ocean_tess_.reset();
-            rp_states_ocean_tilde_hkt_.reset();
-            rp_states_ocean_tilde_h.reset();
+            rpm_.destroy_std_rp();
             rp_states_fillscreen_.destroy(device_);
             rp_states_debug_mesh_.destroy(device_);
             rp_states_transp_.destroy(device_);
@@ -1164,10 +1197,6 @@ namespace {
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
-        std::unique_ptr<mirinae::rp::ocean::IRpStates> rp_states_ocean_tilde_h;
-        std::unique_ptr<mirinae::rp::ocean::IRpStates>
-            rp_states_ocean_tilde_hkt_;
-        std::unique_ptr<mirinae::rp::ocean::IRpStates> rp_states_ocean_tess_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         mirinae::CommandPool cmd_pool_;
