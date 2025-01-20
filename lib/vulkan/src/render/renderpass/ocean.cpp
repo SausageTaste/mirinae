@@ -564,7 +564,7 @@ namespace {
                 .record(cmdbuf);
 
             ::U_OceanTildeHktPushConst pc;
-            pc.time_ = timer_.elapsed();
+            pc.time_ = 5;
 
             mirinae::PushConstInfo pc_info;
             pc_info.layout(pipeline_layout_)
@@ -612,14 +612,13 @@ namespace {
 
 
     unsigned int reverse_bits(unsigned int num) {
-        const unsigned int num_of_bits = sizeof(num) * 8;
+        unsigned int NO_OF_BITS = sizeof(num) * 8;
         unsigned int reverse_num = 0;
-
-        for (int i = 0; i < num_of_bits; i++) {
+        int i;
+        for (i = 0; i < NO_OF_BITS; i++) {
             if ((num & (1 << i)))
-                reverse_num |= 1 << ((num_of_bits - 1) - i);
+                reverse_num |= 1 << ((NO_OF_BITS - 1) - i);
         }
-
         return reverse_num;
     }
 
@@ -627,9 +626,9 @@ namespace {
         uint32_t width, uint32_t height
     ) {
         std::vector<int> bit_reversed_indices(height);
-        const int bits = width;
+        int bits = (width);
         for (int i = 0; i < height; i++) {
-            auto x = ::reverse_bits(i);
+            unsigned int x = reverse_bits(i);
             x = (x << bits) | (x >> (sizeof(int) - bits));
             bit_reversed_indices[i] = x;
         }
@@ -639,47 +638,51 @@ namespace {
 
         const double N = height;
 
-        for (size_t x = 0; x < width; ++x) {
-            for (size_t y = 0; y < height; ++y) {
-                const auto k = std::fmod(y * (N / std::pow(2, x + 1)), N);
+        for (size_t i_x = 0; i_x < width; ++i_x) {
+            for (size_t i_y = 0; i_y < height; ++i_y) {
+                glm::dvec2 x = glm::vec2(i_x, i_y);
+                auto k = std::fmod(x.y * (N / std::pow(2.0, x.x + 1.0)), N);
                 auto twiddle = ComplexNum(
-                    std::cos((2.0 * SUNG_PI * k) / N),
-                    std::sin((2.0 * SUNG_PI * k) / N)
+                    std::cos(2.0 * SUNG_PI * k / N),
+                    std::sin(2.0 * SUNG_PI * k / N)
                 );
 
-                int butterflyspan = int(pow(2, x));
+                int butterflyspan = int(std::pow(2.0, x.x));
                 int butterflywing = 0;
-                if (std::fmod(y, std::pow(2, x + 1)) < std::pow(2, x)) {
+                if (std::fmod(x.y, std::pow(2.0, x.x + 1.0)) <
+                    std::pow(2.0, x.x)) {
                     butterflywing = 1;
+                } else {
+                    butterflywing = 0;
                 }
 
-                if (x == 0) {
+                if (x.x == 0) {
                     if (butterflywing == 1) {
-                        auto texel = out.texel_ptr(x, y);
+                        auto texel = out.texel_ptr(i_x, i_y);
                         texel[0] = twiddle.re_;
                         texel[1] = twiddle.im_;
-                        texel[2] = bit_reversed_indices[y];
-                        texel[3] = bit_reversed_indices[y + 1];
+                        texel[2] = bit_reversed_indices[i_y];
+                        texel[3] = bit_reversed_indices[i_y + 1];
                     } else {
-                        auto texel = out.texel_ptr(x, y);
+                        auto texel = out.texel_ptr(i_x, i_y);
                         texel[0] = twiddle.re_;
                         texel[1] = twiddle.im_;
-                        texel[2] = bit_reversed_indices[y - 1];
-                        texel[3] = bit_reversed_indices[y];
+                        texel[2] = bit_reversed_indices[i_y - 1];
+                        texel[3] = bit_reversed_indices[i_y];
                     }
                 } else {
                     if (butterflywing == 1) {
-                        auto texel = out.texel_ptr(x, y);
+                        auto texel = out.texel_ptr(i_x, i_y);
                         texel[0] = twiddle.re_;
                         texel[1] = twiddle.im_;
-                        texel[2] = y;
-                        texel[3] = y + butterflyspan;
+                        texel[2] = x.y;
+                        texel[3] = x.y + butterflyspan;
                     } else {
-                        auto texel = out.texel_ptr(x, y);
+                        auto texel = out.texel_ptr(i_x, i_y);
                         texel[0] = twiddle.re_;
                         texel[1] = twiddle.im_;
-                        texel[2] = y - butterflyspan;
-                        texel[3] = y;
+                        texel[2] = x.y - butterflyspan;
+                        texel[3] = x.y;
                     }
                 }
             }
@@ -687,6 +690,13 @@ namespace {
 
         return out;
     }
+
+
+    struct U_OceanButterflyPushConst {
+        int32_t stage_;
+        int32_t pingpong_;
+        int32_t direction_;
+    };
 
 
     class RpStatesOceanButterfly : public mirinae::rp::ocean::IRpStates {
@@ -700,6 +710,16 @@ namespace {
             : device_(device), rp_res_(rp_res) {
             mirinae::CommandPool cmd_pool;
             cmd_pool.init(device);
+
+            // Reference images
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                const auto img_name = fmt::format(
+                    "ocean_tilde_hkt:hkt_dxdy_f#{}", i
+                );
+                auto img = rp_res.get_img_reader(img_name, this->name());
+                MIRINAE_ASSERT(nullptr != img);
+                hkt_dxdy_.push_back(img);
+            }
 
             // Butterfly cache texture
             {
@@ -753,11 +773,130 @@ namespace {
                 butterfly_cache_->view_.reset(iv_builder, device_);
             }
 
+            // Storage images
+            {
+                mirinae::ImageCreateInfo cinfo;
+                cinfo.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
+                    .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
+                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
+                    .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
+
+                mirinae::ImageViewBuilder builder;
+                builder.format(cinfo.format())
+                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
+
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    const auto img_name = fmt::format("pingpong_f#{}", i);
+                    auto img = rp_res.new_img(img_name, this->name());
+                    img->img_.init(cinfo.get(), device.mem_alloc());
+                    builder.image(img->img_.image());
+                    img->view_.reset(builder, device);
+                    pingpongs_.push_back(std::move(img));
+                }
+            }
+
+            // Image transitions
+            {
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.set_src_access(0)
+                    .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .layer_count(1)
+                    .mip_count(1);
+
+                mirinae::CommandPool cmd_pool;
+                cmd_pool.init(device);
+                auto cmdbuf = cmd_pool.begin_single_time(device);
+                for (auto p_img : pingpongs_) {
+                    barrier.image(p_img->img_.image());
+                    barrier.record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
+                    );
+                }
+                cmd_pool.end_single_time(cmdbuf, device);
+                cmd_pool.destroy(device.logi_device());
+            }
+
+            // Desc layouts
+            {
+                mirinae::DescLayoutBuilder builder{ name() + ":main" };
+                builder
+                    .new_binding()  // pingpong
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(1)
+                    .finish_binding()
+                    .new_binding()  // hkt
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(1)
+                    .finish_binding()
+                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);  // butfly_cache
+                desclayouts.add(builder, device.logi_device());
+            }
+
+            // Desciptor Sets
+            {
+                auto& layout = desclayouts.get(name() + ":main");
+
+                desc_pool_.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    layout.size_info(),
+                    device.logi_device()
+                );
+
+                desc_sets_ = desc_pool_.alloc(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    layout.layout(),
+                    device.logi_device()
+                );
+
+                mirinae::DescWriteInfoBuilder builder;
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    builder.set_descset(desc_sets_[i])
+                        .add_storage_img(pingpongs_[i]->view_.get())
+                        .add_storage_img(hkt_dxdy_[i]->view_.get())
+                        .add_img_sampler(
+                            butterfly_cache_->view_.get(),
+                            device.samplers().get_nearest()
+                        );
+                }
+                builder.apply_all(device.logi_device());
+            }
+
+            // Pipeline
+            {
+                pipeline_layout_ =
+                    mirinae::PipelineLayoutBuilder{}
+                        .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
+                        .pc<U_OceanButterflyPushConst>()
+                        .desc(desclayouts.get(name() + ":main").layout())
+                        .build(device);
+                MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
+
+                pipeline_ = ::create_compute_pipeline(
+                    ":asset/spv/ocean_butterfly_comp.spv",
+                    pipeline_layout_,
+                    device
+                );
+            }
+
             cmd_pool.destroy(device.logi_device());
             return;
         }
 
         ~RpStatesOceanButterfly() override {
+            for (auto& img : hkt_dxdy_)
+                rp_res_.free_img(img->id(), this->name());
+            for (auto& img : pingpongs_)
+                rp_res_.free_img(img->id(), this->name());
+
+            desc_pool_.destroy(device_.logi_device());
+
             if (VK_NULL_HANDLE != pipeline_) {
                 vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
                 pipeline_ = VK_NULL_HANDLE;
@@ -778,13 +917,110 @@ namespace {
 
         void record(const mirinae::rp::ocean::RpContext& ctxt) override {
             auto cmdbuf = ctxt.cmdbuf_;
+
+            mirinae::ImageMemoryBarrier barrier;
+            barrier.image(hkt_dxdy_[ctxt.f_index_.get()]->img_.image())
+                .set_src_access(0)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .mip_base(0)
+                .mip_count(1)
+                .layer_base(0)
+                .layer_count(1);
+            barrier.record_single(
+                cmdbuf,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+            );
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
+            );
+
+            mirinae::DescSetBindInfo{}
+                .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
+                .layout(pipeline_layout_)
+                .add(desc_sets_.at(ctxt.f_index_.get()))
+                .record(cmdbuf);
+
+            mirinae::PushConstInfo pc_info;
+            pc_info.layout(pipeline_layout_)
+                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT);
+
+            VkMemoryBarrier mem_bar = {};
+            mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+            mem_bar.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+            mem_bar.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT |
+                                    VK_ACCESS_MEMORY_WRITE_BIT;
+
+            ::U_OceanButterflyPushConst pc;
+            pc.stage_ = 0;
+            pc.pingpong_ = 1;
+            pc.direction_ = 0;
+
+            // one dimensional FFT in horizontal direction
+            for (int stage = 0; stage < 8; stage++) {
+                pc.direction_ = 0;
+                pc.stage_ = stage;
+                pc_info.record(cmdbuf, pc);
+
+                vkCmdDispatch(
+                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
+                );
+
+                vkCmdPipelineBarrier(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    0,
+                    1,
+                    &mem_bar,
+                    0,
+                    nullptr,
+                    0,
+                    nullptr
+                );
+
+                pc.pingpong_ = !pc.pingpong_;
+            }
+
+            for (int stage = 0; stage < 8; stage++) {
+                pc.direction_ = 1;
+                pc.stage_ = stage;
+                pc_info.record(cmdbuf, pc);
+
+                vkCmdDispatch(
+                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
+                );
+
+                vkCmdPipelineBarrier(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    0,
+                    1,
+                    &mem_bar,
+                    0,
+                    nullptr,
+                    0,
+                    nullptr
+                );
+
+                pc.pingpong_ = !pc.pingpong_;
+            }
         }
 
     private:
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
 
+        std::vector<mirinae::HRpImage> hkt_dxdy_;
+        std::vector<mirinae::HRpImage> pingpongs_;
         mirinae::HRpImage butterfly_cache_;
+        mirinae::DescPool desc_pool_;
+        std::vector<VkDescriptorSet> desc_sets_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
     };
