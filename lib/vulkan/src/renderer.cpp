@@ -138,6 +138,12 @@ namespace {
             );
 
             rp_states_.push_back(
+                mirinae::rp::ocean::create_rp_states_ocean_butterfly(
+                    rp_res, desclayouts, device
+                )
+            );
+
+            rp_states_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tess(
                     swapchain.views_count(),
                     fbuf_bundle,
