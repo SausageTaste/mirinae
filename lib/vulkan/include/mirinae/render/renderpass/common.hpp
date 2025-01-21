@@ -4,6 +4,7 @@
 
 #include "mirinae/render/renderee.hpp"
 #include "mirinae/render/vkdevice.hpp"
+#include "mirinae/scene/scene.hpp"
 
 
 namespace mirinae {
@@ -56,6 +57,7 @@ namespace mirinae {
 
         std::vector<StaticRenderPairs> static_pairs_;
         std::vector<SkinnedRenderPairs> skinned_pairs_;
+        cpnt::Ocean* ocean_ = nullptr;
     };
 
 

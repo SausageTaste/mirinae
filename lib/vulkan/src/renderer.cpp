@@ -227,6 +227,13 @@ namespace {
             actor.model_mat_ = trans.make_model_mat();
         }
 
+        sheet.ocean_ = nullptr;
+        for (auto& eid : scene.reg_.view<mirinae::cpnt::Ocean>()) {
+            sheet.ocean_ = &scene.reg_.get<mirinae::cpnt::Ocean>(eid);
+            // Only one ocean is allowed
+            break;
+        }
+
         return sheet;
     }
 
@@ -659,8 +666,15 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            const auto draw_sheet = ::make_draw_sheet(cosmos_->scene());
-            auto cur_cmd_buf = cmd_buf_.at(framesync_.get_frame_index().get());
+            mirinae::rp::ocean::RpContext ren_ctxt;
+            ren_ctxt.f_index_ = framesync_.get_frame_index();
+            ren_ctxt.i_index_ = image_index;
+            ren_ctxt.proj_mat_ = proj_mat;
+            ren_ctxt.view_mat_ = view_mat;
+            ren_ctxt.cmdbuf_ = cmd_buf_.at(framesync_.get_frame_index().get());
+            ren_ctxt.draw_sheet_ = std::make_shared<mirinae::DrawSheet>(
+                make_draw_sheet(cosmos_->scene())
+            );
 
             for (auto& l : cosmos_->reg().view<mirinae::cpnt::DLight>()) {
                 auto& dlight = cosmos_->reg().get<mirinae::cpnt::DLight>(l);
@@ -693,13 +707,13 @@ namespace {
 
             // Begin recording
             {
-                VK_CHECK(vkResetCommandBuffer(cur_cmd_buf, 0));
+                VK_CHECK(vkResetCommandBuffer(ren_ctxt.cmdbuf_, 0));
 
                 VkCommandBufferBeginInfo beginInfo{};
                 beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                 beginInfo.flags = 0;
                 beginInfo.pInheritanceInfo = nullptr;
-                VK_CHECK(vkBeginCommandBuffer(cur_cmd_buf, &beginInfo));
+                VK_CHECK(vkBeginCommandBuffer(ren_ctxt.cmdbuf_, &beginInfo));
 
                 std::array<VkClearValue, 3> clear_values;
                 clear_values[0].depthStencil = { 1.f, 0 };
@@ -707,18 +721,11 @@ namespace {
                 clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
             }
 
-            mirinae::rp::ocean::RpContext render_context;
-            render_context.f_index_ = framesync_.get_frame_index();
-            render_context.i_index_ = image_index;
-            render_context.proj_mat_ = proj_mat;
-            render_context.view_mat_ = view_mat;
-            render_context.cmdbuf_ = cur_cmd_buf;
-
-            rpm_.record_computes(render_context);
+            rpm_.record_computes(ren_ctxt);
 
             rpm_.envmap().record(
-                cur_cmd_buf,
-                draw_sheet,
+                ren_ctxt.cmdbuf_,
+                *ren_ctxt.draw_sheet_,
                 framesync_.get_frame_index(),
                 *cosmos_,
                 image_index,
@@ -726,20 +733,23 @@ namespace {
             );
 
             rpm_.shadow().record(
-                cur_cmd_buf, draw_sheet, framesync_.get_frame_index(), rp_
+                ren_ctxt.cmdbuf_,
+                *ren_ctxt.draw_sheet_,
+                framesync_.get_frame_index(),
+                rp_
             );
 
             rpm_.gbuf_basic().record(
-                cur_cmd_buf,
+                ren_ctxt.cmdbuf_,
                 fbuf_images_.extent(),
-                draw_sheet,
+                *ren_ctxt.draw_sheet_,
                 framesync_.get_frame_index(),
                 image_index,
                 rp_
             );
 
             rpm_.gbuf_terrain().record(
-                cur_cmd_buf,
+                ren_ctxt.cmdbuf_,
                 proj_mat,
                 view_mat,
                 fbuf_images_.extent(),
@@ -749,7 +759,7 @@ namespace {
             );
 
             rpm_.compo_basic().record(
-                cur_cmd_buf,
+                ren_ctxt.cmdbuf_,
                 fbuf_images_.extent(),
                 framesync_.get_frame_index(),
                 image_index,
@@ -757,7 +767,7 @@ namespace {
             );
 
             rpm_.compo_sky().record(
-                cur_cmd_buf,
+                ren_ctxt.cmdbuf_,
                 proj_inv,
                 view_inv,
                 fbuf_images_.extent(),
@@ -766,35 +776,35 @@ namespace {
                 rp_
             );
 
-            rpm_.ocean_tess().record(render_context);
+            rpm_.ocean_tess().record(ren_ctxt);
 
             rp_states_transp_.record_static(
-                cur_cmd_buf,
+                ren_ctxt.cmdbuf_,
                 fbuf_images_.extent(),
-                draw_sheet,
+                *ren_ctxt.draw_sheet_,
                 framesync_.get_frame_index(),
                 image_index,
                 rp_
             );
 
             rp_states_transp_.record_skinned(
-                cur_cmd_buf,
+                ren_ctxt.cmdbuf_,
                 fbuf_images_.extent(),
-                draw_sheet,
+                *ren_ctxt.draw_sheet_,
                 framesync_.get_frame_index(),
                 image_index,
                 rp_
             );
 
             rp_states_debug_mesh_.begin_record(
-                cur_cmd_buf, fbuf_images_.extent(), image_index, rp_
+                ren_ctxt.cmdbuf_, fbuf_images_.extent(), image_index, rp_
             );
             rp_states_debug_mesh_.end_record(
-                cur_cmd_buf, fbuf_images_.extent(), image_index, rp_
+                ren_ctxt.cmdbuf_, fbuf_images_.extent(), image_index, rp_
             );
 
             rp_states_fillscreen_.record(
-                cur_cmd_buf,
+                ren_ctxt.cmdbuf_,
                 swapchain_.extent(),
                 framesync_.get_frame_index(),
                 image_index,
@@ -811,27 +821,29 @@ namespace {
                     .wh(swapchain_.extent())
                     .clear_value_count(rp.clear_value_count())
                     .clear_values(rp.clear_values())
-                    .record_begin(cur_cmd_buf);
+                    .record_begin(ren_ctxt.cmdbuf_);
 
                 vkCmdBindPipeline(
-                    cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                    ren_ctxt.cmdbuf_,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    rp.pipeline()
                 );
 
                 mirinae::Viewport{}
                     .set_wh(swapchain_.width(), swapchain_.height())
-                    .record_single(cur_cmd_buf);
+                    .record_single(ren_ctxt.cmdbuf_);
                 mirinae::Rect2D{}
                     .set_wh(swapchain_.width(), swapchain_.height())
-                    .record_scissor(cur_cmd_buf);
+                    .record_scissor(ren_ctxt.cmdbuf_);
 
-                widget_ren_data.cmd_buf_ = cur_cmd_buf;
+                widget_ren_data.cmd_buf_ = ren_ctxt.cmdbuf_;
                 widget_ren_data.pipe_layout_ = rp.pipeline_layout();
                 overlay_man_.record_render(widget_ren_data);
 
-                vkCmdEndRenderPass(cur_cmd_buf);
+                vkCmdEndRenderPass(ren_ctxt.cmdbuf_);
             }
 
-            VK_CHECK(vkEndCommandBuffer(cur_cmd_buf));
+            VK_CHECK(vkEndCommandBuffer(ren_ctxt.cmdbuf_));
 
             // Submit and present
             {
@@ -843,7 +855,7 @@ namespace {
                         framesync_.get_cur_img_ava_semaph().get()
                     )
                     .add_signal_semaph(signal_semaph)
-                    .add_cmdbuf(cur_cmd_buf)
+                    .add_cmdbuf(ren_ctxt.cmdbuf_)
                     .queue_submit_single(
                         device_.graphics_queue(),
                         framesync_.get_cur_in_flight_fence().get()
