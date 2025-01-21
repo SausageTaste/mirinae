@@ -4,7 +4,7 @@
 
 #include "mirinae/render/renderee.hpp"
 #include "mirinae/render/vkdevice.hpp"
-#include "mirinae/scene/scene.hpp"
+#include "mirinae/scene/cosmos.hpp"
 
 
 namespace mirinae {
@@ -210,5 +210,25 @@ namespace mirinae {
 
     using RpImage = RpResources::Image;
     using HRpImage = std::shared_ptr<RpImage>;
+
+
+    struct RpContext {
+        std::shared_ptr<CosmosSimulator> cosmos_;
+        std::shared_ptr<DrawSheet> draw_sheet_;
+        mirinae::FrameIndex f_index_;
+        mirinae::ShainImageIndex i_index_;
+        glm::dmat4 proj_mat_;
+        glm::dmat4 view_mat_;
+        VkCommandBuffer cmdbuf_;
+    };
+
+
+    struct IRpStates {
+        virtual ~IRpStates() = default;
+        virtual void record(const RpContext& context) = 0;
+        virtual const std::string& name() const = 0;
+    };
+
+    using URpStates = std::unique_ptr<IRpStates>;
 
 }  // namespace mirinae

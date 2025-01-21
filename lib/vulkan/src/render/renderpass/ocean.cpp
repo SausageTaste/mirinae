@@ -61,7 +61,7 @@ namespace {
     };
 
 
-    class RpStatesOceanTildeH : public mirinae::rp::ocean::IRpStates {
+    class RpStatesOceanTildeH : public mirinae::IRpStates {
 
     public:
         RpStatesOceanTildeH(
@@ -302,7 +302,7 @@ namespace {
             return name;
         }
 
-        void record(const mirinae::rp::ocean::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_.at(ctxt.f_index_.get());
 
@@ -362,7 +362,7 @@ namespace {
     };
 
 
-    class RpStatesOceanTildeHkt : public mirinae::rp::ocean::IRpStates {
+    class RpStatesOceanTildeHkt : public mirinae::IRpStates {
 
     public:
         RpStatesOceanTildeHkt(
@@ -590,7 +590,7 @@ namespace {
             return name;
         }
 
-        void record(const mirinae::rp::ocean::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
@@ -759,7 +759,7 @@ namespace {
     };
 
 
-    class RpStatesOceanButterfly : public mirinae::rp::ocean::IRpStates {
+    class RpStatesOceanButterfly : public mirinae::IRpStates {
 
     public:
         RpStatesOceanButterfly(
@@ -1063,7 +1063,7 @@ namespace {
             return name;
         }
 
-        void record(const mirinae::rp::ocean::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = fdata_[ctxt.f_index_.get()];
 
@@ -1175,7 +1175,7 @@ namespace {
     };
 
 
-    class RpStatesOceanFinalize : public mirinae::rp::ocean::IRpStates {
+    class RpStatesOceanFinalize : public mirinae::IRpStates {
 
     public:
         RpStatesOceanFinalize(
@@ -1395,7 +1395,7 @@ namespace {
             return name;
         }
 
-        void record(const mirinae::rp::ocean::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = fdata_[ctxt.f_index_.get()];
 
@@ -1516,7 +1516,7 @@ namespace {
     };
 
 
-    class RpStatesOceanTess : public mirinae::rp::ocean::IRpStates {
+    class RpStatesOceanTess : public mirinae::IRpStates {
 
     public:
         RpStatesOceanTess(
@@ -1724,7 +1724,7 @@ namespace {
             fbufs_.clear();
         }
 
-        void record(const mirinae::rp::ocean::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
