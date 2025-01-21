@@ -1,0 +1,21 @@
+#version 450
+
+#include "../utils/complex.glsl"
+#include "../utils/konst.glsl"
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout (binding = 0, rgba32f) uniform image2D out_ppong_xy;
+layout (binding = 1, rgba32f) uniform image2D out_ppong_z;
+layout (binding = 2, rgba32f) uniform image2D out_ppong_dxdz;
+layout (binding = 3, rgba32f) uniform image2D in_hkt_dxdy;
+layout (binding = 4, rgba32f) uniform image2D in_hkt_dz;
+layout (binding = 5, rgba32f) uniform image2D in_hkt_ddxddz;
+
+
+void main() {
+    ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
+    imageStore(out_ppong_xy, global_idx, vec4(0.8, 0.2, 0.2, 1));
+    imageStore(out_ppong_z, global_idx, vec4(0.2, 0.8, 0.2, 1));
+    imageStore(out_ppong_dxdz, global_idx, vec4(0.2, 0.2, 0.8, 1));
+}
