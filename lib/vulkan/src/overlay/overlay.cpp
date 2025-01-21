@@ -398,7 +398,7 @@ namespace mirinae {
         return pimpl_->widgets_;
     }
 
-    void OverlayManager::create_image_view(VkImageView img_view) {
+    void OverlayManager::create_image_view(VkImageView img_view, int x, int y) {
         auto w = std::make_unique<ImageViewWidget>(
             img_view,
             pimpl_->tex_man_.block_for_tex(":asset/textures/white.png", true)
@@ -407,8 +407,13 @@ namespace mirinae {
             pimpl_->tex_man_,
             pimpl_->device_
         );
-        w->pos_ = { 10, 10 };
-        w->size_ = { 256, 256 };
+
+        constexpr float SIZE = 200;
+        constexpr float MARGIN = 10;
+
+        w->pos_ = { MARGIN + (SIZE + MARGIN) * x,
+                    MARGIN + (SIZE + MARGIN) * y };
+        w->size_ = { SIZE, SIZE };
         w->update_content(pimpl_->win_dim_);
         this->widgets().add_widget(std::move(w));
     }

@@ -48,7 +48,7 @@ namespace mirinae {
         WidgetManager& widgets();
         WidgetManager const& widgets() const;
 
-        void create_image_view(VkImageView img_view);
+        void create_image_view(VkImageView img_view, int x, int y);
 
     private:
         class Impl;
