@@ -18,8 +18,8 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
 
 const int N = 256;
 const int L = 100;
-const float A = 2000000;
-const float wind_speed = 40;
+const float A = 500000;
+const float wind_speed = 10;
 const vec2 wind_direc = vec2(1, 1);
 
 
