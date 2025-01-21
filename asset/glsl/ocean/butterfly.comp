@@ -3,15 +3,14 @@
 #include "../utils/complex.glsl"
 #include "../utils/konst.glsl"
 
-
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout (binding = 0, rgba8) uniform image2D out_ppong_xy;
-layout (binding = 1, rgba8) uniform image2D out_ppong_z;
-layout (binding = 2, rgba8) uniform image2D out_ppong_dxdz;
-layout (binding = 3, rgba8) uniform image2D in_hkt_dxdy;
-layout (binding = 4, rgba8) uniform image2D in_hkt_dz;
-layout (binding = 5, rgba8) uniform image2D in_hkt_ddxddz;
+layout (binding = 0, rgba32f) uniform image2D out_ppong_xy;
+layout (binding = 1, rgba32f) uniform image2D out_ppong_z;
+layout (binding = 2, rgba32f) uniform image2D out_ppong_dxdz;
+layout (binding = 3, rgba32f) uniform image2D in_hkt_dxdy;
+layout (binding = 4, rgba32f) uniform image2D in_hkt_dz;
+layout (binding = 5, rgba32f) uniform image2D in_hkt_ddxddz;
 
 layout(set = 0, binding = 6) uniform sampler2D u_butterfly_cache;
 
