@@ -13,6 +13,7 @@ namespace mirinae::rp::ocean {
 
 
     struct RpContext {
+        std::shared_ptr<DrawSheet> draw_sheet_;
         mirinae::FrameIndex f_index_;
         mirinae::ShainImageIndex i_index_;
         glm::dmat4 proj_mat_;

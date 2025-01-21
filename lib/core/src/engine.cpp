@@ -214,6 +214,12 @@ namespace {
                 d.proj_.far_ = 1000;
             }
 
+            // Ocean
+            {
+                const auto entt = reg.create();
+                reg.emplace<mirinae::cpnt::Ocean>(entt);
+            }
+
             // Script
             {
                 const auto contents = filesys_->read_file(

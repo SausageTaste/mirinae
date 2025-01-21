@@ -6,6 +6,14 @@
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 
+#define GET_OCEAN_ENTT(ctxt)                        \
+    if (!(ctxt).draw_sheet_)                        \
+        return;                                     \
+    if (!(ctxt).draw_sheet_->ocean_)                \
+        return;                                     \
+    auto& ocean_entt = *(ctxt).draw_sheet_->ocean_; \
+    auto cmdbuf = (ctxt).cmdbuf_;
+
 
 namespace {
 
@@ -45,7 +53,11 @@ namespace {
 
 
     struct U_OceanTildeHPushConst {
-        float time_;
+        glm::vec2 wind_dir_;
+        float wind_speed_;
+        float amplitude_;
+        int32_t N_;
+        int32_t L_;
     };
 
 
@@ -291,7 +303,7 @@ namespace {
         }
 
         void record(const mirinae::rp::ocean::RpContext& ctxt) override {
-            auto cmdbuf = ctxt.cmdbuf_;
+            GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_.at(ctxt.f_index_.get());
 
             vkCmdBindPipeline(
@@ -305,7 +317,11 @@ namespace {
                 .record(cmdbuf);
 
             ::U_OceanTildeHPushConst pc;
-            pc.time_ = timer_.elapsed();
+            pc.wind_dir_ = ocean_entt.wind_dir_;
+            pc.wind_speed_ = ocean_entt.wind_speed_;
+            pc.amplitude_ = ocean_entt.amplitude_;
+            pc.N_ = ocean_entt.N_;
+            pc.L_ = ocean_entt.L_;
 
             mirinae::PushConstInfo pc_info;
             pc_info.layout(pipeline_layout_)
@@ -341,6 +357,8 @@ namespace {
 
     struct U_OceanTildeHktPushConst {
         float time_;
+        int32_t N_;
+        int32_t L_;
     };
 
 
@@ -573,7 +591,7 @@ namespace {
         }
 
         void record(const mirinae::rp::ocean::RpContext& ctxt) override {
-            auto cmdbuf = ctxt.cmdbuf_;
+            GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
             mirinae::ImageMemoryBarrier barrier;
@@ -605,6 +623,8 @@ namespace {
 
             ::U_OceanTildeHktPushConst pc;
             pc.time_ = timer_.elapsed();
+            pc.N_ = ocean_entt.N_;
+            pc.L_ = ocean_entt.L_;
 
             mirinae::PushConstInfo pc_info;
             pc_info.layout(pipeline_layout_)
@@ -1044,7 +1064,7 @@ namespace {
         }
 
         void record(const mirinae::rp::ocean::RpContext& ctxt) override {
-            auto cmdbuf = ctxt.cmdbuf_;
+            GET_OCEAN_ENTT(ctxt);
             auto& fd = fdata_[ctxt.f_index_.get()];
 
             vkCmdBindPipeline(
@@ -1149,6 +1169,11 @@ namespace {
 
 // Ocean Finalize
 namespace {
+
+    struct U_OceanFinalizePushConst {
+        int32_t N_;
+    };
+
 
     class RpStatesOceanFinalize : public mirinae::rp::ocean::IRpStates {
 
@@ -1324,7 +1349,7 @@ namespace {
                 pipeline_layout_ =
                     mirinae::PipelineLayoutBuilder{}
                         .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .pc<U_OceanButterflyPushConst>()
+                        .pc<U_OceanFinalizePushConst>()
                         .desc(desclayouts.get(name() + ":main").layout())
                         .build(device);
                 MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
@@ -1371,7 +1396,7 @@ namespace {
         }
 
         void record(const mirinae::rp::ocean::RpContext& ctxt) override {
-            auto cmdbuf = ctxt.cmdbuf_;
+            GET_OCEAN_ENTT(ctxt);
             auto& fd = fdata_[ctxt.f_index_.get()];
 
             vkCmdBindPipeline(
@@ -1401,6 +1426,14 @@ namespace {
                 0,
                 nullptr
             );
+
+            U_OceanFinalizePushConst pc;
+            pc.N_ = ocean_entt.N_;
+
+            mirinae::PushConstInfo{}
+                .layout(pipeline_layout_)
+                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                .record(cmdbuf, pc);
 
             vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
         }
@@ -1692,7 +1725,7 @@ namespace {
         }
 
         void record(const mirinae::rp::ocean::RpContext& ctxt) override {
-            auto cmdbuf = ctxt.cmdbuf_;
+            GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
             mirinae::RenderPassBeginInfo{}

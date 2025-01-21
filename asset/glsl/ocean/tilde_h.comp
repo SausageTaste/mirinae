@@ -13,14 +13,12 @@ layout(set = 0, binding = 4) uniform sampler2D u_noise3;
 
 
 layout (push_constant) uniform U_OceanTildeHPushConst {
-    float time;
+    vec2 wind_dir;
+    float wind_speed;
+    float amplitude;
+    int N;
+    int L;
 } u_pc;
-
-const int N = 256;
-const int L = 100;
-const float A = 500000;
-const float wind_speed = 10;
-const vec2 wind_direc = vec2(1, 1);
 
 
 vec4 gauseRnd() {
@@ -41,27 +39,27 @@ vec4 gauseRnd() {
 
 
 void main() {
-    const vec2 x = vec2(gl_GlobalInvocationID.xy) - float(N) * 0.5;
-    const vec2 k = x * 2.0 * PI / float(L);
+    const vec2 x = vec2(gl_GlobalInvocationID.xy) - float(u_pc.N) * 0.5;
+    const vec2 k = x * 2.0 * PI / float(u_pc.L);
 
-    const float L_ = (wind_speed * wind_speed) / GRAVITY_EARTH;
+    const float L_ = (u_pc.wind_speed * u_pc.wind_speed) / GRAVITY_EARTH;
     float mag = length(k);
     if (mag < 0.00001)
         mag = 0.00001;
     const float mgSq = mag * mag;
     const float l2 = L_ * L_ * 0.001 * 0.001;
 
-    const float h0k = sqrt((A / (mgSq * mgSq))
-        * pow(dot(normalize(k), normalize(wind_direc)), 2)
-        * pow(dot(normalize(k), normalize(wind_direc)), 2)
-        * pow(dot(normalize(k), normalize(wind_direc)), 2)
+    const float h0k = sqrt((u_pc.amplitude / (mgSq * mgSq))
+        * pow(dot(normalize(k), normalize(u_pc.wind_dir)), 2)
+        * pow(dot(normalize(k), normalize(u_pc.wind_dir)), 2)
+        * pow(dot(normalize(k), normalize(u_pc.wind_dir)), 2)
         * exp(-(1.0 / (mgSq * L_ * L_)))
         * exp(-mgSq * l2)) / sqrt(2.0);
 
-    const float h0minusk = sqrt((A / (mgSq * mgSq))
-        * pow(dot(normalize(-k), normalize(wind_direc)), 2)
-        * pow(dot(normalize(-k), normalize(wind_direc)), 2)
-        * pow(dot(normalize(-k), normalize(wind_direc)), 2)
+    const float h0minusk = sqrt((u_pc.amplitude / (mgSq * mgSq))
+        * pow(dot(normalize(-k), normalize(u_pc.wind_dir)), 2)
+        * pow(dot(normalize(-k), normalize(u_pc.wind_dir)), 2)
+        * pow(dot(normalize(-k), normalize(u_pc.wind_dir)), 2)
         * exp(-(1.0 / (mgSq * L_ * L_)))
         * exp(-mgSq * l2)) / sqrt(2.0);
 

@@ -54,9 +54,11 @@ namespace mirinae::cpnt {
         double max_distance_ = 100;
     };
 
+
     struct StaticModelActor {
         std::filesystem::path model_path_;
     };
+
 
     struct SkinnedModelActor {
         std::filesystem::path model_path_;
@@ -67,6 +69,15 @@ namespace mirinae::cpnt {
     struct StandardCamera {
         TransformQuat<double> view_;
         PerspectiveCamera<double> proj_;
+    };
+
+
+    struct Ocean {
+        glm::dvec2 wind_dir_{ 1, 1 };
+        double wind_speed_ = 10;
+        double amplitude_ = 500000;
+        uint32_t N_ = 256;
+        uint32_t L_ = 100;
     };
 
 }  // namespace mirinae::cpnt
