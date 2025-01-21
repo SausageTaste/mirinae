@@ -5,7 +5,7 @@ layout (quads, equal_spacing, cw) in;
 layout (location = 0) in vec3 i_normal[];
 layout (location = 1) in vec2 i_uv[];
 
-layout (location = 0) out vec3 o_normal;
+layout (location = 0) out vec3 o_frag_pos;
 layout (location = 1) out vec2 o_uv;
 
 
@@ -45,10 +45,10 @@ void main() {
 
     const vec3 displacement = texture(u_height_map, tex_coord).xyz * u_pc.height_scale;
     p.xyz += displacement;
+    o_frag_pos = (u_pc.view * u_pc.model * vec4(p, 1)).xyz;
     gl_Position = u_pc.pvm * vec4(p, 1);
 
     const vec3 normal = mat3(u_pc.view) * mat3(u_pc.model) * vec3(0, 1, 0);
-    o_normal = normalize(normal) * 0.5 + 0.5;
 
     o_uv = tex_coord;
 }
