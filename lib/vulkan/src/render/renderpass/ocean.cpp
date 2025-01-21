@@ -1424,6 +1424,24 @@ namespace {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = fdata_[ctxt.f_index_.get()];
 
+            VkMemoryBarrier mem_bar = {};
+            mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+            mem_bar.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+            mem_bar.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+            vkCmdPipelineBarrier(
+                cmdbuf,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                0,
+                1,
+                &mem_bar,
+                0,
+                nullptr,
+                0,
+                nullptr
+            );
+
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
             );
@@ -1434,70 +1452,16 @@ namespace {
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
-            mirinae::PushConstInfo pc_info;
-            pc_info.layout(pipeline_layout_)
-                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT);
-
-            VkMemoryBarrier mem_bar = {};
-            mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            mem_bar.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-            mem_bar.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-
             ::U_OceanButterflyPushConst pc;
             pc.stage_ = 0;
             pc.pingpong_ = 1;
             pc.direction_ = 0;
 
-            // one dimensional FFT in horizontal direction
-            for (int stage = 0; stage < OCEAN_TEX_DIM_LOG2; stage++) {
-                pc.direction_ = 0;
-                pc.stage_ = stage;
-                pc_info.record(cmdbuf, pc);
+            mirinae::PushConstInfo pc_info;
+            pc_info.layout(pipeline_layout_)
+                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT);
 
-                vkCmdPipelineBarrier(
-                    cmdbuf,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    0,
-                    1,
-                    &mem_bar,
-                    0,
-                    nullptr,
-                    0,
-                    nullptr
-                );
-
-                vkCmdDispatch(
-                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
-                );
-
-                pc.pingpong_ = !pc.pingpong_;
-            }
-
-            for (int stage = 0; stage < OCEAN_TEX_DIM_LOG2; stage++) {
-                pc.direction_ = 1;
-                pc.stage_ = stage;
-                pc_info.record(cmdbuf, pc);
-
-                vkCmdPipelineBarrier(
-                    cmdbuf,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    0,
-                    1,
-                    &mem_bar,
-                    0,
-                    nullptr,
-                    0,
-                    nullptr
-                );
-
-                vkCmdDispatch(
-                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
-                );
-
-                pc.pingpong_ = !pc.pingpong_;
-            }
+            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
         }
 
     private:
