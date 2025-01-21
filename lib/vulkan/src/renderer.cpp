@@ -177,9 +177,9 @@ namespace {
         }
         mirinae::rp::compo::RpMasterSky& compo_sky() { return compo_sky_; }
 
-        mirinae::rp::ocean::IRpStates& ocean_tess() { return *ocean_tess_; }
+        mirinae::IRpStates& ocean_tess() { return *ocean_tess_; }
 
-        void record_computes(const mirinae::rp::ocean::RpContext& ctxt) {
+        void record_computes(const mirinae::RpContext& ctxt) {
             for (auto& rp : rp_states_) {
                 if (rp.get() == ocean_tess_)
                     continue;
@@ -195,8 +195,8 @@ namespace {
         mirinae::rp::compo::RpMasterBasic compo_basic_;
         mirinae::rp::compo::RpMasterSky compo_sky_;
 
-        std::vector<mirinae::rp::ocean::URpStates> rp_states_;
-        mirinae::rp::ocean::IRpStates* ocean_tess_ = nullptr;
+        std::vector<mirinae::URpStates> rp_states_;
+        mirinae::IRpStates* ocean_tess_ = nullptr;
     };
 
 
@@ -666,7 +666,7 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            mirinae::rp::ocean::RpContext ren_ctxt;
+            mirinae::RpContext ren_ctxt;
             ren_ctxt.f_index_ = framesync_.get_frame_index();
             ren_ctxt.i_index_ = image_index;
             ren_ctxt.proj_mat_ = proj_mat;
