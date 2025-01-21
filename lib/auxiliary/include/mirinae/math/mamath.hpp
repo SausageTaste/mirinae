@@ -8,6 +8,14 @@
 namespace mirinae {
 
     template <typename T>
+    glm::tvec2<T> rotate_vec(const glm::tvec2<T>& vec, sung::TAngle<T> angle) {
+        const auto cos_a = std::cos(angle.rad());
+        const auto sin_a = std::sin(angle.rad());
+        return glm::tvec2<T>{ vec.x * cos_a - vec.y * sin_a,
+                              vec.x * sin_a + vec.y * cos_a };
+    }
+
+    template <typename T>
     glm::tquat<T> rotate_quat(
         const glm::tquat<T>& q, sung::TAngle<T> angle, const glm::tvec3<T>& axis
     ) {

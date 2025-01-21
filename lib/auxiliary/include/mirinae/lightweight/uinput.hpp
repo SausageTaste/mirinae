@@ -26,6 +26,9 @@ namespace mirinae::key {
         quote, comma, period, slash,
         /* Special characters */
         space, enter, backspace, tab,
+        /* Numpad */
+        np0, np1, np2, np3, np4, np5, np6, np7, np8, np9,
+        np_mul, np_add, np_sub, np_dot, np_div, num_enter,
         /* No characters */
         escape, lshfit, rshfit, lctrl, rctrl, lalt, ralt, up, down, left, right,
         /* End Of Enum, just for calculating number of elements of Enum class */

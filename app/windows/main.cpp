@@ -307,6 +307,9 @@ namespace {
             } else if (GLFW_KEY_0 <= glfw_key && glfw_key <= GLFW_KEY_9) {
                 auto index = glfw_key - GLFW_KEY_0 + int(KeyCode::n0);
                 return KeyCode(index);
+            } else if (GLFW_KEY_KP_0 <= glfw_key && glfw_key <= GLFW_KEY_KP_9) {
+                auto index = glfw_key - GLFW_KEY_KP_0 + int(KeyCode::np0);
+                return KeyCode(index);
             } else {
                 static const std::unordered_map<uint32_t, KeyCode> map{
                     { GLFW_KEY_GRAVE_ACCENT, KeyCode::backquote },
