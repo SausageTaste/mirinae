@@ -684,8 +684,7 @@ namespace {
                 glm::dvec2 x = glm::vec2(i_x, i_y);
                 auto k = std::fmod(x.y * (N / std::pow(2.0, x.x + 1.0)), N);
                 auto twiddle = ComplexNum(
-                    std::cos(SUNG_TAU * k / N),
-                    std::sin(SUNG_TAU * k / N)
+                    std::cos(SUNG_TAU * k / N), std::sin(SUNG_TAU * k / N)
                 );
 
                 int butterflyspan = int(std::pow(2.0, x.x));
@@ -1185,13 +1184,11 @@ namespace {
             {
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
-                    .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
                     .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
                     .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
 
                 mirinae::ImageViewBuilder builder;
-                builder.format(cinfo.format())
-                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
+                builder.aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
 
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = fdata_[i];
@@ -1206,6 +1203,7 @@ namespace {
                         img.init(cinfo.get(), device.mem_alloc());
                         builder.image(img.image());
 
+                        builder.format(cinfo.format());
                         fd.displacement_->view_.reset(builder, device);
                     }
 
@@ -1215,10 +1213,11 @@ namespace {
                         MIRINAE_ASSERT(nullptr != fd.normal_);
 
                         auto& img = fd.normal_->img_;
-                        cinfo.set_format(VK_FORMAT_R32G32B32A32_SFLOAT);
+                        cinfo.set_format(VK_FORMAT_R8G8B8A8_UNORM);
                         img.init(cinfo.get(), device.mem_alloc());
                         builder.image(img.image());
 
+                        builder.format(cinfo.format());
                         fd.normal_->view_.reset(builder, device);
                     }
                 }

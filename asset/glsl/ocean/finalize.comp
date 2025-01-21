@@ -25,7 +25,9 @@ void main() {
 
     vec4 texel_ddxddz = imageLoad(in_hkt_ddxddz, global_idx);
     vec3 normal = vec3(0 - texel_ddxddz.x * perm / float(N * N), 1, 0 - texel_ddxddz.z * perm / float(N * N));
-    normal = normal;
+    normal = normalize(normal);
+    normal.z *= -1;
+    normal = normal * 0.5 + 0.5;
 
     imageStore(out_displacement, global_idx, vec4(-displacement.x, displacement.y, -displacement.z, 1));
     imageStore(out_normal, global_idx, vec4(normal, 1));
