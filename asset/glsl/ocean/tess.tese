@@ -34,8 +34,6 @@ void main() {
     const vec2 t1 = (t11 - t10) * u + t10;
     const vec2 tex_coord = (t1 - t0) * v + t0;
 
-    const vec3 displacement = texture(u_height_map, tex_coord).xyz * u_pc.height_scale;
-
     const vec3 p00 = gl_in[0].gl_Position.xyz;
     const vec3 p01 = gl_in[1].gl_Position.xyz;
     const vec3 p11 = gl_in[2].gl_Position.xyz;
@@ -44,6 +42,8 @@ void main() {
     const vec3 p0 = (p01 - p00) * u + p00;
     const vec3 p1 = (p11 - p10) * u + p10;
     vec3 p = (p1 - p0) * v + p0;
+
+    const vec3 displacement = texture(u_height_map, tex_coord).xyz * u_pc.height_scale;
     p.xyz += displacement;
     gl_Position = u_pc.pvm * vec4(p, 1);
 

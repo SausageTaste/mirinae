@@ -17,17 +17,18 @@ void main() {
     float perms[2] = float[2](1.0, -1.0);
     int index = int(mod((int(global_idx.x) + int(global_idx.y)), 2));
     float perm = perms[index];
+    const float norm_factor = perm / float(N * N);
 
     vec4 texel_dxdy = imageLoad(in_hkt_dxdy, global_idx);
     vec4 texel_dz = imageLoad(in_hkt_dz, global_idx);
-    vec3 displacement = vec3(texel_dxdy.xz, texel_dz.x) * perm / float(N * N);
+    vec3 displacement = vec3(texel_dxdy.xz, texel_dz.x) * norm_factor;
 
     vec4 texel_ddxddz = imageLoad(in_hkt_ddxddz, global_idx);
-    vec3 normal = vec3(0 - texel_ddxddz.x * perm / float(N * N), 1, 0 - texel_ddxddz.z * perm / float(N * N));
+    vec3 normal = vec3(texel_ddxddz.x * norm_factor, 1, texel_ddxddz.z * norm_factor);
+    normal.xz *= -1;
     normal = normalize(normal);
-    normal.z *= -1;
     normal = normal * 0.5 + 0.5;
 
-    imageStore(out_displacement, global_idx, vec4(-displacement.x, displacement.y, -displacement.z, 1));
+    imageStore(out_displacement, global_idx, vec4(displacement.x, -displacement.y, displacement.z, 1));
     imageStore(out_normal, global_idx, vec4(normal, 1));
 }
