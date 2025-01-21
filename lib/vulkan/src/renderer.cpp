@@ -144,6 +144,12 @@ namespace {
             );
 
             rp_states_.push_back(
+                mirinae::rp::ocean::create_rp_states_ocean_naive_ift(
+                    rp_res, desclayouts, device
+                )
+            );
+
+            rp_states_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_finalize(
                     rp_res, desclayouts, device
                 )
