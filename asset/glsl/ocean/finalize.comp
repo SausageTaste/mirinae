@@ -21,13 +21,12 @@ void main() {
 
     vec4 texel_dxdy = imageLoad(in_hkt_dxdy, global_idx);
     vec4 texel_dz = imageLoad(in_hkt_dz, global_idx);
-    vec3 xyz_comp = vec3(texel_dxdy.xz, texel_dz.x);
-    vec3 color = xyz_comp * perm / float(N * N);
+    vec3 displacement = vec3(texel_dxdy.xz, texel_dz.x) * perm / float(N * N);
 
     vec4 texel_ddxddz = imageLoad(in_hkt_ddxddz, global_idx);
-    vec3 normal = vec3(0 - texel_ddxddz.x * perm, 5000, 0 - texel_ddxddz.z * perm);
+    vec3 normal = vec3(0 - texel_ddxddz.x * perm / float(N * N), 1, 0 - texel_ddxddz.z * perm / float(N * N));
     normal = normal;
 
-    imageStore(out_displacement, global_idx, vec4(-color.x, color.y, -color.z, 1));
+    imageStore(out_displacement, global_idx, vec4(-displacement.x, displacement.y, -displacement.z, 1));
     imageStore(out_normal, global_idx, vec4(normal, 1));
 }

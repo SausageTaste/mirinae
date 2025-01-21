@@ -15,7 +15,7 @@ layout (push_constant) uniform U_OceanTildeHKtPushConst {
 } u_pc;
 
 const int N = 256;
-const int L = 1000;
+const int L = 100;
 
 
 struct Complex {
@@ -60,18 +60,12 @@ void main() {
         complex_mul(fourier_cmp, exp_iwt),
         complex_mul(fourier_cmp_conj, exp_iwt_inv)
     );
-
     Complex hkt_dx = complex_mul(Complex(0, -k.x / mag), hkt_dy);
     Complex hkt_dz = complex_mul(Complex(0, -k.y / mag), hkt_dy);
-
     imageStore(out_hkt_dxdy, global_idx, vec4(hkt_dx.re, hkt_dx.im, hkt_dy.re, hkt_dy.im));
     imageStore(out_hkt_dz, global_idx, vec4(hkt_dz.re, hkt_dz.im, 0, 1));
 
-    Complex x_slope = Complex(0, k.x);
-    Complex hkt_slopex = complex_mul(x_slope, hkt_dy);
-
-    Complex z_slope = Complex(0, k.y);
-    Complex hkt_slopez = complex_mul(z_slope, hkt_dy);
-
+    Complex hkt_slopex = complex_mul(Complex(0, k.x), hkt_dy);
+    Complex hkt_slopez = complex_mul(Complex(0, k.y), hkt_dy);
     imageStore(out_hkt_ddxddz, global_idx, vec4(hkt_slopex.re, hkt_slopex.im, hkt_slopez.re, hkt_slopez.im));
 }

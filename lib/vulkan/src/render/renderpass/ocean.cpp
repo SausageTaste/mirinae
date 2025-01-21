@@ -40,6 +40,9 @@ namespace {
     constexpr uint32_t OCEAN_TEX_DIM = 256;
     const uint32_t OCEAN_TEX_DIM_LOG2 = std::log(OCEAN_TEX_DIM) / std::log(2);
 
+    // Range is [0, 1]
+    double rand_uniform() { return (double)rand() / RAND_MAX; }
+
 
     struct U_OceanTildeHPushConst {
         float time_;
@@ -80,7 +83,9 @@ namespace {
 
                 for (size_t i = 0; i < noise_textures_.size(); ++i) {
                     for (size_t i = 0; i < noise_data.size(); i++)
-                        noise_data[i] = static_cast<uint8_t>(rand() % 256);
+                        noise_data[i] = static_cast<uint8_t>(
+                            rand_uniform() * 255
+                        );
 
                     staging_buffer.set_data(
                         noise_data.data(),
@@ -679,8 +684,8 @@ namespace {
                 glm::dvec2 x = glm::vec2(i_x, i_y);
                 auto k = std::fmod(x.y * (N / std::pow(2.0, x.x + 1.0)), N);
                 auto twiddle = ComplexNum(
-                    std::cos(2.0 * SUNG_PI * k / N),
-                    std::sin(2.0 * SUNG_PI * k / N)
+                    std::cos(SUNG_TAU * k / N),
+                    std::sin(SUNG_TAU * k / N)
                 );
 
                 int butterflyspan = int(std::pow(2.0, x.x));
