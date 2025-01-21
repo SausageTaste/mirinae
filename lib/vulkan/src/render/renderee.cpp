@@ -325,7 +325,7 @@ namespace mirinae {
         for (size_t i = 0; i < max_flight_count; i++) {
             builder.set_descset(desc_sets_.at(i))
                 .add_ubuf(uniform_buf_.at(i))
-                .add_img_sampler(color_view, sampler)
+                .add_img_sampler_general(color_view, sampler)
                 .add_img_sampler(mask_view, sampler);
         }
         builder.apply_all(device_.logi_device());
