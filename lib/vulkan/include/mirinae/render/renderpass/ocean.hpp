@@ -12,25 +12,6 @@ namespace mirinae::rp::ocean {
     };
 
 
-    struct RpContext {
-        std::shared_ptr<DrawSheet> draw_sheet_;
-        mirinae::FrameIndex f_index_;
-        mirinae::ShainImageIndex i_index_;
-        glm::dmat4 proj_mat_;
-        glm::dmat4 view_mat_;
-        VkCommandBuffer cmdbuf_;
-    };
-
-
-    struct IRpStates {
-        virtual ~IRpStates() = default;
-        virtual void record(const RpContext& context) = 0;
-        virtual const std::string& name() const = 0;
-    };
-
-    using URpStates = std::unique_ptr<IRpStates>;
-
-
     URpStates create_rp_states_ocean_tilde_h(
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
