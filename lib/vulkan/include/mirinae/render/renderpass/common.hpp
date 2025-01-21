@@ -2,9 +2,9 @@
 
 #include <map>
 
+#include "mirinae/cosmos.hpp"
 #include "mirinae/render/renderee.hpp"
 #include "mirinae/render/vkdevice.hpp"
-#include "mirinae/scene/cosmos.hpp"
 
 
 namespace mirinae {
