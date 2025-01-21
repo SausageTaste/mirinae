@@ -979,6 +979,32 @@ namespace {
             rpm_.create_std_rp(
                 rp_res_, desclayout_, fbuf_images_, swapchain_, device_
             );
+
+            {
+                std::vector<std::string> image_names{
+                    "ocean_tilde_h:height_map_f#0",
+                    "ocean_tilde_hkt:hkt_dxdy_f#0",
+                    "ocean_tilde_hkt:hkt_dz_f#0",
+                    "ocean_butterfly:pingpong_xy_f#0",
+                    "ocean_butterfly:pingpong_z_f#0",
+                    "ocean_finalize:displacement_f#0",
+                    "ocean_finalize:normal_f#0",
+                };
+                int index = 0;
+                for (auto& x : image_names) {
+                    auto image = rp_res_.get_img_reader(x, "renderer");
+                    if (!image) {
+                        SPDLOG_WARN("Failed to get image: {}", x);
+                        continue;
+                    }
+                    const auto x = index % 3;
+                    const auto y = index / 3;
+                    ++index;
+                    overlay_man_.create_image_view(image->view_.get(), x, y);
+                }
+            }
+
+            return;
         }
 
         void destroy_swapchain_and_relatives() {

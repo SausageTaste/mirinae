@@ -408,7 +408,7 @@ namespace mirinae {
             pimpl_->device_
         );
 
-        constexpr float SIZE = 200;
+        constexpr float SIZE = 256;
         constexpr float MARGIN = 10;
 
         w->pos_ = { MARGIN + (SIZE + MARGIN) * x,

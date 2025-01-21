@@ -23,4 +23,5 @@ void main() {
 
     f_color = color_texel * u_overlay_push_const.color;
     f_color.a *= mask_texel;
+    f_color.a = 1;
 }
