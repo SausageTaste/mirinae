@@ -76,7 +76,6 @@ namespace mirinae::cpnt {
         glm::dvec2 wind_dir_{ 1, 1 };
         double wind_speed_ = 10;
         double amplitude_ = 500000;
-        uint32_t N_ = 256;
         uint32_t L_ = 100;
     };
 

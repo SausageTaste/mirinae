@@ -320,7 +320,7 @@ namespace {
             pc.wind_dir_ = ocean_entt.wind_dir_;
             pc.wind_speed_ = ocean_entt.wind_speed_;
             pc.amplitude_ = ocean_entt.amplitude_;
-            pc.N_ = ocean_entt.N_;
+            pc.N_ = ::OCEAN_TEX_DIM;
             pc.L_ = ocean_entt.L_;
 
             mirinae::PushConstInfo pc_info;
@@ -623,7 +623,7 @@ namespace {
 
             ::U_OceanTildeHktPushConst pc;
             pc.time_ = timer_.elapsed();
-            pc.N_ = ocean_entt.N_;
+            pc.N_ = ::OCEAN_TEX_DIM;
             pc.L_ = ocean_entt.L_;
 
             mirinae::PushConstInfo pc_info;
@@ -1462,7 +1462,7 @@ namespace {
 
             ::U_OceanNaiveIftPushConst pc;
             pc.L_ = ocean_entt.L_;
-            pc.N_ = ocean_entt.N_;
+            pc.N_ = ::OCEAN_TEX_DIM;
             pc.stage_ = 0;
 
             mirinae::PushConstInfo pc_info;
@@ -1788,7 +1788,7 @@ namespace {
             );
 
             U_OceanFinalizePushConst pc;
-            pc.N_ = ocean_entt.N_;
+            pc.N_ = ::OCEAN_TEX_DIM;
 
             mirinae::PushConstInfo{}
                 .layout(pipeline_layout_)
