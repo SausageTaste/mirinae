@@ -991,12 +991,12 @@ namespace {
             {
                 std::vector<std::string> image_names{
                     // "ocean_tilde_h:height_map_f#0",
-                    "ocean_tilde_hkt:hkt_dxdy_f#0",
+                    // "ocean_tilde_hkt:hkt_dxdy_f#0",
                     // "ocean_tilde_hkt:hkt_dz_f#0",
-                    //"ocean_butterfly:pingpong_xy_f#0",
+                    // "ocean_butterfly:pingpong_xy_f#0",
                     // "ocean_butterfly:pingpong_z_f#0",
-                    "ocean_naive_ift:ppong_naive_xy_f#0",
-                    "ocean_finalize:displacement_f#0",
+                    // "ocean_naive_ift:ppong_naive_xy_f#0",
+                    // "ocean_finalize:displacement_f#0",
                     // "ocean_finalize:normal_f#0",
                 };
                 int index = 0;
