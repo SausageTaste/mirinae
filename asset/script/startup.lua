@@ -118,4 +118,5 @@ end
 
 function cam_pos()
     print(scene.get_cam_pos())
+    print(scene.get_cam_dir())
 end
