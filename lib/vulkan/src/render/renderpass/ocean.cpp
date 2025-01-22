@@ -1170,6 +1170,13 @@ namespace {
 // Ocean Naive IFT
 namespace {
 
+    struct U_OceanNaiveIftPushConst {
+        int32_t N_;
+        int32_t L_;
+        bool stage_;  // 0: hor, 1: ver
+    };
+
+
     class RpStatesOceanNaiveIft : public mirinae::IRpStates {
 
     public:
@@ -1205,6 +1212,7 @@ namespace {
                 mirinae::ImageCreateInfo cinfo;
                 cinfo.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                     .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
+                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
                     .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
 
                 mirinae::ImageViewBuilder builder;
@@ -1373,7 +1381,7 @@ namespace {
                 pipeline_layout_ =
                     mirinae::PipelineLayoutBuilder{}
                         .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .pc<U_OceanButterflyPushConst>()
+                        .pc<U_OceanNaiveIftPushConst>()
                         .desc(desclayouts.get(name() + ":main").layout())
                         .build(device);
                 MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
@@ -1452,16 +1460,48 @@ namespace {
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
-            ::U_OceanButterflyPushConst pc;
+            ::U_OceanNaiveIftPushConst pc;
+            pc.L_ = ocean_entt.L_;
+            pc.N_ = ocean_entt.N_;
             pc.stage_ = 0;
-            pc.pingpong_ = 1;
-            pc.direction_ = 0;
 
             mirinae::PushConstInfo pc_info;
             pc_info.layout(pipeline_layout_)
-                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT);
+                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                .record(cmdbuf, pc);
 
             vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
+
+            vkCmdPipelineBarrier(
+                cmdbuf,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                0,
+                1,
+                &mem_bar,
+                0,
+                nullptr,
+                0,
+                nullptr
+            );
+
+            pc.stage_ = 1;
+            pc_info.record(cmdbuf, pc);
+
+            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
+
+            vkCmdPipelineBarrier(
+                cmdbuf,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                0,
+                1,
+                &mem_bar,
+                0,
+                nullptr,
+                0,
+                nullptr
+            );
         }
 
     private:

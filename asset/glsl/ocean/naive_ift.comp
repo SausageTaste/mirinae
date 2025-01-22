@@ -12,10 +12,101 @@ layout (binding = 3, rgba32f) uniform image2D in_hkt_dxdy;
 layout (binding = 4, rgba32f) uniform image2D in_hkt_dz;
 layout (binding = 5, rgba32f) uniform image2D in_hkt_ddxddz;
 
+layout (push_constant) uniform U_OceanNaiveIftPushConst {
+    int N;
+    int L;
+    bool stage;  // 0: hor, 1: ver
+} u_pc;
+
 
 void main() {
-    ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
-    imageStore(out_ppong_xy, global_idx, vec4(0.8, 0.2, 0.2, 1));
-    imageStore(out_ppong_z, global_idx, vec4(0.2, 0.8, 0.2, 1));
-    imageStore(out_ppong_dxdz, global_idx, vec4(0.2, 0.2, 0.8, 1));
+    const ivec2 nm = ivec2(gl_GlobalInvocationID.xy);
+    const float n = float(nm.x);
+    const float m = float(nm.y);
+    const float N = float(u_pc.N);
+
+    vec2 sum_x = vec2(0);
+    vec2 sum_y = vec2(0);
+    vec2 sum_z = vec2(0);
+    vec2 sum_dx = vec2(0);
+    vec2 sum_dz = vec2(0);
+
+    if (!u_pc.stage) {
+        for (int i = 0; i < u_pc.N; ++i) {
+            const ivec2 kl = ivec2(i, m);
+            const float k = float(kl.x);
+            const float l = float(kl.y);
+
+            const vec4 texel_xy = imageLoad(in_hkt_dxdy, kl);
+            if (isnan(texel_xy.x) || isnan(texel_xy.y) || isnan(texel_xy.z) || isnan(texel_xy.w)) {
+                imageStore(out_ppong_xy, nm, vec4(0.9, 0.1, kl));
+                return;
+            }
+            const vec4 texel_z = imageLoad(in_hkt_dz, kl);
+            if (isnan(texel_xy.x) || isnan(texel_xy.y) || isnan(texel_xy.z) || isnan(texel_xy.w)) {
+                imageStore(out_ppong_z, nm, vec4(0.9, 0.1, kl));
+                return;
+            }
+            const vec4 texel_dxdz = imageLoad(in_hkt_ddxddz, kl);
+            if (isnan(texel_xy.x) || isnan(texel_xy.y) || isnan(texel_xy.z) || isnan(texel_xy.w)) {
+                imageStore(out_ppong_dxdz, nm, vec4(0.9, 0.1, kl));
+                return;
+            }
+
+            const Complex h_x = complex_init(texel_xy.xy);
+            const Complex h_y = complex_init(texel_xy.zw);
+            const Complex h_z = complex_init(texel_z.xy);
+            const Complex h_dx = complex_init(texel_dxdz.xy);
+            const Complex h_dy = complex_init(texel_dxdz.zw);
+            const Complex c = complex_init_exp((TAU * k * n - PI * N * n) / N);
+            sum_x += complex_to_vec2(complex_mul(h_x, c)) / N;
+            sum_y += complex_to_vec2(complex_mul(h_y, c)) / N;
+            sum_z += complex_to_vec2(complex_mul(h_z, c)) / N;
+            sum_dx += complex_to_vec2(complex_mul(h_dx, c)) / N;
+            sum_dz += complex_to_vec2(complex_mul(h_dy, c)) / N;
+        }
+
+        imageStore(out_ppong_xy, nm, vec4(sum_x, sum_y));
+        imageStore(out_ppong_z, nm, vec4(sum_z, 0, 1));
+        imageStore(out_ppong_dxdz, nm, vec4(sum_dx, sum_dz));
+    }
+    else {
+        for (int i = 0; i < u_pc.N; ++i) {
+            const ivec2 kl = ivec2(n, i);
+            const float k = float(kl.x);
+            const float l = float(kl.y);
+
+            const vec4 texel_xy = imageLoad(out_ppong_xy, kl);
+            if (isnan(texel_xy.x) || isnan(texel_xy.y) || isnan(texel_xy.z) || isnan(texel_xy.w)) {
+                imageStore(in_hkt_dxdy, nm, vec4(0.9, 0.1, kl));
+                return;
+            }
+            const vec4 texel_z = imageLoad(out_ppong_z, kl);
+            if (isnan(texel_xy.x) || isnan(texel_xy.y) || isnan(texel_xy.z) || isnan(texel_xy.w)) {
+                imageStore(in_hkt_dz, nm, vec4(0.9, 0.1, kl));
+                return;
+            }
+            const vec4 texel_dxdz = imageLoad(out_ppong_dxdz, kl);
+            if (isnan(texel_xy.x) || isnan(texel_xy.y) || isnan(texel_xy.z) || isnan(texel_xy.w)) {
+                imageStore(in_hkt_ddxddz, nm, vec4(0.9, 0.1, kl));
+                return;
+            }
+
+            const Complex h_x = complex_init(texel_xy.xy);
+            const Complex h_y = complex_init(texel_xy.zw);
+            const Complex h_z = complex_init(texel_z.xy);
+            const Complex h_dx = complex_init(texel_dxdz.xy);
+            const Complex h_dy = complex_init(texel_dxdz.zw);
+            const Complex c = complex_init_exp((TAU * l * m - PI * N * m) / N);
+            sum_x += complex_to_vec2(complex_mul(h_x, c)) / N;
+            sum_y += complex_to_vec2(complex_mul(h_y, c)) / N;
+            sum_z += complex_to_vec2(complex_mul(h_z, c)) / N;
+            sum_dx += complex_to_vec2(complex_mul(h_dx, c)) / N;
+            sum_dz += complex_to_vec2(complex_mul(h_dy, c)) / N;
+        }
+
+        imageStore(in_hkt_dxdy, nm, vec4(sum_x, sum_y));
+        imageStore(in_hkt_dz, nm, vec4(sum_z, 0, 1));
+        imageStore(in_hkt_ddxddz, nm, vec4(sum_dx, sum_dz));
+    }
 }
