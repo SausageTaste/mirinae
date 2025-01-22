@@ -1861,6 +1861,12 @@ namespace {
             return *this;
         }
 
+        U_OceanTessPushConst& tile_dimensions(float x, float y) {
+            tile_dimensions_.x = x;
+            tile_dimensions_.y = y;
+            return *this;
+        }
+
         U_OceanTessPushConst& height_scale(float x) {
             height_scale_ = x;
             return *this;
@@ -1872,6 +1878,7 @@ namespace {
         glm::mat4 model_;
         glm::vec4 tile_index_count_;
         glm::vec4 height_map_size_fbuf_size_;
+        glm::vec2 tile_dimensions_;
         float height_scale_;
     };
 
@@ -2125,6 +2132,7 @@ namespace {
                 .tile_count(100, 100)
                 .height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                 .fbuf_size(fbuf_exd)
+                .tile_dimensions(ocean_entt.L_, ocean_entt.L_)
                 .height_scale(1);
 
             for (int x = 0; x < 10; ++x) {

@@ -10,18 +10,16 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 model;
     vec4 tile_index_count;
     vec4 height_map_size_fbuf_size;
+    vec2 tile_dimensions;
     float height_scale;
 } u_pc;
 
 
-const float TILE_SIZE_X = 50.0;
-const float TILE_SIZE_Y = 50.0;
-
 const vec3[] POSITIONS = vec3[4](
-    vec3(          0, 0,           0),
-    vec3(          0, 0, TILE_SIZE_Y),
-    vec3(TILE_SIZE_X, 0, TILE_SIZE_Y),
-    vec3(TILE_SIZE_X, 0,           0)
+    vec3(0, 0, 0),
+    vec3(0, 0, 1),
+    vec3(1, 0, 1),
+    vec3(1, 0, 0)
 );
 
 const vec2 TEX_COORDS[] = vec2[4](
@@ -33,11 +31,18 @@ const vec2 TEX_COORDS[] = vec2[4](
 
 
 void main() {
-    gl_Position.xyz = POSITIONS[gl_VertexIndex] + vec3(
-        u_pc.tile_index_count.x * TILE_SIZE_X,
+    const vec3 pos = vec3(
+        TEX_COORDS[gl_VertexIndex].x * u_pc.tile_dimensions.x,
         0,
-        u_pc.tile_index_count.y * TILE_SIZE_Y
+        TEX_COORDS[gl_VertexIndex].y * u_pc.tile_dimensions.y
     );
+    const vec3 offset = vec3(
+        u_pc.tile_index_count.x * u_pc.tile_dimensions.x,
+        0,
+        u_pc.tile_index_count.y * u_pc.tile_dimensions.y
+    );
+
+    gl_Position.xyz = pos + offset;
     gl_Position.w = 1;
 
     const vec2 uv_cell_size = vec2(
