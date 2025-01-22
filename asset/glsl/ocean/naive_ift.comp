@@ -15,7 +15,7 @@ layout (binding = 5, rgba32f) uniform image2D in_hkt_ddxddz;
 layout (push_constant) uniform U_OceanNaiveIftPushConst {
     int N;
     int L;
-    bool stage;  // 0: hor, 1: ver
+    int stage;  // 0: hor, 1: ver
 } u_pc;
 
 
@@ -31,7 +31,7 @@ void main() {
     vec2 sum_dx = vec2(0);
     vec2 sum_dz = vec2(0);
 
-    if (!u_pc.stage) {
+    if (0 == u_pc.stage) {
         for (int i = 0; i < u_pc.N; ++i) {
             const ivec2 kl = ivec2(i, m);
             const float k = float(kl.x);

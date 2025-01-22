@@ -1173,7 +1173,7 @@ namespace {
     struct U_OceanNaiveIftPushConst {
         int32_t N_;
         int32_t L_;
-        bool stage_;  // 0: hor, 1: ver
+        int32_t stage_;  // 0: hor, 1: ver
     };
 
 
