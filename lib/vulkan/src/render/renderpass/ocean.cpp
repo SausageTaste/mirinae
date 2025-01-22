@@ -1865,6 +1865,7 @@ namespace {
     public:
         RpStatesOceanTess(
             size_t swapchain_count,
+            VkImageView sky_tex,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
@@ -1908,7 +1909,8 @@ namespace {
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .set_count(1)
                     .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .finish_binding();
+                    .finish_binding()
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Sky texture
                 desclayouts.add(builder, device.logi_device());
             }
 
@@ -1939,6 +1941,9 @@ namespace {
                         .add_img_sampler_general(
                             fd.normal_map_->view_.get(),
                             device.samplers().get_linear()
+                        )
+                        .add_img_sampler(
+                            sky_tex, device.samplers().get_linear()
                         );
                 }
                 builder.apply_all(device.logi_device());
@@ -2100,9 +2105,11 @@ namespace {
                 .add_stage_tese()
                 .add_stage_frag();
 
-            const auto model_mat = glm::mat4_cast(
-                glm::angleAxis(glm::radians(180.0), glm::dvec3{ 0, 1, 0 })
-            );
+            const auto model_mat =
+                glm::translate(glm::dmat4{ 1 }, glm::dvec3{ 50, 0, 50 }) *
+                glm::mat4_cast(
+                    glm::angleAxis(glm::radians(180.0), glm::dvec3{ 0, 1, 0 })
+                );
 
             U_OceanTessPushConst pc;
             pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
@@ -2207,13 +2214,14 @@ namespace mirinae::rp::ocean {
 
     URpStates create_rp_states_ocean_tess(
         size_t swapchain_count,
+        VkImageView sky_tex,
         mirinae::FbufImageBundle& fbuf_bundle,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<RpStatesOceanTess>(
-            swapchain_count, fbuf_bundle, rp_res, desclayouts, device
+            swapchain_count, sky_tex, fbuf_bundle, rp_res, desclayouts, device
         );
     }
 
