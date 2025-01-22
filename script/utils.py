@@ -27,18 +27,25 @@ def find_root_dir() -> Optional[str]:
     return None
 
 
-def find_vulkan_sdk() -> Optional[str]:
+def find_vulkan_sdk() -> str:
     VULKAN_SDK_DIR = "C:/VulkanSDK"
 
     if not os.path.isdir(VULKAN_SDK_DIR):
-        return False
+        raise FileNotFoundError(f"Vulkan SDK not found")
 
+    found = []
     for version_folder_name in reversed(os.listdir(VULKAN_SDK_DIR)):
         sdk_version_folder = os.path.join(VULKAN_SDK_DIR, version_folder_name)
-        if os.path.isdir(sdk_version_folder):
-            return os.path.normpath(sdk_version_folder)
+        if not os.path.isdir(sdk_version_folder):
+            continue
+        if not os.path.isfile(os.path.join(sdk_version_folder, "Bin", "vkcube.exe")):
+            continue
+        found.append(os.path.normpath(sdk_version_folder))
 
-    return None
+    if not found:
+        raise FileNotFoundError(f"Vulkan SDK not found")
+
+    return found[-1]
 
 
 def try_mkdir(path: str):
