@@ -64,6 +64,8 @@ def __compile_one(file_path):
 
 
 def main():
+    st = time.time()
+
     if not os.path.isfile(COMPILER_PATH):
         raise FileNotFoundError("GLSL compiler not found at '{}'".format(COMPILER_PATH))
 
@@ -72,21 +74,21 @@ def main():
     utils.try_mkdir(ASSET_DIR)
     utils.try_mkdir(os.path.join(ASSET_DIR, "spv"))
 
-    st = time.time()
     with mp.Pool(PROC_COUNT) as pool:
         for result in pool.imap_unordered(__compile_one, __gen_glsl_file()):
             file_path, success, time_taken = result
             work_count += 1
             success_count += 1 if success else 0
-            print(f"{'Success' if success else 'Failed'} ({time_taken:.2f} sec): {file_path}")
-    et = time.time()
 
     if (work_count == 0):
-        print("No shaders to compile.")
+        print("Nothing to compile.")
     else:
         success_rate = success_count / work_count
-        print(f"\nCompiled {success_count}/{work_count} ({success_rate:.2%}) shaders successfully.")
-        print(f"Time taken: {et - st:.2f} seconds.")
+        if (success_count == work_count):
+            print(f"\nCompiled {success_count}/{work_count} (\033[96m{success_rate:.0%}\033[0m) shaders")
+        else:
+            print(f"\nCompiled {success_count}/{work_count} (\033[91m{success_rate:.0%}\033[0m) shaders")
+    print(f"Time taken: {time.time() - st:.2f} seconds.")
 
 
 if "__main__" == __name__:
