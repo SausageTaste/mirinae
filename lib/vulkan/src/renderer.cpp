@@ -159,6 +159,7 @@ namespace {
             rp_states_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tess(
                     swapchain.views_count(),
+                    envmap_->sky_tex_view(),
                     fbuf_bundle,
                     rp_res,
                     desclayouts,
