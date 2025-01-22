@@ -19,7 +19,11 @@ void main() {
     float perms[2] = float[2](1.0, -1.0);
     int index = int(mod((int(global_idx.x) + int(global_idx.y)), 2));
     float perm = perms[index];
+    //*/
+    const float norm_factor = 1.0;
+    /*/
     const float norm_factor = perm / float(u_pc.N * u_pc.N);
+    //*/
 
     vec4 texel_dxdy = imageLoad(in_hkt_dxdy, global_idx);
     vec4 texel_dz = imageLoad(in_hkt_dz, global_idx);
