@@ -371,7 +371,9 @@ namespace mirinae {
         img_info_ = create_info;
 
         VmaAllocationCreateInfo alloc_info = {};
-        alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
+        // Without this the ocean flickers when window is resized
+        alloc_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 
         VK_CHECK(vmaCreateImage(
             allocator->get(),
