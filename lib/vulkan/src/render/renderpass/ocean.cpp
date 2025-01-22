@@ -75,15 +75,15 @@ namespace {
 
             // Noise textures
             {
-                std::vector<uint8_t> noise_data(OCEAN_TEX_DIM * OCEAN_TEX_DIM);
-                mirinae::Buffer staging_buffer;
-                staging_buffer.init_staging(
-                    noise_data.size(), device_.mem_alloc()
+                std::vector<uint8_t> noise_data(
+                    OCEAN_TEX_DIM * OCEAN_TEX_DIM * 4
                 );
+                for (size_t i = 0; i < noise_data.size(); i++)
+                    noise_data[i] = static_cast<uint8_t>(rand_uniform() * 255);
 
                 mirinae::ImageCreateInfo img_info;
                 img_info.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
-                    .set_format(VK_FORMAT_R8_UNORM)
+                    .set_format(VK_FORMAT_R8G8B8A8_UNORM)
                     .deduce_mip_levels()
                     .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
                     .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
@@ -93,40 +93,33 @@ namespace {
                 iv_builder.format(img_info.format())
                     .mip_levels(img_info.mip_levels());
 
-                for (size_t i = 0; i < noise_textures_.size(); ++i) {
-                    for (size_t i = 0; i < noise_data.size(); i++)
-                        noise_data[i] = static_cast<uint8_t>(
-                            rand_uniform() * 255
-                        );
+                mirinae::Buffer staging_buffer;
+                staging_buffer.init_staging(
+                    noise_data.size(), device_.mem_alloc()
+                );
+                staging_buffer.set_data(
+                    noise_data.data(), noise_data.size(), device_.mem_alloc()
+                );
 
-                    staging_buffer.set_data(
-                        noise_data.data(),
-                        noise_data.size(),
-                        device_.mem_alloc()
-                    );
+                auto img = rp_res.new_img("ocean_noise", this->name());
+                MIRINAE_ASSERT(nullptr != img);
+                noise_textures_ = img;
+                img->img_.init(img_info.get(), device_.mem_alloc());
 
-                    const auto img_name = fmt::format("ocean_noise_{}", i);
-                    auto img = rp_res.new_img(img_name, this->name());
-                    MIRINAE_ASSERT(nullptr != img);
-                    noise_textures_[i] = img;
-                    img->img_.init(img_info.get(), device_.mem_alloc());
-
-                    auto cmdbuf = cmd_pool.begin_single_time(device_);
-                    mirinae::record_img_buf_copy_mip(
-                        cmdbuf,
-                        OCEAN_TEX_DIM,
-                        OCEAN_TEX_DIM,
-                        img_info.mip_levels(),
-                        img->img_.image(),
-                        staging_buffer.buffer()
-                    );
-                    cmd_pool.end_single_time(cmdbuf, device_);
-
-                    iv_builder.image(img->img_.image());
-                    img->view_.reset(iv_builder, device_);
-                }
-
+                auto cmdbuf = cmd_pool.begin_single_time(device_);
+                mirinae::record_img_buf_copy_mip(
+                    cmdbuf,
+                    OCEAN_TEX_DIM,
+                    OCEAN_TEX_DIM,
+                    img_info.mip_levels(),
+                    img->img_.image(),
+                    staging_buffer.buffer()
+                );
+                cmd_pool.end_single_time(cmdbuf, device_);
                 staging_buffer.destroy(device_.mem_alloc());
+
+                iv_builder.image(img->img_.image());
+                img->view_.reset(iv_builder, device_);
             }
 
             // Storage images
@@ -186,9 +179,6 @@ namespace {
                     .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                     .set_count(1)
                     .finish_binding()
-                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1)
-                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1)
-                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1)
                     .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);
                 desclayouts.add(builder, device.logi_device());
             }
@@ -217,19 +207,7 @@ namespace {
                     builder.set_descset(fd.desc_set_)
                         .add_storage_img(fd.hk_->view_.get())
                         .add_img_sampler(
-                            noise_textures_[0]->view_.get(),
-                            device.samplers().get_nearest()
-                        )
-                        .add_img_sampler(
-                            noise_textures_[1]->view_.get(),
-                            device.samplers().get_nearest()
-                        )
-                        .add_img_sampler(
-                            noise_textures_[2]->view_.get(),
-                            device.samplers().get_nearest()
-                        )
-                        .add_img_sampler(
-                            noise_textures_[3]->view_.get(),
+                            noise_textures_->view_.get(),
                             device.samplers().get_nearest()
                         );
                 }
@@ -275,13 +253,12 @@ namespace {
         }
 
         ~RpStatesOceanTildeH() override {
-            for (auto& img : noise_textures_)
-                rp_res_.free_img(img->id(), this->name());
             for (auto& fd : frame_data_) {
                 rp_res_.free_img(fd.hk_->id(), this->name());
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
+            rp_res_.free_img(noise_textures_->id(), this->name());
             desc_pool_.destroy(device_.logi_device());
 
             if (VK_NULL_HANDLE != pipeline_) {
@@ -340,8 +317,8 @@ namespace {
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
 
-        std::array<mirinae::HRpImage, 4> noise_textures_;
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
+        mirinae::HRpImage noise_textures_;
         mirinae::DescPool desc_pool_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
