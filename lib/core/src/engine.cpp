@@ -237,7 +237,8 @@ namespace {
         ~Engine() override {}
 
         void do_frame() override {
-            const auto delta_time = delta_timer_.check_get_elapsed();
+            cosmos_->tick_clock();
+            auto& clock = cosmos_->clock();
 
             if (sec5_.check_if_elapsed(5)) {
                 client_->send();
@@ -246,26 +247,26 @@ namespace {
             auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
                 cosmos_->scene().main_camera_
             );
-            camera_controller_.apply(cam.view_, delta_time);
+            camera_controller_.apply(cam.view_, clock.dt());
 
             for (auto& eid : cosmos_->reg().view<mirinae::cpnt::Ocean>()) {
                 auto& ocean = cosmos_->reg().get<mirinae::cpnt::Ocean>(eid);
                 auto& keys = camera_controller_.keys();
 
                 if (keys.is_pressed(mirinae::key::KeyCode::np9)) {
-                    ocean.amplitude_ += ocean.amplitude_ * delta_time;
+                    ocean.amplitude_ += ocean.amplitude_ * clock.dt();
                     SPDLOG_INFO("Amplitude: {}", ocean.amplitude_);
                 }
                 if (keys.is_pressed(mirinae::key::KeyCode::np7)) {
-                    ocean.amplitude_ -= ocean.amplitude_ * delta_time;
+                    ocean.amplitude_ -= ocean.amplitude_ * clock.dt();
                     SPDLOG_INFO("Amplitude: {}", ocean.amplitude_);
                 }
                 if (keys.is_pressed(mirinae::key::KeyCode::np6)) {
-                    ocean.wind_speed_ += ocean.wind_speed_ * delta_time;
+                    ocean.wind_speed_ += ocean.wind_speed_ * clock.dt();
                     SPDLOG_INFO("Wind speed: {}", ocean.wind_speed_);
                 }
                 if (keys.is_pressed(mirinae::key::KeyCode::np4)) {
-                    ocean.wind_speed_ -= ocean.wind_speed_ * delta_time;
+                    ocean.wind_speed_ -= ocean.wind_speed_ * clock.dt();
                     SPDLOG_INFO("Wind speed: {}", ocean.wind_speed_);
                 }
                 if (keys.is_pressed(mirinae::key::KeyCode::np3)) {
@@ -279,7 +280,7 @@ namespace {
                 if (keys.is_pressed(mirinae::key::KeyCode::np8)) {
                     ocean.wind_dir_ = glm::normalize(mirinae::rotate_vec(
                         ocean.wind_dir_,
-                        sung::TAngle<double>::from_rad(delta_time)
+                        sung::TAngle<double>::from_rad(clock.dt())
                     ));
                     SPDLOG_INFO(
                         "Wind dir: ({:.2f}, {:.2f})",
@@ -290,7 +291,7 @@ namespace {
                 if (keys.is_pressed(mirinae::key::KeyCode::np5)) {
                     ocean.wind_dir_ = glm::normalize(mirinae::rotate_vec(
                         ocean.wind_dir_,
-                        sung::TAngle<double>::from_rad(-delta_time)
+                        sung::TAngle<double>::from_rad(-clock.dt())
                     ));
                     SPDLOG_INFO(
                         "Wind dir: ({:.2f}, {:.2f})",
