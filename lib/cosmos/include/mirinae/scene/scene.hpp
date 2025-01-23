@@ -4,10 +4,10 @@
 
 #include <entt/entt.hpp>
 #include <sung/basic/geometry3d.hpp>
+#include <sung/basic/time.hpp>
 
 #include "mirinae/lightweight/script.hpp"
 #include "mirinae/lightweight/skin_anim.hpp"
-#include "mirinae/lightweight/time.hpp"
 #include "mirinae/math/mamath.hpp"
 
 
@@ -87,9 +87,11 @@ namespace mirinae {
     class Scene {
 
     public:
-        Scene(ScriptEngine& script);
+        Scene(const clock_t& global_clock, ScriptEngine& script);
 
-        auto& ftime() const { return ftime_; }
+        auto& clock() const { return clock_; }
+
+        void do_frame();
 
         // Ray in world space
         void pick_entt(const sung::LineSegment3& ray);
@@ -100,11 +102,11 @@ namespace mirinae {
         entt::registry reg_;
         std::vector<entt::entity> entt_without_model_;
         entt::entity main_camera_ = entt::null;
-        FrameTime ftime_;
         const uint64_t magic_num_ = MAGIC_NUM;
 
     private:
         ScriptEngine& script_;
+        clock_t clock_;
     };
 
 }  // namespace mirinae

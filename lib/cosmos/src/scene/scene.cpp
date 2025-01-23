@@ -239,7 +239,7 @@ namespace { namespace scene {
             auto& self = *check_udata(L, 1);
             const auto anim_name = luaL_checkstring(L, 2);
 
-            self.select_anim_name(anim_name, scene.ftime());
+            self.select_anim_name(anim_name, scene.clock());
             return 0;
         }
 
@@ -249,9 +249,9 @@ namespace { namespace scene {
             const auto anim_index = luaL_checkinteger(L, 2);
 
             if (anim_index < 0)
-                self.deselect_anim(scene.ftime());
+                self.deselect_anim(scene.clock());
             else
-                self.select_anim_index((size_t)anim_index, scene.ftime());
+                self.select_anim_index((size_t)anim_index, scene.clock());
 
             return 0;
         }
@@ -591,9 +591,17 @@ namespace mirinae::cpnt {
 // Scene
 namespace mirinae {
 
-    Scene::Scene(ScriptEngine& script) : script_(script) {
+    Scene::Scene(const clock_t& global_clock, ScriptEngine& script)
+        : script_(script) {
+        clock_.sync_rt(global_clock);
+
         script_.register_global_ptr(SCENE_PTR_NAME, this);
         script_.register_module("scene", scene::luaopen_scene);
+    }
+
+    void Scene::do_frame() {
+        clock_.tick();
+        return;
     }
 
     void Scene::pick_entt(const sung::LineSegment3& ray) {

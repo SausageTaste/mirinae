@@ -4,11 +4,13 @@
 #include <variant>
 
 #include <daltools/scene/struct.h>
-
-#include "mirinae/lightweight/time.hpp"
+#include <sung/basic/time.hpp>
 
 
 namespace mirinae {
+
+    using clock_t = sung::SimClock;
+
 
     std::vector<glm::mat4> make_skinning_matrix(
         double tick_point,
@@ -40,15 +42,17 @@ namespace mirinae {
         std::optional<std::string> get_cur_anim_name() const;
 
         void sample_anim(
-            glm::mat4* const out_buf, const size_t buf_size, const FTime& ftime
+            glm::mat4* const out_buf,
+            const size_t buf_size,
+            const clock_t& clock
         ) const;
 
-        void update_tick(const FTime& ftime);
+        void update_tick(const clock_t& clock);
         void set_skel_anim(const HSkelAnim& skel_anim);
 
-        void select_anim_index(const size_t index, const FTime& ftime);
-        void select_anim_name(const std::string& name, const FTime& ftime);
-        void deselect_anim(const FTime& ftime);
+        void select_anim_index(const size_t index, const clock_t& clock);
+        void select_anim_name(const std::string& name, const clock_t& clock);
+        void deselect_anim(const clock_t& clock);
 
         void set_play_speed(const double speed) {
             selection_.set_play_speed(speed);
@@ -62,14 +66,14 @@ namespace mirinae {
             std::optional<std::string> name() const;
             double start_sim_time() const { return this->start_sim_time_; }
 
-            void set_index(const size_t index, const FTime& ftime);
-            void set_name(const std::string& name, const FTime& ftime);
+            void set_index(const size_t index, const clock_t& clock);
+            void set_name(const std::string& name, const clock_t& clock);
             void set_play_speed(const double speed);
 
-            void reset_anim(const FTime& ftime);
+            void reset_anim(const clock_t& clock);
 
             double local_clock() const { return this->local_clock_; }
-            void update_clock(const FTime& ftime);
+            void update_clock(const clock_t& clock);
             void reset_clock();
 
         private:
@@ -97,7 +101,7 @@ namespace mirinae {
         };
 
         static double calc_tick(
-            const FTime& ftime,
+            const clock_t& clock,
             const AnimSelection& selection,
             const DeferredData& deferred
         );
