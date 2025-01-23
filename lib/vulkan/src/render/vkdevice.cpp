@@ -314,6 +314,22 @@ namespace {
             if (features_.textureCompressionASTC_LDR)
                 report.add_value("ASTC");
 
+            const auto queue_family = ::get_queue_family_props(handle_);
+            report.add(0, "Queue family count", queue_family.size());
+            for (int i = 0; i < queue_family.size(); ++i) {
+                auto& q = queue_family[i];
+
+                report.new_entry(2, "Queue family")
+                    .set_value(i)
+                    .add_value(q.queueCount);
+                if (q.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                    report.add_value("Graphics");
+                if (q.queueFlags & VK_QUEUE_COMPUTE_BIT)
+                    report.add_value("Compute");
+                if (q.queueFlags & VK_QUEUE_TRANSFER_BIT)
+                    report.add_value("Transfer");
+            }
+
             report.add(0, "Compute shader")
                 .new_entry(2, "Max work group size")
                 .set_value(properties_.limits.maxComputeWorkGroupSize[0])
