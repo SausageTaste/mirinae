@@ -667,7 +667,7 @@ namespace {
         const int bits = width;
         const int right_shift = sizeof(int) * 8 - bits;
         for (uint32_t i = 0; i < height; i++) {
-            int x = reverse_bits(i);
+            unsigned int x = reverse_bits(i);
             bit_reversed_indices[i] = (x << bits) | (x >> right_shift);
         }
 
