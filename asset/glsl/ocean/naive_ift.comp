@@ -58,12 +58,12 @@ void main() {
             const Complex h_z = complex_init(texel_z.xy);
             const Complex h_dx = complex_init(texel_dxdz.xy);
             const Complex h_dy = complex_init(texel_dxdz.zw);
-            const Complex c = complex_init_exp((TAU * k * n - PI * N * n) / N);
-            sum_x += complex_to_vec2(complex_mul(h_x, c)) / N;
-            sum_y += complex_to_vec2(complex_mul(h_y, c)) / N;
-            sum_z += complex_to_vec2(complex_mul(h_z, c)) / N;
-            sum_dx += complex_to_vec2(complex_mul(h_dx, c)) / N;
-            sum_dz += complex_to_vec2(complex_mul(h_dy, c)) / N;
+            const Complex c = complex_init_exp(TAU * k * n / N);
+            sum_x += complex_to_vec2(complex_mul(h_x, c));
+            sum_y += complex_to_vec2(complex_mul(h_y, c));
+            sum_z += complex_to_vec2(complex_mul(h_z, c));
+            sum_dx += complex_to_vec2(complex_mul(h_dx, c));
+            sum_dz += complex_to_vec2(complex_mul(h_dy, c));
         }
 
         imageStore(out_ppong_xy, nm, vec4(sum_x, sum_y));
@@ -97,12 +97,12 @@ void main() {
             const Complex h_z = complex_init(texel_z.xy);
             const Complex h_dx = complex_init(texel_dxdz.xy);
             const Complex h_dy = complex_init(texel_dxdz.zw);
-            const Complex c = complex_init_exp((TAU * l * m - PI * N * m) / N);
-            sum_x += complex_to_vec2(complex_mul(h_x, c)) / N;
-            sum_y += complex_to_vec2(complex_mul(h_y, c)) / N;
-            sum_z += complex_to_vec2(complex_mul(h_z, c)) / N;
-            sum_dx += complex_to_vec2(complex_mul(h_dx, c)) / N;
-            sum_dz += complex_to_vec2(complex_mul(h_dy, c)) / N;
+            const Complex c = complex_init_exp(TAU * l * m / N);
+            sum_x += complex_to_vec2(complex_mul(h_x, c));
+            sum_y += complex_to_vec2(complex_mul(h_y, c));
+            sum_z += complex_to_vec2(complex_mul(h_z, c));
+            sum_dx += complex_to_vec2(complex_mul(h_dx, c));
+            sum_dz += complex_to_vec2(complex_mul(h_dy, c));
         }
 
         imageStore(in_hkt_dxdy, nm, vec4(sum_x, sum_y));
