@@ -44,6 +44,10 @@ void horizontalButterflies() {
         const vec4 pdxdz_sample = imageLoad(out_ppong_dxdz, p_coord);
         const vec4 qdxdz_sample = imageLoad(out_ppong_dxdz, q_coord);
 
+        if (isnan(pxy_sample.x)) {
+            return;
+        }
+
         const vec2 Hx = calc_h(pxy_sample.xy, qxy_sample.xy, w);
         const vec2 Hy = calc_h(pxy_sample.zw, qxy_sample.zw, w);
         const vec2 Hz = calc_h(pz_sample.xy, qz_sample.xy, w);
