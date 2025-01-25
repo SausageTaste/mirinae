@@ -1215,7 +1215,7 @@ namespace mirinae {
             cinfo.imageExtent = s_details.choose_extent(fbuf_w, fbuf_h);
             cinfo.imageArrayLayers = 1;
             cinfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-            cinfo.preTransform = s_details.get_transform();
+            cinfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
             cinfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
             cinfo.presentMode = s_details.choose_present_mode();
             cinfo.clipped = VK_TRUE;
