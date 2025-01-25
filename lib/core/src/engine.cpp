@@ -43,7 +43,7 @@ namespace {
 
             if (e.button_ == mirinae::mouse::ButtonCode::right) {
                 if (e.action_ == ActionType::down) {
-                    if (e.xpos_ < 200) {
+                    if (e.xpos_ < 400) {
                         if (move_pointer_)
                             return true;
                         move_pointer_ = &mouse_state_;
@@ -102,7 +102,7 @@ namespace {
             }
 
             if (e.action_ == ActionType::down) {
-                if (e.xpos_ < 200) {
+                if (e.xpos_ < 400) {
                     if (move_pointer_)
                         return true;
                     move_pointer_ = &touch_state;
