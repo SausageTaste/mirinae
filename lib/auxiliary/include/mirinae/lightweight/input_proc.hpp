@@ -16,6 +16,7 @@ namespace mirinae {
         virtual bool on_key_event(const key::Event& e) { return false; }
         virtual bool on_text_event(char32_t c) { return false; }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
+        virtual bool on_touch_event(const touch::Event& e) { return false; }
     };
 
 
