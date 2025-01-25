@@ -15,7 +15,7 @@ set(MIRINAE_USE_DALBARAGI_SUBMODULE OFF CACHE BOOL "Path to dalbaragi submodule"
 
 
 if (MIRINAE_USE_DALBARAGI_SUBMODULE)
-    add_subdirectory(${CMAKE_SOURCE_DIR}/extern/dalbaragi)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/extern/dalbaragi)
 else()
     find_package(dalbaragi CONFIG REQUIRED)
 endif()
