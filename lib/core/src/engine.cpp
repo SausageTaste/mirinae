@@ -1,5 +1,7 @@
 #include "mirinae/engine.hpp"
 
+#include <deque>
+
 #include <daltools/common/glm_tool.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
@@ -28,30 +30,111 @@ namespace {
         bool on_mouse_event(const mirinae::mouse::Event& e) {
             using mirinae::mouse::ActionType;
 
-            if (e.action_ == ActionType::move && owning_mouse_) {
-                last_mouse_pos_ = { e.xpos_, e.ypos_ };
-                return true;
+            if (e.action_ == ActionType::move) {
+                if (move_pointer_ == &mouse_state_) {
+                    mouse_state_.last_pos_ = { e.xpos_, e.ypos_ };
+                    return true;
+                } else if (look_pointer_ == &mouse_state_) {
+                    mouse_state_.last_pos_ = { e.xpos_, e.ypos_ };
+                    return true;
+                }
+                return false;
             }
 
             if (e.button_ == mirinae::mouse::ButtonCode::right) {
                 if (e.action_ == ActionType::down) {
-                    owning_mouse_ = true;
-                    last_mouse_pos_ = { e.xpos_, e.ypos_ };
-                    last_applied_mouse_pos_ = last_mouse_pos_;
-                    if (osio_)
-                        osio_->set_hidden_mouse_mode(true);
+                    if (e.xpos_ < 200) {
+                        if (move_pointer_)
+                            return true;
+                        move_pointer_ = &mouse_state_;
+                    } else {
+                        if (look_pointer_)
+                            return true;
+                        look_pointer_ = &mouse_state_;
+                        if (osio_)
+                            osio_->set_hidden_mouse_mode(true);
+                    }
+
+                    mouse_state_.start_pos_ = { e.xpos_, e.ypos_ };
+                    mouse_state_.last_pos_ = mouse_state_.start_pos_;
+                    mouse_state_.consumed_pos_ = mouse_state_.start_pos_;
                     return true;
                 } else if (e.action_ == ActionType::up) {
-                    owning_mouse_ = false;
-                    last_mouse_pos_ = { 0, 0 };
-                    last_applied_mouse_pos_ = last_mouse_pos_;
+                    if (move_pointer_ == &mouse_state_) {
+                        move_pointer_ = nullptr;
+                    } else if (look_pointer_ == &mouse_state_) {
+                        look_pointer_ = nullptr;
+                    }
+
+                    mouse_state_.start_pos_ = { 0, 0 };
+                    mouse_state_.last_pos_ = mouse_state_.start_pos_;
+                    mouse_state_.consumed_pos_ = mouse_state_.start_pos_;
                     if (osio_)
                         osio_->set_hidden_mouse_mode(false);
                     return true;
                 }
             }
 
-            return owning_mouse_;
+            if (move_pointer_ == &mouse_state_)
+                return true;
+            else if (look_pointer_ == &mouse_state_)
+                return true;
+
+            return false;
+        }
+
+        bool on_touch_event(const mirinae::touch::Event& e) {
+            using mirinae::touch::ActionType;
+
+            if (touch_pointers_.size() < e.index_ + 1)
+                touch_pointers_.resize(e.index_ + 1);
+            auto& touch_state = touch_pointers_[e.index_];
+
+            if (e.action_ == ActionType::move) {
+                if (move_pointer_ == &touch_state) {
+                    touch_state.last_pos_ = { e.xpos_, e.ypos_ };
+                    return true;
+                } else if (look_pointer_ == &touch_state) {
+                    touch_state.last_pos_ = { e.xpos_, e.ypos_ };
+                    return true;
+                }
+                return false;
+            }
+
+            if (e.action_ == ActionType::down) {
+                if (e.xpos_ < 200) {
+                    if (move_pointer_)
+                        return true;
+                    move_pointer_ = &touch_state;
+                } else {
+                    if (look_pointer_)
+                        return true;
+                    look_pointer_ = &touch_state;
+                }
+
+                touch_state.start_pos_ = { e.xpos_, e.ypos_ };
+                touch_state.last_pos_ = touch_state.start_pos_;
+                touch_state.consumed_pos_ = touch_state.start_pos_;
+                return true;
+            } else if (e.action_ == ActionType::up) {
+                if (move_pointer_ == &touch_state) {
+                    move_pointer_ = nullptr;
+                } else if (look_pointer_ == &touch_state) {
+                    look_pointer_ = nullptr;
+                }
+
+                touch_state.start_pos_ = { 0, 0 };
+                touch_state.last_pos_ = touch_state.start_pos_;
+                touch_state.consumed_pos_ = touch_state.start_pos_;
+                return true;
+            }
+
+            if (move_pointer_ == &touch_state)
+                return true;
+            else if (look_pointer_ == &touch_state)
+                return true;
+
+            return false;
         }
 
         void apply(
@@ -112,28 +195,53 @@ namespace {
                 }
             }
 
-            {
-                const auto rot = last_applied_mouse_pos_.x - last_mouse_pos_.x;
-                if (0 != rot)
-                    transform.rotate(
-                        mirinae::cpnt::Transform::Angle::from_rad(rot * 0.002),
-                        glm::vec3{ 0, 1, 0 }
-                    );
-            }
+            if (move_pointer_) {
+                const auto pos_diff = move_pointer_->last_pos_ -
+                                      move_pointer_->start_pos_;
+                glm::dvec3 move_dir{
+                    sung::clamp(pos_diff.x / 50.0, -1.0, 1.0),
+                    0,
+                    sung::clamp(pos_diff.y / 50.0, -1.0, 1.0)
+                };
 
-            {
-                const auto rot = last_applied_mouse_pos_.y - last_mouse_pos_.y;
-                if (0 != rot) {
-                    const auto right = glm::mat3_cast(transform.rot_) *
-                                       glm::vec3{ 1, 0, 0 };
-                    transform.rotate(
-                        mirinae::cpnt::Transform::Angle::from_rad(rot * 0.002),
-                        right
-                    );
+                if (glm::length(move_dir) > 0) {
+                    move_dir = glm::mat3_cast(transform.rot_) * move_dir;
+                    transform.pos_ += move_dir * (delta_time * move_speed_);
                 }
+
+                move_pointer_->consumed_pos_ = move_pointer_->last_pos_;
             }
 
-            last_applied_mouse_pos_ = last_mouse_pos_;
+            if (look_pointer_) {
+                {
+                    const auto rot = look_pointer_->consumed_pos_.x -
+                                     look_pointer_->last_pos_.x;
+                    if (0 != rot)
+                        transform.rotate(
+                            mirinae::cpnt::Transform::Angle::from_rad(
+                                rot * 0.002
+                            ),
+                            glm::vec3{ 0, 1, 0 }
+                        );
+                }
+
+                {
+                    const auto rot = look_pointer_->consumed_pos_.y -
+                                     look_pointer_->last_pos_.y;
+                    if (0 != rot) {
+                        const auto right = glm::mat3_cast(transform.rot_) *
+                                           glm::vec3{ 1, 0, 0 };
+                        transform.rotate(
+                            mirinae::cpnt::Transform::Angle::from_rad(
+                                rot * 0.002
+                            ),
+                            right
+                        );
+                    }
+                }
+
+                look_pointer_->consumed_pos_ = look_pointer_->last_pos_;
+            }
         }
 
         auto& keys() const { return keys_; }
@@ -141,11 +249,20 @@ namespace {
         std::shared_ptr<mirinae::IOsIoFunctions> osio_;
 
     private:
+        class PointerState {
+
+        public:
+            glm::dvec2 start_pos_{ 0, 0 };
+            glm::dvec2 last_pos_{ 0, 0 };
+            glm::dvec2 consumed_pos_{ 0, 0 };
+        };
+
+        std::deque<PointerState> touch_pointers_;
+        PointerState mouse_state_;
         mirinae::key::EventAnalyzer keys_;
-        glm::dvec2 last_mouse_pos_{ 0, 0 };
-        glm::dvec2 last_applied_mouse_pos_{ 0, 0 };
-        double move_speed_ = 2;
-        bool owning_mouse_ = false;
+        PointerState* move_pointer_ = nullptr;
+        PointerState* look_pointer_ = nullptr;
+        double move_speed_ = 10;
     };
 
 }  // namespace
@@ -393,6 +510,15 @@ namespace {
                 else if (e.action_ == mirinae::mouse::ActionType::mwheel_down)
                     cam->proj_.multiply_fov(FACTOR);
             }
+
+            return true;
+        }
+
+        bool on_touch_event(const mirinae::touch::Event& e) override {
+            if (renderer_->on_touch_event(e))
+                return true;
+            if (camera_controller_.on_touch_event(e))
+                return true;
 
             return true;
         }

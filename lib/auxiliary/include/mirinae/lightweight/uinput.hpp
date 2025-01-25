@@ -132,3 +132,21 @@ namespace mirinae::mouse {
     };
 
 }  // namespace mirinae::mouse
+
+
+namespace mirinae::touch {
+
+    using Clock_t = std::chrono::steady_clock;
+
+    enum class ActionType { move, down, up };
+
+
+    struct Event {
+        Clock_t::time_point timepoint_ = Clock_t::now();
+        ActionType action_ = ActionType::down;
+        double xpos_ = 0;
+        double ypos_ = 0;
+        uint32_t index_ = 0;
+    };
+
+}  // namespace mirinae::touch
