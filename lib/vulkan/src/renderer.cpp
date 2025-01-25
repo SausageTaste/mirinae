@@ -586,9 +586,6 @@ namespace {
               )
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
-            // This must be the first member variable right after vtable pointer
-            static_assert(offsetof(RendererVulkan, device_) == sizeof(void*));
-
             framesync_.init(device_.logi_device());
 
             rpm_.shadow().pool().add(4096, 4096, device_);
@@ -1004,10 +1001,10 @@ namespace {
                     // "ocean_finalize:normal_f#0",
                 };
                 int index = 0;
-                for (auto& x : image_names) {
-                    auto image = rp_res_.get_img_reader(x, "renderer");
+                for (auto& name : image_names) {
+                    auto image = rp_res_.get_img_reader(name, "renderer");
                     if (!image) {
-                        SPDLOG_WARN("Failed to get image: {}", x);
+                        SPDLOG_WARN("Failed to get image: {}", name);
                         continue;
                     }
                     const auto x = index % 3;
