@@ -336,7 +336,10 @@ namespace {
             // Ocean
             {
                 const auto entt = reg.create();
-                reg.emplace<mirinae::cpnt::Ocean>(entt);
+                auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
+                ocean.amplitude_ = 2168730.591938375;
+                ocean.wind_speed_ = 20.0;
+                ocean.L_ = 20;
             }
 
             // Script
