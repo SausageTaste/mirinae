@@ -21,6 +21,7 @@ else()
 endif()
 
 find_package(EnTT CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 find_package(Lua REQUIRED)
 find_package(uni-algo CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)

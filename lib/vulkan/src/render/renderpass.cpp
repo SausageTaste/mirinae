@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
+#include "mirinae/render/renderpass/builder.hpp"
 #include "mirinae/render/renderpass/common.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
@@ -1264,34 +1265,19 @@ namespace { namespace fillscreen {
     }
 
     VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {
-        ::AttachmentDescBuilder attachments;
-        attachments.add(surface, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        mirinae::RenderPassBuilder builder;
 
-        ::AttachmentRefBuilder color_attachment_refs;
-        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        builder.attach_desc()
+            .add(surface)
+            .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .op_pair_clear_store();
 
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = color_attachment_refs.size();
-        subpass.pColorAttachments = color_attachment_refs.data();
-        subpass.pDepthStencilAttachment = nullptr;
+        builder.color_attach_ref().add_color_attach(0);
 
-        ::SubpassDependencyBuilder dependency;
-        dependency.add();
+        builder.subpass_dep().add().preset_single();
 
-        VkRenderPassCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        create_info.attachmentCount = attachments.size();
-        create_info.pAttachments = attachments.data();
-        create_info.subpassCount = 1;
-        create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = dependency.size();
-        create_info.pDependencies = dependency.data();
-
-        VkRenderPass output = VK_NULL_HANDLE;
-        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
-
-        return output;
+        return builder.build(logi_device);
     }
 
     VkPipeline create_pipeline(
@@ -1464,39 +1450,19 @@ namespace { namespace overlay {
     }
 
     VkRenderPass create_renderpass(VkFormat surface, VkDevice logi_device) {
-        ::AttachmentDescBuilder attachments;
-        attachments.add(
-            surface,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            VK_ATTACHMENT_LOAD_OP_LOAD
-        );
+        mirinae::RenderPassBuilder builder;
 
-        ::AttachmentRefBuilder color_attachment_refs;
-        color_attachment_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        builder.attach_desc()
+            .add(surface)
+            .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .op_pair_load_store();
 
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = color_attachment_refs.size();
-        subpass.pColorAttachments = color_attachment_refs.data();
-        subpass.pDepthStencilAttachment = nullptr;
+        builder.color_attach_ref().add_color_attach(0);
 
-        ::SubpassDependencyBuilder dependency;
-        dependency.add();
+        builder.subpass_dep().add().preset_single();
 
-        VkRenderPassCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        create_info.attachmentCount = attachments.size();
-        create_info.pAttachments = attachments.data();
-        create_info.subpassCount = 1;
-        create_info.pSubpasses = &subpass;
-        create_info.dependencyCount = dependency.size();
-        create_info.pDependencies = dependency.data();
-
-        VkRenderPass output = VK_NULL_HANDLE;
-        VK_CHECK(vkCreateRenderPass(logi_device, &create_info, NULL, &output));
-
-        return output;
+        return builder.build(logi_device);
     }
 
     VkPipeline create_pipeline(

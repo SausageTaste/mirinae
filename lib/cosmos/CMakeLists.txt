@@ -7,6 +7,7 @@ target_include_directories(mirinae_cosmos PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
 target_compile_features(mirinae_cosmos PUBLIC cxx_std_17)
 target_link_libraries(mirinae_cosmos PUBLIC
     EnTT::EnTT
+    imgui::imgui
     mirinae::aux
     mirinae::platform
 )

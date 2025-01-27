@@ -6,6 +6,9 @@
 #include <GLFW/glfw3.h>
 #include <sung/basic/aabb.hpp>
 
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+
 #include "dump.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 
@@ -65,6 +68,20 @@ namespace {
     } g_glfw_raii;
 
 
+    class ImGuiContextRaii {
+
+    public:
+        ImGuiContextRaii() {
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            ImGuiIO& io = ImGui::GetIO();
+            (void)io;
+        }
+
+        ~ImGuiContextRaii() { ImGui::DestroyContext(); }
+    } g_imgui_ctxt_raii;
+
+
     class GlfwWindow {
 
     public:
@@ -82,9 +99,17 @@ namespace {
 
             if (glfwRawMouseMotionSupported())
                 glfwSetInputMode(window_, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
+            ImGui_ImplGlfw_InitForVulkan(window_, true);
+
+            float xscale, yscale;
+            glfwGetWindowContentScale(window_, &xscale, &yscale);
+            SPDLOG_INFO("Content scale: {} {}", xscale, yscale);
         }
 
         ~GlfwWindow() {
+            ImGui_ImplGlfw_Shutdown();
+
             if (nullptr != window_) {
                 glfwDestroyWindow(window_);
                 window_ = nullptr;
@@ -115,6 +140,12 @@ namespace {
 
             glfwGetFramebufferSize(window_, &output.first, &output.second);
             return output;
+        }
+
+        double content_scale() const {
+            float xscale, yscale;
+            glfwGetWindowContentScale(window_, &xscale, &yscale);
+            return (xscale + yscale) * 0.5;
         }
 
         void notify_should_close() { glfwSetWindowShouldClose(window_, true); }
@@ -197,6 +228,9 @@ namespace {
         static void callback_key(
             GLFWwindow* window, int key, int scancode, int action, int mods
         ) {
+            if (ImGui::GetIO().WantCaptureKeyboard)
+                return;
+
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -221,6 +255,9 @@ namespace {
         static void callback_mouse(
             GLFWwindow* window, int button, int action, int mods
         ) {
+            if (ImGui::GetIO().WantCaptureMouse)
+                return;
+
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -276,6 +313,9 @@ namespace {
         static void callback_scroll(
             GLFWwindow* window, double xoffset, double yoffset
         ) {
+            if (ImGui::GetIO().WantCaptureMouse)
+                return;
+
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -291,6 +331,9 @@ namespace {
         }
 
         static void callback_char(GLFWwindow* window, unsigned int codepoint) {
+            if (ImGui::GetIO().WantCaptureKeyboard)
+                return;
+
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -438,6 +481,8 @@ namespace {
                 );
                 return *reinterpret_cast<uint64_t*>(&surface);
             };
+            create_info.imgui_new_frame_ = []() { ImGui_ImplGlfw_NewFrame(); };
+            create_info.ui_scale_ = window_.content_scale();
             create_info.enable_validation_layers_ = true;
             create_info.init_width_ = 800;
             create_info.init_height_ = 600;
