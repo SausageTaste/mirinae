@@ -148,6 +148,12 @@ namespace {
         }
     }
 
+    void check_imgui_result(VkResult err) {
+        if (err != VK_SUCCESS) {
+            SPDLOG_ERROR("ImGui result is error: {}", static_cast<int>(err));
+        }
+    }
+
 }  // namespace
 
 
@@ -1060,8 +1066,8 @@ namespace mirinae {
     class VulkanDevice::Pimpl {
 
     public:
-        Pimpl(mirinae::EngineCreateInfo&& create_info)
-            : create_info_(std::move(create_info)) {
+        Pimpl(mirinae::EngineCreateInfo& create_info)
+            : create_info_(create_info) {
             // Check engine creation info
             if (!create_info_.filesys_)
                 MIRINAE_ABORT("Filesystem is not set");
@@ -1119,6 +1125,17 @@ namespace mirinae {
             surface_ = VK_NULL_HANDLE;
         }
 
+        void fill_imgui_info(ImGui_ImplVulkan_InitInfo& info) {
+            info.Instance = instance_.get();
+            info.PhysicalDevice = phys_device_.get();
+            info.Device = logi_device_.get();
+            info.QueueFamily = phys_device_.graphics_family_index().value();
+            info.Queue = logi_device_.graphics_queue();
+            info.PipelineCache = VK_NULL_HANDLE;
+            info.Allocator = VK_NULL_HANDLE;
+            info.CheckVkResultFn = ::check_imgui_result;
+        }
+
         ::VulkanInstance instance_;
         ::PhysDevice phys_device_;
         ::LogiDevice logi_device_;
@@ -1135,8 +1152,8 @@ namespace mirinae {
 // VulkanDevice
 namespace mirinae {
 
-    VulkanDevice::VulkanDevice(mirinae::EngineCreateInfo&& create_info)
-        : pimpl_(std::make_unique<Pimpl>(std::move(create_info))) {}
+    VulkanDevice::VulkanDevice(mirinae::EngineCreateInfo& create_info)
+        : pimpl_(std::make_unique<Pimpl>(create_info)) {}
 
     VulkanDevice::~VulkanDevice() {}
 
@@ -1182,6 +1199,10 @@ namespace mirinae {
 
     IOsIoFunctions& VulkanDevice::osio() { return *pimpl_->create_info_.osio_; }
 
+    void VulkanDevice::fill_imgui_info(ImGui_ImplVulkan_InitInfo& info) {
+        pimpl_->fill_imgui_info(info);
+    }
+
 }  // namespace mirinae
 
 
@@ -1191,6 +1212,8 @@ namespace mirinae {
     void Swapchain::init(
         uint32_t fbuf_w, uint32_t fbuf_h, VulkanDevice& vulkan_device
     ) {
+        this->destroy(vulkan_device.logi_device());
+
         auto logi_device = vulkan_device.logi_device();
 
         ::SwapChainSupportDetails s_details;
@@ -1232,7 +1255,10 @@ namespace mirinae {
             }
         }
 
-        VK_CHECK(vkCreateSwapchainKHR(logi_device, &cinfo, NULL, &swapchain_));
+        MIRINAE_ASSERT(
+            VK_SUCCESS ==
+            vkCreateSwapchainKHR(logi_device, &cinfo, NULL, &swapchain_)
+        );
 
         // Store some data
         {

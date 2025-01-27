@@ -3,9 +3,10 @@
 #include <memory>
 #include <optional>
 
+#include <imgui_impl_vulkan.h>
+
 #include "mirinae/lightweight/create_info.hpp"
 #include "mirinae/lightweight/lightweights.hpp"
-
 #include "mirinae/render/mem_alloc.hpp"
 
 
@@ -39,7 +40,7 @@ namespace mirinae {
     class VulkanDevice {
 
     public:
-        VulkanDevice(mirinae::EngineCreateInfo&& create_info);
+        VulkanDevice(mirinae::EngineCreateInfo& create_info);
         ~VulkanDevice();
 
         // Logical device
@@ -62,6 +63,8 @@ namespace mirinae {
         VulkanMemoryAllocator mem_alloc();
         dal::Filesystem& filesys();
         IOsIoFunctions& osio();
+
+        void fill_imgui_info(ImGui_ImplVulkan_InitInfo& info);
 
         class Pimpl;
         std::unique_ptr<Pimpl> pimpl_;

@@ -382,6 +382,13 @@ namespace mirinae {
     public:
         void init(
             const uint32_t max_sets,
+            const uint32_t pool_size_count,
+            const VkDescriptorPoolSize* pool_sizes,
+            const VkDevice logi_device
+        );
+
+        void init(
+            const uint32_t max_sets,
             const DescSizeInfo& size_info,
             const VkDevice logi_device
         );
@@ -397,6 +404,8 @@ namespace mirinae {
             VkDescriptorSetLayout desclayout,
             VkDevice logi_device
         );
+
+        VkDescriptorPool get() const { return handle_; }
 
     private:
         VkDescriptorPool handle_ = VK_NULL_HANDLE;
