@@ -622,6 +622,12 @@ namespace {
                 overlay_man_.widgets().add_widget(std::move(w));
             }
 
+            // ImGui
+            {
+                ImGui_ImplVulkan_InitInfo init_info = {};
+                device_.fill_imgui_info(init_info);
+            }
+
             fps_timer_.set_fps_cap(120);
         }
 

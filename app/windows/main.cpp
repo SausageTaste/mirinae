@@ -6,6 +6,9 @@
 #include <GLFW/glfw3.h>
 #include <sung/basic/aabb.hpp>
 
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+
 #include "dump.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 
@@ -65,6 +68,20 @@ namespace {
     } g_glfw_raii;
 
 
+    class ImGuiContextRaii {
+
+    public:
+        ImGuiContextRaii() {
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            ImGuiIO& io = ImGui::GetIO();
+            (void)io;
+        }
+
+        ~ImGuiContextRaii() { ImGui::DestroyContext(); }
+    } g_imgui_ctxt_raii;
+
+
     class GlfwWindow {
 
     public:
@@ -82,9 +99,13 @@ namespace {
 
             if (glfwRawMouseMotionSupported())
                 glfwSetInputMode(window_, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
+            ImGui_ImplGlfw_InitForVulkan(window_, true);
         }
 
         ~GlfwWindow() {
+            ImGui_ImplGlfw_Shutdown();
+
             if (nullptr != window_) {
                 glfwDestroyWindow(window_);
                 window_ = nullptr;

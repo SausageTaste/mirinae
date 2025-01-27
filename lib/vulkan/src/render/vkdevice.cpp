@@ -148,6 +148,14 @@ namespace {
         }
     }
 
+    void check_imgui_result(VkResult err) {
+        if (err != VK_SUCCESS) {
+            SPDLOG_ERROR("ImGui result is error: {}", static_cast<int>(err));
+        } else {
+            SPDLOG_INFO("ImGui result is success");
+        }
+    }
+
 }  // namespace
 
 
@@ -1119,6 +1127,18 @@ namespace mirinae {
             surface_ = VK_NULL_HANDLE;
         }
 
+        void fill_imgui_info(ImGui_ImplVulkan_InitInfo& info) {
+            info.Instance = instance_.get();
+            info.PhysicalDevice = phys_device_.get();
+            info.Device = logi_device_.get();
+            info.QueueFamily = phys_device_.graphics_family_index().value();
+            info.Queue = logi_device_.graphics_queue();
+            info.PipelineCache = VK_NULL_HANDLE;
+            info.Allocator = VK_NULL_HANDLE;
+            info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
+            info.CheckVkResultFn = ::check_imgui_result;
+        }
+
         ::VulkanInstance instance_;
         ::PhysDevice phys_device_;
         ::LogiDevice logi_device_;
@@ -1181,6 +1201,10 @@ namespace mirinae {
     }
 
     IOsIoFunctions& VulkanDevice::osio() { return *pimpl_->create_info_.osio_; }
+
+    void VulkanDevice::fill_imgui_info(ImGui_ImplVulkan_InitInfo& info) {
+        pimpl_->fill_imgui_info(info);
+    }
 
 }  // namespace mirinae
 
