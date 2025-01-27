@@ -471,6 +471,9 @@ namespace {
                 );
                 return *reinterpret_cast<uint64_t*>(&surface);
             };
+            create_info.imgui_new_frame_ = []() {
+                ImGui_ImplGlfw_NewFrame();
+            };
             create_info.enable_validation_layers_ = true;
             create_info.init_width_ = 800;
             create_info.init_height_ = 600;

@@ -1,7 +1,6 @@
 #include "mirinae/renderer.hpp"
 
 #include <daltools/common/util.h>
-#include <imgui_impl_glfw.h>
 #include <sung/basic/time.hpp>
 
 #include "mirinae/cosmos.hpp"
@@ -755,6 +754,7 @@ namespace {
                   init_width, init_height, desclayout_, *tex_man_, device_
               )
             , rp_states_imgui_(device_)
+            , imgui_new_frame_(cinfo.imgui_new_frame_)
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
             framesync_.init(device_.logi_device());
@@ -1144,7 +1144,7 @@ namespace {
             // ImGui
             {
                 ImGui_ImplVulkan_NewFrame();
-                ImGui_ImplGlfw_NewFrame();
+                imgui_new_frame_();
                 ImGui::NewFrame();
                 ImGui::ShowDemoWindow();
                 ImGui::Render();
@@ -1542,6 +1542,7 @@ namespace {
         mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;
         std::shared_ptr<mirinae::ITextData> dev_console_output_;
+        std::function<void()> imgui_new_frame_;
 
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;
