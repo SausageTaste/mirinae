@@ -218,6 +218,9 @@ namespace {
         static void callback_key(
             GLFWwindow* window, int key, int scancode, int action, int mods
         ) {
+            if (ImGui::GetIO().WantCaptureKeyboard)
+                return;
+
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -242,6 +245,9 @@ namespace {
         static void callback_mouse(
             GLFWwindow* window, int button, int action, int mods
         ) {
+            if (ImGui::GetIO().WantCaptureMouse)
+                return;
+
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -297,6 +303,9 @@ namespace {
         static void callback_scroll(
             GLFWwindow* window, double xoffset, double yoffset
         ) {
+            if (ImGui::GetIO().WantCaptureMouse)
+                return;
+
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
@@ -312,6 +321,9 @@ namespace {
         }
 
         static void callback_char(GLFWwindow* window, unsigned int codepoint) {
+            if (ImGui::GetIO().WantCaptureKeyboard)
+                return;
+
             auto ptr = glfwGetWindowUserPointer(window);
             if (nullptr == ptr)
                 return;
