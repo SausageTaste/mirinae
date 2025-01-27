@@ -1133,8 +1133,6 @@ namespace mirinae {
             info.Queue = logi_device_.graphics_queue();
             info.PipelineCache = VK_NULL_HANDLE;
             info.Allocator = VK_NULL_HANDLE;
-            info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
-            info.ImageCount = MAX_FRAMES_IN_FLIGHT;
             info.CheckVkResultFn = ::check_imgui_result;
         }
 
@@ -1214,6 +1212,8 @@ namespace mirinae {
     void Swapchain::init(
         uint32_t fbuf_w, uint32_t fbuf_h, VulkanDevice& vulkan_device
     ) {
+        this->destroy(vulkan_device.logi_device());
+
         auto logi_device = vulkan_device.logi_device();
 
         ::SwapChainSupportDetails s_details;
@@ -1255,7 +1255,10 @@ namespace mirinae {
             }
         }
 
-        VK_CHECK(vkCreateSwapchainKHR(logi_device, &cinfo, NULL, &swapchain_));
+        MIRINAE_ASSERT(
+            VK_SUCCESS ==
+            vkCreateSwapchainKHR(logi_device, &cinfo, NULL, &swapchain_)
+        );
 
         // Store some data
         {

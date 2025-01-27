@@ -7,7 +7,7 @@
     {                                              \
         const auto msg = fmt::format(__VA_ARGS__); \
         SPDLOG_CRITICAL(msg);                      \
-        throw std::runtime_error(msg);             \
+        std::abort();                              \
     }                                              \
     while (0)
 

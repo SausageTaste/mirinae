@@ -649,6 +649,47 @@ namespace {
             fbufs_.clear();
         }
 
+        void on_swchain_resize(mirinae::Swapchain& swchain) {
+            if (swchain.width() == fbuf_width_ &&
+                swchain.height() == fbuf_height_)
+                return;
+
+            // Destroy
+            {
+                auto device = device_.logi_device();
+                for (auto fbuf : fbufs_)
+                    vkDestroyFramebuffer(device, fbuf, nullptr);
+                fbufs_.clear();
+            }
+
+            // Create Framebuffers
+            {
+                fbuf_width_ = swchain.width();
+                fbuf_height_ = swchain.height();
+
+                VkFramebufferCreateInfo info = {};
+                info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                info.renderPass = render_pass_;
+                info.attachmentCount = 1;
+                info.pAttachments = VK_NULL_HANDLE;
+                info.width = fbuf_width_;
+                info.height = fbuf_height_;
+                info.layers = 1;
+
+                for (uint32_t i = 0; i < swchain.views_count(); i++) {
+                    auto view = swchain.view_at(i);
+                    info.pAttachments = &view;
+                    VkFramebuffer fbuf = VK_NULL_HANDLE;
+                    VK_CHECK(vkCreateFramebuffer(
+                        device_.logi_device(), &info, VK_NULL_HANDLE, &fbuf
+                    ));
+                    fbufs_.push_back(fbuf);
+                }
+            }
+
+            ImGui_ImplVulkan_SetMinImageCount(swchain.views_count());
+        }
+
         void record(mirinae::RpContext& ctxt) {
             const auto cmdbuf = ctxt.cmdbuf_;
             const auto fbuf = fbufs_.at(ctxt.i_index_.get());
@@ -675,8 +716,6 @@ namespace {
             info.DescriptorPool = desc_pool_.get();
         }
 
-        VkRenderPass render_pass() const { return render_pass_; }
-
     private:
         mirinae::VulkanDevice& device_;
         mirinae::DescPool desc_pool_;
@@ -691,6 +730,7 @@ namespace {
 
 // Engine
 namespace {
+
     class RendererVulkan : public mirinae::IRenderer {
 
     public:
@@ -722,7 +762,88 @@ namespace {
             rpm_.shadow().pool().add(4096, 4096, device_);
             rpm_.shadow().pool().add(256, 256, device_);
 
-            this->create_swapchain_and_relatives(fbuf_width_, fbuf_height_);
+            // Create swapchain and its relatives
+            {
+                swapchain_.init(fbuf_width_, fbuf_height_, device_);
+
+                const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
+                    swapchain_.width(), swapchain_.height(), 0.9
+                );
+                fbuf_images_.init(gbuf_width, gbuf_height, *tex_man_, device_);
+
+                mirinae::rp::gbuf::create_rp(
+                    rp_,
+                    fbuf_images_.width(),
+                    fbuf_images_.height(),
+                    fbuf_images_,
+                    desclayout_,
+                    swapchain_,
+                    device_
+                );
+                mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
+                mirinae::rp::shadow::create_rp(
+                    rp_, fbuf_images_.depth().format(), desclayout_, device_
+                );
+                mirinae::rp::compo::create_rp(
+                    rp_,
+                    fbuf_images_.width(),
+                    fbuf_images_.height(),
+                    fbuf_images_,
+                    desclayout_,
+                    swapchain_,
+                    device_
+                );
+                rp_.init_render_passes(
+                    fbuf_images_.width(),
+                    fbuf_images_.height(),
+                    fbuf_images_,
+                    desclayout_,
+                    swapchain_,
+                    device_
+                );
+
+                rpm_.shadow().pool().recreate_fbufs(
+                    rp_.get("shadowmap"), device_
+                );
+
+                rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
+                rpm_.gbuf_basic().init();
+                rpm_.gbuf_terrain().init(*tex_man_, desclayout_, device_);
+                rpm_.compo_basic().init(
+                    desclayout_,
+                    fbuf_images_,
+                    rpm_.shadow().pool().get_img_view_at(0),
+                    rpm_.shadow().pool().get_img_view_at(1),
+                    rpm_.envmap().diffuse_view(0),
+                    rpm_.envmap().specular_view(0),
+                    rpm_.envmap().brdf_lut_view(),
+                    device_
+                );
+                rpm_.compo_sky().init(
+                    rpm_.envmap().sky_tex_view(),
+                    rp_,
+                    desclayout_,
+                    fbuf_images_,
+                    swapchain_,
+                    device_
+                );
+                rp_states_transp_.init(
+                    desclayout_,
+                    rpm_.shadow().pool().get_img_view_at(0),
+                    rpm_.shadow().pool().get_img_view_at(1),
+                    rpm_.envmap().diffuse_view(0),
+                    rpm_.envmap().specular_view(0),
+                    rpm_.envmap().brdf_lut_view(),
+                    device_
+                );
+                rp_states_debug_mesh_.init(device_);
+                rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
+                rp_states_imgui_.init(swapchain_);
+
+                rpm_.create_std_rp(
+                    rp_res_, desclayout_, fbuf_images_, swapchain_, device_
+                );
+            }
 
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
@@ -760,6 +881,8 @@ namespace {
                 ImGui_ImplVulkan_InitInfo init_info = {};
                 device_.fill_imgui_info(init_info);
                 rp_states_imgui_.fill_imgui_info(init_info);
+                init_info.MinImageCount = swapchain_.views_count();
+                init_info.ImageCount = swapchain_.views_count();
 
                 if (!ImGui_ImplVulkan_Init(&init_info))
                     MIRINAE_ABORT("Failed to initialize ImGui Vulkan backend");
@@ -782,8 +905,26 @@ namespace {
             for (auto& enttid : reg.view<mirinae::cpnt::SkinnedActorVk>())
                 reg.remove<mirinae::cpnt::SkinnedActorVk>(enttid);
 
+            // Destroy swapchain's relatives
+            {
+                rpm_.shadow().pool().destroy_fbufs(device_);
+
+                rpm_.destroy_std_rp();
+                // rp_states_imgui_.destroy();
+                rp_states_fillscreen_.destroy(device_);
+                rp_states_debug_mesh_.destroy(device_);
+                rp_states_transp_.destroy(device_);
+                rpm_.compo_sky().destroy(device_);
+                rpm_.compo_basic().destroy(device_);
+                rpm_.gbuf_terrain().destroy(device_);
+                rpm_.gbuf_basic().destroy(device_);
+                rpm_.envmap().destroy(device_);
+
+                rp_.destroy();
+            }
+
+            swapchain_.destroy(device_.logi_device());
             cmd_pool_.destroy(device_.logi_device());
-            this->destroy_swapchain_and_relatives();
             framesync_.destroy(device_.logi_device());
         }
 
@@ -1066,132 +1207,118 @@ namespace {
         }
 
     private:
-        void create_swapchain_and_relatives(
-            uint32_t fbuf_width, uint32_t fbuf_height
-        ) {
+        void resize_swapchain(uint32_t width, uint32_t height) {
             device_.wait_idle();
-            swapchain_.init(fbuf_width, fbuf_height, device_);
+            swapchain_.init(width, height, device_);
 
             const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                 swapchain_.width(), swapchain_.height(), 0.9
             );
-            fbuf_images_.init(gbuf_width, gbuf_height, *tex_man_, device_);
 
-            mirinae::rp::gbuf::create_rp(
-                rp_,
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
-            mirinae::rp::shadow::create_rp(
-                rp_, fbuf_images_.depth().format(), desclayout_, device_
-            );
-            mirinae::rp::compo::create_rp(
-                rp_,
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-            rp_.init_render_passes(
-                fbuf_images_.width(),
-                fbuf_images_.height(),
-                fbuf_images_,
-                desclayout_,
-                swapchain_,
-                device_
-            );
-
-            rpm_.shadow().pool().recreate_fbufs(rp_.get("shadowmap"), device_);
-
-            rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
-            rpm_.gbuf_basic().init();
-            rpm_.gbuf_terrain().init(*tex_man_, desclayout_, device_);
-            rpm_.compo_basic().init(
-                desclayout_,
-                fbuf_images_,
-                rpm_.shadow().pool().get_img_view_at(0),
-                rpm_.shadow().pool().get_img_view_at(1),
-                rpm_.envmap().diffuse_view(0),
-                rpm_.envmap().specular_view(0),
-                rpm_.envmap().brdf_lut_view(),
-                device_
-            );
-            rpm_.compo_sky().init(
-                rpm_.envmap().sky_tex_view(),
-                rp_,
-                desclayout_,
-                fbuf_images_,
-                swapchain_,
-                device_
-            );
-            rp_states_transp_.init(
-                desclayout_,
-                rpm_.shadow().pool().get_img_view_at(0),
-                rpm_.shadow().pool().get_img_view_at(1),
-                rpm_.envmap().diffuse_view(0),
-                rpm_.envmap().specular_view(0),
-                rpm_.envmap().brdf_lut_view(),
-                device_
-            );
-            rp_states_debug_mesh_.init(device_);
-            rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
-
-            rpm_.create_std_rp(
-                rp_res_, desclayout_, fbuf_images_, swapchain_, device_
-            );
-
+            // Destroy
             {
-                std::vector<std::string> image_names{
-                    // "ocean_tilde_h:height_map_f#0",
-                    // "ocean_tilde_hkt:hkt_dxdy_f#0",
-                    // "ocean_tilde_hkt:hkt_dz_f#0",
-                    // "ocean_butterfly:pingpong_xy_f#0",
-                    // "ocean_butterfly:pingpong_z_f#0",
-                    // "ocean_naive_ift:ppong_naive_xy_f#0",
-                    // "ocean_finalize:displacement_f#0",
-                    // "ocean_finalize:normal_f#0",
-                };
-                int index = 0;
-                for (auto& name : image_names) {
-                    auto image = rp_res_.get_img_reader(name, "renderer");
-                    if (!image) {
-                        SPDLOG_WARN("Failed to get image: {}", name);
-                        continue;
-                    }
-                    const auto x = index % 3;
-                    const auto y = index / 3;
-                    ++index;
-                    overlay_man_.create_image_view(image->view_.get(), x, y);
-                }
+                rpm_.shadow().pool().destroy_fbufs(device_);
+
+                rpm_.destroy_std_rp();
+                // rp_states_imgui_.destroy();
+                rp_states_fillscreen_.destroy(device_);
+                rp_states_debug_mesh_.destroy(device_);
+                rp_states_transp_.destroy(device_);
+                rpm_.compo_sky().destroy(device_);
+                rpm_.compo_basic().destroy(device_);
+                rpm_.gbuf_terrain().destroy(device_);
+                rpm_.gbuf_basic().destroy(device_);
+                rpm_.envmap().destroy(device_);
+
+                rp_.destroy();
             }
 
-            return;
-        }
+            // Create
+            {
+                swapchain_.init(fbuf_width_, fbuf_height_, device_);
 
-        void destroy_swapchain_and_relatives() {
-            device_.wait_idle();
+                const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
+                    swapchain_.width(), swapchain_.height(), 0.9
+                );
+                fbuf_images_.init(gbuf_width, gbuf_height, *tex_man_, device_);
 
-            rpm_.shadow().pool().destroy_fbufs(device_);
+                mirinae::rp::gbuf::create_rp(
+                    rp_,
+                    fbuf_images_.width(),
+                    fbuf_images_.height(),
+                    fbuf_images_,
+                    desclayout_,
+                    swapchain_,
+                    device_
+                );
+                mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
+                mirinae::rp::shadow::create_rp(
+                    rp_, fbuf_images_.depth().format(), desclayout_, device_
+                );
+                mirinae::rp::compo::create_rp(
+                    rp_,
+                    fbuf_images_.width(),
+                    fbuf_images_.height(),
+                    fbuf_images_,
+                    desclayout_,
+                    swapchain_,
+                    device_
+                );
+                rp_.init_render_passes(
+                    fbuf_images_.width(),
+                    fbuf_images_.height(),
+                    fbuf_images_,
+                    desclayout_,
+                    swapchain_,
+                    device_
+                );
 
-            rpm_.destroy_std_rp();
-            rp_states_fillscreen_.destroy(device_);
-            rp_states_debug_mesh_.destroy(device_);
-            rp_states_transp_.destroy(device_);
-            rpm_.compo_sky().destroy(device_);
-            rpm_.compo_basic().destroy(device_);
-            rpm_.gbuf_terrain().destroy(device_);
-            rpm_.gbuf_basic().destroy(device_);
-            rpm_.envmap().destroy(device_);
+                rpm_.shadow().pool().recreate_fbufs(
+                    rp_.get("shadowmap"), device_
+                );
 
-            rp_.destroy();
-            swapchain_.destroy(device_.logi_device());
+                rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
+                rpm_.gbuf_basic().init();
+                rpm_.gbuf_terrain().init(*tex_man_, desclayout_, device_);
+                rpm_.compo_basic().init(
+                    desclayout_,
+                    fbuf_images_,
+                    rpm_.shadow().pool().get_img_view_at(0),
+                    rpm_.shadow().pool().get_img_view_at(1),
+                    rpm_.envmap().diffuse_view(0),
+                    rpm_.envmap().specular_view(0),
+                    rpm_.envmap().brdf_lut_view(),
+                    device_
+                );
+                rpm_.compo_sky().init(
+                    rpm_.envmap().sky_tex_view(),
+                    rp_,
+                    desclayout_,
+                    fbuf_images_,
+                    swapchain_,
+                    device_
+                );
+                rp_states_transp_.init(
+                    desclayout_,
+                    rpm_.shadow().pool().get_img_view_at(0),
+                    rpm_.shadow().pool().get_img_view_at(1),
+                    rpm_.envmap().diffuse_view(0),
+                    rpm_.envmap().specular_view(0),
+                    rpm_.envmap().brdf_lut_view(),
+                    device_
+                );
+                rp_states_debug_mesh_.init(device_);
+                rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
+
+                rpm_.create_std_rp(
+                    rp_res_, desclayout_, fbuf_images_, swapchain_, device_
+                );
+            }
+
+            // Optimized resize
+            {
+                rp_states_imgui_.on_swchain_resize(swapchain_);
+            }
         }
 
         std::optional<mirinae::ShainImageIndex> try_acquire_image() {
@@ -1202,10 +1329,7 @@ namespace {
                     fbuf_resized_ = true;
                 } else {
                     fbuf_resized_ = false;
-                    this->destroy_swapchain_and_relatives();
-                    this->create_swapchain_and_relatives(
-                        fbuf_width_, fbuf_height_
-                    );
+                    this->resize_swapchain(fbuf_width_, fbuf_height_);
                     overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
                 }
                 return std::nullopt;
@@ -1219,10 +1343,7 @@ namespace {
                     fbuf_resized_ = true;
                 } else {
                     fbuf_resized_ = false;
-                    this->destroy_swapchain_and_relatives();
-                    this->create_swapchain_and_relatives(
-                        fbuf_width_, fbuf_height_
-                    );
+                    this->resize_swapchain(fbuf_width_, fbuf_height_);
                 }
                 return std::nullopt;
             }
