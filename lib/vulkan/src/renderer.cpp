@@ -735,14 +735,14 @@ namespace {
 
     public:
         RendererVulkan(
-            mirinae::EngineCreateInfo&& cinfo,
+            mirinae::EngineCreateInfo& cinfo,
             sung::HTaskSche task_sche,
             std::shared_ptr<mirinae::ScriptEngine> script,
             std::shared_ptr<mirinae::CosmosSimulator> cosmos,
             int init_width,
             int init_height
         )
-            : device_(std::move(cinfo))
+            : device_(cinfo)
             , script_(script)
             , cosmos_(cosmos)
             , rp_res_(device_)
@@ -1556,7 +1556,7 @@ namespace {
 namespace mirinae {
 
     std::unique_ptr<IRenderer> create_vk_renderer(
-        mirinae::EngineCreateInfo&& cinfo,
+        mirinae::EngineCreateInfo& cinfo,
         sung::HTaskSche task_sche,
         std::shared_ptr<mirinae::ScriptEngine> script,
         std::shared_ptr<mirinae::CosmosSimulator> cosmos
@@ -1564,7 +1564,7 @@ namespace mirinae {
         const auto w = cinfo.init_width_;
         const auto h = cinfo.init_height_;
         return std::make_unique<::RendererVulkan>(
-            std::move(cinfo), task_sche, script, cosmos, w, h
+            cinfo, task_sche, script, cosmos, w, h
         );
     }
 

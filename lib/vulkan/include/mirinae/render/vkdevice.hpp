@@ -40,7 +40,7 @@ namespace mirinae {
     class VulkanDevice {
 
     public:
-        VulkanDevice(mirinae::EngineCreateInfo&& create_info);
+        VulkanDevice(mirinae::EngineCreateInfo& create_info);
         ~VulkanDevice();
 
         // Logical device

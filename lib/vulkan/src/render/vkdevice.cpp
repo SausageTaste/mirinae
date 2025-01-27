@@ -1066,8 +1066,8 @@ namespace mirinae {
     class VulkanDevice::Pimpl {
 
     public:
-        Pimpl(mirinae::EngineCreateInfo&& create_info)
-            : create_info_(std::move(create_info)) {
+        Pimpl(mirinae::EngineCreateInfo& create_info)
+            : create_info_(create_info) {
             // Check engine creation info
             if (!create_info_.filesys_)
                 MIRINAE_ABORT("Filesystem is not set");
@@ -1152,8 +1152,8 @@ namespace mirinae {
 // VulkanDevice
 namespace mirinae {
 
-    VulkanDevice::VulkanDevice(mirinae::EngineCreateInfo&& create_info)
-        : pimpl_(std::make_unique<Pimpl>(std::move(create_info))) {}
+    VulkanDevice::VulkanDevice(mirinae::EngineCreateInfo& create_info)
+        : pimpl_(std::make_unique<Pimpl>(create_info)) {}
 
     VulkanDevice::~VulkanDevice() {}
 
