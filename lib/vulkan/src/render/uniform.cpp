@@ -311,25 +311,38 @@ namespace mirinae {
 // DescPool
 namespace mirinae {
 
-    // basic implementation for DescPool methods
+    void DescPool::init(
+        const uint32_t max_sets,
+        const uint32_t pool_size_count,
+        const VkDescriptorPoolSize* pool_sizes,
+        const VkDevice logi_device
+    ) {
+        this->destroy(logi_device);
+
+        VkDescriptorPoolCreateInfo cinfo{};
+        cinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        cinfo.poolSizeCount = pool_size_count;
+        cinfo.pPoolSizes = pool_sizes;
+        cinfo.maxSets = max_sets;
+
+        VK_CHECK(vkCreateDescriptorPool(logi_device, &cinfo, NULL, &handle_));
+    }
+
     void DescPool::init(
         const uint32_t max_sets,
         const DescSizeInfo& size_info,
         const VkDevice logi_device
     ) {
-        this->destroy(logi_device);
-
         size_info_ = size_info;
         size_info_.multiply_counts(max_sets);
         const auto pool_sizes = size_info_.create_arr();
 
-        VkDescriptorPoolCreateInfo cinfo{};
-        cinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        cinfo.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
-        cinfo.pPoolSizes = pool_sizes.data();
-        cinfo.maxSets = max_sets;
-
-        VK_CHECK(vkCreateDescriptorPool(logi_device, &cinfo, NULL, &handle_));
+        return this->init(
+            max_sets,
+            static_cast<uint32_t>(pool_sizes.size()),
+            pool_sizes.data(),
+            logi_device
+        );
     }
 
     // For rest of methods too

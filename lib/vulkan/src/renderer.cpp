@@ -1,6 +1,7 @@
 #include "mirinae/renderer.hpp"
 
 #include <daltools/common/util.h>
+#include <imgui_impl_glfw.h>
 #include <sung/basic/time.hpp>
 
 #include "mirinae/cosmos.hpp"
@@ -555,12 +556,141 @@ namespace {
         std::vector<VkDescriptorSet> desc_sets_;
     };
 
+
+    class RpStatesImgui {
+
+    public:
+        RpStatesImgui(mirinae::VulkanDevice& device) : device_(device) {}
+
+        ~RpStatesImgui() { this->destroy(); }
+
+        void init(mirinae::Swapchain& swchain) {
+            // Descriptor pool
+            {
+                static const std::vector<VkDescriptorPoolSize> pool_sizes{
+                    { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+                    { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+                };
+
+                desc_pool_.init(
+                    1000,
+                    pool_sizes.size(),
+                    pool_sizes.data(),
+                    device_.logi_device()
+                );
+            }
+
+            // Render pass
+            {
+                mirinae::RenderPassBuilder builder;
+
+                builder.attach_desc()
+                    .add(swchain.format())
+                    .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .fin_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+                    .op_pair_load_store();
+
+                builder.color_attach_ref().add_color_attach(0);
+
+                builder.subpass_dep().add().preset_single();
+
+                render_pass_ = builder.build(device_.logi_device());
+            }
+
+            // Framebuffer
+            {
+                fbuf_width_ = swchain.width();
+                fbuf_height_ = swchain.height();
+
+                VkFramebufferCreateInfo info = {};
+                info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                info.renderPass = render_pass_;
+                info.attachmentCount = 1;
+                info.pAttachments = VK_NULL_HANDLE;
+                info.width = fbuf_width_;
+                info.height = fbuf_height_;
+                info.layers = 1;
+
+                for (uint32_t i = 0; i < swchain.views_count(); i++) {
+                    auto view = swchain.view_at(i);
+                    info.pAttachments = &view;
+                    VkFramebuffer fbuf = VK_NULL_HANDLE;
+                    VK_CHECK(vkCreateFramebuffer(
+                        device_.logi_device(), &info, VK_NULL_HANDLE, &fbuf
+                    ));
+                    fbufs_.push_back(fbuf);
+                }
+            }
+
+            return;
+        }
+
+        void destroy() {
+            auto device = device_.logi_device();
+
+            desc_pool_.destroy(device);
+
+            if (VK_NULL_HANDLE != render_pass_) {
+                vkDestroyRenderPass(device, render_pass_, nullptr);
+                render_pass_ = VK_NULL_HANDLE;
+            }
+
+            for (auto fbuf : fbufs_)
+                vkDestroyFramebuffer(device, fbuf, nullptr);
+            fbufs_.clear();
+        }
+
+        void record(mirinae::RpContext& ctxt) {
+            const auto cmdbuf = ctxt.cmdbuf_;
+            const auto fbuf = fbufs_.at(ctxt.i_index_.get());
+            const VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+            {
+                VkRenderPassBeginInfo info = {};
+                info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                info.renderPass = render_pass_;
+                info.framebuffer = fbuf;
+                info.renderArea.extent.width = fbuf_width_;
+                info.renderArea.extent.height = fbuf_height_;
+                info.clearValueCount = 1;
+                info.pClearValues = &clear_value;
+                vkCmdBeginRenderPass(cmdbuf, &info, VK_SUBPASS_CONTENTS_INLINE);
+            }
+
+            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdbuf);
+            vkCmdEndRenderPass(cmdbuf);
+        }
+
+        void fill_imgui_info(ImGui_ImplVulkan_InitInfo& info) {
+            info.RenderPass = render_pass_;
+            info.DescriptorPool = desc_pool_.get();
+        }
+
+        VkRenderPass render_pass() const { return render_pass_; }
+
+    private:
+        mirinae::VulkanDevice& device_;
+        mirinae::DescPool desc_pool_;
+        VkRenderPass render_pass_ = VK_NULL_HANDLE;
+        std::vector<VkFramebuffer> fbufs_;
+        uint32_t fbuf_width_ = 0;
+        uint32_t fbuf_height_ = 0;
+    };
+
 }  // namespace
 
 
 // Engine
 namespace {
-
     class RendererVulkan : public mirinae::IRenderer {
 
     public:
@@ -584,6 +714,7 @@ namespace {
             , overlay_man_(
                   init_width, init_height, desclayout_, *tex_man_, device_
               )
+            , rp_states_imgui_(device_)
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
             framesync_.init(device_.logi_device());
@@ -624,8 +755,17 @@ namespace {
 
             // ImGui
             {
+                rp_states_imgui_.init(swapchain_);
+
                 ImGui_ImplVulkan_InitInfo init_info = {};
                 device_.fill_imgui_info(init_info);
+                rp_states_imgui_.fill_imgui_info(init_info);
+
+                if (!ImGui_ImplVulkan_Init(&init_info))
+                    MIRINAE_ABORT("Failed to initialize ImGui Vulkan backend");
+
+                if (!ImGui_ImplVulkan_CreateFontsTexture())
+                    MIRINAE_ABORT("Failed to create ImGui fonts texture");
             }
 
             fps_timer_.set_fps_cap(120);
@@ -633,6 +773,8 @@ namespace {
 
         ~RendererVulkan() {
             device_.wait_idle();
+
+            ImGui_ImplVulkan_Shutdown();
 
             auto& reg = cosmos_->reg();
             for (auto enttid : reg.view<mirinae::cpnt::StaticActorVk>())
@@ -856,6 +998,16 @@ namespace {
                 overlay_man_.record_render(widget_ren_data);
 
                 vkCmdEndRenderPass(ren_ctxt.cmdbuf_);
+            }
+
+            // ImGui
+            {
+                ImGui_ImplVulkan_NewFrame();
+                ImGui_ImplGlfw_NewFrame();
+                ImGui::NewFrame();
+                ImGui::ShowDemoWindow();
+                ImGui::Render();
+                rp_states_imgui_.record(ren_ctxt);
             }
 
             VK_CHECK(vkEndCommandBuffer(ren_ctxt.cmdbuf_));
@@ -1261,6 +1413,7 @@ namespace {
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
+        ::RpStatesImgui rp_states_imgui_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
         mirinae::CommandPool cmd_pool_;

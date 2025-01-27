@@ -151,8 +151,6 @@ namespace {
     void check_imgui_result(VkResult err) {
         if (err != VK_SUCCESS) {
             SPDLOG_ERROR("ImGui result is error: {}", static_cast<int>(err));
-        } else {
-            SPDLOG_INFO("ImGui result is success");
         }
     }
 
@@ -1136,6 +1134,7 @@ namespace mirinae {
             info.PipelineCache = VK_NULL_HANDLE;
             info.Allocator = VK_NULL_HANDLE;
             info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
+            info.ImageCount = MAX_FRAMES_IN_FLIGHT;
             info.CheckVkResultFn = ::check_imgui_result;
         }
 
