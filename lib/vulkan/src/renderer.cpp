@@ -878,6 +878,11 @@ namespace {
             {
                 rp_states_imgui_.init(swapchain_);
 
+                auto& io = ImGui::GetIO();
+                io.DisplaySize.x *= cinfo.ui_scale_;
+                io.DisplaySize.y *= cinfo.ui_scale_;
+                io.FontGlobalScale *= cinfo.ui_scale_;
+
                 ImGui_ImplVulkan_InitInfo init_info = {};
                 device_.fill_imgui_info(init_info);
                 rp_states_imgui_.fill_imgui_info(init_info);

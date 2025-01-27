@@ -101,6 +101,10 @@ namespace {
                 glfwSetInputMode(window_, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
             ImGui_ImplGlfw_InitForVulkan(window_, true);
+
+            float xscale, yscale;
+            glfwGetWindowContentScale(window_, &xscale, &yscale);
+            SPDLOG_INFO("Content scale: {} {}", xscale, yscale);
         }
 
         ~GlfwWindow() {
@@ -136,6 +140,12 @@ namespace {
 
             glfwGetFramebufferSize(window_, &output.first, &output.second);
             return output;
+        }
+
+        double content_scale() const {
+            float xscale, yscale;
+            glfwGetWindowContentScale(window_, &xscale, &yscale);
+            return (xscale + yscale) * 0.5;
         }
 
         void notify_should_close() { glfwSetWindowShouldClose(window_, true); }
@@ -471,9 +481,8 @@ namespace {
                 );
                 return *reinterpret_cast<uint64_t*>(&surface);
             };
-            create_info.imgui_new_frame_ = []() {
-                ImGui_ImplGlfw_NewFrame();
-            };
+            create_info.imgui_new_frame_ = []() { ImGui_ImplGlfw_NewFrame(); };
+            create_info.ui_scale_ = window_.content_scale();
             create_info.enable_validation_layers_ = true;
             create_info.init_width_ = 800;
             create_info.init_height_ = 600;
