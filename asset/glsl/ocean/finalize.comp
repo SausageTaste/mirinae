@@ -26,8 +26,8 @@ void main() {
     vec3 displacement = vec3(texel_dxdy.xz, texel_dz.x) * norm_factor;
 
     vec4 texel_ddxddz = imageLoad(in_hkt_ddxddz, global_idx);
-    vec3 normal = vec3(texel_ddxddz.x * norm_factor, 1, texel_ddxddz.z * norm_factor);
-    normal.xz *= -1;
+    vec3 normal = vec3(texel_ddxddz.x * norm_factor, texel_ddxddz.z * norm_factor, 1);
+    normal.y *= -1;
     normal = normalize(normal);
     normal = normal * 0.5 + 0.5;
 

@@ -1,6 +1,7 @@
 #version 450
 
 #include "../utils/lighting.glsl"
+#include "../utils/normal_mapping.glsl"
 
 layout (location = 0) in vec3 i_frag_pos;
 layout (location = 1) in vec2 i_uv;
@@ -36,7 +37,9 @@ vec2 map_cube(vec3 v) {
 
 void main() {
     const vec3 normal_texel = textureLod(u_normal_map, i_uv, 0).xyz;
-    const vec3 normal = mat3(u_pc.view) * (normal_texel * 2 - 1);
+
+    const mat3 tbn = make_tbn_mat(vec3(0, 1, 0), vec3(1, 0, 0), u_pc.view * u_pc.model);
+    const vec3 normal = tbn * (normal_texel.xyz * 2 - 1);
     const vec3 albedo = vec3(0.1, 0.15, 0.25);
     const float roughness = 0.1;
     const float metallic = 0;
