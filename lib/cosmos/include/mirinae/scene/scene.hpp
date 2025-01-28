@@ -73,10 +73,11 @@ namespace mirinae::cpnt {
 
 
     struct Ocean {
+        TransformQuat<double> transform_;
         glm::dvec2 wind_dir_{ 1, 1 };
         double wind_speed_ = 10;
         double amplitude_ = 500000;
-        uint32_t L_ = 100;
+        int L_ = 100;
     };
 
 }  // namespace mirinae::cpnt

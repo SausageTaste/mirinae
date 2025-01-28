@@ -1152,6 +1152,11 @@ namespace {
                 imgui_new_frame_();
                 ImGui::NewFrame();
                 ImGui::ShowDemoWindow();
+
+                for (auto& w : cosmos_->imgui_) {
+                    w->render();
+                }
+
                 ImGui::Render();
                 rp_states_imgui_.record(ren_ctxt);
             }
