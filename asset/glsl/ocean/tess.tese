@@ -49,7 +49,5 @@ void main() {
     o_frag_pos = (u_pc.view * u_pc.model * vec4(p, 1)).xyz;
     gl_Position = u_pc.pvm * vec4(p, 1);
 
-    const vec3 normal = mat3(u_pc.view) * mat3(u_pc.model) * vec3(0, 1, 0);
-
     o_uv = tex_coord;
 }
