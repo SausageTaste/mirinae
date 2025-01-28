@@ -2105,11 +2105,7 @@ namespace {
                 .add_stage_tese()
                 .add_stage_frag();
 
-            const auto model_mat =
-                glm::translate(glm::dmat4{ 1 }, glm::dvec3{ 50, 0, 50 }) *
-                glm::mat4_cast(
-                    glm::angleAxis(glm::radians(180.0), glm::dvec3{ 0, 1, 0 })
-                );
+            const auto model_mat = ocean_entt.transform_.make_model_mat();
 
             U_OceanTessPushConst pc;
             pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)

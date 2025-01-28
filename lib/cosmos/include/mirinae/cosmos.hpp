@@ -5,6 +5,12 @@
 
 namespace mirinae {
 
+    struct ImGuiRenderUnit {
+        virtual ~ImGuiRenderUnit() = default;
+        virtual void render() = 0;
+    };
+
+
     class CosmosSimulator {
 
     public:
@@ -18,6 +24,8 @@ namespace mirinae {
         auto& reg() { return scene_.reg_; }
         auto& reg() const { return scene_.reg_; }
         auto& clock() const { return clock_; }
+
+        std::vector<std::shared_ptr<ImGuiRenderUnit>> imgui_;
 
     private:
         Scene scene_;

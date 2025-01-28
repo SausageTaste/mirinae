@@ -2,6 +2,7 @@
 
 #include <deque>
 
+#include <imgui.h>
 #include <daltools/common/glm_tool.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
@@ -265,6 +266,69 @@ namespace {
         double move_speed_ = 10;
     };
 
+
+    class ImGuiOcean : public mirinae::ImGuiRenderUnit {
+
+    public:
+        ImGuiOcean(std::shared_ptr<mirinae::CosmosSimulator>& cosmos)
+            : cosmos_(cosmos) {}
+
+        void render() {
+            auto ocean = this->try_find_ocaen();
+
+            if (ImGui::Begin("Ocean")) {
+                auto& reg = cosmos_->reg();
+
+                if (ocean) {
+                    glm::vec3 pos = ocean->transform_.pos_;
+                    glm::vec3 rot{ 0 };
+                    float amplitude = std::sqrt(ocean->amplitude_);
+                    float wind_speed = ocean->wind_speed_;
+
+                    ImGui::DragFloat3("Pos", &pos[0]);
+                    ImGui::DragFloat3("Rot", &rot[0]);
+                    if (ImGui::Button("Reset rotation"))
+                        ocean->transform_.rot_ = glm::quat(1, 0, 0, 0);
+                    ImGui::SliderFloat("Amplitude", &amplitude, 0.0, 10000.0);
+                    ImGui::SliderFloat("Wind speed", &wind_speed, 0.0, 100.0);
+                    ImGui::SliderInt("L", &ocean->L_, 0, 100);
+
+                    ocean->transform_.pos_ = pos;
+                    ocean->amplitude_ = amplitude * amplitude;
+                    ocean->wind_speed_ = wind_speed;
+
+                    ocean->transform_.rotate(
+                        mirinae::cpnt::Transform::Angle::from_deg(rot.x),
+                        glm::vec3{ 1, 0, 0 }
+                    );
+                    ocean->transform_.rotate(
+                        mirinae::cpnt::Transform::Angle::from_deg(rot.y),
+                        glm::vec3{ 0, 1, 0 }
+                    );
+                    ocean->transform_.rotate(
+                        mirinae::cpnt::Transform::Angle::from_deg(rot.z),
+                        glm::vec3{ 0, 0, 1 }
+                    );
+                } else {
+                    ImGui::Text("Ocean not found");
+                }
+            }
+            ImGui::End();
+        }
+
+    private:
+        entt::registry& reg() { return cosmos_->reg(); }
+
+        mirinae::cpnt::Ocean* try_find_ocaen() {
+            for (auto& eid : reg().view<mirinae::cpnt::Ocean>()) {
+                return &reg().get<mirinae::cpnt::Ocean>(eid);
+            }
+            return nullptr;
+        }
+
+        std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
+    };
+
 }  // namespace
 
 
@@ -351,6 +415,12 @@ namespace {
                     const std::string str{ contents->begin(), contents->end() };
                     script_->exec(str.c_str());
                 }
+            }
+
+            // ImGui Widgets
+            {
+                cosmos_->imgui_.push_back(std::make_shared<ImGuiOcean>(cosmos_)
+                );
             }
         }
 
