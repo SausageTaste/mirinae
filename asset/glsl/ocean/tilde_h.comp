@@ -36,34 +36,69 @@ vec4 gauseRnd() {
 }
 
 
+float sqr(float x) {
+    return x * x;
+}
+
+
+float quad(float x) {
+    float xx = x * x;
+    return xx * xx;
+}
+
+
+float hexic(float x) {
+    float xx = x * x;
+    float xxxx = xx * xx;
+    return xxxx * xx;
+}
+
+
+float octic(float x) {
+    float xx = x * x;
+    float xxxx = xx * xx;
+    return xxxx * xxxx;
+}
+
+
+vec2 phillips_spectrum(vec2 wave_vector) {
+    const float damping = 0.001;
+
+    const float k = max(length(wave_vector), 0.00001);
+    const float kk = k * k;
+    const float gg = GRAVITY_EARTH * GRAVITY_EARTH;
+    const float uuuu = quad(u_pc.wind_speed);
+
+    const float k_dot_u = dot(normalize(wave_vector), normalize(u_pc.wind_dir));
+    const float k_dot_u_conj = dot(normalize(-wave_vector), normalize(u_pc.wind_dir));
+
+    const float spectrum = (u_pc.amplitude / (kk * kk)) * exp(-gg / (kk * uuuu));
+    const float suppression = exp(-kk * uuuu * damping * damping / gg);
+
+    const float h0k = sqrt(
+        spectrum
+        * suppression
+        * hexic(k_dot_u)
+    );
+
+    const float h0minusk = sqrt(
+        spectrum
+        * suppression
+        * hexic(k_dot_u_conj)
+    );
+
+    return vec2(h0k, h0minusk) / sqrt(2.0);
+}
+
+
 void main() {
     const vec2 x = vec2(gl_GlobalInvocationID.xy) - float(u_pc.N) * 0.5;
     const vec2 k = x * 2.0 * PI / float(u_pc.L);
-
-    const float L_ = (u_pc.wind_speed * u_pc.wind_speed) / GRAVITY_EARTH;
-    float mag = length(k);
-    if (mag < 0.00001)
-        mag = 0.00001;
-    const float mgSq = mag * mag;
-    const float l2 = L_ * L_ * 0.001 * 0.001;
-
-    const float h0k = sqrt((u_pc.amplitude / (mgSq * mgSq))
-        * pow(dot(normalize(k), normalize(u_pc.wind_dir)), 2)
-        * pow(dot(normalize(k), normalize(u_pc.wind_dir)), 2)
-        * pow(dot(normalize(k), normalize(u_pc.wind_dir)), 2)
-        * exp(-(1.0 / (mgSq * L_ * L_)))
-        * exp(-mgSq * l2)) / sqrt(2.0);
-
-    const float h0minusk = sqrt((u_pc.amplitude / (mgSq * mgSq))
-        * pow(dot(normalize(-k), normalize(u_pc.wind_dir)), 2)
-        * pow(dot(normalize(-k), normalize(u_pc.wind_dir)), 2)
-        * pow(dot(normalize(-k), normalize(u_pc.wind_dir)), 2)
-        * exp(-(1.0 / (mgSq * L_ * L_)))
-        * exp(-mgSq * l2)) / sqrt(2.0);
+    const vec2 h0k = phillips_spectrum(k);
 
     const vec4 gause_random = gauseRnd();
-    const vec2 h0k_vec = gause_random.xy * h0k;
-    const vec2 h0minusk_vec = gause_random.zw * h0minusk;
+    const vec2 h0k_vec = gause_random.xy * h0k.x;
+    const vec2 h0minusk_vec = gause_random.zw * h0k.y;
 
     const ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
     imageStore(out_image, global_idx, vec4(h0k_vec, h0minusk_vec));
