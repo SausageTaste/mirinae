@@ -518,10 +518,11 @@ namespace {
         }
 
         void record(
-            VkCommandBuffer cmdbuf,
-            VkExtent2D shain_exd,
-            mirinae::FrameIndex frame_index,
-            mirinae::ShainImageIndex image_index,
+            const VkCommandBuffer cmdbuf,
+            const VkExtent2D shain_exd,
+            const mirinae::cpnt::StandardCamera& camera,
+            const mirinae::FrameIndex frame_index,
+            const mirinae::ShainImageIndex image_index,
             mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("fillscreen");
@@ -545,6 +546,15 @@ namespace {
                 .layout(rp.pipeline_layout())
                 .set(desc_sets_.at(frame_index.get()))
                 .record(cmdbuf);
+
+            mirinae::U_FillScreenPushConst pc;
+            pc.exposure_ = camera.exposure_;
+            pc.gamma_ = camera.gamma_;
+
+            mirinae::PushConstInfo{}
+                .layout(rp.pipeline_layout())
+                .add_stage_frag()
+                .record(cmdbuf, pc);
 
             vkCmdDraw(cmdbuf, 3, 1, 0, 0);
 
@@ -1109,6 +1119,7 @@ namespace {
             rp_states_fillscreen_.record(
                 ren_ctxt.cmdbuf_,
                 swapchain_.extent(),
+                cam,
                 framesync_.get_frame_index(),
                 image_index,
                 rp_

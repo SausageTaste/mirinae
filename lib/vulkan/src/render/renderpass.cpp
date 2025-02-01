@@ -1368,8 +1368,10 @@ namespace { namespace fillscreen {
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
             );
-            layout_ = ::PipelineLayoutBuilder{}
+            layout_ = mirinae::PipelineLayoutBuilder{}
                           .desc(create_desclayout_main(desclayouts, device))
+                          .add_frag_flag()
+                          .pc<mirinae::U_FillScreenPushConst>(0)
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 

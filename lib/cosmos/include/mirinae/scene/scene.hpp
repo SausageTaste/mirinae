@@ -91,6 +91,8 @@ namespace mirinae::cpnt {
     struct StandardCamera {
         TransformQuat<double> view_;
         PerspectiveCamera<double> proj_;
+        float exposure_ = 1;
+        float gamma_ = 1;
     };
 
 
