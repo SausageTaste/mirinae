@@ -1520,6 +1520,19 @@ namespace {
                     break;
                 }
 
+                size_t i = 0;
+                for (auto e : cosmos_->reg().view<cpnt::VPLight>()) {
+                    if (i >= 8)
+                        break;
+
+                    const auto& l = cosmos_->reg().get<cpnt::VPLight>(e);
+                    ubuf_data  //
+                        .set_vpl_pos(i, l.pos_)
+                        .set_vpl_color(i, l.color_ * l.intensity_);
+
+                    ++i;
+                }
+
                 rpm_.compo_basic()
                     .ubufs_.at(framesync_.get_frame_index().get())
                     .set_data(ubuf_data, device_.mem_alloc());
