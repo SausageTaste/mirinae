@@ -8,7 +8,7 @@ end
 
 do
     sponza = scene.create_static_actor("Sung/sponza.dun/sponza.dmd")
-    sponza:get_transform():set_pos(30, 1, -70)
+    sponza:get_transform():set_pos(27, 1, -18)
     sponza:get_transform():set_scale(0.01)
     print("Static actor created:", sponza:get_id(), sponza:get_respath())
 end
