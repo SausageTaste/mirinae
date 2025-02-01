@@ -1191,7 +1191,9 @@ namespace {
                         push_const.dlight_dir_ = glm::vec4{
                             light.calc_to_light_dir(glm::dmat4(1)), 0
                         };
-                        push_const.dlight_color_ = glm::vec4{ light.color_, 0 };
+                        push_const.dlight_color_ = glm::vec4{
+                            light.color_.scaled_color(), 0
+                        };
                         break;
                     }
 

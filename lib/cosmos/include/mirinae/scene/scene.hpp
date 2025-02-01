@@ -16,6 +16,53 @@ namespace mirinae::cpnt {
     using Transform = TransformQuat<double>;
 
 
+    template <typename T>
+    class TColorIntensity {
+
+    public:
+        glm::tvec3<T>& color() { return color_; }
+        T& intensity() { return intensity_; }
+
+        glm::tvec3<T> scaled_color() const { return color_ * intensity_; }
+
+        void set_scaled_color(const glm::tvec3<T>& color) {
+            color_ = color;
+            intensity_ = 1;
+            this->normalize_color();
+        }
+
+        void set_scaled_color(T r, T g, T b) {
+            color_.x = r;
+            color_.y = g;
+            color_.z = b;
+            intensity_ = 1;
+            this->normalize_color();
+        }
+
+        void normalize_color() {
+            constexpr T EPSILON = static_cast<T>(0.0001);
+
+            if (color_.x <= EPSILON && color_.y <= EPSILON &&
+                color_.z <= EPSILON) {
+                color_ = glm::tvec3<T>{ 0 };
+                intensity_ = 0;
+                return;
+            }
+
+            const auto max = std::max({ color_.r, color_.g, color_.b });
+            color_ /= max;
+            intensity_ *= max;
+            return;
+        }
+
+    private:
+        glm::tvec3<T> color_{ 0 };
+        T intensity_ = 0;
+    };
+
+    using ColorIntensity = TColorIntensity<float>;
+
+
     struct DLight {
         /**
          * @param view_mat View matrix of camera
@@ -35,7 +82,7 @@ namespace mirinae::cpnt {
         }
 
         TransformQuat<double> transform_;
-        glm::vec3 color_;
+        ColorIntensity color_;
     };
 
 
@@ -48,7 +95,7 @@ namespace mirinae::cpnt {
         glm::dmat4 make_light_mat() const;
 
         TransformQuat<double> transform_;
-        glm::vec3 color_;
+        ColorIntensity color_;
         sung::TAngle<double> inner_angle_;
         sung::TAngle<double> outer_angle_;
         double max_distance_ = 100;
@@ -56,24 +103,8 @@ namespace mirinae::cpnt {
 
 
     struct VPLight {
-        void normalize_color() {
-            constexpr double EPSILON = 0.0001;
-
-            if (color_.x <= EPSILON && color_.y <= EPSILON &&
-                color_.z <= EPSILON) {
-                color_ = glm::dvec3{ 0 };
-                intensity_ = 0;
-                return;
-            }
-
-            const auto max = std::max({ color_.r, color_.g, color_.b });
-            color_ /= max;
-            intensity_ *= max;
-        }
-
+        ColorIntensity color_;
         glm::dvec3 pos_;
-        glm::dvec3 color_;
-        double intensity_ = 1;
     };
 
 

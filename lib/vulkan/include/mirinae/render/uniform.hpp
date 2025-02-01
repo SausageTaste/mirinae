@@ -112,14 +112,6 @@ namespace mirinae {
         }
 
         template <typename T>
-        U_CompoMain& set_dlight_color(T v) {
-            dlight_color_.x = v;
-            dlight_color_.y = v;
-            dlight_color_.z = v;
-            return *this;
-        }
-
-        template <typename T>
         U_CompoMain& set_dlight_color(const glm::tvec3<T>& dlight_color) {
             dlight_color_.x = dlight_color.r;
             dlight_color_.y = dlight_color.g;
@@ -162,14 +154,6 @@ namespace mirinae {
             slight_color_n_max_dist.x = v.r;
             slight_color_n_max_dist.y = v.g;
             slight_color_n_max_dist.z = v.b;
-            return *this;
-        }
-
-        template <typename T>
-        U_CompoMain& set_slight_color(T v) {
-            slight_color_n_max_dist.x = v;
-            slight_color_n_max_dist.y = v;
-            slight_color_n_max_dist.z = v;
             return *this;
         }
 

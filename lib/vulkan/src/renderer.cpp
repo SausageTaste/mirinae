@@ -1514,7 +1514,7 @@ namespace {
                         ubuf_data.set_dlight_mat(i, cascades.at(i).light_mat_);
 
                     ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat))
-                        .set_dlight_color(light.color_)
+                        .set_dlight_color(light.color_.scaled_color())
                         .set_dlight_cascade_depths(cascade.far_depths_);
                     break;
                 }
@@ -1524,7 +1524,7 @@ namespace {
                     ubuf_data.set_slight_mat(l.make_light_mat())
                         .set_slight_pos(l.calc_view_space_pos(view_mat))
                         .set_slight_dir(l.calc_to_light_dir(view_mat))
-                        .set_slight_color(l.color_)
+                        .set_slight_color(l.color_.scaled_color())
                         .set_slight_inner_angle(l.inner_angle_)
                         .set_slight_outer_angle(l.outer_angle_)
                         .set_slight_max_dist(l.max_distance_);
@@ -1539,7 +1539,7 @@ namespace {
                     const auto& l = cosmos_->reg().get<cpnt::VPLight>(e);
                     ubuf_data  //
                         .set_vpl_pos(i, l.pos_)
-                        .set_vpl_color(i, l.color_ * l.intensity_);
+                        .set_vpl_color(i, l.color_.scaled_color());
 
                     ++i;
                 }
