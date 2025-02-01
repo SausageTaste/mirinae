@@ -83,6 +83,15 @@ namespace mirinae {
             return rot_mat * tran_mat;
         }
 
+        template <typename U>
+        TransformQuat<U> copy() const {
+            TransformQuat<U> ret;
+            ret.rot_ = glm::tquat<U>{ rot_ };
+            ret.pos_ = glm::tvec3<U>{ pos_ };
+            ret.scale_ = glm::tvec3<U>{ scale_ };
+            return ret;
+        }
+
         glm::tquat<T> rot_{ 1, 0, 0, 0 };
         glm::tvec3<T> pos_{ 0, 0, 0 };
         glm::tvec3<T> scale_{ 1, 1, 1 };
