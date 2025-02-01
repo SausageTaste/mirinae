@@ -45,7 +45,7 @@ void main() {
     vec4 view_space_pos = u_gbuf_model.view_model * joint_mat * vec4(i_pos, 1);
 
     gl_Position = u_gbuf_model.pvm * joint_mat * vec4(i_pos, 1);
-    v_tbn = make_tbn_mat(i_normal, i_tangent, u_gbuf_model.view_model);
+    v_tbn = make_tbn_mat(i_normal, i_tangent, u_gbuf_model.view_model * joint_mat);
     v_frag_pos = view_space_pos.xyz;
     v_texcoord = i_texcoord;
 }
