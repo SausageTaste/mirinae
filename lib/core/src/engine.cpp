@@ -284,6 +284,9 @@ namespace {
                     glm::vec3 rot{ 0 };
                     float amplitude = std::sqrt(ocean->amplitude_);
                     float wind_speed = ocean->wind_speed_;
+                    float wind_dir = std::atan2(
+                        ocean->wind_dir_.y, ocean->wind_dir_.x
+                    );
 
                     ImGui::DragFloat3("Pos", &pos[0]);
                     ImGui::DragFloat3("Rot", &rot[0]);
@@ -291,11 +294,15 @@ namespace {
                         ocean->transform_.rot_ = glm::quat(1, 0, 0, 0);
                     ImGui::SliderFloat("Amplitude", &amplitude, 0.0, 10000.0);
                     ImGui::SliderFloat("Wind speed", &wind_speed, 0.0, 100.0);
+                    ImGui::SliderAngle("Wind dir", &wind_dir, 0, 360);
                     ImGui::SliderInt("L", &ocean->L_, 0, 100);
 
                     ocean->transform_.pos_ = pos;
                     ocean->amplitude_ = amplitude * amplitude;
                     ocean->wind_speed_ = wind_speed;
+
+                    ocean->wind_dir_ = glm::vec2{ std::cos(wind_dir),
+                                                  std::sin(wind_dir) };
 
                     ocean->transform_.rotate(
                         mirinae::cpnt::Transform::Angle::from_deg(rot.x),
