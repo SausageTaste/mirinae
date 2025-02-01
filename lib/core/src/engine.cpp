@@ -313,6 +313,13 @@ namespace {
                     ImGui::Unindent(20);
                 }
 
+                if (ImGui::CollapsingHeader("VPLight")) {
+                    ImGui::Indent(20);
+                    for (const auto e : reg.view<VPLight>())
+                        this->render_vplight(e);
+                    ImGui::Unindent(20);
+                }
+
                 if (ImGui::CollapsingHeader("Ocean")) {
                     ImGui::Indent(20);
                     for (const auto e : reg.view<Ocean>())
@@ -544,6 +551,37 @@ namespace {
             }
         }
 
+        void render_vplight(entt::entity e) {
+            using namespace mirinae::cpnt;
+
+            auto vplight = this->reg().try_get<VPLight>(e);
+            if (!vplight)
+                return;
+
+            const auto name = fmt::format("VPLight-{}", (ENTT_ID_TYPE)e);
+
+            if (ImGui::CollapsingHeader(name.c_str())) {
+                glm::vec3 pos = vplight->pos_;
+                ImGui::DragFloat3("Position", &pos[0]);
+                vplight->pos_ = pos;
+
+                glm::vec3 color = vplight->color_;
+                ImGui::ColorEdit3("Color", &color[0]);
+                vplight->color_ = color;
+
+                float intensity = vplight->intensity_;
+                ImGui::SliderFloat(
+                    "Intensity",
+                    &intensity,
+                    0.0,
+                    1000.0,
+                    nullptr,
+                    ImGuiSliderFlags_Logarithmic
+                );
+                vplight->intensity_ = intensity;
+            }
+        }
+
         void render_ocean(entt::entity e) {
             using namespace mirinae::cpnt;
 
@@ -622,6 +660,34 @@ namespace {
                 s.outer_angle_.set_deg(25);
             }
 
+            // VPLight
+            {
+                static const std::array<glm::dvec3, 8> positions{
+                    glm::dvec3(23.06373011, 7.406594568543, -40.16145784411),
+                    glm::dvec3(-12.5902652420, 3.742476132263, -57.91384509770),
+                    glm::dvec3(-27.18744272, 2.81600329, -59.14043760),
+                    glm::dvec3(-11.314874664, 4.1150336202, -72.997129503),
+                    glm::dvec3(406.275784993, 26.4602983105, -211.201358558),
+                    glm::dvec3(17.7235240304, 4.51899223978, -70.447537981),
+                    glm::dvec3(-3.62620977943, 0.758235418969, -0.122477245173)
+                };
+
+                static const std::array<glm::vec3, 8> colors{
+                    glm::vec3(7, 24, 7) * 0.5f,  glm::vec3(24, 18, 7) * 0.5f,
+                    glm::vec3(24, 18, 7) * 0.5f, glm::vec3(24, 18, 7) * 0.5f,
+                    glm::vec3(240, 180, 70),     glm::vec3(7, 18, 24) * 2.f,
+                    glm::vec3(1, 1, 1) * 5.f
+                };
+
+                for (size_t i = 0; i < positions.size(); ++i) {
+                    const auto e = reg.create();
+                    const auto l = &reg.emplace<mirinae::cpnt::VPLight>(e);
+                    l->pos_ = positions[i];
+                    l->color_ = colors[i];
+                    l->normalize_color();
+                }
+            }
+
             // Main Camera
             {
                 const auto entt = reg.create();
@@ -669,8 +735,7 @@ namespace {
 
             // ImGui Widgets
             {
-                cosmos_->imgui_.push_back(std::make_shared<ImGuiEntt>(cosmos_)
-                );
+                cosmos_->imgui_.push_back(std::make_shared<ImGuiEntt>(cosmos_));
             }
         }
 

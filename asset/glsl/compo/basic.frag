@@ -30,6 +30,10 @@ layout(set = 0, binding = 4) uniform U_CompoMain {
     vec4 slight_pos_n_inner_angle;
     vec4 slight_dir_n_outer_angle;
     vec4 slight_color_n_max_dist;
+
+    // Volumetric Point Light
+    vec4 plight_poses[8];
+    vec4 plight_colors[8];
 } u_comp_main;
 
 layout(set = 0, binding = 5) uniform sampler2D u_dlight_shadow_map;
@@ -164,27 +168,8 @@ void main() {
     }
 
     // Point light
-    const vec3[] plight_poses = vec3[](
-        vec3(23.063730118685, 7.4065945685438, -40.161457844117),
-        vec3(-12.59026524203, 3.7424761322639, -57.913845097703),
-        vec3(-27.187442727148, 2.8160032999329, -59.140437604074),
-        vec3(-11.314874664971, 4.1150336202454, -72.997129503343),
-        vec3(406.27578499388, 26.460298310523, -211.20135855825),
-        vec3(17.723524030452, 4.5189922397826, -70.44753798105),
-        vec3(-3.6262097794371, 0.75823541896961, -0.12247724517385)
-    );
-    const vec3[] plight_colors = vec3[](
-        vec3(7, 24, 7) * 0.5,
-        vec3(24, 18, 7) * 0.5,
-        vec3(24, 18, 7) * 0.5,
-        vec3(24, 18, 7) * 0.5,
-        vec3(240, 180, 70),
-        vec3(7, 18, 24) * 2,
-        vec3(1, 1, 1) * 5
-    );
-
-    for (uint i = 0; i < plight_poses.length(); ++i) {
-        const vec3 light_pos = (u_comp_main.view * vec4(plight_poses[i], 1)).xyz;
+    for (uint i = 0; i < u_comp_main.plight_poses.length(); ++i) {
+        const vec3 light_pos = (u_comp_main.view * vec4(u_comp_main.plight_poses[i].xyz, 1)).xyz;
         const vec3 cam_to_light = light_pos;
         const float projected_light_distance = dot(cam_to_light, view_direc);
         const vec3 projected_light_pos = projected_light_distance * view_direc;
@@ -193,7 +178,7 @@ void main() {
         const float a = dot(-projected_light_pos, view_direc);
         const float b = dot(frag_pos - projected_light_pos, view_direc);
         const float c = (atan(b / h) / h) - (atan(a / h) / h);
-        light += plight_colors[i] * c * 0.01;
+        light += u_comp_main.plight_colors[i].xyz * c * 0.01;
 
         const vec3 to_light = light_pos - frag_pos;
         const vec3 to_light_n = normalize(to_light);
@@ -209,7 +194,7 @@ void main() {
             F0,
             -view_direc,
             to_light_n,
-            plight_colors[i]
+            u_comp_main.plight_colors[i].xyz
         ) * attenuation;
     }
 

@@ -187,6 +187,22 @@ namespace mirinae {
             return *this;
         }
 
+        template <typename T>
+        U_CompoMain& set_vpl_pos(size_t i, const glm::tvec3<T>& pos) {
+            vpl_pos_n_radius[i].x = pos.x;
+            vpl_pos_n_radius[i].y = pos.y;
+            vpl_pos_n_radius[i].z = pos.z;
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoMain& set_vpl_color(size_t i, const glm::tvec3<T>& v) {
+            vpl_color_n_intensity[i].x = v.r;
+            vpl_color_n_intensity[i].y = v.g;
+            vpl_color_n_intensity[i].z = v.b;
+            return *this;
+        }
+
     private:
         glm::mat4 view_;
         glm::mat4 view_inv_;
@@ -204,6 +220,10 @@ namespace mirinae {
         glm::vec4 slight_pos_n_inner_angle;
         glm::vec4 slight_dir_n_outer_angle;
         glm::vec4 slight_color_n_max_dist;
+
+        // Volumetric Point Light
+        std::array<glm::vec4, 8> vpl_pos_n_radius;
+        std::array<glm::vec4, 8> vpl_color_n_intensity;
     };
 
 

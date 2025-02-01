@@ -55,6 +55,28 @@ namespace mirinae::cpnt {
     };
 
 
+    struct VPLight {
+        void normalize_color() {
+            constexpr double EPSILON = 0.0001;
+
+            if (color_.x <= EPSILON && color_.y <= EPSILON &&
+                color_.z <= EPSILON) {
+                color_ = glm::dvec3{ 0 };
+                intensity_ = 0;
+                return;
+            }
+
+            const auto max = std::max({ color_.r, color_.g, color_.b });
+            color_ /= max;
+            intensity_ *= max;
+        }
+
+        glm::dvec3 pos_;
+        glm::dvec3 color_;
+        double intensity_ = 1;
+    };
+
+
     struct StaticModelActor {
         std::filesystem::path model_path_;
     };
