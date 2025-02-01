@@ -366,6 +366,19 @@ namespace {
             );
         }
 
+        static void render_color_intensity(mirinae::cpnt::ColorIntensity& ci) {
+            ImGui::ColorEdit3("Color", &ci.color()[0]);
+
+            ImGui::SliderFloat(
+                "Intensity",
+                &ci.intensity(),
+                0.0,
+                1000.0,
+                nullptr,
+                ImGuiSliderFlags_Logarithmic
+            );
+        }
+
         void render_standard_camera(entt::entity e) {
             using namespace mirinae::cpnt;
 
@@ -534,8 +547,7 @@ namespace {
 
             if (ImGui::CollapsingHeader(name.c_str())) {
                 this->render_transform(dlight->transform_);
-
-                ImGui::ColorEdit3("Color", &dlight->color_[0]);
+                this->render_color_intensity(dlight->color_);
             }
         }
 
@@ -550,8 +562,7 @@ namespace {
 
             if (ImGui::CollapsingHeader(name.c_str())) {
                 this->render_transform(slight->transform_);
-
-                ImGui::ColorEdit3("Color", &slight->color_[0]);
+                this->render_color_intensity(slight->color_);
 
                 float inner_angle = slight->inner_angle_.rad();
                 ImGui::SliderAngle("Inner angle", &inner_angle, 0, 180);
@@ -577,20 +588,7 @@ namespace {
                 ImGui::DragFloat3("Position", &pos[0]);
                 vplight->pos_ = pos;
 
-                glm::vec3 color = vplight->color_;
-                ImGui::ColorEdit3("Color", &color[0]);
-                vplight->color_ = color;
-
-                float intensity = vplight->intensity_;
-                ImGui::SliderFloat(
-                    "Intensity",
-                    &intensity,
-                    0.0,
-                    1000.0,
-                    nullptr,
-                    ImGuiSliderFlags_Logarithmic
-                );
-                vplight->intensity_ = intensity;
+                this->render_color_intensity(vplight->color_);
             }
         }
 
@@ -658,7 +656,7 @@ namespace {
             {
                 const auto entt = reg.create();
                 auto& d = reg.emplace<mirinae::cpnt::DLight>(entt);
-                d.color_ = glm::vec3{ 2 };
+                d.color_.set_scaled_color(2, 2, 2);
                 d.set_light_dir(-0.5613, -0.7396, -0.3713);
             }
 
@@ -667,7 +665,7 @@ namespace {
                 flashlight_ = reg.create();
                 auto& s = reg.emplace<mirinae::cpnt::SLight>(flashlight_);
                 s.transform_.pos_ = { 0, 2, 0 };
-                s.color_ = glm::vec3{ 0, 0, 0 };
+                s.color_.set_scaled_color(0, 0, 0);
                 s.inner_angle_.set_deg(10);
                 s.outer_angle_.set_deg(25);
             }
@@ -695,8 +693,7 @@ namespace {
                     const auto e = reg.create();
                     const auto l = &reg.emplace<mirinae::cpnt::VPLight>(e);
                     l->pos_ = positions[i];
-                    l->color_ = colors[i];
-                    l->normalize_color();
+                    l->color_.set_scaled_color(colors[i]);
                 }
             }
 
@@ -836,10 +833,10 @@ namespace {
                 auto& reg = cosmos_->reg();
                 auto& slight = reg.get<mirinae::cpnt::SLight>(flashlight_);
                 if (e.action_type == mirinae::key::ActionType::down) {
-                    if (slight.color_.r == 0)
-                        slight.color_ = glm::vec3{ 5, 5, 5 };
+                    if (slight.color_.intensity() == 0)
+                        slight.color_.set_scaled_color(5, 5, 5);
                     else
-                        slight.color_ = glm::vec3{ 0, 0, 0 };
+                        slight.color_.intensity() = 0;
                 }
                 return true;
             }
