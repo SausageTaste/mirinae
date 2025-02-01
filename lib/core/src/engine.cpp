@@ -267,59 +267,60 @@ namespace {
     };
 
 
-    class ImGuiOcean : public mirinae::ImGuiRenderUnit {
+    class ImGuiEntt : public mirinae::ImGuiRenderUnit {
 
     public:
-        ImGuiOcean(std::shared_ptr<mirinae::CosmosSimulator>& cosmos)
+        ImGuiEntt(std::shared_ptr<mirinae::CosmosSimulator>& cosmos)
             : cosmos_(cosmos) {}
 
         void render() {
-            auto ocean = this->try_find_ocaen();
+            using namespace mirinae::cpnt;
 
-            if (ImGui::Begin("Ocean")) {
-                auto& reg = cosmos_->reg();
+            auto& reg = this->reg();
+            if (ImGui::Begin("Entities")) {
+                if (ImGui::CollapsingHeader("StandardCamera")) {
+                    ImGui::Indent(20);
+                    for (const auto e : reg.view<StandardCamera>())
+                        this->render_standard_camera(e);
+                    ImGui::Unindent(20);
+                }
 
-                if (ocean) {
-                    glm::vec3 pos = ocean->transform_.pos_;
-                    glm::vec3 rot{ 0 };
-                    float amplitude = std::sqrt(ocean->amplitude_);
-                    float wind_speed = ocean->wind_speed_;
-                    float wind_dir = std::atan2(
-                        ocean->wind_dir_.y, ocean->wind_dir_.x
-                    );
+                if (ImGui::CollapsingHeader("StaticModelActor")) {
+                    ImGui::Indent(20);
+                    for (const auto e : reg.view<StaticModelActor>())
+                        this->render_static_model_actor(e);
+                    ImGui::Unindent(20);
+                }
 
-                    ImGui::DragFloat3("Pos", &pos[0]);
-                    ImGui::DragFloat3("Rot", &rot[0]);
-                    if (ImGui::Button("Reset rotation"))
-                        ocean->transform_.rot_ = glm::quat(1, 0, 0, 0);
-                    ImGui::SliderFloat("Amplitude", &amplitude, 0.0, 10000.0);
-                    ImGui::SliderFloat("Wind speed", &wind_speed, 0.0, 100.0);
-                    ImGui::SliderAngle("Wind dir", &wind_dir, 0, 360);
-                    ImGui::SliderInt("L", &ocean->L_, 0, 100);
+                if (ImGui::CollapsingHeader("SkinnedModelActor")) {
+                    ImGui::Indent(20);
+                    for (const auto e : reg.view<SkinnedModelActor>())
+                        this->render_skinned_model_actor(e);
+                    ImGui::Unindent(20);
+                }
 
-                    ocean->transform_.pos_ = pos;
-                    ocean->amplitude_ = amplitude * amplitude;
-                    ocean->wind_speed_ = wind_speed;
+                if (ImGui::CollapsingHeader("DLight")) {
+                    ImGui::Indent(20);
+                    for (const auto e : reg.view<DLight>())
+                        this->render_dlight(e);
+                    ImGui::Unindent(20);
+                }
 
-                    ocean->wind_dir_ = glm::vec2{ std::cos(wind_dir),
-                                                  std::sin(wind_dir) };
+                if (ImGui::CollapsingHeader("SLight")) {
+                    ImGui::Indent(20);
+                    for (const auto e : reg.view<SLight>())
+                        this->render_dlight(e);
+                    ImGui::Unindent(20);
+                }
 
-                    ocean->transform_.rotate(
-                        mirinae::cpnt::Transform::Angle::from_deg(rot.x),
-                        glm::vec3{ 1, 0, 0 }
-                    );
-                    ocean->transform_.rotate(
-                        mirinae::cpnt::Transform::Angle::from_deg(rot.y),
-                        glm::vec3{ 0, 1, 0 }
-                    );
-                    ocean->transform_.rotate(
-                        mirinae::cpnt::Transform::Angle::from_deg(rot.z),
-                        glm::vec3{ 0, 0, 1 }
-                    );
-                } else {
-                    ImGui::Text("Ocean not found");
+                if (ImGui::CollapsingHeader("Ocean")) {
+                    ImGui::Indent(20);
+                    for (const auto e : reg.view<Ocean>())
+                        this->render_ocean(e);
+                    ImGui::Unindent(20);
                 }
             }
+
             ImGui::End();
         }
 
@@ -333,7 +334,249 @@ namespace {
             return nullptr;
         }
 
+        static void render_transform(mirinae::cpnt::Transform& transform) {
+            auto transformf = transform.copy<float>();
+            glm::vec3 rot{ 0 };
+
+            ImGui::DragFloat3("Pos", &transformf.pos_[0]);
+            ImGui::DragFloat3("Rot", &rot[0]);
+            if (ImGui::Button("Reset rotation"))
+                transformf.rot_ = glm::quat(1, 0, 0, 0);
+            ImGui::DragFloat3("Scale", &transformf.scale_[0]);
+
+            transform = transformf.copy<double>();
+            transform.rotate(
+                mirinae::cpnt::Transform::Angle::from_deg(rot.x),
+                glm::vec3{ 1, 0, 0 }
+            );
+            transform.rotate(
+                mirinae::cpnt::Transform::Angle::from_deg(rot.y),
+                glm::vec3{ 0, 1, 0 }
+            );
+            transform.rotate(
+                mirinae::cpnt::Transform::Angle::from_deg(rot.z),
+                glm::vec3{ 0, 0, 1 }
+            );
+        }
+
+        void render_standard_camera(entt::entity e) {
+            using namespace mirinae::cpnt;
+
+            auto p_cam = this->reg().try_get<StandardCamera>(e);
+            if (!p_cam)
+                return;
+            auto& cam = *p_cam;
+
+            const auto name = fmt::format("StandardCamera-{}", (ENTT_ID_TYPE)e);
+
+            if (ImGui::CollapsingHeader(name.c_str())) {
+                this->render_transform(cam.view_);
+
+                float angle = cam.proj_.fov_.rad();
+                ImGui::SliderAngle("FOV", &angle, 1, 179);
+                cam.proj_.fov_.set_rad(angle);
+
+                float near = cam.proj_.near_;
+                ImGui::SliderFloat(
+                    "Near",
+                    &near,
+                    0.001,
+                    1000,
+                    nullptr,
+                    ImGuiSliderFlags_Logarithmic
+                );
+                cam.proj_.near_ = near;
+
+                float far = cam.proj_.far_;
+                ImGui::SliderFloat(
+                    "Far",
+                    &far,
+                    0.001,
+                    1000,
+                    nullptr,
+                    ImGuiSliderFlags_Logarithmic
+                );
+                cam.proj_.far_ = far;
+            }
+        }
+
+        void render_static_model_actor(entt::entity e) {
+            using namespace mirinae::cpnt;
+
+            auto p_actor = this->reg().try_get<StaticModelActor>(e);
+            if (!p_actor)
+                return;
+            auto& actor = *p_actor;
+
+            const auto name = fmt::format(
+                "StaticModelActor-{}", (ENTT_ID_TYPE)e
+            );
+
+            if (ImGui::CollapsingHeader(name.c_str())) {
+                ImGui::Text(
+                    "Model path: %s", actor.model_path_.u8string().c_str()
+                );
+
+                if (auto transform = this->reg().try_get<Transform>(e))
+                    this->render_transform(*transform);
+            }
+        }
+
+        void render_skinned_model_actor(entt::entity e) {
+            using namespace mirinae::cpnt;
+
+            auto p_actor = this->reg().try_get<SkinnedModelActor>(e);
+            if (!p_actor)
+                return;
+            auto& actor = *p_actor;
+
+            const auto name = fmt::format(
+                "SkinnedModelActor-{}", (ENTT_ID_TYPE)e
+            );
+
+            if (ImGui::CollapsingHeader(name.c_str())) {
+                ImGui::Text(
+                    "Model path: %s", actor.model_path_.u8string().c_str()
+                );
+
+                if (auto transform = this->reg().try_get<Transform>(e))
+                    this->render_transform(*transform);
+
+                auto& anim = actor.anim_state_;
+
+                float anim_speed = anim.play_speed();
+                ImGui::SliderFloat("Animation speed", &anim_speed, 0.0, 10.0);
+                anim.set_play_speed(anim_speed);
+
+                const auto anim_name = anim.get_cur_anim_name();
+                if (anim_name) {
+                    ImGui::Text("Current animation: %s", anim_name->c_str());
+                }
+
+                if (ImGui::Button("Next animation")) {
+                    const auto anim_count = anim.anims().size();
+                    if (anim_count > 0) {
+                        const auto cur_idx = anim.get_cur_anim_idx();
+                        if (cur_idx) {
+                            const auto next_idx = (*cur_idx + 1) % anim_count;
+                            anim.select_anim_index(
+                                next_idx, cosmos_->scene().clock()
+                            );
+                        } else {
+                            anim.select_anim_index(0, cosmos_->scene().clock());
+                        }
+                    }
+                }
+
+                auto selected_index = anim.get_cur_anim_idx().value_or(0);
+                const auto prev_anim_name = anim.get_cur_anim_name().value_or(
+                    "None"
+                );
+                ImGui::InputText(
+                    "Search Animation",
+                    search_buffer_.data(),
+                    search_buffer_.size()
+                );
+
+                if (ImGui::BeginCombo("Animations", prev_anim_name.c_str())) {
+                    for (int i = 0; i < anim.anims().size(); i++) {
+                        const auto& i_anim = anim.anims().at(i);
+                        const auto similarity = std::strstr(
+                            i_anim.name_.c_str(), search_buffer_.data()
+                        );
+                        if (similarity) {  // Filter based on input
+                            bool is_selected = (selected_index == i);
+                            if (ImGui::Selectable(
+                                    anim.anims()[i].name_.c_str(), is_selected
+                                )) {
+                                selected_index = i;
+                                anim.select_anim_index(
+                                    i, cosmos_->scene().clock()
+                                );
+                            }
+                            if (is_selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+        }
+
+        void render_dlight(entt::entity e) {
+            using namespace mirinae::cpnt;
+
+            auto dlight = this->reg().try_get<DLight>(e);
+            if (!dlight)
+                return;
+
+            const auto name = fmt::format("DLight-{}", (ENTT_ID_TYPE)e);
+
+            if (ImGui::CollapsingHeader(name.c_str())) {
+                this->render_transform(dlight->transform_);
+
+                ImGui::ColorEdit3("Color", &dlight->color_[0]);
+            }
+        }
+
+        void render_slight(entt::entity e) {
+            using namespace mirinae::cpnt;
+
+            auto slight = this->reg().try_get<SLight>(e);
+            if (!slight)
+                return;
+
+            const auto name = fmt::format("SLight-{}", (ENTT_ID_TYPE)e);
+
+            if (ImGui::CollapsingHeader(name.c_str())) {
+                this->render_transform(slight->transform_);
+
+                ImGui::ColorEdit3("Color", &slight->color_[0]);
+
+                float inner_angle = slight->inner_angle_.rad();
+                ImGui::SliderAngle("Inner angle", &inner_angle, 0, 180);
+                slight->inner_angle_.set_rad(inner_angle);
+
+                float outer_angle = slight->outer_angle_.rad();
+                ImGui::SliderAngle("Outer angle", &outer_angle, 0, 180);
+                slight->outer_angle_.set_rad(outer_angle);
+            }
+        }
+
+        void render_ocean(entt::entity e) {
+            using namespace mirinae::cpnt;
+
+            auto ocean = this->reg().try_get<Ocean>(e);
+            if (!ocean)
+                return;
+
+            const auto name = fmt::format("Ocean-{}", (ENTT_ID_TYPE)e);
+
+            if (ImGui::CollapsingHeader(name.c_str())) {
+                this->render_transform(ocean->transform_);
+
+                float amplitude = std::sqrt(ocean->amplitude_);
+                ImGui::SliderFloat("Amplitude", &amplitude, 0.0, 10000.0);
+                ocean->amplitude_ = amplitude * amplitude;
+
+                float wind_speed = ocean->wind_speed_;
+                ImGui::SliderFloat("Wind speed", &wind_speed, 0.0, 100.0);
+                ocean->wind_speed_ = wind_speed;
+
+                float wind_dir = std::atan2(
+                    ocean->wind_dir_.y, ocean->wind_dir_.x
+                );
+                ImGui::SliderAngle("Wind dir", &wind_dir, 0, 360);
+                ocean->wind_dir_ = glm::vec2{ std::cos(wind_dir),
+                                              std::sin(wind_dir) };
+
+                ImGui::SliderInt("L", &ocean->L_, 0, 100);
+            }
+        }
+
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
+        std::array<char, 128> search_buffer_{};
     };
 
 }  // namespace
@@ -426,7 +669,7 @@ namespace {
 
             // ImGui Widgets
             {
-                cosmos_->imgui_.push_back(std::make_shared<ImGuiOcean>(cosmos_)
+                cosmos_->imgui_.push_back(std::make_shared<ImGuiEntt>(cosmos_)
                 );
             }
         }

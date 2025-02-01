@@ -54,6 +54,7 @@ namespace mirinae {
         void select_anim_name(const std::string& name, const clock_t& clock);
         void deselect_anim(const clock_t& clock);
 
+        double play_speed() const { return this->selection_.play_speed(); }
         void set_play_speed(const double speed) {
             selection_.set_play_speed(speed);
         }
@@ -65,6 +66,7 @@ namespace mirinae {
             std::optional<size_t> index() const;
             std::optional<std::string> name() const;
             double start_sim_time() const { return this->start_sim_time_; }
+            double play_speed() const { return this->play_speed_; }
 
             void set_index(const size_t index, const clock_t& clock);
             void set_name(const std::string& name, const clock_t& clock);
