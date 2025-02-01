@@ -387,8 +387,8 @@ namespace {
                 ImGui::SliderFloat(
                     "Near",
                     &near,
-                    0.001,
-                    1000,
+                    0.001f,
+                    10000,
                     nullptr,
                     ImGuiSliderFlags_Logarithmic
                 );
@@ -398,12 +398,24 @@ namespace {
                 ImGui::SliderFloat(
                     "Far",
                     &far,
-                    0.001,
-                    1000,
+                    0.001f,
+                    10000,
                     nullptr,
                     ImGuiSliderFlags_Logarithmic
                 );
                 cam.proj_.far_ = far;
+
+                ImGui::SliderFloat(
+                    "Exposure",
+                    &cam.exposure_,
+                    0,
+                    10,
+                    nullptr,
+                    ImGuiSliderFlags_Logarithmic
+                );
+
+                ImGui::SliderFloat("Gamma", &cam.gamma_, 0, 3);
+                cam.gamma_ = std::round(cam.gamma_ * 10.f) / 10.f;
             }
         }
 

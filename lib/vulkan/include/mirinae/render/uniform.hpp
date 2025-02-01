@@ -66,6 +66,12 @@ namespace mirinae {
     };
 
 
+    struct U_FillScreenPushConst {
+        float exposure_;
+        float gamma_;
+    };
+
+
     class U_CompoMain {
 
     public:
