@@ -13,9 +13,17 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
     vec2 wind_dir;
     float wind_speed;
     float amplitude;
+    float fetch;
+    float swell;
+    float spread_blend;
+    float cutoff_high;
+    float cutoff_low;
     int N;
     int L;
 } u_pc;
+
+const float GAMMA = 3.3;
+const float SHORT_WAVES_FADE = 0.0001;
 
 
 vec4 gauseRnd() {
@@ -91,14 +99,117 @@ vec2 phillips_spectrum(vec2 wave_vector) {
 }
 
 
+float calc_freq(float k, float g, float depth) {
+    return sqrt(g * k * tanh(min(k * depth, 20)));
+}
+
+
+float calc_freq_derivative(float k, float g, float depth) {
+    float th = tanh(min(k * depth, 20));
+    float ch = cosh(k * depth);
+    return g * (depth * k / ch / ch + th) / calc_freq(k, g, depth) / 2;
+}
+
+
+float calc_tma_correction(float omega, float g, float depth) {
+    float omegaH = omega * sqrt(depth / g);
+    if (omegaH <= 1)
+        return 0.5 * omegaH * omegaH;
+    if (omegaH < 2)
+        return 1.0 - 0.5 * (2.0 - omegaH) * (2.0 - omegaH);
+    return 1;
+}
+
+
+float calc_jonswap(float omega, float g, float depth, float peak_omega) {
+    const float u = u_pc.wind_speed;
+    const float alpha = 0.076 * pow(u * u / (u_pc.fetch * GRAVITY_EARTH), 0.22);
+
+    float sigma;
+    if (omega <= peak_omega)
+        sigma = 0.07;
+    else
+        sigma = 0.09;
+    float r = exp(-(omega - peak_omega) * (omega - peak_omega) / 2 / sigma / sigma / peak_omega / peak_omega);
+
+    float oneOverOmega = 1 / omega;
+    float peakOmegaOverOmega = peak_omega / omega;
+    return u_pc.amplitude * calc_tma_correction(omega, g, depth) * alpha * g * g
+        * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega
+        * exp(-1.25 * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega)
+        * pow(abs(GAMMA), r);
+}
+
+
+float SpreadPower(float omega, float peak_omega) {
+    if (omega > peak_omega) {
+        return 9.77 * pow(abs(omega / peak_omega), -2.5);
+    } else {
+        return 6.97 * pow(abs(omega / peak_omega), 5);
+    }
+}
+
+
+float NormalisationFactor(float s) {
+    float s2 = s * s;
+    float s3 = s2 * s;
+    float s4 = s3 * s;
+    if (s < 5)
+        return -0.000564 * s4 + 0.00776 * s3 - 0.044 * s2 + 0.192 * s + 0.163;
+    else
+        return -4.80e-08 * s4 + 1.07e-05 * s3 - 9.53e-04 * s2 + 5.90e-02 * s + 3.93e-01;
+}
+
+
+float Cosine2s(float theta, float s) {
+    return NormalisationFactor(s) * pow(abs(cos(0.5 * theta)), 2 * s);
+}
+
+
+float calc_direction_spectrum(float theta, float omega, float peak_omega) {
+    const float wind_angle = atan(u_pc.wind_dir.y, u_pc.wind_dir.x);
+    float s = SpreadPower(omega, peak_omega)
+        + 16.0 * tanh(min(omega / peak_omega, 20.0)) * u_pc.swell * u_pc.swell;
+    return mix(2 / PI * cos(theta) * cos(theta), Cosine2s(theta - wind_angle, s), u_pc.spread_blend);
+}
+
+
+float calc_short_wave_fade(float k) {
+    return exp(-SHORT_WAVES_FADE * SHORT_WAVES_FADE * k * k);
+}
+
+
+float jonswap_spectrum(vec2 wave_vector) {
+    const float depth = 1.0;
+    const float deltaK = 2 * PI / float(u_pc.L);
+    const float k = max(length(wave_vector), 0.00001);
+
+    if (k < u_pc.cutoff_low || k > u_pc.cutoff_high)
+        return 0;
+
+    const float k_angle = atan(wave_vector.y, wave_vector.x);
+    const float peak_omega = 22 * GRAVITY_EARTH * GRAVITY_EARTH / (u_pc.wind_speed * u_pc.fetch);
+    const float omega = calc_freq(k, GRAVITY_EARTH, depth);
+    const vec4 wave_data = vec4(wave_vector.x, 1 / k, wave_vector.y, omega);
+    const float domega_dk = calc_freq_derivative(k, GRAVITY_EARTH, depth);
+
+    const float spectrum = calc_jonswap(omega, GRAVITY_EARTH, depth, peak_omega)
+        * calc_direction_spectrum(k_angle, omega, peak_omega)
+        * calc_short_wave_fade(k);
+
+    return sqrt(2 * spectrum * abs(domega_dk) / k * deltaK * deltaK);
+}
+
+
 void main() {
     const vec2 x = vec2(gl_GlobalInvocationID.xy) - float(u_pc.N) * 0.5;
     const vec2 k = x * 2.0 * PI / float(u_pc.L);
-    const vec2 h0k = phillips_spectrum(k);
+    const float h0k = jonswap_spectrum(k);
+    const float h0minusk = jonswap_spectrum(-k);
 
     const vec4 gause_random = gauseRnd();
-    const vec2 h0k_vec = gause_random.xy * h0k.x;
-    const vec2 h0minusk_vec = gause_random.zw * h0k.y;
+    const vec2 h0k_vec = gause_random.xy * h0k;
+    const vec2 h0minusk_vec = gause_random.zw * h0minusk;
 
     const ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
     imageStore(out_image, global_idx, vec4(h0k_vec, h0minusk_vec));

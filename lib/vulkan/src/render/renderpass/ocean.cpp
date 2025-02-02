@@ -56,6 +56,11 @@ namespace {
         glm::vec2 wind_dir_;
         float wind_speed_;
         float amplitude_;
+        float fetch_;
+        float swell_;
+        float spread_blend_;
+        float cutoff_high_;
+        float cutoff_low_;
         int32_t N_;
         int32_t L_;
     };
@@ -297,6 +302,11 @@ namespace {
             pc.wind_dir_ = ocean_entt.wind_dir_;
             pc.wind_speed_ = ocean_entt.wind_speed_;
             pc.amplitude_ = ocean_entt.amplitude_;
+            pc.fetch_ = ocean_entt.fetch_;
+            pc.swell_ = ocean_entt.swell_;
+            pc.spread_blend_ = ocean_entt.spread_blend_;
+            pc.cutoff_high_ = ocean_entt.cutoff_high_;
+            pc.cutoff_low_ = ocean_entt.cutoff_low_;
             pc.N_ = ::OCEAN_TEX_DIM;
             pc.L_ = ocean_entt.L_;
 
@@ -599,7 +609,7 @@ namespace {
                 .record(cmdbuf);
 
             ::U_OceanTildeHktPushConst pc;
-            pc.time_ = timer_.elapsed();
+            pc.time_ = ocean_entt.time_;
             pc.N_ = ::OCEAN_TEX_DIM;
             pc.L_ = ocean_entt.L_;
 

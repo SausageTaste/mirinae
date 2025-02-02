@@ -132,6 +132,12 @@ namespace mirinae::cpnt {
         glm::dvec2 wind_dir_{ 1, 1 };
         double wind_speed_ = 10;
         double amplitude_ = 500000;
+        float fetch_ = 100;
+        float swell_ = 0.5;
+        float spread_blend_ = 0.5;
+        float time_ = 0;
+        float cutoff_high_ = 100;
+        float cutoff_low_ = 0;
         int L_ = 100;
     };
 
