@@ -19,8 +19,8 @@ layout (push_constant) uniform U_OceanTessPushConst {
     float height_scale;
 } u_pc;
 
-layout(set = 0, binding = 0) uniform sampler2D u_height_map;
-layout(set = 0, binding = 1) uniform sampler2D u_normal_map;
+layout(set = 0, binding = 0) uniform sampler2D u_height_map[3];
+layout(set = 0, binding = 1) uniform sampler2D u_normal_map[3];
 
 layout(set = 0, binding = 2) uniform sampler2D u_sky_tex;
 
@@ -35,11 +35,22 @@ vec2 map_cube(vec3 v) {
 }
 
 
+vec3 merge_normals() {
+    vec3 normal = vec3(0);
+    for (int i = 0; i < 3; i++) {
+        vec3 texel = textureLod(u_normal_map[i], i_uv, 0).xyz;
+        normal += (texel * 2 - 1);
+    }
+
+    return normal;
+}
+
+
 void main() {
-    const vec3 normal_texel = textureLod(u_normal_map, i_uv, 0).xyz;
+    const vec3 normal_texel = textureLod(u_normal_map[0], i_uv, 0).xyz;
 
     const mat3 tbn = make_tbn_mat(vec3(0, 1, 0), vec3(1, 0, 0), u_pc.view * u_pc.model);
-    const vec3 normal = tbn * (normal_texel.xyz * 2 - 1);
+    const vec3 normal = normalize(tbn * merge_normals());
     const vec3 albedo = vec3(0.1, 0.15, 0.25);
     const float roughness = 0.1;
     const float metallic = 0;

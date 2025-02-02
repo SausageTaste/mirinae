@@ -1958,22 +1958,24 @@ namespace {
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& fd = frame_data_[i];
 
-                {
+                for (size_t j = 0; j < CASCADE_COUNT; j++) {
                     const auto img_name = fmt::format(
-                        "ocean_finalize:displacement_c0_f{}", i
+                        "ocean_finalize:displacement_c{}_f{}", j, i
                     );
-                    auto img = rp_res.get_img_reader(img_name, this->name());
-                    MIRINAE_ASSERT(nullptr != img);
-                    fd.height_map_ = img;
+                    fd.height_map_[j] = rp_res.get_img_reader(
+                        img_name, this->name()
+                    );
+                    MIRINAE_ASSERT(nullptr != fd.height_map_[j]);
                 }
 
-                {
+                for (size_t j = 0; j < CASCADE_COUNT; j++) {
                     const auto img_name = fmt::format(
-                        "ocean_finalize:normal_c0_f{}", i
+                        "ocean_finalize:normal_c{}_f{}", j, i
                     );
-                    auto img = rp_res.get_img_reader(img_name, this->name());
-                    MIRINAE_ASSERT(nullptr != img);
-                    fd.normal_map_ = img;
+                    fd.normal_map_[j] = rp_res.get_img_reader(
+                        img_name, this->name()
+                    );
+                    MIRINAE_ASSERT(nullptr != fd.normal_map_[j]);
                 }
             }
 
@@ -1983,13 +1985,13 @@ namespace {
                 builder
                     .new_binding()  // Height map
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-                    .set_count(1)
+                    .set_count(3)
                     .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                     .add_stage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
                     .finish_binding()
                     .new_binding()  // Normal map
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-                    .set_count(1)
+                    .set_count(3)
                     .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                     .finish_binding()
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Sky texture
@@ -2010,25 +2012,46 @@ namespace {
                     device.logi_device()
                 );
 
-                mirinae::DescWriteInfoBuilder builder;
+                mirinae::DescWriter writer;
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
-                    builder.set_descset(fd.desc_set_)
-                        .add_img_sampler_general(
-                            fd.height_map_->view_.get(),
-                            device.samplers().get_linear()
-                        )
-                        .add_img_sampler_general(
-                            fd.normal_map_->view_.get(),
-                            device.samplers().get_linear()
-                        )
-                        .add_img_sampler(
-                            sky_tex, device.samplers().get_linear()
-                        );
+                    writer.add_img_info()
+                        .set_img_view(fd.height_map_[0]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_img_info()
+                        .set_img_view(fd.height_map_[1]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_img_info()
+                        .set_img_view(fd.height_map_[2]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 0);
+
+                    writer.add_img_info()
+                        .set_img_view(fd.normal_map_[0]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_img_info()
+                        .set_img_view(fd.normal_map_[1]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_img_info()
+                        .set_img_view(fd.normal_map_[2]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 1);
+
+                    writer.add_img_info()
+                        .set_img_view(sky_tex)
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 2);
                 }
-                builder.apply_all(device.logi_device());
+                writer.apply_all(device.logi_device());
             }
 
             // Render pass
@@ -2123,8 +2146,10 @@ namespace {
 
         ~RpStatesOceanTess() override {
             for (auto& fd : frame_data_) {
-                rp_res_.free_img(fd.height_map_->id(), this->name());
-                rp_res_.free_img(fd.normal_map_->id(), this->name());
+                for (size_t i = 0; i < CASCADE_COUNT; i++) {
+                    rp_res_.free_img(fd.height_map_[i]->id(), this->name());
+                    rp_res_.free_img(fd.normal_map_[i]->id(), this->name());
+                }
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
@@ -2215,8 +2240,8 @@ namespace {
 
     private:
         struct FrameData {
-            mirinae::HRpImage height_map_;
-            mirinae::HRpImage normal_map_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> height_map_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> normal_map_;
             VkDescriptorSet desc_set_;
         };
 
