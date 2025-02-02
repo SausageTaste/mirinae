@@ -141,6 +141,7 @@ namespace mirinae::cpnt {
         std::array<float, CASCADE_COUNT> cutoff_high_;
         std::array<float, CASCADE_COUNT> cutoff_low_;
         int L_ = 100;
+        int idx_ = 0;
     };
 
 }  // namespace mirinae::cpnt

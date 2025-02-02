@@ -676,6 +676,8 @@ namespace {
                 ImGui::DragFloat("Time", &ocean->time_, 0.1);
                 if (ImGui::Button("Play"))
                     play_ocean_ = !play_ocean_;
+
+                ImGui::SliderInt("Index", &ocean->idx_, 0, 2);
             }
         }
 
