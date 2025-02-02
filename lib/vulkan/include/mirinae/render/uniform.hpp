@@ -387,6 +387,79 @@ namespace mirinae {
     };
 
 
+    class DescWriter {
+
+    public:
+        class ImageInfoView {
+
+        public:
+            ImageInfoView(VkDescriptorImageInfo& info) : info_(&info) {}
+
+            ImageInfoView& set_img_view(VkImageView img_view) {
+                this->info().imageView = img_view;
+                return *this;
+            }
+
+            ImageInfoView& set_sampler(VkSampler sam) {
+                this->info().sampler = sam;
+                return *this;
+            }
+
+            ImageInfoView& set_layout(VkImageLayout layout) {
+                this->info().imageLayout = layout;
+                return *this;
+            }
+
+        private:
+            VkDescriptorImageInfo& info() { return *info_; }
+
+            VkDescriptorImageInfo* info_;
+        };
+
+        ImageInfoView add_img_info() {
+            if (img_info_.empty())
+                img_info_.emplace_back();
+
+            return ImageInfoView(img_info_.back().emplace_back());
+        }
+
+        DescWriter& add_storage_img_info(VkImageView img_view) {
+            this->add_img_info()
+                .set_img_view(img_view)
+                .set_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .set_sampler(VK_NULL_HANDLE);
+            return *this;
+        }
+
+        DescWriter& add_img_write(VkDescriptorSet descset) {
+            const auto binding = write_info_.size();
+            const auto& img_info = img_info_.back();
+            img_info_.emplace_back();
+
+            auto& write = write_info_.emplace_back();
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = descset;
+            write.dstBinding = binding;
+            write.dstArrayElement = 0;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            write.descriptorCount = img_info.size();
+            write.pImageInfo = img_info.data();
+
+            return *this;
+        }
+
+        void apply_all(VkDevice logi_device) const {
+            vkUpdateDescriptorSets(
+                logi_device, write_info_.size(), write_info_.data(), 0, nullptr
+            );
+        }
+
+    private:
+        std::vector<VkWriteDescriptorSet> write_info_;
+        std::list<std::vector<VkDescriptorImageInfo>> img_info_;
+    };
+
+
     class DescPool {
 
     public:
