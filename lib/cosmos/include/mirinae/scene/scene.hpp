@@ -140,6 +140,7 @@ namespace mirinae::cpnt {
         float time_ = 0;
         std::array<float, CASCADE_COUNT> cutoff_high_;
         std::array<float, CASCADE_COUNT> cutoff_low_;
+        std::array<glm::vec2, CASCADE_COUNT> texcoord_offsets_;
         int L_ = 100;
         int idx_ = 0;
     };

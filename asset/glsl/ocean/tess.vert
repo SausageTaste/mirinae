@@ -10,8 +10,8 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 model;
     vec4 tile_index_count;
     vec4 height_map_size_fbuf_size;
+    vec2 texcoord_offset_rot[3];
     vec2 tile_dimensions;
-    float height_scale;
 } u_pc;
 
 
