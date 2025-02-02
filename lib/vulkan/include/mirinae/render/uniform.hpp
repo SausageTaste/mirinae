@@ -315,6 +315,8 @@ namespace mirinae {
 
         // Raw
         DescLayoutBuilder& new_binding();
+        DescLayoutBuilder& new_binding(uint32_t idx);
+
         DescLayoutBuilder& set_type(VkDescriptorType type);
         DescLayoutBuilder& set_count(uint32_t cnt);
         DescLayoutBuilder& set_stage(VkShaderStageFlags stage);
@@ -431,8 +433,28 @@ namespace mirinae {
             return *this;
         }
 
-        DescWriter& add_img_write(VkDescriptorSet descset) {
-            const auto binding = write_info_.size();
+        DescWriter& add_sampled_img_write(
+            VkDescriptorSet descset, uint32_t binding
+        ) {
+            const auto& img_info = img_info_.back();
+            img_info_.emplace_back();
+
+            auto& write = write_info_.emplace_back();
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = descset;
+            write.dstBinding = binding;
+            write.dstArrayElement = 0;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            write.descriptorCount = img_info.size();
+            write.pImageInfo = img_info.data();
+            write.pBufferInfo = nullptr;
+
+            return *this;
+        }
+
+        DescWriter& add_storage_img_write(
+            VkDescriptorSet descset, uint32_t binding
+        ) {
             const auto& img_info = img_info_.back();
             img_info_.emplace_back();
 
@@ -444,6 +466,7 @@ namespace mirinae {
             write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
             write.descriptorCount = img_info.size();
             write.pImageInfo = img_info.data();
+            write.pBufferInfo = nullptr;
 
             return *this;
         }
@@ -457,6 +480,7 @@ namespace mirinae {
     private:
         std::vector<VkWriteDescriptorSet> write_info_;
         std::list<std::vector<VkDescriptorImageInfo>> img_info_;
+        size_t binding_index_ = 0;
     };
 
 

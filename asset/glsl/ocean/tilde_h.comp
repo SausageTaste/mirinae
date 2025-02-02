@@ -5,8 +5,10 @@
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout (binding = 0, rgba32f) uniform writeonly image2D out_image;
+layout (binding = 1, rgba32f) uniform writeonly image2D out_image1;
+layout (binding = 2, rgba32f) uniform writeonly image2D out_image2;
 
-layout(set = 0, binding = 1) uniform sampler2D u_noise;
+layout(set = 0, binding = 3) uniform sampler2D u_noise;
 
 
 layout (push_constant) uniform U_OceanTildeHPushConst {
@@ -16,8 +18,8 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
     float fetch;
     float swell;
     float spread_blend;
-    float cutoff_high;
-    float cutoff_low;
+    float cutoff_high[3];
+    float cutoff_low[3];
     int N;
     int L;
 } u_pc;
@@ -179,12 +181,12 @@ float calc_short_wave_fade(float k) {
 }
 
 
-float jonswap_spectrum(vec2 wave_vector) {
+float jonswap_spectrum(vec2 wave_vector, int cascade) {
     const float depth = 1.0;
     const float deltaK = 2 * PI / float(u_pc.L);
     const float k = max(length(wave_vector), 0.00001);
 
-    if (k < u_pc.cutoff_low || k > u_pc.cutoff_high)
+    if (k < u_pc.cutoff_low[cascade] || k > u_pc.cutoff_high[cascade])
         return 0;
 
     const float k_angle = atan(wave_vector.y, wave_vector.x);
@@ -202,15 +204,24 @@ float jonswap_spectrum(vec2 wave_vector) {
 
 
 void main() {
+    const ivec2 nm = ivec2(gl_GlobalInvocationID.xy);
     const vec2 x = vec2(gl_GlobalInvocationID.xy) - float(u_pc.N) * 0.5;
     const vec2 k = x * 2.0 * PI / float(u_pc.L);
-    const float h0k = jonswap_spectrum(k);
-    const float h0minusk = jonswap_spectrum(-k);
 
     const vec4 gause_random = gauseRnd();
-    const vec2 h0k_vec = gause_random.xy * h0k;
-    const vec2 h0minusk_vec = gause_random.zw * h0minusk;
 
-    const ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
-    imageStore(out_image, global_idx, vec4(h0k_vec, h0minusk_vec));
+    imageStore(out_image, nm, vec4(
+        gause_random.xy * jonswap_spectrum(k, 0),
+        gause_random.zw * jonswap_spectrum(-k, 0)
+    ));
+
+    imageStore(out_image1, nm, vec4(
+        gause_random.xy * jonswap_spectrum(k, 1),
+        gause_random.zw * jonswap_spectrum(-k, 1)
+    ));
+
+    imageStore(out_image2, nm, vec4(
+        gause_random.xy * jonswap_spectrum(k, 2),
+        gause_random.zw * jonswap_spectrum(-k, 2)
+    ));
 }

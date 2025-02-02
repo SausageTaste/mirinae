@@ -6,9 +6,17 @@
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout (binding = 0, rgba32f) uniform writeonly image2D out_hkt_dxdy;
-layout (binding = 1, rgba32f) uniform writeonly image2D out_hkt_dz;
-layout (binding = 2, rgba32f) uniform writeonly image2D out_hkt_ddxddz;
-layout (binding = 3, rgba32f) uniform readonly image2D in_hk;
+layout (binding = 1, rgba32f) uniform writeonly image2D out_hkt_dxdy1;
+layout (binding = 2, rgba32f) uniform writeonly image2D out_hkt_dxdy2;
+layout (binding = 3, rgba32f) uniform writeonly image2D out_hkt_dz;
+layout (binding = 4, rgba32f) uniform writeonly image2D out_hkt_dz1;
+layout (binding = 5, rgba32f) uniform writeonly image2D out_hkt_dz2;
+layout (binding = 6, rgba32f) uniform writeonly image2D out_hkt_ddxddz;
+layout (binding = 7, rgba32f) uniform writeonly image2D out_hkt_ddxddz1;
+layout (binding = 8, rgba32f) uniform writeonly image2D out_hkt_ddxddz2;
+layout (binding = 9, rgba32f) uniform readonly image2D in_hk;
+layout (binding = 10, rgba32f) uniform readonly image2D in_hk1;
+layout (binding = 11, rgba32f) uniform readonly image2D in_hk2;
 
 layout (push_constant) uniform U_OceanTildeHKtPushConst {
     float time;
@@ -27,19 +35,68 @@ void main() {
         mag = 0.00001;
 
     const float w = sqrt(GRAVITY_EARTH * mag);
-    const vec4 h0k_texel = imageLoad(in_hk, global_idx);
-
     Complex exp_iwt = complex_init_exp(w * u_pc.time);
-    Complex hkt_dy = complex_add(
-        complex_mul(complex_init(h0k_texel.xy), exp_iwt),
-        complex_mul(complex_init(h0k_texel.zw), complex_conj(exp_iwt))
-    );
-    Complex hkt_dx = complex_mul(Complex(0, -k.x / mag), hkt_dy);
-    Complex hkt_dz = complex_mul(Complex(0, -k.y / mag), hkt_dy);
-    imageStore(out_hkt_dxdy, global_idx, vec4(hkt_dx.re, hkt_dx.im, hkt_dy.re, hkt_dy.im));
-    imageStore(out_hkt_dz, global_idx, vec4(hkt_dz.re, hkt_dz.im, 0, 1));
 
-    Complex hkt_slopex = complex_mul(Complex(0, k.x), hkt_dy);
-    Complex hkt_slopez = complex_mul(Complex(0, k.y), hkt_dy);
-    imageStore(out_hkt_ddxddz, global_idx, vec4(hkt_slopex.re, hkt_slopex.im, hkt_slopez.re, hkt_slopez.im));
+    {
+        const vec4 h0k_texel = imageLoad(in_hk, global_idx);
+
+        Complex hkt_dy = complex_add(
+            complex_mul(complex_init(h0k_texel.xy), exp_iwt),
+            complex_mul(complex_init(h0k_texel.zw), complex_conj(exp_iwt))
+        );
+        imageStore(out_hkt_dxdy, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, -k.x / mag), hkt_dy)),
+            complex_to_vec2(hkt_dy)
+        ));
+        imageStore(out_hkt_dz, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, -k.y / mag), hkt_dy)),
+            0, 1
+        ));
+        imageStore(out_hkt_ddxddz, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, k.x), hkt_dy)),
+            complex_to_vec2(complex_mul(Complex(0, k.y), hkt_dy))
+        ));
+    }
+
+    {
+        const vec4 h0k_texel = imageLoad(in_hk1, global_idx);
+
+        Complex hkt_dy = complex_add(
+            complex_mul(complex_init(h0k_texel.xy), exp_iwt),
+            complex_mul(complex_init(h0k_texel.zw), complex_conj(exp_iwt))
+        );
+        imageStore(out_hkt_dxdy1, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, -k.x / mag), hkt_dy)),
+            complex_to_vec2(hkt_dy)
+        ));
+        imageStore(out_hkt_dz1, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, -k.y / mag), hkt_dy)),
+            0, 1
+        ));
+        imageStore(out_hkt_ddxddz1, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, k.x), hkt_dy)),
+            complex_to_vec2(complex_mul(Complex(0, k.y), hkt_dy))
+        ));
+    }
+
+    {
+        const vec4 h0k_texel = imageLoad(in_hk2, global_idx);
+
+        Complex hkt_dy = complex_add(
+            complex_mul(complex_init(h0k_texel.xy), exp_iwt),
+            complex_mul(complex_init(h0k_texel.zw), complex_conj(exp_iwt))
+        );
+        imageStore(out_hkt_dxdy2, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, -k.x / mag), hkt_dy)),
+            complex_to_vec2(hkt_dy)
+        ));
+        imageStore(out_hkt_dz2, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, -k.y / mag), hkt_dy)),
+            0, 1
+        ));
+        imageStore(out_hkt_ddxddz2, global_idx, vec4(
+            complex_to_vec2(complex_mul(Complex(0, k.x), hkt_dy)),
+            complex_to_vec2(complex_mul(Complex(0, k.y), hkt_dy))
+        ));
+    }
 }
