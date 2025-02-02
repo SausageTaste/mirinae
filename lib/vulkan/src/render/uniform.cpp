@@ -72,6 +72,16 @@ namespace mirinae {
         return *this;
     }
 
+    DescLayoutBuilder& DescLayoutBuilder::new_binding(uint32_t idx) {
+        auto& binding = bindings_.emplace_back();
+        binding.binding = idx;
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        binding.descriptorCount = 0;
+        binding.stageFlags = 0;
+        binding.pImmutableSamplers = nullptr;
+        return *this;
+    }
+
     DescLayoutBuilder& DescLayoutBuilder::set_type(VkDescriptorType type) {
         bindings_.back().descriptorType = type;
         return *this;

@@ -648,10 +648,21 @@ namespace {
                     SUNG_PI *
                     std::sqrt(2.0 * 256 * 256 / (ocean->L_ * ocean->L_))
                 );
-                ImGui::SliderFloat("Cut high", &ocean->cutoff_high_, 0, max_wl);
-                ImGui::SliderFloat(
-                    "Cut low", &ocean->cutoff_low_, 0, ocean->cutoff_high_
-                );
+
+                for (size_t i = 0; i < Ocean::CASCADE_COUNT; ++i) {
+                    ImGui::PushID(i);
+                    ImGui::Text("Cascade %d", i);
+                    ImGui::SliderFloat(
+                        "Cut high", &ocean->cutoff_high_[i], 0, max_wl
+                    );
+                    ImGui::SliderFloat(
+                        "Cut low",
+                        &ocean->cutoff_low_[i],
+                        0,
+                        ocean->cutoff_high_[i]
+                    );
+                    ImGui::PopID();
+                }
 
                 float wind_dir = sung::to_degrees(
                     std::atan2(ocean->wind_dir_.y, ocean->wind_dir_.x)
@@ -778,6 +789,13 @@ namespace {
                 ocean.swell_ = 0.8;
                 ocean.spread_blend_ = 0.8;
                 ocean.L_ = 20;
+
+                ocean.cutoff_low_[0] = 0;
+                ocean.cutoff_high_[0] = 5;
+                ocean.cutoff_low_[1] = 5;
+                ocean.cutoff_high_[1] = 15;
+                ocean.cutoff_low_[2] = 15;
+                ocean.cutoff_high_[2] = 1000;
             }
 
             // Script

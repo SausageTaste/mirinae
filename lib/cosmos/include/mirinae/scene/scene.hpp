@@ -128,6 +128,8 @@ namespace mirinae::cpnt {
 
 
     struct Ocean {
+        constexpr static uint32_t CASCADE_COUNT = 3;
+
         TransformQuat<double> transform_;
         glm::dvec2 wind_dir_{ 1, 1 };
         double wind_speed_ = 10;
@@ -136,8 +138,8 @@ namespace mirinae::cpnt {
         float swell_ = 0.5;
         float spread_blend_ = 0.5;
         float time_ = 0;
-        float cutoff_high_ = 100;
-        float cutoff_low_ = 0;
+        std::array<float, CASCADE_COUNT> cutoff_high_;
+        std::array<float, CASCADE_COUNT> cutoff_low_;
         int L_ = 100;
     };
 
