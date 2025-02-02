@@ -652,14 +652,22 @@ namespace {
                 for (size_t i = 0; i < Ocean::CASCADE_COUNT; ++i) {
                     ImGui::PushID(i);
                     ImGui::Text("Cascade %d", i);
-                    ImGui::SliderFloat(
-                        "Cut high", &ocean->cutoff_high_[i], 0, max_wl
+
+                    int cut_low = ocean->cutoff_low_[i];
+                    ImGui::SliderInt(
+                        "Cut low", &cut_low, 0, ocean->cutoff_high_[i]
                     );
-                    ImGui::SliderFloat(
-                        "Cut low",
-                        &ocean->cutoff_low_[i],
-                        0,
-                        ocean->cutoff_high_[i]
+                    ocean->cutoff_low_[i] = cut_low;
+
+                    int cut_high = ocean->cutoff_high_[i];
+                    ImGui::SliderInt("Cut high", &cut_high, 0, max_wl);
+                    ocean->cutoff_high_[i] = cut_high;
+
+                    ImGui::SliderFloat2(
+                        "Texcoord offset",
+                        &ocean->texcoord_offsets_[i].x,
+                        -10,
+                        10
                     );
                     ImGui::PopID();
                 }

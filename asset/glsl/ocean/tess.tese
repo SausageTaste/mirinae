@@ -1,5 +1,7 @@
 #version 450
 
+#include "../utils/complex.glsl"
+
 layout (quads, equal_spacing, cw) in;
 
 layout (location = 0) in vec3 i_normal[];
@@ -15,8 +17,8 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 model;
     vec4 tile_index_count;
     vec4 height_map_size_fbuf_size;
+    vec2 texcoord_offset_rot[3];
     vec2 tile_dimensions;
-    float height_scale;
 } u_pc;
 
 layout(set = 0, binding = 0) uniform sampler2D u_height_map[3];
@@ -44,8 +46,9 @@ void main() {
     const vec3 p1 = (p11 - p10) * u + p10;
     vec3 p = (p1 - p0) * v + p0;
 
-    for (int i = 0; i < 3; ++i)
-        p.xyz += texture(u_height_map[i], tex_coord).xyz;
+    for (int i = 0; i < 3; ++i) {
+        p.xyz += texture(u_height_map[i], tex_coord + u_pc.texcoord_offset_rot[i]).xyz;
+    }
 
     o_frag_pos = (u_pc.view * u_pc.model * vec4(p, 1)).xyz;
     gl_Position = u_pc.pvm * vec4(p, 1);

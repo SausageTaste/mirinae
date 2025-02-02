@@ -1926,8 +1926,9 @@ namespace {
             return *this;
         }
 
-        U_OceanTessPushConst& height_scale(float x) {
-            height_scale_ = x;
+        U_OceanTessPushConst& texcoord_offset(size_t idx, float x, float y) {
+            texcoord_offset_rot_[idx].x = x;
+            texcoord_offset_rot_[idx].y = y;
             return *this;
         }
 
@@ -1937,9 +1938,11 @@ namespace {
         glm::mat4 model_;
         glm::vec4 tile_index_count_;
         glm::vec4 height_map_size_fbuf_size_;
+        glm::vec2 texcoord_offset_rot_[3];
         glm::vec2 tile_dimensions_;
-        float height_scale_;
     };
+
+    constexpr auto shit = sizeof(U_OceanTessPushConst);
 
 
     class RpStatesOceanTess : public mirinae::IRpStates {
@@ -2219,8 +2222,13 @@ namespace {
                 .tile_count(100, 100)
                 .height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                 .fbuf_size(fbuf_exd)
-                .tile_dimensions(ocean_entt.L_, ocean_entt.L_)
-                .height_scale(1);
+                .tile_dimensions(ocean_entt.L_, ocean_entt.L_);
+            for (size_t i = 0; i < CASCADE_COUNT; i++)
+                pc.texcoord_offset(
+                    i,
+                    ocean_entt.texcoord_offsets_[i].x,
+                    ocean_entt.texcoord_offsets_[i].y
+                );
 
             for (int x = 0; x < 10; ++x) {
                 for (int y = 0; y < 10; ++y) {
