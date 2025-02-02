@@ -19,7 +19,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
     float height_scale;
 } u_pc;
 
-layout(set = 0, binding = 0) uniform sampler2D u_height_map;
+layout(set = 0, binding = 0) uniform sampler2D u_height_map[3];
 
 
 void main() {
@@ -44,8 +44,9 @@ void main() {
     const vec3 p1 = (p11 - p10) * u + p10;
     vec3 p = (p1 - p0) * v + p0;
 
-    const vec3 displacement = texture(u_height_map, tex_coord).xyz * u_pc.height_scale;
-    p.xyz += displacement;
+    for (int i = 0; i < 3; ++i)
+        p.xyz += texture(u_height_map[i], tex_coord).xyz;
+
     o_frag_pos = (u_pc.view * u_pc.model * vec4(p, 1)).xyz;
     gl_Position = u_pc.pvm * vec4(p, 1);
 
