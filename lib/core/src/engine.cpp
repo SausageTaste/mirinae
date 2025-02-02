@@ -329,6 +329,12 @@ namespace {
             }
 
             ImGui::End();
+
+            if (play_ocean_) {
+                if (auto ocean = try_find_ocaen()) {
+                    ocean->time_ += cosmos_->scene().clock().dt();
+                }
+            }
         }
 
     private:
@@ -604,27 +610,67 @@ namespace {
             if (ImGui::CollapsingHeader(name.c_str())) {
                 this->render_transform(ocean->transform_);
 
-                float amplitude = std::sqrt(ocean->amplitude_);
-                ImGui::SliderFloat("Amplitude", &amplitude, 0.0, 10000.0);
-                ocean->amplitude_ = amplitude * amplitude;
+                float amplitude = ocean->amplitude_;
+                ImGui::SliderFloat(
+                    "Amplitude",
+                    &amplitude,
+                    1000,
+                    10000000000,
+                    nullptr,
+                    ImGuiSliderFlags_Logarithmic
+                );
+                ocean->amplitude_ = amplitude;
 
                 float wind_speed = ocean->wind_speed_;
-                ImGui::SliderFloat("Wind speed", &wind_speed, 0.0, 100.0);
+                ImGui::SliderFloat(
+                    "Wind speed",
+                    &wind_speed,
+                    0.0,
+                    10000.0,
+                    nullptr,
+                    ImGuiSliderFlags_Logarithmic
+                );
                 ocean->wind_speed_ = wind_speed;
 
-                float wind_dir = std::atan2(
-                    ocean->wind_dir_.y, ocean->wind_dir_.x
+                ImGui::SliderFloat(
+                    "Fetch",
+                    &ocean->fetch_,
+                    0,
+                    50000,
+                    nullptr,
+                    ImGuiSliderFlags_Logarithmic
                 );
-                ImGui::SliderAngle("Wind dir", &wind_dir, 0, 360);
-                ocean->wind_dir_ = glm::vec2{ std::cos(wind_dir),
-                                              std::sin(wind_dir) };
+                ImGui::SliderFloat("Swell", &ocean->swell_, 0, 1);
+                ImGui::SliderFloat("Spread blend", &ocean->spread_blend_, 0, 1);
 
                 ImGui::SliderInt("L", &ocean->L_, 0, 100);
+                const auto max_wl = std::ceil(
+                    SUNG_PI *
+                    std::sqrt(2.0 * 256 * 256 / (ocean->L_ * ocean->L_))
+                );
+                ImGui::SliderFloat("Cut high", &ocean->cutoff_high_, 0, max_wl);
+                ImGui::SliderFloat(
+                    "Cut low", &ocean->cutoff_low_, 0, ocean->cutoff_high_
+                );
+
+                float wind_dir = sung::to_degrees(
+                    std::atan2(ocean->wind_dir_.y, ocean->wind_dir_.x)
+                );
+                ImGui::SliderFloat("Wind dir", &wind_dir, -179, 179);
+                ocean->wind_dir_ = glm::vec2{
+                    std::cos(sung::to_radians(wind_dir)),
+                    std::sin(sung::to_radians(wind_dir))
+                };
+
+                ImGui::DragFloat("Time", &ocean->time_, 0.1);
+                if (ImGui::Button("Play"))
+                    play_ocean_ = !play_ocean_;
             }
         }
 
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
         std::array<char, 128> search_buffer_{};
+        bool play_ocean_ = false;
     };
 
 }  // namespace
@@ -726,8 +772,11 @@ namespace {
             {
                 const auto entt = reg.create();
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.amplitude_ = 2168730.591938375;
-                ocean.wind_speed_ = 20.0;
+                ocean.transform_.pos_ = { -30, 3, -30 };
+                ocean.amplitude_ = 50000000;
+                ocean.wind_speed_ = 300.0;
+                ocean.swell_ = 0.8;
+                ocean.spread_blend_ = 0.8;
                 ocean.L_ = 20;
             }
 
