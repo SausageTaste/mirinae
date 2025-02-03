@@ -130,9 +130,9 @@ namespace mirinae::cpnt {
     struct Ocean {
         constexpr static uint32_t CASCADE_COUNT = 3;
 
-        double max_wavelen() const {
+        static double max_wavelen(double L) {
             return std::ceil(
-                SUNG_PI * std::sqrt(2.0 * 256.0 * 256.0 / (L_ * L_))
+                SUNG_PI * std::sqrt(2.0 * 256.0 * 256.0 / (L * L))
             );
         }
 
@@ -144,6 +144,7 @@ namespace mirinae::cpnt {
             float amplitude_ = 500000;
             float cutoff_high_ = 0;
             float cutoff_low_ = 0;
+            float L_ = 100;
             bool active_ = true;
         };
 
@@ -155,7 +156,6 @@ namespace mirinae::cpnt {
         float swell_ = 0.5;
         float spread_blend_ = 0.5;
         float time_ = 0;
-        int L_ = 100;
         int idx_ = 0;
     };
 
