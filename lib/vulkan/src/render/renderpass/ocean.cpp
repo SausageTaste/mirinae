@@ -2262,11 +2262,12 @@ namespace {
                 .add_stage_tese()
                 .add_stage_frag();
 
-            const auto model_mat = ocean_entt.transform_.make_model_mat();
-
             U_OceanTessPushConst pc;
-            pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
-                .tile_count(100, 100);
+            pc.tile_count(10, 10).pvm(
+                ctxt.proj_mat_,
+                ctxt.view_mat_,
+                ocean_entt.transform_.make_model_mat()
+            );
 
             for (int x = 0; x < 10; ++x) {
                 for (int y = 0; y < 10; ++y) {
