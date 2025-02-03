@@ -628,7 +628,6 @@ namespace {
                 );
                 ImGui::SliderFloat("Swell", &ocean->swell_, 0, 1);
                 ImGui::SliderFloat("Spread blend", &ocean->spread_blend_, 0, 1);
-                ImGui::SliderInt("L", &ocean->L_, 0, 100);
 
                 float wind_dir = sung::to_degrees(
                     std::atan2(ocean->wind_dir_.y, ocean->wind_dir_.x)
@@ -645,7 +644,6 @@ namespace {
 
                 ImGui::SliderInt("Index", &ocean->idx_, 0, 2);
 
-                const auto max_wl = ocean->max_wavelen();
                 for (size_t i = 0; i < Ocean::CASCADE_COUNT; ++i) {
                     ImGui::PushID(i);
                     ImGui::Text("Cascade %d", i);
@@ -661,8 +659,17 @@ namespace {
                         ImGuiSliderFlags_Logarithmic
                     );
 
-                    ImGui::SliderFloat("Cut low", &cascade.cutoff_low_, 0, 1);
-                    ImGui::SliderFloat("Cut high", &cascade.cutoff_high_, 0, 1);
+                    ImGui::SliderFloat("L", &cascade.L_, 1, 100);
+                    const auto max_wl = Ocean::max_wavelen(cascade.L_);
+
+                    float low = cascade.cutoff_low_ / max_wl;
+                    ImGui::SliderFloat("Cut low", &low, 0, 1);
+                    cascade.cutoff_low_ = low * max_wl;
+
+                    float high = cascade.cutoff_high_ / max_wl;
+                    ImGui::SliderFloat("Cut high", &high, 0, 1);
+                    cascade.cutoff_high_ = high * max_wl;
+
                     ImGui::SliderFloat2(
                         "TexCo offset", &cascade.texco_offset_[0], -10, 10
                     );
@@ -802,22 +809,26 @@ namespace {
                 ocean.wind_speed_ = 300.0;
                 ocean.swell_ = 0.3f;
                 ocean.spread_blend_ = 0.7f;
-                ocean.L_ = 20;
+
+                const auto max_wl = ocean.max_wavelen(20);
 
                 ocean.cascades_[0].amplitude_ = 190622176;
-                ocean.cascades_[0].cutoff_low_ = 0;
-                ocean.cascades_[0].cutoff_high_ = 0.015;
+                ocean.cascades_[0].cutoff_low_ = 0 * max_wl;
+                ocean.cascades_[0].cutoff_high_ = 0.015 * max_wl;
                 ocean.cascades_[0].texco_scale_ = { 0.585, 0 };
+                ocean.cascades_[0].L_ = 20;
 
                 ocean.cascades_[1].amplitude_ = 132246544;
-                ocean.cascades_[1].cutoff_low_ = 0.008;
-                ocean.cascades_[1].cutoff_high_ = 0.103;
+                ocean.cascades_[1].cutoff_low_ = 0.008 * max_wl;
+                ocean.cascades_[1].cutoff_high_ = 0.103 * max_wl;
                 ocean.cascades_[1].texco_scale_ = { 1.122, -0.098 };
+                ocean.cascades_[1].L_ = 20;
 
                 ocean.cascades_[2].amplitude_ = 107366056;
-                ocean.cascades_[2].cutoff_low_ = 0.098;
-                ocean.cascades_[2].cutoff_high_ = 1;
+                ocean.cascades_[2].cutoff_low_ = 0.098 * max_wl;
+                ocean.cascades_[2].cutoff_high_ = 1 * max_wl;
                 ocean.cascades_[2].texco_scale_ = { 0.886, 0.062 };
+                ocean.cascades_[2].L_ = 20;
             }
 
             // Script

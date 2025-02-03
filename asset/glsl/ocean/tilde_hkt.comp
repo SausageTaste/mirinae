@@ -12,8 +12,8 @@ layout (binding = 3, rgba32f) uniform readonly image2D in_hk[3];
 
 layout (push_constant) uniform U_OceanTildeHKtPushConst {
     float time;
+    int L[3];
     int N;
-    int L;
 } u_pc;
 
 
@@ -22,7 +22,7 @@ void main() {
     const int cascade = int(gl_GlobalInvocationID.z);
 
     const vec2 x = ivec2(gl_GlobalInvocationID.xy) - float(u_pc.N) / 2.0;
-    const vec2 k = x * 2.0 * PI / float(u_pc.L);
+    const vec2 k = x * 2.0 * PI / float(u_pc.L[cascade]);
     float mag = length(k);
     if (mag < 0.00001)
         mag = 0.00001;

@@ -62,8 +62,8 @@ namespace {
         float spread_blend_;
         float cutoff_high_;
         float cutoff_low_;
+        float L_;
         int32_t N_;
-        int32_t L_;
         int32_t cascade_;
     };
 
@@ -319,14 +319,13 @@ namespace {
             pc.swell_ = ocean_entt.swell_;
             pc.spread_blend_ = ocean_entt.spread_blend_;
             pc.N_ = ::OCEAN_TEX_DIM;
-            pc.L_ = ocean_entt.L_;
 
-            const auto max_wavelen = ocean_entt.max_wavelen();
             for (int i = 0; i < CASCADE_COUNT; ++i) {
                 auto& cascade = ocean_entt.cascades_[i];
                 pc.amplitude_ = cascade.amplitude();
-                pc.cutoff_high_ = cascade.cutoff_high_ * max_wavelen;
-                pc.cutoff_low_ = cascade.cutoff_low_ * max_wavelen;
+                pc.cutoff_high_ = cascade.cutoff_high_;
+                pc.cutoff_low_ = cascade.cutoff_low_;
+                pc.L_ = cascade.L_;
                 pc.cascade_ = i;
 
                 mirinae::PushConstInfo pc_info;
@@ -366,8 +365,8 @@ namespace {
 
     struct U_OceanTildeHktPushConst {
         float time_;
+        int32_t L_[3];
         int32_t N_;
-        int32_t L_;
     };
 
 
@@ -657,8 +656,10 @@ namespace {
 
             ::U_OceanTildeHktPushConst pc;
             pc.time_ = ocean_entt.time_;
+            pc.L_[0] = ocean_entt.cascades_[0].L_;
+            pc.L_[1] = ocean_entt.cascades_[1].L_;
+            pc.L_[2] = ocean_entt.cascades_[2].L_;
             pc.N_ = ::OCEAN_TEX_DIM;
-            pc.L_ = ocean_entt.L_;
 
             mirinae::PushConstInfo pc_info;
             pc_info.layout(pipeline_layout_)
@@ -1450,7 +1451,7 @@ namespace {
                 .record(cmdbuf);
 
             ::U_OceanNaiveIftPushConst pc;
-            pc.L_ = ocean_entt.L_;
+            pc.L_ = 20;
             pc.N_ = ::OCEAN_TEX_DIM;
             pc.stage_ = 0;
 
@@ -1867,6 +1868,13 @@ namespace {
             return *this;
         }
 
+        template <typename T>
+        U_OceanTessParams& tile_dimensions(T x) {
+            tile_dimensions_.x = static_cast<float>(x);
+            tile_dimensions_.y = static_cast<float>(x);
+            return *this;
+        }
+
         U_OceanTessParams& texco_offset(size_t idx, float x, float y) {
             texco_offset_rot_[idx].x = x;
             texco_offset_rot_[idx].y = y;
@@ -2196,7 +2204,7 @@ namespace {
             U_OceanTessParams ubuf;
             ubuf.height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                 .fbuf_size(fbuf_exd)
-                .tile_dimensions(ocean_entt.L_, ocean_entt.L_);
+                .tile_dimensions(20);
             for (size_t i = 0; i < CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
