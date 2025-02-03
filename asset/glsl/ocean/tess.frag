@@ -38,10 +38,22 @@ vec2 map_cube(vec3 v) {
 }
 
 
+vec2 transform_uv(vec2 uv, int cascade) {
+    vec2 tile_idx = u_pc.tile_index_count.xy;
+    vec2 offset = u_params.texco_offset_rot_[cascade].xy;
+    vec2 scale = u_params.texco_offset_rot_[cascade].zw;
+
+    const Complex global_uv = complex_init(uv + tile_idx);
+    const Complex offset_rot = complex_init(scale);
+    return complex_to_vec2(complex_mul(global_uv, offset_rot)) + offset;
+}
+
+
 vec3 merge_normals() {
     vec3 normal = vec3(0);
+
     for (int i = 0; i < 3; i++) {
-        vec3 texel = textureLod(u_normal_map[i], i_uv + u_params.texco_offset_rot_[i].xy, 0).xyz;
+        vec3 texel = textureLod(u_normal_map[i], transform_uv(i_uv, i), 0).xyz;
         normal += (texel * 2 - 1);
     }
 

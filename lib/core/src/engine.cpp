@@ -660,15 +660,33 @@ namespace {
                         nullptr,
                         ImGuiSliderFlags_Logarithmic
                     );
-                    ImGui::SliderInt(
-                        "Cut low", &cascade.cutoff_low_, 0, max_wl
-                    );
-                    ImGui::SliderInt(
-                        "Cut high", &cascade.cutoff_high_, 0, max_wl
+
+                    ImGui::SliderFloat("Cut low", &cascade.cutoff_low_, 0, 1);
+                    ImGui::SliderFloat("Cut high", &cascade.cutoff_high_, 0, 1);
+                    ImGui::SliderFloat2(
+                        "TexCo offset", &cascade.texco_offset_[0], -10, 10
                     );
                     ImGui::SliderFloat2(
-                        "Texcoord offset", &cascade.texcoord_offset_[0], -10, 10
+                        "TexCo scale", &cascade.texco_scale_[0], -10, 10
                     );
+
+                    float magnitude = 1.f / glm::length(cascade.texco_scale_);
+                    float phase = std::atan2(
+                        cascade.texco_scale_.y, cascade.texco_scale_.x
+                    );
+                    ImGui::SliderFloat(
+                        "TexCo Magnitude",
+                        &magnitude,
+                        0.01f,
+                        10,
+                        nullptr,
+                        ImGuiSliderFlags_Logarithmic
+                    );
+                    ImGui::SliderAngle("TexCo Phase", &phase, -179, 179);
+                    cascade.texco_scale_ = glm::vec2{
+                        std::cos(phase) / magnitude, std::sin(phase) / magnitude
+                    };
+
                     ImGui::Checkbox("Active", &cascade.active_);
 
                     ImGui::PopID();
@@ -780,23 +798,26 @@ namespace {
             {
                 const auto entt = reg.create();
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.transform_.pos_ = { -30, 3, -30 };
+                ocean.transform_.pos_ = { -30, 8, -30 };
                 ocean.wind_speed_ = 300.0;
-                ocean.swell_ = 0.8f;
-                ocean.spread_blend_ = 0.8f;
+                ocean.swell_ = 0.3f;
+                ocean.spread_blend_ = 0.7f;
                 ocean.L_ = 20;
 
-                ocean.cascades_[0].amplitude_ = 50000000;
+                ocean.cascades_[0].amplitude_ = 190622176;
                 ocean.cascades_[0].cutoff_low_ = 0;
-                ocean.cascades_[0].cutoff_high_ = 3;
+                ocean.cascades_[0].cutoff_high_ = 0.015;
+                ocean.cascades_[0].texco_scale_ = { 0.585, 0 };
 
-                ocean.cascades_[1].amplitude_ = 50000000;
-                ocean.cascades_[1].cutoff_low_ = 3;
-                ocean.cascades_[1].cutoff_high_ = 10;
+                ocean.cascades_[1].amplitude_ = 132246544;
+                ocean.cascades_[1].cutoff_low_ = 0.008;
+                ocean.cascades_[1].cutoff_high_ = 0.103;
+                ocean.cascades_[1].texco_scale_ = { 1.122, -0.098 };
 
-                ocean.cascades_[2].amplitude_ = 50000000;
-                ocean.cascades_[2].cutoff_low_ = 10;
-                ocean.cascades_[2].cutoff_high_ = 100;
+                ocean.cascades_[2].amplitude_ = 107366056;
+                ocean.cascades_[2].cutoff_low_ = 0.098;
+                ocean.cascades_[2].cutoff_high_ = 1;
+                ocean.cascades_[2].texco_scale_ = { 0.886, 0.062 };
             }
 
             // Script

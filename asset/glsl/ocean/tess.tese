@@ -27,6 +27,17 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
 layout (set = 0, binding = 1) uniform sampler2D u_height_map[3];
 
 
+vec2 transform_uv(vec2 uv, int cascade) {
+    vec2 tile_idx = u_pc.tile_index_count.xy;
+    vec2 offset = u_params.texco_offset_rot_[cascade].xy;
+    vec2 scale = u_params.texco_offset_rot_[cascade].zw;
+
+    const Complex global_uv = complex_init(uv + tile_idx);
+    const Complex offset_rot = complex_init(scale);
+    return complex_to_vec2(complex_mul(global_uv, offset_rot)) + offset;
+}
+
+
 void main() {
     const float u = gl_TessCoord.x;
     const float v = gl_TessCoord.y;
@@ -49,9 +60,8 @@ void main() {
     const vec3 p1 = (p11 - p10) * u + p10;
     vec3 p = (p1 - p0) * v + p0;
 
-    for (int i = 0; i < 3; ++i) {
-        p.xyz += texture(u_height_map[i], tex_coord + u_params.texco_offset_rot_[i].xy).xyz;
-    }
+    for (int i = 0; i < 3; ++i)
+        p.xyz += texture(u_height_map[i], transform_uv(tex_coord, i)).xyz;
 
     o_frag_pos = (u_pc.view * u_pc.model * vec4(p, 1)).xyz;
     gl_Position = u_pc.pvm * vec4(p, 1);

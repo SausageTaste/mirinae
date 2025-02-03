@@ -321,11 +321,12 @@ namespace {
             pc.N_ = ::OCEAN_TEX_DIM;
             pc.L_ = ocean_entt.L_;
 
+            const auto max_wavelen = ocean_entt.max_wavelen();
             for (int i = 0; i < CASCADE_COUNT; ++i) {
                 auto& cascade = ocean_entt.cascades_[i];
                 pc.amplitude_ = cascade.amplitude();
-                pc.cutoff_high_ = cascade.cutoff_high_;
-                pc.cutoff_low_ = cascade.cutoff_low_;
+                pc.cutoff_high_ = cascade.cutoff_high_ * max_wavelen;
+                pc.cutoff_low_ = cascade.cutoff_low_ * max_wavelen;
                 pc.cascade_ = i;
 
                 mirinae::PushConstInfo pc_info;
@@ -2232,7 +2233,8 @@ namespace {
                 .fbuf_size(fbuf_exd)
                 .tile_dimensions(ocean_entt.L_, ocean_entt.L_);
             for (size_t i = 0; i < CASCADE_COUNT; i++)
-                ubuf.texco_offset(i, ocean_entt.cascades_[i].texcoord_offset_);
+                ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
+                    .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());
 
             mirinae::RenderPassBeginInfo{}

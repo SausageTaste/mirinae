@@ -139,10 +139,11 @@ namespace mirinae::cpnt {
         struct Cascade {
             float amplitude() const { return active_ ? amplitude_ : 0; }
 
-            glm::vec2 texcoord_offset_{ 0 };
+            glm::vec2 texco_offset_{ 0, 0 };
+            glm::vec2 texco_scale_{ 1, 0 };
             float amplitude_ = 500000;
-            int cutoff_high_ = 0;
-            int cutoff_low_ = 0;
+            float cutoff_high_ = 0;
+            float cutoff_low_ = 0;
             bool active_ = true;
         };
 
