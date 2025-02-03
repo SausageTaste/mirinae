@@ -225,8 +225,8 @@ namespace mirinae {
 
     struct IRpStates {
         virtual ~IRpStates() = default;
-        virtual void record(const RpContext& context) = 0;
         virtual const std::string& name() const = 0;
+        virtual void record(const RpContext& context) = 0;
     };
 
     using URpStates = std::unique_ptr<IRpStates>;

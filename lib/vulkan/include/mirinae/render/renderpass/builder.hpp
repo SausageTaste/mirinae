@@ -421,6 +421,7 @@ namespace mirinae {
         PipelineLayoutBuilder& desc(VkDescriptorSetLayout layout);
 
         VkPipelineLayout build(mirinae::VulkanDevice& device);
+        void build(VkPipelineLayout& out, mirinae::VulkanDevice& device);
 
     private:
         std::vector<VkDescriptorSetLayout> desclayouts_;

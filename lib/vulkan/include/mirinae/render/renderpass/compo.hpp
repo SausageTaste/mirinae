@@ -46,34 +46,12 @@ namespace mirinae::rp::compo {
     };
 
 
-    class RpMasterSky {
-
-    public:
-        void init(
-            VkImageView sky_texture,
-            IRenderPassRegistry& rp_pkg,
-            DesclayoutManager& desclayouts,
-            FbufImageBundle& fbufs,
-            Swapchain& shain,
-            VulkanDevice& device
-        );
-
-        void destroy(VulkanDevice& device);
-
-        void record(
-            const VkCommandBuffer cur_cmd_buf,
-            const glm::mat4 proj_inv,
-            const glm::mat4 view_inv,
-            const VkExtent2D& fbuf_ext,
-            const FrameIndex frame_index,
-            const ShainImageIndex image_index,
-            const IRenderPassRegistry& rp_pkg
-        );
-
-    private:
-        DescPool desc_pool_;
-        std::vector<VkDescriptorSet> desc_sets_;
-        std::vector<VkFramebuffer> fbufs_;
-    };
+    URpStates create_rps_sky(
+        VkImageView sky_tex,
+        mirinae::FbufImageBundle& fbuf_bundle,
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    );
 
 }  // namespace mirinae::rp::compo

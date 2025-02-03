@@ -726,6 +726,10 @@ namespace mirinae {
         return output;
     }
 
+    void CLS::build(VkPipelineLayout& out, mirinae::VulkanDevice& device) {
+        out = this->build(device);
+    }
+
 #undef CLS
 
 }  // namespace mirinae
