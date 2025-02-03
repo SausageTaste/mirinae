@@ -502,7 +502,7 @@ namespace mirinae {
             write.dstSet = descset;
             write.dstBinding = binding;
             write.dstArrayElement = 0;
-            write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             write.descriptorCount = img_info.size();
             write.pImageInfo = img_info.data();
             write.pBufferInfo = nullptr;
