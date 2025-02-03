@@ -15,15 +15,17 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 view;
     mat4 model;
     vec4 tile_index_count;
-    vec4 height_map_size_fbuf_size;
-    vec2 texcoord_offset_rot[3];
-    vec2 tile_dimensions;
 } u_pc;
 
-layout(set = 0, binding = 0) uniform sampler2D u_height_map[3];
-layout(set = 0, binding = 1) uniform sampler2D u_normal_map[3];
+layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 texco_offset_rot_[3];
+    vec4 height_map_size_fbuf_size;
+    vec2 tile_dimensions;
+} u_params;
 
-layout(set = 0, binding = 2) uniform sampler2D u_sky_tex;
+layout (set = 0, binding = 1) uniform sampler2D u_height_map[3];
+layout (set = 0, binding = 2) uniform sampler2D u_normal_map[3];
+layout (set = 0, binding = 3) uniform sampler2D u_sky_tex;
 
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
@@ -39,7 +41,7 @@ vec2 map_cube(vec3 v) {
 vec3 merge_normals() {
     vec3 normal = vec3(0);
     for (int i = 0; i < 3; i++) {
-        vec3 texel = textureLod(u_normal_map[i], i_uv + u_pc.texcoord_offset_rot[i], 0).xyz;
+        vec3 texel = textureLod(u_normal_map[i], i_uv + u_params.texco_offset_rot_[i].xy, 0).xyz;
         normal += (texel * 2 - 1);
     }
 

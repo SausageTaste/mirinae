@@ -9,10 +9,13 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 view;
     mat4 model;
     vec4 tile_index_count;
-    vec4 height_map_size_fbuf_size;
-    vec2 texcoord_offset_rot[3];
-    vec2 tile_dimensions;
 } u_pc;
+
+layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 texco_offset_rot_[3];
+    vec4 height_map_size_fbuf_size;
+    vec2 tile_dimensions;
+} u_params;
 
 
 const vec3[] POSITIONS = vec3[4](
@@ -32,14 +35,14 @@ const vec2 TEX_COORDS[] = vec2[4](
 
 void main() {
     const vec3 pos = vec3(
-        TEX_COORDS[gl_VertexIndex].x * u_pc.tile_dimensions.x,
+        TEX_COORDS[gl_VertexIndex].x * u_params.tile_dimensions.x,
         0,
-        TEX_COORDS[gl_VertexIndex].y * u_pc.tile_dimensions.y
+        TEX_COORDS[gl_VertexIndex].y * u_params.tile_dimensions.y
     );
     const vec3 offset = vec3(
-        u_pc.tile_index_count.x * u_pc.tile_dimensions.x,
+        u_pc.tile_index_count.x * u_params.tile_dimensions.x,
         0,
-        u_pc.tile_index_count.y * u_pc.tile_dimensions.y
+        u_pc.tile_index_count.y * u_params.tile_dimensions.y
     );
 
     gl_Position.xyz = pos + offset;

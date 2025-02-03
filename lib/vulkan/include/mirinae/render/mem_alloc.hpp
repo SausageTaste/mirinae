@@ -65,6 +65,11 @@ namespace mirinae {
         void init_vertices(VkDeviceSize size, VulkanMemoryAllocator allocator);
         void init_indices(VkDeviceSize size, VulkanMemoryAllocator allocator);
 
+        template <typename TData>
+        void init_ubuf(VulkanMemoryAllocator allocator) {
+            return this->init_ubuf(sizeof(TData), allocator);
+        }
+
         void destroy(VulkanMemoryAllocator allocator);
 
         VkBuffer get() const { return buffer_; }
