@@ -1894,9 +1894,10 @@ namespace {
             return *this;
         }
 
-        U_OceanTessParams& tile_dimensions(float x, float y) {
-            tile_dimensions_.x = x;
-            tile_dimensions_.y = y;
+        template <typename T>
+        U_OceanTessParams& tile_dimensions(T x, T y) {
+            tile_dimensions_.x = static_cast<float>(x);
+            tile_dimensions_.y = static_cast<float>(y);
             return *this;
         }
 
