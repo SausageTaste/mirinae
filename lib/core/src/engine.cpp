@@ -642,6 +642,9 @@ namespace {
                 if (ImGui::Button("Play"))
                     play_ocean_ = !play_ocean_;
 
+                ImGui::SliderFloat("Tile size", &ocean->tile_size_, 1, 1000);
+                ImGui::SliderInt("Tile count X", &ocean->tile_count_x_, 1, 100);
+                ImGui::SliderInt("Tile count Y", &ocean->tile_count_y_, 1, 100);
                 ImGui::SliderInt("Index", &ocean->idx_, 0, 2);
 
                 for (size_t i = 0; i < Ocean::CASCADE_COUNT; ++i) {
@@ -650,6 +653,7 @@ namespace {
 
                     auto& cascade = ocean->cascades_[i];
 
+                    ImGui::Checkbox("Active", &cascade.active_);
                     ImGui::SliderFloat(
                         "Amplitude",
                         &cascade.amplitude_,
@@ -693,8 +697,6 @@ namespace {
                     cascade.texco_scale_ = glm::vec2{
                         std::cos(phase) / magnitude, std::sin(phase) / magnitude
                     };
-
-                    ImGui::Checkbox("Active", &cascade.active_);
 
                     ImGui::PopID();
                 }
