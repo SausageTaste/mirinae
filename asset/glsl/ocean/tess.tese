@@ -19,6 +19,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
 } u_pc;
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 fog_color_density;
     vec4 texco_offset_rot_[3];
     vec4 height_map_size_fbuf_size;
     vec2 tile_dimensions;

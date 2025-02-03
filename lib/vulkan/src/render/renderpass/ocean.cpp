@@ -1849,6 +1849,18 @@ namespace {
     struct U_OceanTessParams {
 
     public:
+        U_OceanTessParams& fog_color(const glm::vec3& color) {
+            fog_color_density_.x = color.r;
+            fog_color_density_.y = color.g;
+            fog_color_density_.z = color.b;
+            return *this;
+        }
+
+        U_OceanTessParams& fog_density(float density) {
+            fog_color_density_.w = density;
+            return *this;
+        }
+
         U_OceanTessParams& height_map_size(uint32_t x, uint32_t y) {
             height_map_size_fbuf_size_.x = static_cast<float>(x);
             height_map_size_fbuf_size_.y = static_cast<float>(y);
@@ -1895,6 +1907,7 @@ namespace {
             return this->texco_scale(idx, v.x, v.y);
         }
 
+        glm::vec4 fog_color_density_;
         glm::vec4 texco_offset_rot_[CASCADE_COUNT];
         glm::vec4 height_map_size_fbuf_size_;
         glm::vec2 tile_dimensions_;
@@ -2201,6 +2214,10 @@ namespace {
             for (size_t i = 0; i < CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
+            if (auto& atmos = ctxt.draw_sheet_->atmosphere_)
+                ubuf.fog_color(atmos->fog_color_)
+                    .fog_density(atmos->fog_density_);
+
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());
 
             mirinae::RenderPassBeginInfo{}

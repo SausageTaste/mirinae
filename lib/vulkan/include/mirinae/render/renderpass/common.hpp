@@ -58,6 +58,7 @@ namespace mirinae {
         std::vector<StaticRenderPairs> static_pairs_;
         std::vector<SkinnedRenderPairs> skinned_pairs_;
         cpnt::Ocean* ocean_ = nullptr;
+        cpnt::AtmosphereSimple* atmosphere_ = nullptr;
     };
 
 

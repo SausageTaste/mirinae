@@ -254,6 +254,14 @@ namespace {
             break;
         }
 
+        sheet.atmosphere_ = nullptr;
+        for (auto& eid : scene.reg_.view<mirinae::cpnt::AtmosphereSimple>()) {
+            sheet.atmosphere_ =
+                &scene.reg_.get<mirinae::cpnt::AtmosphereSimple>(eid);
+            // Only one atmosphere is allowed
+            break;
+        }
+
         return sheet;
     }
 

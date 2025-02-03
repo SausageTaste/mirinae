@@ -326,6 +326,13 @@ namespace {
                         this->render_ocean(e);
                     ImGui::Unindent(20);
                 }
+
+                if (ImGui::CollapsingHeader("AtmosphereSimple")) {
+                    ImGui::Indent(20);
+                    for (const auto e : reg.view<AtmosphereSimple>())
+                        this->render_atmosphere(e);
+                    ImGui::Unindent(20);
+                }
             }
 
             ImGui::End();
@@ -703,6 +710,30 @@ namespace {
             }
         }
 
+        void render_atmosphere(entt::entity e) {
+            using namespace mirinae::cpnt;
+
+            auto atmosphere = this->reg().try_get<AtmosphereSimple>(e);
+            if (!atmosphere)
+                return;
+
+            const auto name = fmt::format(
+                "AtmosphereSimple-{}", (ENTT_ID_TYPE)e
+            );
+
+            if (ImGui::CollapsingHeader(name.c_str())) {
+                ImGui::ColorEdit3("Fog color", &atmosphere->fog_color_[0]);
+                ImGui::SliderFloat(
+                    "Fog density",
+                    &atmosphere->fog_density_,
+                    0.0,
+                    0.1,
+                    "%.6f",
+                    ImGuiSliderFlags_Logarithmic
+                );
+            }
+        }
+
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
         std::array<char, 128> search_buffer_{};
         bool play_ocean_ = true;
@@ -831,6 +862,12 @@ namespace {
                 ocean.cascades_[2].cutoff_high_ = 1 * max_wl;
                 ocean.cascades_[2].texco_scale_ = { 0.886, 0.062 };
                 ocean.cascades_[2].L_ = 20;
+            }
+
+            // Atmosphere
+            {
+                const auto entt = reg.create();
+                auto& atm = reg.emplace<mirinae::cpnt::AtmosphereSimple>(entt);
             }
 
             // Script

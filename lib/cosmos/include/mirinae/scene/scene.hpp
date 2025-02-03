@@ -162,6 +162,12 @@ namespace mirinae::cpnt {
         int idx_ = 0;
     };
 
+
+    struct AtmosphereSimple {
+        glm::vec3 fog_color_{ 0.5, 0.5, 0.5 };
+        float fog_density_ = 0.0001;
+    };
+
 }  // namespace mirinae::cpnt
 
 
