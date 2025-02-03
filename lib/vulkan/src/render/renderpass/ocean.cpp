@@ -60,10 +60,11 @@ namespace {
         float fetch_;
         float swell_;
         float spread_blend_;
-        std::array<float, CASCADE_COUNT> cutoff_high_;
-        std::array<float, CASCADE_COUNT> cutoff_low_;
+        float cutoff_high_;
+        float cutoff_low_;
         int32_t N_;
         int32_t L_;
+        int32_t cascade_;
     };
 
 
@@ -186,23 +187,11 @@ namespace {
             {
                 mirinae::DescLayoutBuilder builder{ name() + ":main" };
                 builder
-                    .new_binding()  // Cascade 0
+                    .new_binding()  // Cascade 0, 1, 2
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // Cascade 1
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // Cascade 2
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .set_count(1)
+                    .set_count(3)
                     .finish_binding()
                     .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);
                 desclayouts.add(builder, device.logi_device());
@@ -224,21 +213,22 @@ namespace {
                     device.logi_device()
                 );
 
-                mirinae::DescWriteInfoBuilder builder;
+                mirinae::DescWriter writer;
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
-                    builder.set_descset(fd.desc_set_)
-                        .add_storage_img(fd.hk_[0]->view_.get())
-                        .add_storage_img(fd.hk_[1]->view_.get())
-                        .add_storage_img(fd.hk_[2]->view_.get())
-                        .add_img_sampler(
-                            noise_textures_->view_.get(),
-                            device.samplers().get_nearest()
-                        );
+                    writer.add_storage_img_info(fd.hk_[0]->view_.get())
+                        .add_storage_img_info(fd.hk_[1]->view_.get())
+                        .add_storage_img_info(fd.hk_[2]->view_.get())
+                        .add_storage_img_write(fd.desc_set_, 0);
+                    writer.add_img_info()
+                        .set_img_view(noise_textures_->view_.get())
+                        .set_sampler(device.samplers().get_nearest())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 1);
                 }
-                builder.apply_all(device.logi_device());
+                writer.apply_all(device.logi_device());
             }
 
             // Pipeline Layout
@@ -325,21 +315,28 @@ namespace {
             ::U_OceanTildeHPushConst pc;
             pc.wind_dir_ = ocean_entt.wind_dir_;
             pc.wind_speed_ = ocean_entt.wind_speed_;
-            pc.amplitude_ = ocean_entt.amplitude_;
             pc.fetch_ = ocean_entt.fetch_;
             pc.swell_ = ocean_entt.swell_;
             pc.spread_blend_ = ocean_entt.spread_blend_;
-            pc.cutoff_high_ = ocean_entt.cutoff_high_;
-            pc.cutoff_low_ = ocean_entt.cutoff_low_;
             pc.N_ = ::OCEAN_TEX_DIM;
             pc.L_ = ocean_entt.L_;
 
-            mirinae::PushConstInfo pc_info;
-            pc_info.layout(pipeline_layout_)
-                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                .record(cmdbuf, pc);
+            for (int i = 0; i < CASCADE_COUNT; ++i) {
+                auto& cascade = ocean_entt.cascades_[i];
+                pc.amplitude_ = cascade.amplitude();
+                pc.cutoff_high_ = cascade.cutoff_high_;
+                pc.cutoff_low_ = cascade.cutoff_low_;
+                pc.cascade_ = i;
 
-            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
+                mirinae::PushConstInfo pc_info;
+                pc_info.layout(pipeline_layout_)
+                    .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .record(cmdbuf, pc);
+
+                vkCmdDispatch(
+                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1
+                );
+            }
         }
 
     private:
@@ -1932,6 +1929,11 @@ namespace {
             return *this;
         }
 
+        U_OceanTessPushConst& texcoord_offset(size_t idx, const glm::vec2& v) {
+            texcoord_offset_rot_[idx] = v;
+            return *this;
+        }
+
     private:
         glm::mat4 pvm_;
         glm::mat4 view_;
@@ -2224,11 +2226,7 @@ namespace {
                 .fbuf_size(fbuf_exd)
                 .tile_dimensions(ocean_entt.L_, ocean_entt.L_);
             for (size_t i = 0; i < CASCADE_COUNT; i++)
-                pc.texcoord_offset(
-                    i,
-                    ocean_entt.texcoord_offsets_[i].x,
-                    ocean_entt.texcoord_offsets_[i].y
-                );
+                pc.texcoord_offset(i, ocean_entt.cascades_[i].texcoord_offset_);
 
             for (int x = 0; x < 10; ++x) {
                 for (int y = 0; y < 10; ++y) {
