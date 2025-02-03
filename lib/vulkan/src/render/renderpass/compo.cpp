@@ -267,7 +267,7 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), rp_res_(rp_res) {
+            : device_(device), rp_res_(rp_res), render_pass_(device) {
             // Descriptor layout
             {
                 mirinae::DescLayoutBuilder builder{ this->name() + ":main" };
@@ -406,13 +406,6 @@ namespace {
                 );
                 pipe_layout_ = VK_NULL_HANDLE;
             }
-
-            if (VK_NULL_HANDLE != render_pass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), render_pass_, nullptr
-                );
-                render_pass_ = VK_NULL_HANDLE;
-            }
         }
 
         const std::string& name() const override {
@@ -471,7 +464,7 @@ namespace {
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
         mirinae::DescPool desc_pool_;
-        VkRenderPass render_pass_ = VK_NULL_HANDLE;
+        mirinae::RenderPassRaii render_pass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
 
