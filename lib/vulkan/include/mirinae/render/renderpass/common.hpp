@@ -166,6 +166,41 @@ namespace mirinae {
     };
 
 
+    class RenderPassRaii {
+
+    public:
+        RenderPassRaii(VulkanDevice& device) : device_(device) {}
+
+        ~RenderPassRaii() { this->clear(); }
+
+        RenderPassRaii& operator=(VkRenderPass rp) {
+            this->reset(rp);
+            return *this;
+        }
+
+        operator VkRenderPass() const { return rp_; }
+
+        VkRenderPass operator*() const { return rp_; }
+
+        VkRenderPass get() const { return rp_; }
+
+        void reset(VkRenderPass rp) {
+            this->clear();
+            rp_ = rp;
+        }
+
+        void clear() {
+            if (rp_ != VK_NULL_HANDLE)
+                vkDestroyRenderPass(device_.logi_device(), rp_, nullptr);
+            rp_ = VK_NULL_HANDLE;
+        }
+
+    public:
+        VulkanDevice& device_;
+        VkRenderPass rp_ = VK_NULL_HANDLE;
+    };
+
+
     class RpResources {
 
     public:
