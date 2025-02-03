@@ -490,65 +490,25 @@ namespace {
             {
                 mirinae::DescLayoutBuilder builder{ name() + ":main" };
                 builder
-                    .new_binding()  // hkt_dxdy c0
+                    .new_binding()  // hkt_dxdy
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
+                    .set_count(3)
                     .finish_binding()
-                    .new_binding()  // hkt_dxdy c1
+                    .new_binding()  // hkt_dz
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
+                    .set_count(3)
                     .finish_binding()
-                    .new_binding()  // hkt_dxdy c2
+                    .new_binding()  // hkt_ddxddz
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
+                    .set_count(3)
                     .finish_binding()
-                    .new_binding()  // hkt_dz c0
+                    .new_binding()  // hk
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // hkt_dz c1
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // hkt_dz c2
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // hkt_ddxddz c0
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // hkt_ddxddz c1
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // hkt_ddxddz c2
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // hk c0
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // hk c1
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
-                    .finish_binding()
-                    .new_binding()  // hk c2
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(1)
+                    .set_count(3)
                     .finish_binding();
                 desclayouts.add(builder, device.logi_device());
             }
@@ -569,26 +529,29 @@ namespace {
                     device.logi_device()
                 );
 
-                mirinae::DescWriteInfoBuilder builder;
+                mirinae::DescWriter writer;
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
-                    builder.set_descset(fd.desc_set_)
-                        .add_storage_img(fd.hkt_dxdy_[0]->view_.get())
-                        .add_storage_img(fd.hkt_dxdy_[1]->view_.get())
-                        .add_storage_img(fd.hkt_dxdy_[2]->view_.get())
-                        .add_storage_img(fd.hkt_dz_[0]->view_.get())
-                        .add_storage_img(fd.hkt_dz_[1]->view_.get())
-                        .add_storage_img(fd.hkt_dz_[2]->view_.get())
-                        .add_storage_img(fd.hkt_ddxddz_[0]->view_.get())
-                        .add_storage_img(fd.hkt_ddxddz_[1]->view_.get())
-                        .add_storage_img(fd.hkt_ddxddz_[2]->view_.get())
-                        .add_storage_img(fd.hk_[0]->view_.get())
-                        .add_storage_img(fd.hk_[1]->view_.get())
-                        .add_storage_img(fd.hk_[2]->view_.get());
+                    writer.add_storage_img_info(fd.hkt_dxdy_[0]->view_.get())
+                        .add_storage_img_info(fd.hkt_dxdy_[1]->view_.get())
+                        .add_storage_img_info(fd.hkt_dxdy_[2]->view_.get())
+                        .add_storage_img_write(fd.desc_set_, 0);
+                    writer.add_storage_img_info(fd.hkt_dz_[0]->view_.get())
+                        .add_storage_img_info(fd.hkt_dz_[1]->view_.get())
+                        .add_storage_img_info(fd.hkt_dz_[2]->view_.get())
+                        .add_storage_img_write(fd.desc_set_, 1);
+                    writer.add_storage_img_info(fd.hkt_ddxddz_[0]->view_.get())
+                        .add_storage_img_info(fd.hkt_ddxddz_[1]->view_.get())
+                        .add_storage_img_info(fd.hkt_ddxddz_[2]->view_.get())
+                        .add_storage_img_write(fd.desc_set_, 2);
+                    writer.add_storage_img_info(fd.hk_[0]->view_.get())
+                        .add_storage_img_info(fd.hk_[1]->view_.get())
+                        .add_storage_img_info(fd.hk_[2]->view_.get())
+                        .add_storage_img_write(fd.desc_set_, 3);
                 }
-                builder.apply_all(device.logi_device());
+                writer.apply_all(device.logi_device());
             }
 
             // Pipeline Layout
@@ -702,7 +665,9 @@ namespace {
                 .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .record(cmdbuf, pc);
 
-            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
+            vkCmdDispatch(
+                cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, CASCADE_COUNT
+            );
         }
 
     private:
