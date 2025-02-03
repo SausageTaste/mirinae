@@ -4,11 +4,9 @@
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout (binding = 0, rgba32f) uniform writeonly image2D out_image;
-layout (binding = 1, rgba32f) uniform writeonly image2D out_image1;
-layout (binding = 2, rgba32f) uniform writeonly image2D out_image2;
+layout (binding = 0, rgba32f) uniform writeonly image2D out_images[3];
 
-layout(set = 0, binding = 3) uniform sampler2D u_noise;
+layout(set = 0, binding = 1) uniform sampler2D u_noise;
 
 
 layout (push_constant) uniform U_OceanTildeHPushConst {
@@ -18,10 +16,11 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
     float fetch;
     float swell;
     float spread_blend;
-    float cutoff_high[3];
-    float cutoff_low[3];
+    float cutoff_high;
+    float cutoff_low;
     int N;
     int L;
+    int cascade;
 } u_pc;
 
 const float GAMMA = 3.3;
@@ -181,12 +180,12 @@ float calc_short_wave_fade(float k) {
 }
 
 
-float jonswap_spectrum(vec2 wave_vector, int cascade) {
+float jonswap_spectrum(vec2 wave_vector) {
     const float depth = 1.0;
     const float deltaK = 2 * PI / float(u_pc.L);
     const float k = max(length(wave_vector), 0.00001);
 
-    if (k < u_pc.cutoff_low[cascade] || k > u_pc.cutoff_high[cascade])
+    if (k < u_pc.cutoff_low || k > u_pc.cutoff_high)
         return 0;
 
     const float k_angle = atan(wave_vector.y, wave_vector.x);
@@ -210,18 +209,8 @@ void main() {
 
     const vec4 gause_random = gauseRnd();
 
-    imageStore(out_image, nm, vec4(
-        gause_random.xy * jonswap_spectrum(k, 0),
-        gause_random.zw * jonswap_spectrum(-k, 0)
-    ));
-
-    imageStore(out_image1, nm, vec4(
-        gause_random.xy * jonswap_spectrum(k, 1),
-        gause_random.zw * jonswap_spectrum(-k, 1)
-    ));
-
-    imageStore(out_image2, nm, vec4(
-        gause_random.xy * jonswap_spectrum(k, 2),
-        gause_random.zw * jonswap_spectrum(-k, 2)
+    imageStore(out_images[u_pc.cascade], nm, vec4(
+        gause_random.xy * jonswap_spectrum(k),
+        gause_random.zw * jonswap_spectrum(-k)
     ));
 }

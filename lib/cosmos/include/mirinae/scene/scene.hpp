@@ -130,17 +130,30 @@ namespace mirinae::cpnt {
     struct Ocean {
         constexpr static uint32_t CASCADE_COUNT = 3;
 
+        double max_wavelen() const {
+            return std::ceil(
+                SUNG_PI * std::sqrt(2.0 * 256.0 * 256.0 / (L_ * L_))
+            );
+        }
+
+        struct Cascade {
+            float amplitude() const { return active_ ? amplitude_ : 0; }
+
+            glm::vec2 texcoord_offset_{ 0 };
+            float amplitude_ = 500000;
+            int cutoff_high_ = 0;
+            int cutoff_low_ = 0;
+            bool active_ = true;
+        };
+
         TransformQuat<double> transform_;
+        std::array<Cascade, CASCADE_COUNT> cascades_;
         glm::dvec2 wind_dir_{ 1, 1 };
-        double wind_speed_ = 10;
-        double amplitude_ = 500000;
+        float wind_speed_ = 10;
         float fetch_ = 100;
         float swell_ = 0.5;
         float spread_blend_ = 0.5;
         float time_ = 0;
-        std::array<float, CASCADE_COUNT> cutoff_high_;
-        std::array<float, CASCADE_COUNT> cutoff_low_;
-        std::array<glm::vec2, CASCADE_COUNT> texcoord_offsets_;
         int L_ = 100;
         int idx_ = 0;
     };

@@ -610,28 +610,14 @@ namespace {
             if (ImGui::CollapsingHeader(name.c_str())) {
                 this->render_transform(ocean->transform_);
 
-                float amplitude = ocean->amplitude_;
-                ImGui::SliderFloat(
-                    "Amplitude",
-                    &amplitude,
-                    1000,
-                    10000000000,
-                    nullptr,
-                    ImGuiSliderFlags_Logarithmic
-                );
-                ocean->amplitude_ = amplitude;
-
-                float wind_speed = ocean->wind_speed_;
                 ImGui::SliderFloat(
                     "Wind speed",
-                    &wind_speed,
+                    &ocean->wind_speed_,
                     0.0,
                     10000.0,
                     nullptr,
                     ImGuiSliderFlags_Logarithmic
                 );
-                ocean->wind_speed_ = wind_speed;
-
                 ImGui::SliderFloat(
                     "Fetch",
                     &ocean->fetch_,
@@ -642,35 +628,7 @@ namespace {
                 );
                 ImGui::SliderFloat("Swell", &ocean->swell_, 0, 1);
                 ImGui::SliderFloat("Spread blend", &ocean->spread_blend_, 0, 1);
-
                 ImGui::SliderInt("L", &ocean->L_, 0, 100);
-                const auto max_wl = std::ceil(
-                    SUNG_PI *
-                    std::sqrt(2.0 * 256 * 256 / (ocean->L_ * ocean->L_))
-                );
-
-                for (size_t i = 0; i < Ocean::CASCADE_COUNT; ++i) {
-                    ImGui::PushID(i);
-                    ImGui::Text("Cascade %d", i);
-
-                    int cut_low = ocean->cutoff_low_[i];
-                    ImGui::SliderInt(
-                        "Cut low", &cut_low, 0, ocean->cutoff_high_[i]
-                    );
-                    ocean->cutoff_low_[i] = cut_low;
-
-                    int cut_high = ocean->cutoff_high_[i];
-                    ImGui::SliderInt("Cut high", &cut_high, 0, max_wl);
-                    ocean->cutoff_high_[i] = cut_high;
-
-                    ImGui::SliderFloat2(
-                        "Texcoord offset",
-                        &ocean->texcoord_offsets_[i].x,
-                        -10,
-                        10
-                    );
-                    ImGui::PopID();
-                }
 
                 float wind_dir = sung::to_degrees(
                     std::atan2(ocean->wind_dir_.y, ocean->wind_dir_.x)
@@ -686,12 +644,41 @@ namespace {
                     play_ocean_ = !play_ocean_;
 
                 ImGui::SliderInt("Index", &ocean->idx_, 0, 2);
+
+                const auto max_wl = ocean->max_wavelen();
+                for (size_t i = 0; i < Ocean::CASCADE_COUNT; ++i) {
+                    ImGui::PushID(i);
+                    ImGui::Text("Cascade %d", i);
+
+                    auto& cascade = ocean->cascades_[i];
+
+                    ImGui::SliderFloat(
+                        "Amplitude",
+                        &cascade.amplitude_,
+                        1000,
+                        10000000000,
+                        nullptr,
+                        ImGuiSliderFlags_Logarithmic
+                    );
+                    ImGui::SliderInt(
+                        "Cut low", &cascade.cutoff_low_, 0, max_wl
+                    );
+                    ImGui::SliderInt(
+                        "Cut high", &cascade.cutoff_high_, 0, max_wl
+                    );
+                    ImGui::SliderFloat2(
+                        "Texcoord offset", &cascade.texcoord_offset_[0], -10, 10
+                    );
+                    ImGui::Checkbox("Active", &cascade.active_);
+
+                    ImGui::PopID();
+                }
             }
         }
 
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
         std::array<char, 128> search_buffer_{};
-        bool play_ocean_ = false;
+        bool play_ocean_ = true;
     };
 
 }  // namespace
@@ -794,18 +781,22 @@ namespace {
                 const auto entt = reg.create();
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
                 ocean.transform_.pos_ = { -30, 3, -30 };
-                ocean.amplitude_ = 50000000;
                 ocean.wind_speed_ = 300.0;
-                ocean.swell_ = 0.8;
-                ocean.spread_blend_ = 0.8;
+                ocean.swell_ = 0.8f;
+                ocean.spread_blend_ = 0.8f;
                 ocean.L_ = 20;
 
-                ocean.cutoff_low_[0] = 0;
-                ocean.cutoff_high_[0] = 5;
-                ocean.cutoff_low_[1] = 5;
-                ocean.cutoff_high_[1] = 15;
-                ocean.cutoff_low_[2] = 15;
-                ocean.cutoff_high_[2] = 1000;
+                ocean.cascades_[0].amplitude_ = 50000000;
+                ocean.cascades_[0].cutoff_low_ = 0;
+                ocean.cascades_[0].cutoff_high_ = 3;
+
+                ocean.cascades_[1].amplitude_ = 50000000;
+                ocean.cascades_[1].cutoff_low_ = 3;
+                ocean.cascades_[1].cutoff_high_ = 10;
+
+                ocean.cascades_[2].amplitude_ = 50000000;
+                ocean.cascades_[2].cutoff_low_ = 10;
+                ocean.cascades_[2].cutoff_high_ = 100;
             }
 
             // Script
