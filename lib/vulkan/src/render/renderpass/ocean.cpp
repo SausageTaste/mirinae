@@ -2197,7 +2197,7 @@ namespace {
             U_OceanTessParams ubuf;
             ubuf.height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
                 .fbuf_size(fbuf_exd)
-                .tile_dimensions(20);
+                .tile_dimensions(ocean_entt.tile_size_);
             for (size_t i = 0; i < CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
@@ -2231,14 +2231,15 @@ namespace {
                 .add_stage_frag();
 
             U_OceanTessPushConst pc;
-            pc.tile_count(10, 10).pvm(
-                ctxt.proj_mat_,
-                ctxt.view_mat_,
-                ocean_entt.transform_.make_model_mat()
-            );
+            pc.tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
+                .pvm(
+                    ctxt.proj_mat_,
+                    ctxt.view_mat_,
+                    ocean_entt.transform_.make_model_mat()
+                );
 
-            for (int x = 0; x < 10; ++x) {
-                for (int y = 0; y < 10; ++y) {
+            for (int x = 0; x < ocean_entt.tile_count_x_; ++x) {
+                for (int y = 0; y < ocean_entt.tile_count_y_; ++y) {
                     pc.tile_index(x, y);
                     pc_info.record(cmdbuf, pc);
                     vkCmdDraw(cmdbuf, 4, 1, 0, 0);
