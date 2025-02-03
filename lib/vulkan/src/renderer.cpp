@@ -1537,6 +1537,14 @@ namespace {
                     ++i;
                 }
 
+                for (auto e : cosmos_->reg().view<cpnt::AtmosphereSimple>()) {
+                    const auto& atm =
+                        cosmos_->reg().get<cpnt::AtmosphereSimple>(e);
+                    ubuf_data.set_fog_color(atm.fog_color_)
+                        .set_fog_density(atm.fog_density_);
+                    break;
+                }
+
                 rpm_.compo_basic()
                     .ubufs_.at(framesync_.get_frame_index().get())
                     .set_data(ubuf_data, device_.mem_alloc());

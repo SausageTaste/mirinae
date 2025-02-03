@@ -10,6 +10,7 @@ layout(location = 0) out vec4 f_color;
 layout(push_constant) uniform U_CompoSkyMain {
     mat4 proj_inv;
     mat4 view_inv;
+    vec4 fog_color_density;
 } u_pc;
 
 layout(set = 0, binding = 0) uniform sampler2D u_sky_tex;
@@ -65,5 +66,12 @@ void main() {
         const float b = dot((frag_pos.xyz / frag_pos.w) - projected_light_pos, view_direc);
         const float c = (atan(b / h) / h) - (atan(a / h) / h);
         f_color.xyz += plight_colors[i] * c * 0.01;
+    }
+
+    // Fog
+    {
+        const float x = max(dot(world_direc, vec3(0, 1, 0)), 0);
+        const float fog_factor = clamp(pow(x, u_pc.fog_color_density.w * 500 + 0.5), 0, 1);
+        f_color.xyz = mix(u_pc.fog_color_density.xyz, f_color.xyz, fog_factor);
     }
 }
