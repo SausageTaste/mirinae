@@ -414,7 +414,7 @@ namespace {
                     "Near",
                     &near,
                     0.001f,
-                    10000,
+                    30000,
                     nullptr,
                     ImGuiSliderFlags_Logarithmic
                 );
@@ -425,7 +425,7 @@ namespace {
                     "Far",
                     &far,
                     0.001f,
-                    10000,
+                    30000,
                     nullptr,
                     ImGuiSliderFlags_Logarithmic
                 );
@@ -727,7 +727,7 @@ namespace {
                     "Fog density",
                     &atmosphere->fog_density_,
                     0.0,
-                    0.1,
+                    0.01,
                     "%.6f",
                     ImGuiSliderFlags_Logarithmic
                 );
@@ -868,6 +868,7 @@ namespace {
             {
                 const auto entt = reg.create();
                 auto& atm = reg.emplace<mirinae::cpnt::AtmosphereSimple>(entt);
+                atm.fog_color_ = { 0.556, 0.707, 0.846 };
             }
 
             // Script

@@ -34,6 +34,8 @@ layout(set = 0, binding = 4) uniform U_CompoMain {
     // Volumetric Point Light
     vec4 plight_poses[8];
     vec4 plight_colors[8];
+
+    vec4 fog_color_density;
 } u_comp_main;
 
 layout(set = 0, binding = 5) uniform sampler2D u_dlight_shadow_map;
@@ -196,6 +198,14 @@ void main() {
             to_light_n,
             u_comp_main.plight_colors[i].xyz
         ) * attenuation;
+    }
+
+    // Fog
+    {
+        const float x = frag_distance * u_comp_main.fog_color_density.w;
+        const float xx = x * x;
+        const float fog_factor = 1.0 / exp(xx);
+        light = mix(u_comp_main.fog_color_density.xyz, light, fog_factor);
     }
 
     f_color = vec4(light, 1);

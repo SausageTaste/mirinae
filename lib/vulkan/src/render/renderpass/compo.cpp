@@ -442,6 +442,9 @@ namespace {
             mirinae::U_CompoSkyMain pc;
             pc.proj_inv_ = glm::inverse(ctxt.proj_mat_);
             pc.view_inv_ = glm::inverse(ctxt.view_mat_);
+            if (auto& atmos = ctxt.draw_sheet_->atmosphere_)
+                pc.fog_color_density_ = glm::vec4{ atmos->fog_color_,
+                                                   atmos->fog_density_ };
 
             mirinae::PushConstInfo{}
                 .layout(pipe_layout_)

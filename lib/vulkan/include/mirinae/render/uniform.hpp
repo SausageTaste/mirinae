@@ -193,6 +193,20 @@ namespace mirinae {
             return *this;
         }
 
+        template <typename T>
+        U_CompoMain& set_fog_color(const glm::tvec3<T>& v) {
+            fog_color_density_.x = v.r;
+            fog_color_density_.y = v.g;
+            fog_color_density_.z = v.b;
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoMain& set_fog_density(T density) {
+            fog_color_density_.w = density;
+            return *this;
+        }
+
     private:
         glm::mat4 view_;
         glm::mat4 view_inv_;
@@ -214,12 +228,15 @@ namespace mirinae {
         // Volumetric Point Light
         std::array<glm::vec4, 8> vpl_pos_n_radius;
         std::array<glm::vec4, 8> vpl_color_n_intensity;
+
+        glm::vec4 fog_color_density_;
     };
 
 
     struct U_CompoSkyMain {
         glm::mat4 proj_inv_;
         glm::mat4 view_inv_;
+        glm::vec4 fog_color_density_;
     };
 
 

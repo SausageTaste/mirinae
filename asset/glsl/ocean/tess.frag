@@ -132,7 +132,7 @@ void main() {
     {
         const float x = frag_dist * u_params.fog_color_density.w;
         const float xx = x * x;
-        const float fog_factor = 1.0 / exp(x);
+        const float fog_factor = 1.0 / exp(xx);
         light = mix(u_params.fog_color_density.xyz, light, fog_factor);
     }
 
