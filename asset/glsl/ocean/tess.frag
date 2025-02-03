@@ -18,6 +18,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
 } u_pc;
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 fog_color_density;
     vec4 texco_offset_rot_[3];
     vec4 height_map_size_fbuf_size;
     vec2 tile_dimensions;
@@ -69,7 +70,8 @@ void main() {
     const vec3 albedo = vec3(0.1, 0.15, 0.25);
     const float roughness = 0.1;
     const float metallic = 0;
-    const vec3 to_view = -normalize(i_frag_pos);
+    const float frag_dist = length(i_frag_pos);
+    const vec3 to_view = i_frag_pos / (-frag_dist);
 
     vec3 light = vec3(0);
 
@@ -124,6 +126,14 @@ void main() {
 
         vec3 oceanColor = albedo;
         light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
+    }
+
+    // Fog
+    {
+        const float x = frag_dist * u_params.fog_color_density.w;
+        const float xx = x * x;
+        const float fog_factor = 1.0 / exp(x);
+        light = mix(u_params.fog_color_density.xyz, light, fog_factor);
     }
 
     f_color.xyz = light;
