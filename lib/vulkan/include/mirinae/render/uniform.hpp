@@ -392,6 +392,32 @@ namespace mirinae {
     class DescWriter {
 
     public:
+        class BufferInfoView {
+
+        public:
+            BufferInfoView(VkDescriptorBufferInfo& info) : info_(&info) {}
+
+            BufferInfoView& set_buffer(VkBuffer buffer) {
+                this->info().buffer = buffer;
+                return *this;
+            }
+
+            BufferInfoView& set_range(VkDeviceSize range) {
+                this->info().range = range;
+                return *this;
+            }
+
+            BufferInfoView& set_offset(VkDeviceSize offset) {
+                this->info().offset = offset;
+                return *this;
+            }
+
+        private:
+            VkDescriptorBufferInfo& info() { return *info_; }
+
+            VkDescriptorBufferInfo* info_;
+        };
+
         class ImageInfoView {
 
         public:
@@ -418,6 +444,21 @@ namespace mirinae {
             VkDescriptorImageInfo* info_;
         };
 
+        BufferInfoView add_buf_info() {
+            if (buffer_info_.empty())
+                buffer_info_.emplace_back();
+
+            return BufferInfoView(buffer_info_.back().emplace_back());
+        }
+
+        DescWriter& add_buf_info(mirinae::Buffer& buffer) {
+            this->add_buf_info()
+                .set_buffer(buffer.get())
+                .set_range(buffer.size())
+                .set_offset(0);
+            return *this;
+        }
+
         ImageInfoView add_img_info() {
             if (img_info_.empty())
                 img_info_.emplace_back();
@@ -430,6 +471,23 @@ namespace mirinae {
                 .set_img_view(img_view)
                 .set_layout(VK_IMAGE_LAYOUT_GENERAL)
                 .set_sampler(VK_NULL_HANDLE);
+            return *this;
+        }
+
+        DescWriter& add_buf_write(VkDescriptorSet descset, uint32_t binding) {
+            const auto& buf_info = buffer_info_.back();
+            buffer_info_.emplace_back();
+
+            auto& write = write_info_.emplace_back();
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = descset;
+            write.dstBinding = binding;
+            write.dstArrayElement = 0;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            write.descriptorCount = buf_info.size();
+            write.pImageInfo = nullptr;
+            write.pBufferInfo = buf_info.data();
+
             return *this;
         }
 
@@ -479,6 +537,7 @@ namespace mirinae {
 
     private:
         std::vector<VkWriteDescriptorSet> write_info_;
+        std::list<std::vector<VkDescriptorBufferInfo>> buffer_info_;
         std::list<std::vector<VkDescriptorImageInfo>> img_info_;
         size_t binding_index_ = 0;
     };

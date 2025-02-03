@@ -1879,6 +1879,53 @@ namespace {
 // Ocean tessellation
 namespace {
 
+    struct U_OceanTessParams {
+
+    public:
+        U_OceanTessParams& height_map_size(uint32_t x, uint32_t y) {
+            height_map_size_fbuf_size_.x = static_cast<float>(x);
+            height_map_size_fbuf_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_OceanTessParams& fbuf_size(const VkExtent2D& x) {
+            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
+            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
+            return *this;
+        }
+
+        U_OceanTessParams& tile_dimensions(float x, float y) {
+            tile_dimensions_.x = x;
+            tile_dimensions_.y = y;
+            return *this;
+        }
+
+        U_OceanTessParams& texco_offset(size_t idx, float x, float y) {
+            texco_offset_rot_[idx].x = x;
+            texco_offset_rot_[idx].y = y;
+            return *this;
+        }
+
+        U_OceanTessParams& texco_offset(size_t idx, const glm::vec2& v) {
+            return this->texco_offset(idx, v.x, v.y);
+        }
+
+        U_OceanTessParams& texco_scale(size_t idx, float x, float y) {
+            texco_offset_rot_[idx].z = x;
+            texco_offset_rot_[idx].w = y;
+            return *this;
+        }
+
+        U_OceanTessParams& texco_scale(size_t idx, const glm::vec2& v) {
+            return this->texco_scale(idx, v.x, v.y);
+        }
+
+        glm::vec4 texco_offset_rot_[CASCADE_COUNT];
+        glm::vec4 height_map_size_fbuf_size_;
+        glm::vec2 tile_dimensions_;
+    };
+
+
     class U_OceanTessPushConst {
 
     public:
@@ -1905,46 +1952,12 @@ namespace {
             return *this;
         }
 
-        U_OceanTessPushConst& height_map_size(uint32_t x, uint32_t y) {
-            height_map_size_fbuf_size_.x = static_cast<float>(x);
-            height_map_size_fbuf_size_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        U_OceanTessPushConst& fbuf_size(const VkExtent2D& x) {
-            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
-            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
-            return *this;
-        }
-
-        U_OceanTessPushConst& tile_dimensions(float x, float y) {
-            tile_dimensions_.x = x;
-            tile_dimensions_.y = y;
-            return *this;
-        }
-
-        U_OceanTessPushConst& texcoord_offset(size_t idx, float x, float y) {
-            texcoord_offset_rot_[idx].x = x;
-            texcoord_offset_rot_[idx].y = y;
-            return *this;
-        }
-
-        U_OceanTessPushConst& texcoord_offset(size_t idx, const glm::vec2& v) {
-            texcoord_offset_rot_[idx] = v;
-            return *this;
-        }
-
     private:
         glm::mat4 pvm_;
         glm::mat4 view_;
         glm::mat4 model_;
         glm::vec4 tile_index_count_;
-        glm::vec4 height_map_size_fbuf_size_;
-        glm::vec2 texcoord_offset_rot_[3];
-        glm::vec2 tile_dimensions_;
     };
-
-    constexpr auto shit = sizeof(U_OceanTessPushConst);
 
 
     class RpStatesOceanTess : public mirinae::IRpStates {
@@ -1984,16 +1997,32 @@ namespace {
                 }
             }
 
+            // Ubuf
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& fd = frame_data_[i];
+                fd.ubuf_.init_ubuf<U_OceanTessParams>(device.mem_alloc());
+            }
+
             // Descriptor layout
             {
                 mirinae::DescLayoutBuilder builder{ this->name() + ":main" };
+                builder
+                    .new_binding()  // U_OceanTessParams
+                    .set_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    .set_count(1)
+                    .add_stage(VK_SHADER_STAGE_VERTEX_BIT)
+                    .add_stage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+                    .add_stage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+                    .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .finish_binding();
                 builder
                     .new_binding()  // Height map
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .set_count(3)
                     .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                     .add_stage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
-                    .finish_binding()
+                    .finish_binding();
+                builder
                     .new_binding()  // Normal map
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .set_count(3)
@@ -2022,7 +2051,11 @@ namespace {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
-                    writer.add_img_info()
+                    writer  // U_OceanTessParams
+                        .add_buf_info(fd.ubuf_)
+                        .add_buf_write(fd.desc_set_, 0);
+                    writer  // Height maps
+                        .add_img_info()
                         .set_img_view(fd.height_map_[0]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
@@ -2034,9 +2067,9 @@ namespace {
                         .set_img_view(fd.height_map_[2]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 0);
-
-                    writer.add_img_info()
+                    writer.add_sampled_img_write(fd.desc_set_, 1);
+                    writer  // Normal maps
+                        .add_img_info()
                         .set_img_view(fd.normal_map_[0]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
@@ -2048,13 +2081,13 @@ namespace {
                         .set_img_view(fd.normal_map_[2]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 1);
+                    writer.add_sampled_img_write(fd.desc_set_, 2);
 
                     writer.add_img_info()
                         .set_img_view(sky_tex)
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 2);
+                    writer.add_sampled_img_write(fd.desc_set_, 3);
                 }
                 writer.apply_all(device.logi_device());
             }
@@ -2155,6 +2188,8 @@ namespace {
                     rp_res_.free_img(fd.height_map_[i]->id(), this->name());
                     rp_res_.free_img(fd.normal_map_[i]->id(), this->name());
                 }
+
+                fd.ubuf_.destroy(device_.mem_alloc());
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
@@ -2189,6 +2224,16 @@ namespace {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
+            const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
+
+            U_OceanTessParams ubuf;
+            ubuf.height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
+                .fbuf_size(fbuf_exd)
+                .tile_dimensions(ocean_entt.L_, ocean_entt.L_);
+            for (size_t i = 0; i < CASCADE_COUNT; i++)
+                ubuf.texco_offset(i, ocean_entt.cascades_[i].texcoord_offset_);
+            fd.ubuf_.set_data(ubuf, device_.mem_alloc());
+
             mirinae::RenderPassBeginInfo{}
                 .rp(render_pass_)
                 .fbuf(fbufs_.at(ctxt.i_index_.get()))
@@ -2201,7 +2246,6 @@ namespace {
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
             );
 
-            const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
             mirinae::Viewport{ fbuf_exd }.record_single(cmdbuf);
             mirinae::Rect2D{ fbuf_exd }.record_scissor(cmdbuf);
 
@@ -2221,12 +2265,7 @@ namespace {
 
             U_OceanTessPushConst pc;
             pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
-                .tile_count(100, 100)
-                .height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
-                .fbuf_size(fbuf_exd)
-                .tile_dimensions(ocean_entt.L_, ocean_entt.L_);
-            for (size_t i = 0; i < CASCADE_COUNT; i++)
-                pc.texcoord_offset(i, ocean_entt.cascades_[i].texcoord_offset_);
+                .tile_count(100, 100);
 
             for (int x = 0; x < 10; ++x) {
                 for (int y = 0; y < 10; ++y) {
@@ -2248,6 +2287,7 @@ namespace {
         struct FrameData {
             std::array<mirinae::HRpImage, CASCADE_COUNT> height_map_;
             std::array<mirinae::HRpImage, CASCADE_COUNT> normal_map_;
+            mirinae::Buffer ubuf_;
             VkDescriptorSet desc_set_;
         };
 

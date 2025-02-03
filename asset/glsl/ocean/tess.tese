@@ -16,12 +16,15 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 view;
     mat4 model;
     vec4 tile_index_count;
-    vec4 height_map_size_fbuf_size;
-    vec2 texcoord_offset_rot[3];
-    vec2 tile_dimensions;
 } u_pc;
 
-layout(set = 0, binding = 0) uniform sampler2D u_height_map[3];
+layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 texco_offset_rot_[3];
+    vec4 height_map_size_fbuf_size;
+    vec2 tile_dimensions;
+} u_params;
+
+layout (set = 0, binding = 1) uniform sampler2D u_height_map[3];
 
 
 void main() {
@@ -47,7 +50,7 @@ void main() {
     vec3 p = (p1 - p0) * v + p0;
 
     for (int i = 0; i < 3; ++i) {
-        p.xyz += texture(u_height_map[i], tex_coord + u_pc.texcoord_offset_rot[i]).xyz;
+        p.xyz += texture(u_height_map[i], tex_coord + u_params.texco_offset_rot_[i].xy).xyz;
     }
 
     o_frag_pos = (u_pc.view * u_pc.model * vec4(p, 1)).xyz;
