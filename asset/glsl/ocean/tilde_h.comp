@@ -15,6 +15,7 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
     float amplitude;
     float fetch;
     float swell;
+    float depth;
     float spread_blend;
     float cutoff_high;
     float cutoff_low;
@@ -100,20 +101,20 @@ vec2 phillips_spectrum(vec2 wave_vector) {
 }
 
 
-float calc_freq(float k, float g, float depth) {
-    return sqrt(g * k * tanh(min(k * depth, 20)));
+float calc_freq(float k) {
+    return sqrt(GRAVITY_EARTH * k * tanh(min(k * u_pc.depth, 20)));
 }
 
 
-float calc_freq_derivative(float k, float g, float depth) {
-    float th = tanh(min(k * depth, 20));
-    float ch = cosh(k * depth);
-    return g * (depth * k / ch / ch + th) / calc_freq(k, g, depth) / 2;
+float calc_freq_derivative(float k) {
+    float th = tanh(min(k * u_pc.depth, 20));
+    float ch = cosh(k * u_pc.depth);
+    return GRAVITY_EARTH * (u_pc.depth * k / ch / ch + th) / calc_freq(k) / 2;
 }
 
 
-float calc_tma_correction(float omega, float g, float depth) {
-    float omegaH = omega * sqrt(depth / g);
+float calc_tma_correction(float omega) {
+    float omegaH = omega * sqrt(u_pc.depth / GRAVITY_EARTH);
     if (omegaH <= 1)
         return 0.5 * omegaH * omegaH;
     if (omegaH < 2)
@@ -122,7 +123,8 @@ float calc_tma_correction(float omega, float g, float depth) {
 }
 
 
-float calc_jonswap(float omega, float g, float depth, float peak_omega) {
+float calc_jonswap(float omega, float peak_omega) {
+    const float g = GRAVITY_EARTH;
     const float u = u_pc.wind_speed;
     const float alpha = 0.076 * pow(u * u / (u_pc.fetch * GRAVITY_EARTH), 0.22);
 
@@ -131,11 +133,11 @@ float calc_jonswap(float omega, float g, float depth, float peak_omega) {
         sigma = 0.07;
     else
         sigma = 0.09;
-    float r = exp(-(omega - peak_omega) * (omega - peak_omega) / 2 / sigma / sigma / peak_omega / peak_omega);
+    float r = exp(-(omega - peak_omega) * (omega - peak_omega) / 2.0 / sigma / sigma / peak_omega / peak_omega);
 
-    float oneOverOmega = 1 / omega;
+    float oneOverOmega = 1.0 / omega;
     float peakOmegaOverOmega = peak_omega / omega;
-    return u_pc.amplitude * calc_tma_correction(omega, g, depth) * alpha * g * g
+    return u_pc.amplitude * calc_tma_correction(omega) * alpha * g * g
         * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega
         * exp(-1.25 * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega)
         * pow(abs(GAMMA), r);
@@ -181,7 +183,6 @@ float calc_short_wave_fade(float k) {
 
 
 float jonswap_spectrum(vec2 wave_vector) {
-    const float depth = 1.0;
     const float deltaK = 2 * PI / float(u_pc.L);
     const float k = max(length(wave_vector), 0.00001);
 
@@ -190,11 +191,11 @@ float jonswap_spectrum(vec2 wave_vector) {
 
     const float k_angle = atan(wave_vector.y, wave_vector.x);
     const float peak_omega = 22 * GRAVITY_EARTH * GRAVITY_EARTH / (u_pc.wind_speed * u_pc.fetch);
-    const float omega = calc_freq(k, GRAVITY_EARTH, depth);
+    const float omega = calc_freq(k);
     const vec4 wave_data = vec4(wave_vector.x, 1 / k, wave_vector.y, omega);
-    const float domega_dk = calc_freq_derivative(k, GRAVITY_EARTH, depth);
+    const float domega_dk = calc_freq_derivative(k);
 
-    const float spectrum = calc_jonswap(omega, GRAVITY_EARTH, depth, peak_omega)
+    const float spectrum = calc_jonswap(omega, peak_omega)
         * calc_direction_spectrum(k_angle, omega, peak_omega)
         * calc_short_wave_fade(k);
 

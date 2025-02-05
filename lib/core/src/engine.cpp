@@ -423,9 +423,7 @@ namespace {
             );
         }
 
-        void render_cvar() {
-            sung::gcvars().visit(CvarVisitor{});
-        }
+        void render_cvar() { sung::gcvars().visit(CvarVisitor{}); }
 
         void render_standard_camera(entt::entity e) {
             using namespace mirinae::cpnt;
@@ -642,6 +640,7 @@ namespace {
 
         void render_ocean(entt::entity e) {
             using namespace mirinae::cpnt;
+            constexpr auto flog = ImGuiSliderFlags_Logarithmic;
 
             auto ocean = this->reg().try_get<Ocean>(e);
             if (!ocean)
@@ -653,22 +652,13 @@ namespace {
                 this->render_transform(ocean->transform_);
 
                 ImGui::SliderFloat(
-                    "Wind speed",
-                    &ocean->wind_speed_,
-                    0.0,
-                    10000.0,
-                    nullptr,
-                    ImGuiSliderFlags_Logarithmic
+                    "Wind speed", &ocean->wind_speed_, 0.0, 10000.0, 0, flog
                 );
-                ImGui::SliderFloat(
-                    "Fetch",
-                    &ocean->fetch_,
-                    0,
-                    50000,
-                    nullptr,
-                    ImGuiSliderFlags_Logarithmic
-                );
+                ImGui::SliderFloat("Fetch", &ocean->fetch_, 0, 50000, 0, flog);
                 ImGui::SliderFloat("Swell", &ocean->swell_, 0, 1);
+                ImGui::SliderFloat(
+                    "Depth", &ocean->depth_, 0.0000001, 10000, "%.6f", flog
+                );
                 ImGui::SliderFloat("Spread blend", &ocean->spread_blend_, 0, 1);
 
                 float wind_dir = sung::to_degrees(
@@ -701,8 +691,8 @@ namespace {
                         &cascade.amplitude_,
                         1000,
                         10000000000,
-                        nullptr,
-                        ImGuiSliderFlags_Logarithmic
+                        0,
+                        flog
                     );
 
                     ImGui::SliderFloat("L", &cascade.L_, 1, 100);

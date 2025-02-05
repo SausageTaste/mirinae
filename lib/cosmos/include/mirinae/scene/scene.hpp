@@ -154,6 +154,7 @@ namespace mirinae::cpnt {
         float wind_speed_ = 10;
         float fetch_ = 100;
         float swell_ = 0.5;
+        float depth_ = 1;
         float spread_blend_ = 0.5;
         float time_ = 0;
         float tile_size_ = 20;
