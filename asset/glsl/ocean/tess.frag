@@ -63,8 +63,6 @@ vec3 merge_normals() {
 
 
 void main() {
-    const vec3 normal_texel = textureLod(u_normal_map[0], i_uv, 0).xyz;
-
     const mat3 tbn = make_tbn_mat(vec3(0, 1, 0), vec3(1, 0, 0), u_pc.view * u_pc.model);
     const vec3 normal = normalize(tbn * merge_normals());
     const vec3 albedo = vec3(0.1, 0.15, 0.25);
@@ -126,6 +124,15 @@ void main() {
 
         vec3 oceanColor = albedo;
         light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
+    }
+
+    {
+        float foam = 0;
+        for (int i = 0; i < 3; i++) {
+            foam = max(foam, texture(u_height_map[i], transform_uv(i_uv, i)).w);
+        }
+        foam = clamp(foam, 0, 1);
+        light = mix(light, vec3(1), foam);
     }
 
     // Fog
