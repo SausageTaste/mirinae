@@ -67,6 +67,7 @@ namespace {
         float amplitude_;
         float fetch_;
         float swell_;
+        float depth_;
         float spread_blend_;
         float cutoff_high_;
         float cutoff_low_;
@@ -325,6 +326,7 @@ namespace {
             pc.wind_speed_ = ocean_entt.wind_speed_;
             pc.fetch_ = ocean_entt.fetch_;
             pc.swell_ = ocean_entt.swell_;
+            pc.depth_ = ocean_entt.depth_;
             pc.spread_blend_ = ocean_entt.spread_blend_;
             pc.N_ = ::OCEAN_TEX_DIM;
 
