@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/ocean.hpp"
 
+#include <sung/basic/cvar.hpp>
 #include <sung/basic/time.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
@@ -16,6 +17,13 @@
 
 
 namespace {
+
+    sung::AutoCVarFlt cv_jacobian_lambda_x{ "ocean:jacobian_lambda_x", "", 1 };
+    sung::AutoCVarFlt cv_jacobian_lambda_y{ "ocean:jacobian_lambda_y", "", 1 };
+    sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 0 };
+    sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 0 };
+    sung::AutoCVarFlt cv_foam_add{ "ocean:foam_add", "", 1 };
+
 
     VkPipeline create_compute_pipeline(
         const dal::path& spv_path,
@@ -1521,6 +1529,10 @@ namespace {
 namespace {
 
     struct U_OceanFinalizePushConst {
+        glm::vec2 jacobian_lambda_;
+        float foam_threshold_;
+        float foam_bias_;
+        float foam_add_;
         int32_t N_;
         int32_t idx_;
     };
@@ -1810,6 +1822,11 @@ namespace {
             );
 
             U_OceanFinalizePushConst pc;
+            pc.jacobian_lambda_.x = cv_jacobian_lambda_x.get();
+            pc.jacobian_lambda_.y = cv_jacobian_lambda_y.get();
+            pc.foam_threshold_ = cv_foam_threshold.get();
+            pc.foam_bias_ = cv_foam_bias.get();
+            pc.foam_add_ = cv_foam_add.get();
             pc.N_ = ::OCEAN_TEX_DIM;
             pc.idx_ = ocean_entt.idx_ % 3;
 
@@ -1818,7 +1835,9 @@ namespace {
                 .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .record(cmdbuf, pc);
 
-            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 1);
+            vkCmdDispatch(
+                cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, CASCADE_COUNT
+            );
         }
 
     private:
