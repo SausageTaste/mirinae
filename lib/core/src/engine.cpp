@@ -4,6 +4,7 @@
 
 #include <imgui.h>
 #include <daltools/common/glm_tool.hpp>
+#include <sung/basic/cvar.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/network.hpp"
@@ -278,6 +279,12 @@ namespace {
 
             auto& reg = this->reg();
             if (ImGui::Begin("Entities")) {
+                if (ImGui::CollapsingHeader("CVars")) {
+                    ImGui::Indent(20);
+                    this->render_cvar();
+                    ImGui::Unindent(20);
+                }
+
                 if (ImGui::CollapsingHeader("StandardCamera")) {
                     ImGui::Indent(20);
                     for (const auto e : reg.view<StandardCamera>())
@@ -345,6 +352,30 @@ namespace {
         }
 
     private:
+        class CvarVisitor : public sung::ICVarVisitor {
+
+        public:
+            virtual void visit(sung::ICVarInt& cvar) {
+                int value = cvar.get();
+                ImGui::PushID(&cvar);
+                ImGui::DragInt(cvar.id().c_str(), &value);
+                ImGui::PopID();
+                cvar.set(value);
+            }
+
+            virtual void visit(sung::ICVarFloat& cvar) {
+                double value = cvar.get();
+                ImGui::PushID(&cvar);
+                ImGui::DragScalar(
+                    cvar.id().c_str(), ImGuiDataType_Double, &value, 0.1
+                );
+                ImGui::PopID();
+                cvar.set(value);
+            }
+
+            virtual void visit(sung::ICVarStr& cvar) {}
+        };
+
         entt::registry& reg() { return cosmos_->reg(); }
 
         mirinae::cpnt::Ocean* try_find_ocaen() {
@@ -390,6 +421,10 @@ namespace {
                 nullptr,
                 ImGuiSliderFlags_Logarithmic
             );
+        }
+
+        void render_cvar() {
+            sung::gcvars().visit(CvarVisitor{});
         }
 
         void render_standard_camera(entt::entity e) {
