@@ -18,19 +18,18 @@
 
 namespace {
 
-    sung::AutoCVarFlt cv_jacobian_lambda_x{ "ocean:jacobian_lambda_x", "", 1 };
-    sung::AutoCVarFlt cv_jacobian_lambda_y{ "ocean:jacobian_lambda_y", "", 1 };
-    sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
+    sung::AutoCVarFlt cv_foam_add{ "ocean:foam_add", "", 1 };
     sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 2 };
     sung::AutoCVarFlt cv_foam_scale{ "ocean:foam_scale", "", 1 };
-    sung::AutoCVarFlt cv_foam_add{ "ocean:foam_add", "", 1 };
-
+    sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
+    sung::AutoCVarFlt cv_jacobian_lambda_x{ "ocean:jacobian_lambda_x", "", 1 };
+    sung::AutoCVarFlt cv_jacobian_lambda_y{ "ocean:jacobian_lambda_y", "", 1 };
     sung::AutoCVarFlt cv_len_scale_x{ "ocean:len_scale_x", "", 10 };
     sung::AutoCVarFlt cv_len_scale_y{ "ocean:len_scale_y", "", 10 };
     sung::AutoCVarFlt cv_len_scale_z{ "ocean:len_scale_z", "", 10 };
-    sung::AutoCVarFlt cv_lod_scale{ "ocean:lod_scale", "", 1 };
-    sung::AutoCVarFlt cv_sss_base{ "ocean:sss_base", "", 0 };
-    sung::AutoCVarFlt cv_sss_scale{ "ocean:sss_scale", "", 1 };
+    sung::AutoCVarFlt cv_lod_scale{ "ocean:foam_lod_scale", "", 1 };
+    sung::AutoCVarFlt cv_sss_base{ "ocean:foam_sss_base", "", 0 };
+    sung::AutoCVarFlt cv_sss_scale{ "ocean:foam_sss_scale", "", 4 };
 
 
     VkPipeline create_compute_pipeline(
