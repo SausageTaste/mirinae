@@ -15,6 +15,8 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 view;
     mat4 model;
     vec4 tile_index_count;
+    float foam_threshold;
+    float foam_bias;
 } u_pc;
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
@@ -126,10 +128,20 @@ void main() {
         light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
     }
 
+    // Foam
     {
         float foam = 0;
         for (int i = 0; i < 3; i++) {
-            foam = max(foam, texture(u_height_map[i], transform_uv(i_uv, i)).w);
+            vec2 uv = transform_uv(i_uv, i);
+            vec3 D = textureOffset(u_height_map[i], uv, ivec2(0, 0)).xyz;
+            vec3 Dx = textureOffset(u_height_map[i], uv, ivec2(1, 0)).xyz;
+            vec3 Dz = textureOffset(u_height_map[i], uv, ivec2(0, 1)).xyz;
+            vec2 dDx = (Dx.xz - D.xz) * 256 / 20;
+            vec2 dDz = (Dz.xz - D.xz) * 256 / 20;
+            float J = (1.0 + dDx.x) * (1.0 + dDz.y) - dDx.y * dDz.x;
+            const float biasedJacobian = max(0.0, -(J - u_pc.foam_bias));
+            if (biasedJacobian > u_pc.foam_threshold)
+                foam = max(foam, biasedJacobian);
         }
         foam = clamp(foam, 0, 1);
         light = mix(light, vec3(1), foam);
