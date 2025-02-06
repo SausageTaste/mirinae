@@ -18,20 +18,25 @@ layout (push_constant) uniform U_OceanFinalizePushConst {
 } u_pc;
 
 
+float normalization_factor(ivec2 nm) {
+    const float perms[2] = float[2](1.0, -1.0);
+    const int index = int(mod(nm.x + nm.y, 2));
+    const float perm = perms[index];
+    return perm / float(u_pc.N * u_pc.N);
+}
+
+
 void main() {
-    ivec2 global_idx = ivec2(gl_GlobalInvocationID.xy);
-    int cascade = int(gl_GlobalInvocationID.z);
+    const ivec2 nm = ivec2(gl_GlobalInvocationID.xy);
+    const int cascade = int(gl_GlobalInvocationID.z);
+    const float nor = normalization_factor(nm);
 
-    float perms[2] = float[2](1.0, -1.0);
-    int index = int(mod((int(global_idx.x) + int(global_idx.y)), 2));
-    float perm = perms[index];
-    const float norm_factor = perm / float(u_pc.N * u_pc.N);
-
-    vec4 texel_dxdy = imageLoad(in_hkt_dxdy[cascade], global_idx) * norm_factor;
-    vec4 texel_dz = imageLoad(in_hkt_dz[cascade], global_idx) * norm_factor;
-    vec4 texel_ddxddz = imageLoad(in_hkt_ddxddz[cascade], global_idx) * norm_factor;
+    const vec4 texel_dxdy   = nor * imageLoad(in_hkt_dxdy[cascade],   nm);
+    const vec4 texel_dz     = nor * imageLoad(in_hkt_dz[cascade],     nm);
+    const vec4 texel_ddxddz = nor * imageLoad(in_hkt_ddxddz[cascade], nm);
 
     vec3 displacement = vec3(texel_dxdy.xz, texel_dz.x);
+    displacement.y *= -1;
 
     vec3 normal = vec3(texel_ddxddz.x, texel_ddxddz.z, 1);
     normal.y *= -1;
@@ -39,12 +44,12 @@ void main() {
     normal = normal * 0.5 + 0.5;
 
     const vec2 lambda = u_pc.jacobian_lambda;
-    float jacobian = (1.0 + lambda.x * texel_ddxddz.x) * (1.0 + lambda.y * texel_ddxddz.z);
-    float biasedJacobian = max(0.0, -(jacobian - u_pc.foam_threshold));
+    const float jacobian = (1.0 + lambda.x * texel_ddxddz.x) * (1.0 + lambda.y * texel_ddxddz.z);
+    const float biasedJacobian = max(0.0, -(jacobian - u_pc.foam_threshold));
     float foam = 0.0;
     if (biasedJacobian > u_pc.foam_threshold)
         foam += u_pc.foam_add * biasedJacobian;
 
-    imageStore(out_displacement[cascade], global_idx, vec4(displacement.x, -displacement.y, displacement.z, foam));
-    imageStore(out_normal[cascade], global_idx, vec4(normal, 1));
+    imageStore(out_displacement[cascade], nm, vec4(displacement, foam));
+    imageStore(out_normal[cascade], nm, vec4(normal, 1));
 }
