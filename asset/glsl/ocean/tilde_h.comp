@@ -14,8 +14,8 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
     float wind_speed;
     float amplitude;
     float fetch;
-    float swell;
     float depth;
+    float swell;
     float spread_blend;
     float cutoff_high;
     float cutoff_low;

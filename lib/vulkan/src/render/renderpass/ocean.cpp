@@ -66,8 +66,8 @@ namespace {
         float wind_speed_;
         float amplitude_;
         float fetch_;
-        float swell_;
         float depth_;
+        float swell_;
         float spread_blend_;
         float cutoff_high_;
         float cutoff_low_;
@@ -375,6 +375,8 @@ namespace {
 
     struct U_OceanTildeHktPushConst {
         float time_;
+        float repeat_time_;
+        float depth_;
         int32_t L_[3];
         int32_t N_;
     };
@@ -665,6 +667,8 @@ namespace {
 
             ::U_OceanTildeHktPushConst pc;
             pc.time_ = ocean_entt.time_;
+            pc.repeat_time_ = ocean_entt.repeat_time_;
+            pc.depth_ = ocean_entt.depth_;
             pc.L_[0] = ocean_entt.cascades_[0].L_;
             pc.L_[1] = ocean_entt.cascades_[1].L_;
             pc.L_[2] = ocean_entt.cascades_[2].L_;
