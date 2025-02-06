@@ -24,6 +24,13 @@ namespace {
     sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 9 };
     sung::AutoCVarFlt cv_foam_add{ "ocean:foam_add", "", 1 };
 
+    sung::AutoCVarFlt cv_len_scale_x{ "ocean:len_scale_x", "", 1 };
+    sung::AutoCVarFlt cv_len_scale_y{ "ocean:len_scale_y", "", 1 };
+    sung::AutoCVarFlt cv_len_scale_z{ "ocean:len_scale_z", "", 1 };
+    sung::AutoCVarFlt cv_lod_scale{ "ocean:lod_scale", "", 1 };
+    sung::AutoCVarFlt cv_sss_base{ "ocean:sss_base", "", 0 };
+    sung::AutoCVarFlt cv_sss_scale{ "ocean:sss_scale", "", 1 };
+
 
     VkPipeline create_compute_pipeline(
         const dal::path& spv_path,
@@ -1901,6 +1908,18 @@ namespace {
             return *this;
         }
 
+        U_OceanTessPushConst& len_scales(float x, float y, float z) {
+            len_scales_lod_scale_.x = x;
+            len_scales_lod_scale_.y = y;
+            len_scales_lod_scale_.z = z;
+            return *this;
+        }
+
+        U_OceanTessPushConst& lod_scale(float v) {
+            len_scales_lod_scale_.w = v;
+            return *this;
+        }
+
         U_OceanTessPushConst& tile_index(int x, int y) {
             tile_index_count_.x = static_cast<float>(x);
             tile_index_count_.y = static_cast<float>(y);
@@ -1913,13 +1932,23 @@ namespace {
             return *this;
         }
 
+        U_OceanTessPushConst& foam_bias(float x) {
+            foam_bias_ = x;
+            return *this;
+        }
+
         U_OceanTessPushConst& foam_threshold(float x) {
             foam_threshold_ = x;
             return *this;
         }
 
-        U_OceanTessPushConst& foam_bias(float x) {
-            foam_bias_ = x;
+        U_OceanTessPushConst& sss_base(float v) {
+            sss_base_ = v;
+            return *this;
+        }
+
+        U_OceanTessPushConst& sss_scale(float v) {
+            sss_scale_ = v;
             return *this;
         }
 
@@ -1927,9 +1956,12 @@ namespace {
         glm::mat4 pvm_;
         glm::mat4 view_;
         glm::mat4 model_;
+        glm::vec4 len_scales_lod_scale_;
         glm::vec4 tile_index_count_;
-        float foam_threshold_;
         float foam_bias_;
+        float foam_threshold_;
+        float sss_base_;
+        float sss_scale_;
     };
 
 
@@ -1953,20 +1985,30 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_finalize:displacement_c{}_f{}", j, i
                     );
-                    fd.height_map_[j] = rp_res.get_img_reader(
+                    fd.disp_map_[j] = rp_res.get_img_reader(
                         img_name, this->name()
                     );
-                    MIRINAE_ASSERT(nullptr != fd.height_map_[j]);
+                    MIRINAE_ASSERT(nullptr != fd.disp_map_[j]);
                 }
 
                 for (size_t j = 0; j < CASCADE_COUNT; j++) {
                     const auto img_name = fmt::format(
                         "ocean_finalize:derivatives_c{}_f{}", j, i
                     );
-                    fd.normal_map_[j] = rp_res.get_img_reader(
+                    fd.deri_map_[j] = rp_res.get_img_reader(
                         img_name, this->name()
                     );
-                    MIRINAE_ASSERT(nullptr != fd.normal_map_[j]);
+                    MIRINAE_ASSERT(nullptr != fd.deri_map_[j]);
+                }
+
+                for (size_t j = 0; j < CASCADE_COUNT; j++) {
+                    const auto img_name = fmt::format(
+                        "ocean_finalize:turbulence_c{}", j
+                    );
+                    turb_map_[j] = rp_res.get_img_reader(
+                        img_name, this->name()
+                    );
+                    MIRINAE_ASSERT(nullptr != turb_map_[j]);
                 }
             }
 
@@ -1989,19 +2031,26 @@ namespace {
                     .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                     .finish_binding();
                 builder
-                    .new_binding()  // Height map
+                    .new_binding()  // Displacement map
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .set_count(3)
                     .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                     .add_stage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
                     .finish_binding();
                 builder
-                    .new_binding()  // Normal map
+                    .new_binding()  // Derivative map
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .set_count(3)
                     .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .finish_binding()
-                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Sky texture
+                    .finish_binding();
+                builder
+                    .new_binding()  // Turbulance map
+                    .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .set_count(3)
+                    .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .finish_binding();
+                builder  // Sky texture
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
                 desclayouts.add(builder, device.logi_device());
             }
 
@@ -2029,38 +2078,52 @@ namespace {
                         .add_buf_write(fd.desc_set_, 0);
                     writer  // Height maps
                         .add_img_info()
-                        .set_img_view(fd.height_map_[0]->view_.get())
+                        .set_img_view(fd.disp_map_[0]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
-                        .set_img_view(fd.height_map_[1]->view_.get())
+                        .set_img_view(fd.disp_map_[1]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
-                        .set_img_view(fd.height_map_[2]->view_.get())
+                        .set_img_view(fd.disp_map_[2]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 1);
                     writer  // Normal maps
                         .add_img_info()
-                        .set_img_view(fd.normal_map_[0]->view_.get())
+                        .set_img_view(fd.deri_map_[0]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
-                        .set_img_view(fd.normal_map_[1]->view_.get())
+                        .set_img_view(fd.deri_map_[1]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
-                        .set_img_view(fd.normal_map_[2]->view_.get())
+                        .set_img_view(fd.deri_map_[2]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 2);
+                    writer  // Turbulance maps
+                        .add_img_info()
+                        .set_img_view(turb_map_[0]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_img_info()
+                        .set_img_view(turb_map_[1]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_img_info()
+                        .set_img_view(turb_map_[2]->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_GENERAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 3);
 
                     writer.add_img_info()
                         .set_img_view(sky_tex)
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 3);
+                    writer.add_sampled_img_write(fd.desc_set_, 4);
                 }
                 writer.apply_all(device.logi_device());
             }
@@ -2116,8 +2179,7 @@ namespace {
                 builder.tes_state().patch_ctrl_points(4);
 
                 builder.rasterization_state().cull_mode_back();
-                builder.rasterization_state().polygon_mode(VK_POLYGON_MODE_LINE
-                );
+                // builder.rasterization_state().polygon_mode_line();
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
@@ -2159,13 +2221,16 @@ namespace {
         ~RpStatesOceanTess() override {
             for (auto& fd : frame_data_) {
                 for (size_t i = 0; i < CASCADE_COUNT; i++) {
-                    rp_res_.free_img(fd.height_map_[i]->id(), this->name());
-                    rp_res_.free_img(fd.normal_map_[i]->id(), this->name());
+                    rp_res_.free_img(fd.disp_map_[i]->id(), this->name());
+                    rp_res_.free_img(fd.deri_map_[i]->id(), this->name());
                 }
 
                 fd.ubuf_.destroy(device_.mem_alloc());
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
+
+            for (size_t i = 0; i < CASCADE_COUNT; i++)
+                rp_res_.free_img(turb_map_[i]->id(), this->name());
 
             desc_pool_.destroy(device_.logi_device());
 
@@ -2235,8 +2300,16 @@ namespace {
 
             U_OceanTessPushConst pc;
             pc.tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
+                .lod_scale(cv_lod_scale.get())
+                .sss_base(cv_sss_base.get())
+                .sss_scale(cv_sss_scale.get())
                 .foam_threshold(cv_foam_threshold.get())
                 .foam_bias(cv_foam_bias.get())
+                .len_scales(
+                    cv_len_scale_x.get(),
+                    cv_len_scale_y.get(),
+                    cv_len_scale_z.get()
+                )
                 .pvm(
                     ctxt.proj_mat_,
                     ctxt.view_mat_,
@@ -2261,8 +2334,8 @@ namespace {
 
     private:
         struct FrameData {
-            std::array<mirinae::HRpImage, CASCADE_COUNT> height_map_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> normal_map_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> disp_map_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> deri_map_;
             mirinae::Buffer ubuf_;
             VkDescriptorSet desc_set_;
         };
@@ -2271,6 +2344,7 @@ namespace {
         mirinae::RpResources& rp_res_;
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
+        std::array<mirinae::HRpImage, CASCADE_COUNT> turb_map_;
         mirinae::DescPool desc_pool_;
         mirinae::RenderPassRaii render_pass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;

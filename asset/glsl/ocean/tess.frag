@@ -4,8 +4,9 @@
 #include "../utils/lighting.glsl"
 #include "../utils/normal_mapping.glsl"
 
-layout (location = 0) in vec3 i_frag_pos;
-layout (location = 1) in vec2 i_uv;
+layout (location = 0) in vec4 i_lod_scales;
+layout (location = 1) in vec3 i_frag_pos;
+layout (location = 2) in vec2 i_uv;
 
 layout (location = 0) out vec4 f_color;
 
@@ -14,9 +15,12 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 pvm;
     mat4 view;
     mat4 model;
+    vec4 len_scales_lod_scale;
     vec4 tile_index_count;
-    float foam_threshold;
     float foam_bias;
+    float foam_threshold;
+    float sss_base;
+    float sss_scale;
 } u_pc;
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
@@ -26,9 +30,10 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     vec2 tile_dimensions;
 } u_params;
 
-layout (set = 0, binding = 1) uniform sampler2D u_height_map[3];
-layout (set = 0, binding = 2) uniform sampler2D u_normal_map[3];
-layout (set = 0, binding = 3) uniform sampler2D u_sky_tex;
+layout (set = 0, binding = 1) uniform sampler2D u_disp_map[3];
+layout (set = 0, binding = 2) uniform sampler2D u_deri_map[3];
+layout (set = 0, binding = 3) uniform sampler2D u_turb_map[3];
+layout (set = 0, binding = 4) uniform sampler2D u_sky_tex;
 
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
@@ -52,35 +57,33 @@ vec2 transform_uv(vec2 uv, int cascade) {
 }
 
 
-vec3 merge_normals() {
-    vec3 normal = vec3(0);
-
-    for (int i = 0; i < 3; i++) {
-        vec3 texel = textureLod(u_normal_map[i], transform_uv(i_uv, i), 0).xyz;
-        normal += (texel * 2 - 1);
-    }
-
-    return normal;
-}
-
-
 void main() {
     const mat3 tbn = make_tbn_mat(vec3(0, 1, 0), vec3(1, 0, 0), u_pc.view * u_pc.model);
-    const vec3 normal = normalize(tbn * merge_normals());
     const vec3 albedo = vec3(0.1, 0.15, 0.25);
     const float roughness = 0.1;
     const float metallic = 0;
     const float frag_dist = length(i_frag_pos);
     const vec3 to_view = i_frag_pos / (-frag_dist);
+    const vec3 F0 = mix(vec3(0.04), albedo, metallic);
+
+    vec4 derivatives = texture(u_deri_map[0], i_uv);
+    derivatives += texture(u_deri_map[1], i_uv) * i_lod_scales[1];
+    derivatives += texture(u_deri_map[2], i_uv) * i_lod_scales[2];
+
+    const vec2 slope = vec2(
+        derivatives.x / (1.0 + derivatives.z),
+        derivatives.y / (1.0 + derivatives.w)
+    );
+    const vec3 world_normal = normalize(vec3(-slope.x, 1, -slope.y));
+    const vec3 normal = normalize(mat3(u_pc.view * u_pc.model) * world_normal);
 
     vec3 light = vec3(0);
 
     const vec3 light_dir = mat3(u_pc.view) *  normalize(vec3(0.5653, 0.3, 0.3812));
 
-    /*
     light += calc_pbr_illumination(
-        0.2,
-        0,
+        roughness,
+        metallic,
         albedo,
         normal,
         F0,
@@ -88,8 +91,8 @@ void main() {
         light_dir,
         vec3(3)
     );
-    */
 
+    /*
     {
         vec3 n = normal;
         vec3 v = to_view;
@@ -127,25 +130,7 @@ void main() {
         vec3 oceanColor = albedo;
         light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
     }
-
-    // Foam
-    {
-        float foam = 0;
-        for (int i = 0; i < 3; i++) {
-            vec2 uv = transform_uv(i_uv, i);
-            vec3 D = textureOffset(u_height_map[i], uv, ivec2(0, 0)).xyz;
-            vec3 Dx = textureOffset(u_height_map[i], uv, ivec2(1, 0)).xyz;
-            vec3 Dz = textureOffset(u_height_map[i], uv, ivec2(0, 1)).xyz;
-            vec2 dDx = (Dx.xz - D.xz) * 256 / 20;
-            vec2 dDz = (Dz.xz - D.xz) * 256 / 20;
-            float J = (1.0 + dDx.x) * (1.0 + dDz.y) - dDx.y * dDz.x;
-            const float biasedJacobian = max(0.0, -(J - u_pc.foam_bias));
-            if (biasedJacobian > u_pc.foam_threshold)
-                foam = max(foam, biasedJacobian);
-        }
-        foam = clamp(foam, 0, 1);
-        light = mix(light, vec3(1), foam);
-    }
+    */
 
     // Fog
     {
