@@ -67,9 +67,13 @@ void main() {
     const vec3 to_view = i_frag_pos / (-frag_dist);
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
-    vec4 derivatives = texture(u_deri_map[0], i_uv);
-    derivatives += texture(u_deri_map[1], i_uv) * i_lod_scales[1];
-    derivatives += texture(u_deri_map[2], i_uv) * i_lod_scales[2];
+    float jacobian = 0;
+    vec4 derivatives = vec4(0);
+    for (int i = 0; i < 3; i++) {
+        const vec2 t_uv = transform_uv(i_uv, i);
+        derivatives += texture(u_deri_map[i], t_uv) * i_lod_scales[i];
+        jacobian += texture(u_turb_map[i], t_uv).x;
+    }
 
     const vec2 slope = vec2(
         derivatives.x / (1.0 + derivatives.z),
@@ -78,15 +82,12 @@ void main() {
     const vec3 world_normal = normalize(vec3(-slope.x, 1, -slope.y));
     const vec3 normal = normalize(mat3(u_pc.view * u_pc.model) * world_normal);
 
-     float jacobian = texture(u_turb_map[0], i_uv).x
-        + texture(u_turb_map[1], i_uv).x
-        + texture(u_turb_map[2], i_uv).x;
-    jacobian = min(1, max(0, (-jacobian + u_pc.foam_bias) * u_pc.foam_scale));
 
     vec3 light = vec3(0);
 
     const vec3 light_dir = mat3(u_pc.view) *  normalize(vec3(0.5653, 0.3, 0.3812));
 
+    /*
     light += calc_pbr_illumination(
         roughness,
         metallic,
@@ -97,8 +98,8 @@ void main() {
         light_dir,
         vec3(3)
     );
+    */
 
-    /*
     {
         vec3 n = normal;
         vec3 v = to_view;
@@ -136,11 +137,11 @@ void main() {
         vec3 oceanColor = albedo;
         light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
     }
-    */
 
     // Foam
     {
-        light = mix(light, vec3(1), jacobian);
+        jacobian = min(1, max(0, (-jacobian + u_pc.foam_bias) * u_pc.foam_scale));
+        light = mix(light, vec3(1, 0, 0), jacobian);
     }
 
     // Fog
