@@ -20,8 +20,8 @@ namespace {
 
     sung::AutoCVarFlt cv_jacobian_lambda_x{ "ocean:jacobian_lambda_x", "", 1 };
     sung::AutoCVarFlt cv_jacobian_lambda_y{ "ocean:jacobian_lambda_y", "", 1 };
-    sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 0 };
-    sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 0 };
+    sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
+    sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 9 };
     sung::AutoCVarFlt cv_foam_add{ "ocean:foam_add", "", 1 };
 
 
@@ -1876,11 +1876,23 @@ namespace {
             return *this;
         }
 
+        U_OceanTessPushConst& foam_threshold(float x) {
+            foam_threshold_ = x;
+            return *this;
+        }
+
+        U_OceanTessPushConst& foam_bias(float x) {
+            foam_bias_ = x;
+            return *this;
+        }
+
     private:
         glm::mat4 pvm_;
         glm::mat4 view_;
         glm::mat4 model_;
         glm::vec4 tile_index_count_;
+        float foam_threshold_;
+        float foam_bias_;
     };
 
 
@@ -2185,6 +2197,8 @@ namespace {
 
             U_OceanTessPushConst pc;
             pc.tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
+                .foam_threshold(cv_foam_threshold.get())
+                .foam_bias(cv_foam_bias.get())
                 .pvm(
                     ctxt.proj_mat_,
                     ctxt.view_mat_,
