@@ -21,12 +21,13 @@ namespace {
     sung::AutoCVarFlt cv_jacobian_lambda_x{ "ocean:jacobian_lambda_x", "", 1 };
     sung::AutoCVarFlt cv_jacobian_lambda_y{ "ocean:jacobian_lambda_y", "", 1 };
     sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
-    sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 9 };
+    sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 2 };
+    sung::AutoCVarFlt cv_foam_scale{ "ocean:foam_scale", "", 1 };
     sung::AutoCVarFlt cv_foam_add{ "ocean:foam_add", "", 1 };
 
-    sung::AutoCVarFlt cv_len_scale_x{ "ocean:len_scale_x", "", 1 };
-    sung::AutoCVarFlt cv_len_scale_y{ "ocean:len_scale_y", "", 1 };
-    sung::AutoCVarFlt cv_len_scale_z{ "ocean:len_scale_z", "", 1 };
+    sung::AutoCVarFlt cv_len_scale_x{ "ocean:len_scale_x", "", 10 };
+    sung::AutoCVarFlt cv_len_scale_y{ "ocean:len_scale_y", "", 10 };
+    sung::AutoCVarFlt cv_len_scale_z{ "ocean:len_scale_z", "", 10 };
     sung::AutoCVarFlt cv_lod_scale{ "ocean:lod_scale", "", 1 };
     sung::AutoCVarFlt cv_sss_base{ "ocean:sss_base", "", 0 };
     sung::AutoCVarFlt cv_sss_scale{ "ocean:sss_scale", "", 1 };
@@ -1937,6 +1938,11 @@ namespace {
             return *this;
         }
 
+        U_OceanTessPushConst& foam_scale(float x) {
+            foam_scale_ = x;
+            return *this;
+        }
+
         U_OceanTessPushConst& foam_threshold(float x) {
             foam_threshold_ = x;
             return *this;
@@ -1959,6 +1965,7 @@ namespace {
         glm::vec4 len_scales_lod_scale_;
         glm::vec4 tile_index_count_;
         float foam_bias_;
+        float foam_scale_;
         float foam_threshold_;
         float sss_base_;
         float sss_scale_;
@@ -2302,6 +2309,7 @@ namespace {
             pc.tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
                 .lod_scale(cv_lod_scale.get())
                 .sss_base(cv_sss_base.get())
+                .foam_scale(cv_foam_scale.get())
                 .sss_scale(cv_sss_scale.get())
                 .foam_threshold(cv_foam_threshold.get())
                 .foam_bias(cv_foam_bias.get())
