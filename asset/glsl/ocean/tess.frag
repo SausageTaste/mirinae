@@ -44,9 +44,9 @@ vec2 transform_uv(vec2 uv, int cascade) {
     vec2 offset = u_params.texco_offset_rot_[cascade].xy;
     vec2 scale = u_params.texco_offset_rot_[cascade].zw;
 
-    const Complex global_uv = complex_init(uv + tile_idx);
-    const Complex offset_rot = complex_init(scale);
-    return complex_to_vec2(complex_mul(global_uv, offset_rot)) + offset;
+    const vec2 global_uv = complex_init(uv + tile_idx);
+    const vec2 offset_rot = complex_init(scale);
+    return complex_mul(global_uv, offset_rot) + offset;
 }
 
 

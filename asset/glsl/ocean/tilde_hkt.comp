@@ -28,23 +28,21 @@ void main() {
         mag = 0.00001;
 
     const float w = sqrt(GRAVITY_EARTH * mag);
-    Complex exp_iwt = complex_init_exp(w * u_pc.time);
+    const vec2 exp_iwt = complex_init_exp(w * u_pc.time);
     const vec4 h0k_texel = imageLoad(in_hk[cascade], global_idx);
 
-    Complex hkt_dy = complex_add(
-        complex_mul(complex_init(h0k_texel.xy), exp_iwt),
-        complex_mul(complex_init(h0k_texel.zw), complex_conj(exp_iwt))
-    );
+    const vec2 hkt_dy = complex_mul(complex_init(h0k_texel.xy), exp_iwt)
+        + complex_mul(complex_init(h0k_texel.zw), complex_conj(exp_iwt));
     imageStore(out_hkt_dxdy[cascade], global_idx, vec4(
-        complex_to_vec2(complex_mul(Complex(0, -k.x / mag), hkt_dy)),
-        complex_to_vec2(hkt_dy)
+        complex_mul(vec2(0, -k.x / mag), hkt_dy),
+        hkt_dy
     ));
     imageStore(out_hkt_dz[cascade], global_idx, vec4(
-        complex_to_vec2(complex_mul(Complex(0, -k.y / mag), hkt_dy)),
+        complex_mul(vec2(0, -k.y / mag), hkt_dy),
         0, 1
     ));
     imageStore(out_hkt_ddxddz[cascade], global_idx, vec4(
-        complex_to_vec2(complex_mul(Complex(0, k.x), hkt_dy)),
-        complex_to_vec2(complex_mul(Complex(0, k.y), hkt_dy))
+        complex_mul(vec2(0, k.x), hkt_dy),
+        complex_mul(vec2(0, k.y), hkt_dy)
     ));
 }
