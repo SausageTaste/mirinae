@@ -3,16 +3,18 @@
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout (binding = 0, rgba32f) uniform writeonly image2D out_displacement[3];
-layout (binding = 1, rgba8)   uniform writeonly image2D out_normal[3];
-layout (binding = 2, rgba32f) uniform readonly  image2D in_hkt_dxdy[3];
-layout (binding = 3, rgba32f) uniform readonly  image2D in_hkt_dz[3];
-layout (binding = 4, rgba32f) uniform readonly  image2D in_hkt_ddxddz[3];
+layout (binding = 1, rgba32f) uniform writeonly image2D out_derivative[3];
+layout (binding = 2, rgba32f) uniform           image2D out_turbulence[3];
+layout (binding = 3, rgba32f) uniform readonly  image2D in_hkt_dxdy[3];
+layout (binding = 4, rgba32f) uniform readonly  image2D in_hkt_dz[3];
+layout (binding = 5, rgba32f) uniform readonly  image2D in_hkt_ddxddz[3];
 
 layout (push_constant) uniform U_OceanFinalizePushConst {
     vec2 jacobian_lambda;
     float foam_threshold;
     float foam_bias;
     float foam_add;
+    float dt;
     int N;
     int idx;
 } u_pc;
@@ -35,21 +37,25 @@ void main() {
     const vec4 texel_dz     = nor * imageLoad(in_hkt_dz[cascade],     nm);
     const vec4 texel_ddxddz = nor * imageLoad(in_hkt_ddxddz[cascade], nm);
 
-    vec3 displacement = vec3(texel_dxdy.xz, texel_dz.x);
-    displacement.y *= -1;
-
-    vec3 normal = vec3(texel_ddxddz.x, texel_ddxddz.z, 1);
-    normal.y *= -1;
-    normal = normalize(normal);
-    normal = normal * 0.5 + 0.5;
-
+    const vec2 DxDz = texel_dxdy.xy;
+	const vec2 DyDxz = texel_dxdy.zw;
+	const vec2 DyxDyz = texel_dz.xy;
+	const vec2 DxxDzz = texel_dz.zw;
     const vec2 lambda = u_pc.jacobian_lambda;
-    const float jacobian = (1.0 + lambda.x * texel_ddxddz.x) * (1.0 + lambda.y * texel_ddxddz.z);
-    const float biasedJacobian = max(0.0, -(jacobian - u_pc.foam_threshold));
-    float foam = 0.0;
-    if (biasedJacobian > u_pc.foam_threshold)
-        foam += u_pc.foam_add * biasedJacobian;
 
-    imageStore(out_displacement[cascade], nm, vec4(displacement, foam));
-    imageStore(out_normal[cascade], nm, vec4(normal, 1));
+    imageStore(out_displacement[cascade], nm, vec4(
+        lambda.x * DxDz.x,
+        DyDxz.x,
+        lambda.y * DxDz.y,
+        1
+    ));
+
+    imageStore(out_derivative[cascade], nm, vec4(DyxDyz, DxxDzz * lambda));
+
+    vec4 turb_texel = imageLoad(out_turbulence[cascade], nm);
+    const float jacobian = (1 + lambda.x * DxxDzz.x) * (1 + lambda.y * DxxDzz.y) - lambda.x * lambda.y * DyDxz.y * DyDxz.y;
+    const float factor = turb_texel.r + u_pc.dt * 0.5 / max(jacobian, 0.5);
+    turb_texel.r = min(jacobian, factor);
+
+    imageStore(out_turbulence[cascade], nm, turb_texel);
 }

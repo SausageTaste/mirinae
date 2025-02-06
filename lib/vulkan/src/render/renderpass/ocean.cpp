@@ -1450,6 +1450,7 @@ namespace {
         float foam_threshold_;
         float foam_bias_;
         float foam_add_;
+        float dt_;
         int32_t N_;
         int32_t idx_;
     };
@@ -1517,23 +1518,40 @@ namespace {
                         builder.format(cinfo.format());
                         img->view_.reset(builder, device);
 
-                        fd.displacement_[j] = std::move(img);
+                        fd.disp_[j] = std::move(img);
                     }
 
                     for (size_t j = 0; j < CASCADE_COUNT; j++) {
-                        const auto i_name = fmt::format("normal_c{}_f{}", j, i);
+                        const auto i_name = fmt::format(
+                            "derivatives_c{}_f{}", j, i
+                        );
                         auto img = rp_res.new_img(i_name, name());
                         MIRINAE_ASSERT(nullptr != img);
 
-                        cinfo.set_format(VK_FORMAT_R8G8B8A8_UNORM);
+                        cinfo.set_format(VK_FORMAT_R32G32B32A32_SFLOAT);
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
 
                         builder.format(cinfo.format());
                         img->view_.reset(builder, device);
 
-                        fd.normal_[j] = std::move(img);
+                        fd.deri_[j] = std::move(img);
                     }
+                }
+
+                for (size_t j = 0; j < CASCADE_COUNT; j++) {
+                    const auto i_name = fmt::format("turbulence_c{}", j);
+                    auto img = rp_res.new_img(i_name, name());
+                    MIRINAE_ASSERT(nullptr != img);
+
+                    cinfo.set_format(VK_FORMAT_R32G32B32A32_SFLOAT);
+                    img->img_.init(cinfo.get(), device.mem_alloc());
+                    builder.image(img->img_.image());
+
+                    builder.format(cinfo.format());
+                    img->view_.reset(builder, device);
+
+                    turb_[j] = std::move(img);
                 }
             }
 
@@ -1553,20 +1571,28 @@ namespace {
                 auto cmdbuf = cmd_pool.begin_single_time(device);
                 for (auto fd : fdata_) {
                     for (size_t i = 0; i < CASCADE_COUNT; i++) {
-                        barrier.image(fd.displacement_[i]->img_.image());
+                        barrier.image(fd.disp_[i]->img_.image());
                         barrier.record_single(
                             cmdbuf,
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                             VK_PIPELINE_STAGE_TRANSFER_BIT
                         );
 
-                        barrier.image(fd.normal_[i]->img_.image());
+                        barrier.image(fd.deri_[i]->img_.image());
                         barrier.record_single(
                             cmdbuf,
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                             VK_PIPELINE_STAGE_TRANSFER_BIT
                         );
                     }
+                }
+                for (size_t i = 0; i < CASCADE_COUNT; i++) {
+                    barrier.image(turb_[i]->img_.image());
+                    barrier.record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
+                    );
                 }
                 cmd_pool.end_single_time(cmdbuf, device);
                 cmd_pool.destroy(device.logi_device());
@@ -1581,7 +1607,12 @@ namespace {
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(3)
                     .finish_binding()
-                    .new_binding()  // normal
+                    .new_binding()  // derivatives
+                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(3)
+                    .finish_binding()
+                    .new_binding()  // turbulence
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(3)
@@ -1625,27 +1656,30 @@ namespace {
                     auto& fd = fdata_[i];
                     fd.desc_set_ = sets[i];
 
-                    writer
-                        .add_storage_img_info(fd.displacement_[0]->view_.get())
-                        .add_storage_img_info(fd.displacement_[1]->view_.get())
-                        .add_storage_img_info(fd.displacement_[2]->view_.get())
+                    writer.add_storage_img_info(fd.disp_[0]->view_.get())
+                        .add_storage_img_info(fd.disp_[1]->view_.get())
+                        .add_storage_img_info(fd.disp_[2]->view_.get())
                         .add_storage_img_write(fd.desc_set_, 0);
-                    writer.add_storage_img_info(fd.normal_[0]->view_.get())
-                        .add_storage_img_info(fd.normal_[1]->view_.get())
-                        .add_storage_img_info(fd.normal_[2]->view_.get())
+                    writer.add_storage_img_info(fd.deri_[0]->view_.get())
+                        .add_storage_img_info(fd.deri_[1]->view_.get())
+                        .add_storage_img_info(fd.deri_[2]->view_.get())
                         .add_storage_img_write(fd.desc_set_, 1);
+                    writer.add_storage_img_info(turb_[0]->view_.get())
+                        .add_storage_img_info(turb_[1]->view_.get())
+                        .add_storage_img_info(turb_[2]->view_.get())
+                        .add_storage_img_write(fd.desc_set_, 2);
                     writer.add_storage_img_info(fd.hkt_dxdy_[0]->view_.get())
                         .add_storage_img_info(fd.hkt_dxdy_[1]->view_.get())
                         .add_storage_img_info(fd.hkt_dxdy_[2]->view_.get())
-                        .add_storage_img_write(fd.desc_set_, 2);
+                        .add_storage_img_write(fd.desc_set_, 3);
                     writer.add_storage_img_info(fd.hkt_dz_[0]->view_.get())
                         .add_storage_img_info(fd.hkt_dz_[1]->view_.get())
                         .add_storage_img_info(fd.hkt_dz_[2]->view_.get())
-                        .add_storage_img_write(fd.desc_set_, 3);
+                        .add_storage_img_write(fd.desc_set_, 4);
                     writer.add_storage_img_info(fd.hkt_ddxddz_[0]->view_.get())
                         .add_storage_img_info(fd.hkt_ddxddz_[1]->view_.get())
                         .add_storage_img_info(fd.hkt_ddxddz_[2]->view_.get())
-                        .add_storage_img_write(fd.desc_set_, 4);
+                        .add_storage_img_write(fd.desc_set_, 5);
                 }
                 writer.apply_all(device.logi_device());
             }
@@ -1677,14 +1711,15 @@ namespace {
                     rp_res_.free_img(fdata.hkt_dxdy_[i]->id(), this->name());
                     rp_res_.free_img(fdata.hkt_dz_[i]->id(), this->name());
                     rp_res_.free_img(fdata.hkt_ddxddz_[i]->id(), this->name());
-                    rp_res_.free_img(
-                        fdata.displacement_[i]->id(), this->name()
-                    );
-                    rp_res_.free_img(fdata.normal_[i]->id(), this->name());
+                    rp_res_.free_img(fdata.disp_[i]->id(), this->name());
+                    rp_res_.free_img(fdata.deri_[i]->id(), this->name());
                 }
 
                 fdata.desc_set_ = VK_NULL_HANDLE;
             }
+
+            for (size_t i = 0; i < CASCADE_COUNT; i++)
+                rp_res_.free_img(turb_[i]->id(), this->name());
 
             desc_pool_.destroy(device_.logi_device());
 
@@ -1744,6 +1779,7 @@ namespace {
             pc.foam_threshold_ = cv_foam_threshold.get();
             pc.foam_bias_ = cv_foam_bias.get();
             pc.foam_add_ = cv_foam_add.get();
+            pc.dt_ = ctxt.cosmos_->scene().clock().dt();
             pc.N_ = ::OCEAN_TEX_DIM;
             pc.idx_ = ocean_entt.idx_ % 3;
 
@@ -1762,8 +1798,8 @@ namespace {
             std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_dxdy_;
             std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_dz_;
             std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_ddxddz_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> displacement_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> normal_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> disp_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> deri_;
             VkDescriptorSet desc_set_;
         };
 
@@ -1771,6 +1807,7 @@ namespace {
         mirinae::RpResources& rp_res_;
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
+        std::array<mirinae::HRpImage, CASCADE_COUNT> turb_;
         mirinae::DescPool desc_pool_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
@@ -1924,7 +1961,7 @@ namespace {
 
                 for (size_t j = 0; j < CASCADE_COUNT; j++) {
                     const auto img_name = fmt::format(
-                        "ocean_finalize:normal_c{}_f{}", j, i
+                        "ocean_finalize:derivatives_c{}_f{}", j, i
                     );
                     fd.normal_map_[j] = rp_res.get_img_reader(
                         img_name, this->name()
@@ -2079,7 +2116,8 @@ namespace {
                 builder.tes_state().patch_ctrl_points(4);
 
                 builder.rasterization_state().cull_mode_back();
-                // builder.rasterization_state().polygon_mode(VK_POLYGON_MODE_LINE);
+                builder.rasterization_state().polygon_mode(VK_POLYGON_MODE_LINE
+                );
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
