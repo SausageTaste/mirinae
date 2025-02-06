@@ -655,10 +655,10 @@ namespace {
                     "Wind speed", &ocean->wind_speed_, 0.0, 10000.0, 0, flog
                 );
                 ImGui::SliderFloat("Fetch", &ocean->fetch_, 0, 50000, 0, flog);
-                ImGui::SliderFloat("Swell", &ocean->swell_, 0, 1);
                 ImGui::SliderFloat(
-                    "Depth", &ocean->depth_, 0.0000001, 10000, "%.6f", flog
+                    "Depth", &ocean->depth_, 0.0000001, 100000, "%.6f", flog
                 );
+                ImGui::SliderFloat("Swell", &ocean->swell_, 0, 1);
                 ImGui::SliderFloat("Spread blend", &ocean->spread_blend_, 0, 1);
 
                 float wind_dir = sung::to_degrees(
@@ -670,6 +670,7 @@ namespace {
                     std::sin(sung::to_radians(wind_dir))
                 };
 
+                ImGui::DragFloat("Repeat time", &ocean->repeat_time_, 0.1);
                 ImGui::DragFloat("Time", &ocean->time_, 0.1);
                 if (ImGui::Button("Play"))
                     play_ocean_ = !play_ocean_;

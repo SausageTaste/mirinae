@@ -153,10 +153,11 @@ namespace mirinae::cpnt {
         glm::dvec2 wind_dir_{ 1, 1 };
         float wind_speed_ = 10;
         float fetch_ = 100;
-        float swell_ = 0.5;
         float depth_ = 1;
+        float swell_ = 0.5;
         float spread_blend_ = 0.5;
         float time_ = 0;
+        float repeat_time_ = 1;
         float tile_size_ = 20;
         int tile_count_x_ = 10;
         int tile_count_y_ = 10;
