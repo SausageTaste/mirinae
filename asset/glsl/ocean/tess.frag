@@ -18,6 +18,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
     vec4 len_scales_lod_scale;
     vec4 tile_index_count;
     float foam_bias;
+    float foam_scale;
     float foam_threshold;
     float sss_base;
     float sss_scale;
@@ -77,6 +78,11 @@ void main() {
     const vec3 world_normal = normalize(vec3(-slope.x, 1, -slope.y));
     const vec3 normal = normalize(mat3(u_pc.view * u_pc.model) * world_normal);
 
+     float jacobian = texture(u_turb_map[0], i_uv).x
+        + texture(u_turb_map[1], i_uv).x
+        + texture(u_turb_map[2], i_uv).x;
+    jacobian = min(1, max(0, (-jacobian + u_pc.foam_bias) * u_pc.foam_scale));
+
     vec3 light = vec3(0);
 
     const vec3 light_dir = mat3(u_pc.view) *  normalize(vec3(0.5653, 0.3, 0.3812));
@@ -131,6 +137,11 @@ void main() {
         light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
     }
     */
+
+    // Foam
+    {
+        light = mix(light, vec3(1), jacobian);
+    }
 
     // Fog
     {
