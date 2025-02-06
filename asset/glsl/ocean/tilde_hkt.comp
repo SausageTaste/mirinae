@@ -37,7 +37,7 @@ void main() {
     float mag_rcp = 1.0 / mag;
     if (mag < 0.00001) {
         mag = 0.00001;
-        mag_rcp = 1;
+        mag_rcp = 1.0 / mag;
     }
 
     const float w = dispersion(mag);
@@ -45,7 +45,7 @@ void main() {
     const vec4 h0k_texel = imageLoad(in_hk[cascade], global_idx);
     const vec2 h = complex_mul(h0k_texel.xy, exp_iwt)
                 + complex_mul(h0k_texel.zw, complex_conj(exp_iwt));
-    const vec2 ih = complex_init(-h0k_texel.y, h0k_texel.x);
+    const vec2 ih = complex_init(-h.y, h.x);
 
     const vec2 displacementX = ih * k.x * mag_rcp;
     const vec2 displacementY = h;
