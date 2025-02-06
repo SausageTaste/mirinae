@@ -17,11 +17,8 @@ layout (push_constant) uniform U_OceanButterflyPushConst {
 } u_pc;
 
 
-vec2 calc_h(vec2 p_sample, vec2 q_sample, Complex w) {
-    Complex p = complex_init(p_sample);
-    Complex q = complex_init(q_sample);
-    Complex h = complex_add(p, complex_mul(w, q));
-    return vec2(h.re, h.im);
+vec2 calc_h(vec2 p, vec2 q, vec2 w) {
+    return  p + complex_mul(w, q);
 }
 
 
@@ -31,7 +28,7 @@ void horizontalButterflies() {
     const vec4 data = texelFetch(u_butterfly_cache, ivec2(u_pc.stage, texel.x), 0);
     const ivec2 p_coord = ivec2(data.z, texel.y);
     const ivec2 q_coord = ivec2(data.w, texel.y);
-    const Complex w = complex_init(data.xy);
+    const vec2 w = complex_init(data.xy);
 
     if (u_pc.pingpong == 0) {
         const vec4 p_texel = imageLoad(ppong_images[idx], p_coord);
@@ -56,7 +53,7 @@ void verticalButterflies() {
     const vec4 data = texelFetch(u_butterfly_cache, ivec2(u_pc.stage, texel.y), 0);
     const ivec2 p_coord = ivec2(texel.x, data.z);
     const ivec2 q_coord = ivec2(texel.x, data.w);
-    const Complex w = complex_init(data.xy);
+    const vec2 w = complex_init(data.xy);
 
     if (u_pc.pingpong == 0) {
         const vec4 p_texel = imageLoad(ppong_images[idx], p_coord);
