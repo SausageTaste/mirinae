@@ -649,14 +649,27 @@ namespace {
             const auto name = fmt::format("Ocean-{}", (ENTT_ID_TYPE)e);
 
             if (ImGui::CollapsingHeader(name.c_str())) {
+                ImGui::Indent(10);
                 this->render_transform(ocean->transform_);
 
+                if (ImGui::Button("Play"))
+                    play_ocean_ = !play_ocean_;
+                ImGui::DragScalar(
+                    "Time", ImGuiDataType_Double, &ocean->time_, 0.1f
+                );
+                ImGui::DragScalar(
+                    "Repeat time",
+                    ImGuiDataType_Double,
+                    &ocean->repeat_time_,
+                    0.1f
+                );
+
                 ImGui::SliderFloat(
-                    "Wind speed", &ocean->wind_speed_, 0.0, 10000.0, 0, flog
+                    "Wind speed", &ocean->wind_speed_, 0.0, 10000, 0, flog
                 );
                 ImGui::SliderFloat("Fetch", &ocean->fetch_, 0, 50000, 0, flog);
                 ImGui::SliderFloat(
-                    "Depth", &ocean->depth_, 0.0000001, 100000, "%.6f", flog
+                    "Depth", &ocean->depth_, 0.0000001f, 100000, "%.6f", flog
                 );
                 ImGui::SliderFloat("Swell", &ocean->swell_, 0, 1);
                 ImGui::SliderFloat("Spread blend", &ocean->spread_blend_, 0, 1);
@@ -670,17 +683,17 @@ namespace {
                     std::sin(sung::to_radians(wind_dir))
                 };
 
-                ImGui::DragFloat("Repeat time", &ocean->repeat_time_, 0.1);
-                ImGui::DragFloat("Time", &ocean->time_, 0.1);
-                if (ImGui::Button("Play"))
-                    play_ocean_ = !play_ocean_;
-
                 ImGui::SliderFloat("Tile size", &ocean->tile_size_, 1, 1000);
                 ImGui::SliderInt("Tile count X", &ocean->tile_count_x_, 1, 100);
                 ImGui::SliderInt("Tile count Y", &ocean->tile_count_y_, 1, 100);
-                ImGui::SliderInt("Index", &ocean->idx_, 0, 2);
 
-                for (size_t i = 0; i < Ocean::CASCADE_COUNT; ++i) {
+                if (ImGui::CollapsingHeader("Cascade###Header")) {
+                    ImGui::Indent(10);
+                    ImGui::SliderInt(
+                        "Cascade", &cascade_, 0, Ocean::CASCADE_COUNT - 1
+                    );
+                    const auto i = cascade_;
+
                     ImGui::PushID(i);
                     ImGui::Text("Cascade %d", i);
 
@@ -695,8 +708,11 @@ namespace {
                         0,
                         flog
                     );
-
+                    ImGui::SliderFloat(
+                        "Jacobian scale", &cascade.jacobian_scale_, 0.1f, 10
+                    );
                     ImGui::SliderFloat("L", &cascade.L_, 1, 100);
+
                     const auto max_wl = Ocean::max_wavelen(cascade.L_);
 
                     float low = cascade.cutoff_low_ / max_wl;
@@ -732,7 +748,10 @@ namespace {
                     };
 
                     ImGui::PopID();
+                    ImGui::Unindent(10);
                 }
+
+                ImGui::Unindent(10);
             }
         }
 
@@ -762,6 +781,7 @@ namespace {
 
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
         std::array<char, 128> search_buffer_{};
+        int cascade_ = 0;
         bool play_ocean_ = true;
     };
 

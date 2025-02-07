@@ -15,20 +15,20 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 pvm;
     mat4 view;
     mat4 model;
-    vec4 len_scales_lod_scale;
+    vec4 tile_dims_n_fbuf_size;
     vec4 tile_index_count;
+} u_pc;
+
+layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 texco_offset_rot_[3];
+    vec4 fog_color_density;
+    vec4 jacobian_scale;
+    vec4 len_scales_lod_scale;
     float foam_bias;
     float foam_scale;
     float foam_threshold;
     float sss_base;
     float sss_scale;
-} u_pc;
-
-layout (set = 0, binding = 0) uniform U_OceanTessParams {
-    vec4 fog_color_density;
-    vec4 texco_offset_rot_[3];
-    vec4 height_map_size_fbuf_size;
-    vec2 tile_dimensions;
 } u_params;
 
 layout (set = 0, binding = 1) uniform sampler2D u_disp_map[3];
@@ -72,7 +72,7 @@ void main() {
     for (int i = 0; i < 3; i++) {
         const vec2 t_uv = transform_uv(i_uv, i);
         derivatives += texture(u_deri_map[i], t_uv) * i_lod_scales[i];
-        jacobian += texture(u_turb_map[i], t_uv).x;
+        jacobian += texture(u_turb_map[i], t_uv).x * u_params.jacobian_scale[i];
     }
 
     const vec2 slope = vec2(
@@ -140,8 +140,8 @@ void main() {
 
     // Foam
     {
-        jacobian = min(1, max(0, (-jacobian + u_pc.foam_bias) * u_pc.foam_scale));
-        light = mix(light, vec3(1, 0, 0), jacobian);
+        jacobian = min(1, max(0, (-jacobian + u_params.foam_bias) * u_params.foam_scale));
+        light = mix(light, vec3(1), jacobian);
     }
 
     // Fog
