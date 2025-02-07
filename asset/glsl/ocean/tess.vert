@@ -8,20 +8,20 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 pvm;
     mat4 view;
     mat4 model;
-    vec4 len_scales_lod_scale;
+    vec4 tile_dims_n_fbuf_size;
     vec4 tile_index_count;
+} u_pc;
+
+layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 texco_offset_rot_[3];
+    vec4 fog_color_density;
+    vec4 jacobian_scale;
+    vec4 len_scales_lod_scale;
     float foam_bias;
     float foam_scale;
     float foam_threshold;
     float sss_base;
     float sss_scale;
-} u_pc;
-
-layout (set = 0, binding = 0) uniform U_OceanTessParams {
-    vec4 fog_color_density;
-    vec4 texco_offset_rot_[3];
-    vec4 height_map_size_fbuf_size;
-    vec2 tile_dimensions;
 } u_params;
 
 
@@ -41,15 +41,16 @@ const vec2 TEX_COORDS[] = vec2[4](
 
 
 void main() {
+    const vec2 tile_dim = u_pc.tile_dims_n_fbuf_size.xy;
     const vec3 pos = vec3(
-        TEX_COORDS[gl_VertexIndex].x * u_params.tile_dimensions.x,
+        TEX_COORDS[gl_VertexIndex].x * tile_dim.x,
         0,
-        TEX_COORDS[gl_VertexIndex].y * u_params.tile_dimensions.y
+        TEX_COORDS[gl_VertexIndex].y * tile_dim.y
     );
     const vec3 offset = vec3(
-        u_pc.tile_index_count.x * u_params.tile_dimensions.x,
+        u_pc.tile_index_count.x * tile_dim.x,
         0,
-        u_pc.tile_index_count.y * u_params.tile_dimensions.y
+        u_pc.tile_index_count.y * tile_dim.y
     );
 
     gl_Position.xyz = pos + offset;

@@ -10,13 +10,12 @@ layout (binding = 4, rgba32f) uniform readonly  image2D in_hkt_dz[3];
 layout (binding = 5, rgba32f) uniform readonly  image2D in_hkt_ddxddz[3];
 
 layout (push_constant) uniform U_OceanFinalizePushConst {
-    vec2 jacobian_lambda;
+    vec2 hor_displace_scale;
     float foam_threshold;
     float foam_bias;
     float foam_add;
     float dt;
     int N;
-    int idx;
 } u_pc;
 
 
@@ -41,7 +40,7 @@ void main() {
 	const vec2 DyDxz = texel_dxdy.zw;
 	const vec2 DyxDyz = texel_dz.xy;
 	const vec2 DxxDzz = texel_dz.zw;
-    const vec2 lambda = u_pc.jacobian_lambda;
+    const vec2 lambda = u_pc.hor_displace_scale;
 
     imageStore(out_displacement[cascade], nm, vec4(
         lambda.x * DxDz.x,

@@ -142,6 +142,7 @@ namespace mirinae::cpnt {
             glm::vec2 texco_offset_{ 0, 0 };
             glm::vec2 texco_scale_{ 1, 0 };
             float amplitude_ = 500000;
+            float jacobian_scale_ = 1;
             float cutoff_high_ = 0;
             float cutoff_low_ = 0;
             float L_ = 100;
@@ -151,23 +152,22 @@ namespace mirinae::cpnt {
         TransformQuat<double> transform_;
         std::array<Cascade, CASCADE_COUNT> cascades_;
         glm::dvec2 wind_dir_{ 1, 1 };
+        double time_ = 0;
+        double repeat_time_ = 100;
         float wind_speed_ = 10;
         float fetch_ = 100;
         float depth_ = 1;
         float swell_ = 0.5;
         float spread_blend_ = 0.5;
-        float time_ = 0;
-        float repeat_time_ = 100;
         float tile_size_ = 20;
         int tile_count_x_ = 10;
         int tile_count_y_ = 10;
-        int idx_ = 0;
     };
 
 
     struct AtmosphereSimple {
         glm::vec3 fog_color_{ 0.5, 0.5, 0.5 };
-        float fog_density_ = 0.0001;
+        float fog_density_ = 0.0001f;
     };
 
 }  // namespace mirinae::cpnt

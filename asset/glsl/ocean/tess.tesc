@@ -13,20 +13,20 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 pvm;
     mat4 view;
     mat4 model;
-    vec4 len_scales_lod_scale;
+    vec4 tile_dims_n_fbuf_size;
     vec4 tile_index_count;
+} u_pc;
+
+layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 texco_offset_rot_[3];
+    vec4 fog_color_density;
+    vec4 jacobian_scale;
+    vec4 len_scales_lod_scale;
     float foam_bias;
     float foam_scale;
     float foam_threshold;
     float sss_base;
     float sss_scale;
-} u_pc;
-
-layout (set = 0, binding = 0) uniform U_OceanTessParams {
-    vec4 fog_color_density;
-    vec4 texco_offset_rot_[3];
-    vec4 height_map_size_fbuf_size;
-    vec2 tile_dimensions;
 } u_params;
 
 
@@ -43,7 +43,7 @@ void main() {
         p11 /= p11.w;
         p10 /= p10.w;
 
-        const vec2 fbuf_size = u_params.height_map_size_fbuf_size.zw;
+        const vec2 fbuf_size = u_pc.tile_dims_n_fbuf_size.zw;
         p00.xy = (p00.xy * 0.5 + 0.5) * fbuf_size;
         p01.xy = (p01.xy * 0.5 + 0.5) * fbuf_size;
         p11.xy = (p11.xy * 0.5 + 0.5) * fbuf_size;

@@ -21,15 +21,15 @@ namespace {
     sung::AutoCVarFlt cv_foam_add{ "ocean:foam_add", "", 1 };
     sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 2 };
     sung::AutoCVarFlt cv_foam_scale{ "ocean:foam_scale", "", 1 };
+    sung::AutoCVarFlt cv_foam_sss_base{ "ocean:foam_sss_base", "", 0 };
+    sung::AutoCVarFlt cv_foam_sss_scale{ "ocean:foam_sss_scale", "", 4 };
     sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
-    sung::AutoCVarFlt cv_jacobian_lambda_x{ "ocean:jacobian_lambda_x", "", 1 };
-    sung::AutoCVarFlt cv_jacobian_lambda_y{ "ocean:jacobian_lambda_y", "", 1 };
+    sung::AutoCVarFlt cv_displace_scale_x{ "ocean:displace_scale_x", "", 1 };
+    sung::AutoCVarFlt cv_displace_scale_y{ "ocean:displace_scale_y", "", 1 };
     sung::AutoCVarFlt cv_len_scale_x{ "ocean:len_scale_x", "", 10 };
     sung::AutoCVarFlt cv_len_scale_y{ "ocean:len_scale_y", "", 10 };
     sung::AutoCVarFlt cv_len_scale_z{ "ocean:len_scale_z", "", 10 };
-    sung::AutoCVarFlt cv_lod_scale{ "ocean:foam_lod_scale", "", 1 };
-    sung::AutoCVarFlt cv_sss_base{ "ocean:foam_sss_base", "", 0 };
-    sung::AutoCVarFlt cv_sss_scale{ "ocean:foam_sss_scale", "", 4 };
+    sung::AutoCVarFlt cv_lod_scale{ "ocean:lod_scale", "", 1 };
 
 
     VkPipeline create_compute_pipeline(
@@ -1453,13 +1453,12 @@ namespace {
 namespace {
 
     struct U_OceanFinalizePushConst {
-        glm::vec2 jacobian_lambda_;
+        glm::vec2 hor_displace_scale_;
         float foam_threshold_;
         float foam_bias_;
         float foam_add_;
         float dt_;
         int32_t N_;
-        int32_t idx_;
     };
 
 
@@ -1781,14 +1780,13 @@ namespace {
             );
 
             U_OceanFinalizePushConst pc;
-            pc.jacobian_lambda_.x = cv_jacobian_lambda_x.get();
-            pc.jacobian_lambda_.y = cv_jacobian_lambda_y.get();
+            pc.hor_displace_scale_.x = cv_displace_scale_x.get();
+            pc.hor_displace_scale_.y = cv_displace_scale_y.get();
             pc.foam_threshold_ = cv_foam_threshold.get();
             pc.foam_bias_ = cv_foam_bias.get();
             pc.foam_add_ = cv_foam_add.get();
             pc.dt_ = ctxt.cosmos_->scene().clock().dt();
             pc.N_ = ::OCEAN_TEX_DIM;
-            pc.idx_ = ocean_entt.idx_ % 3;
 
             mirinae::PushConstInfo{}
                 .layout(pipeline_layout_)
@@ -1826,47 +1824,68 @@ namespace {
 // Ocean tessellation
 namespace {
 
+    class U_OceanTessPushConst {
+
+    public:
+        U_OceanTessPushConst& pvm(
+            const glm::dmat4& proj,
+            const glm::dmat4& view,
+            const glm::dmat4& model
+        ) {
+            pvm_ = proj * view * model;
+            view_ = view;
+            model_ = model;
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTessPushConst& tile_dimensions(T x, T y) {
+            tile_dims_n_fbuf_size_.x = static_cast<float>(x);
+            tile_dims_n_fbuf_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTessPushConst& tile_dimensions(T x) {
+            tile_dims_n_fbuf_size_.x = static_cast<float>(x);
+            tile_dims_n_fbuf_size_.y = static_cast<float>(x);
+            return *this;
+        }
+
+        U_OceanTessPushConst& fbuf_size(const VkExtent2D& x) {
+            tile_dims_n_fbuf_size_.z = static_cast<float>(x.width);
+            tile_dims_n_fbuf_size_.w = static_cast<float>(x.height);
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTessPushConst& tile_index(T x, T y) {
+            tile_index_count_.x = static_cast<float>(x);
+            tile_index_count_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTessPushConst& tile_count(T x, T y) {
+            tile_index_count_.z = static_cast<float>(x);
+            tile_index_count_.w = static_cast<float>(y);
+            return *this;
+        }
+
+    private:
+        glm::mat4 pvm_;
+        glm::mat4 view_;
+        glm::mat4 model_;
+        glm::vec4 tile_dims_n_fbuf_size_;
+        glm::vec4 tile_index_count_;
+    };
+
+    static_assert(sizeof(U_OceanTessPushConst) < 256, "");
+
+
     struct U_OceanTessParams {
 
     public:
-        U_OceanTessParams& fog_color(const glm::vec3& color) {
-            fog_color_density_.x = color.r;
-            fog_color_density_.y = color.g;
-            fog_color_density_.z = color.b;
-            return *this;
-        }
-
-        U_OceanTessParams& fog_density(float density) {
-            fog_color_density_.w = density;
-            return *this;
-        }
-
-        U_OceanTessParams& height_map_size(uint32_t x, uint32_t y) {
-            height_map_size_fbuf_size_.x = static_cast<float>(x);
-            height_map_size_fbuf_size_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        U_OceanTessParams& fbuf_size(const VkExtent2D& x) {
-            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
-            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
-            return *this;
-        }
-
-        template <typename T>
-        U_OceanTessParams& tile_dimensions(T x, T y) {
-            tile_dimensions_.x = static_cast<float>(x);
-            tile_dimensions_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        template <typename T>
-        U_OceanTessParams& tile_dimensions(T x) {
-            tile_dimensions_.x = static_cast<float>(x);
-            tile_dimensions_.y = static_cast<float>(x);
-            return *this;
-        }
-
         U_OceanTessParams& texco_offset(size_t idx, float x, float y) {
             texco_offset_rot_[idx].x = x;
             texco_offset_rot_[idx].y = y;
@@ -1887,82 +1906,73 @@ namespace {
             return this->texco_scale(idx, v.x, v.y);
         }
 
-        glm::vec4 fog_color_density_;
-        glm::vec4 texco_offset_rot_[CASCADE_COUNT];
-        glm::vec4 height_map_size_fbuf_size_;
-        glm::vec2 tile_dimensions_;
-    };
-
-
-    class U_OceanTessPushConst {
-
-    public:
-        U_OceanTessPushConst& pvm(
-            const glm::dmat4& proj,
-            const glm::dmat4& view,
-            const glm::dmat4& model
-        ) {
-            pvm_ = proj * view * model;
-            view_ = view;
-            model_ = model;
+        U_OceanTessParams& fog_color(const glm::vec3& color) {
+            fog_color_density_.x = color.r;
+            fog_color_density_.y = color.g;
+            fog_color_density_.z = color.b;
             return *this;
         }
 
-        U_OceanTessPushConst& len_scales(float x, float y, float z) {
-            len_scales_lod_scale_.x = x;
-            len_scales_lod_scale_.y = y;
-            len_scales_lod_scale_.z = z;
+        U_OceanTessParams& fog_density(float density) {
+            fog_color_density_.w = density;
             return *this;
         }
 
-        U_OceanTessPushConst& lod_scale(float v) {
-            len_scales_lod_scale_.w = v;
+        template <typename T>
+        U_OceanTessParams& jacobian_scale(size_t idx, T x) {
+            jacobian_scale_[idx] = static_cast<float>(x);
             return *this;
         }
 
-        U_OceanTessPushConst& tile_index(int x, int y) {
-            tile_index_count_.x = static_cast<float>(x);
-            tile_index_count_.y = static_cast<float>(y);
+        template <typename T>
+        U_OceanTessParams& len_scales(T x, T y, T z) {
+            len_scales_lod_scale_.x = static_cast<float>(x);
+            len_scales_lod_scale_.y = static_cast<float>(y);
+            len_scales_lod_scale_.z = static_cast<float>(z);
             return *this;
         }
 
-        U_OceanTessPushConst& tile_count(int x, int y) {
-            tile_index_count_.z = static_cast<float>(x);
-            tile_index_count_.w = static_cast<float>(y);
+        template <typename T>
+        U_OceanTessParams& lod_scale(T x) {
+            len_scales_lod_scale_.w = static_cast<float>(x);
             return *this;
         }
 
-        U_OceanTessPushConst& foam_bias(float x) {
-            foam_bias_ = x;
+        template <typename T>
+        U_OceanTessParams& foam_bias(T x) {
+            foam_bias_ = static_cast<float>(x);
             return *this;
         }
 
-        U_OceanTessPushConst& foam_scale(float x) {
-            foam_scale_ = x;
+        template <typename T>
+        U_OceanTessParams& foam_scale(T x) {
+            foam_scale_ = static_cast<float>(x);
             return *this;
         }
 
-        U_OceanTessPushConst& foam_threshold(float x) {
-            foam_threshold_ = x;
+        template <typename T>
+        U_OceanTessParams& foam_threshold(T x) {
+            foam_threshold_ = static_cast<float>(x);
             return *this;
         }
 
-        U_OceanTessPushConst& sss_base(float v) {
-            sss_base_ = v;
+        template <typename T>
+        U_OceanTessParams& sss_base(T x) {
+            sss_base_ = static_cast<float>(x);
             return *this;
         }
 
-        U_OceanTessPushConst& sss_scale(float v) {
-            sss_scale_ = v;
+        template <typename T>
+        U_OceanTessParams& sss_scale(T x) {
+            sss_scale_ = static_cast<float>(x);
             return *this;
         }
 
     private:
-        glm::mat4 pvm_;
-        glm::mat4 view_;
-        glm::mat4 model_;
+        glm::vec4 texco_offset_rot_[CASCADE_COUNT];
+        glm::vec4 fog_color_density_;
+        glm::vec4 jacobian_scale_;
         glm::vec4 len_scales_lod_scale_;
-        glm::vec4 tile_index_count_;
         float foam_bias_;
         float foam_scale_;
         float foam_threshold_;
@@ -2265,9 +2275,20 @@ namespace {
             const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
 
             U_OceanTessParams ubuf;
-            ubuf.height_map_size(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
-                .fbuf_size(fbuf_exd)
-                .tile_dimensions(ocean_entt.tile_size_);
+            ubuf.foam_bias(cv_foam_bias.get())
+                .foam_scale(cv_foam_scale.get())
+                .foam_threshold(cv_foam_threshold.get())
+                .jacobian_scale(0, ocean_entt.cascades_[0].jacobian_scale_)
+                .jacobian_scale(1, ocean_entt.cascades_[1].jacobian_scale_)
+                .jacobian_scale(2, ocean_entt.cascades_[2].jacobian_scale_)
+                .lod_scale(cv_lod_scale.get())
+                .sss_base(cv_foam_sss_base.get())
+                .sss_scale(cv_foam_sss_scale.get())
+                .len_scales(
+                    cv_len_scale_x.get(),
+                    cv_len_scale_y.get(),
+                    cv_len_scale_z.get()
+                );
             for (size_t i = 0; i < CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
@@ -2305,18 +2326,9 @@ namespace {
                 .add_stage_frag();
 
             U_OceanTessPushConst pc;
-            pc.tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
-                .lod_scale(cv_lod_scale.get())
-                .sss_base(cv_sss_base.get())
-                .foam_scale(cv_foam_scale.get())
-                .sss_scale(cv_sss_scale.get())
-                .foam_threshold(cv_foam_threshold.get())
-                .foam_bias(cv_foam_bias.get())
-                .len_scales(
-                    cv_len_scale_x.get(),
-                    cv_len_scale_y.get(),
-                    cv_len_scale_z.get()
-                )
+            pc.fbuf_size(fbuf_exd)
+                .tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
+                .tile_dimensions(ocean_entt.tile_size_)
                 .pvm(
                     ctxt.proj_mat_,
                     ctxt.view_mat_,

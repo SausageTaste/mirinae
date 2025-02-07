@@ -16,20 +16,20 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 pvm;
     mat4 view;
     mat4 model;
-    vec4 len_scales_lod_scale;
+    vec4 tile_dims_n_fbuf_size;
     vec4 tile_index_count;
+} u_pc;
+
+layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    vec4 texco_offset_rot_[3];
+    vec4 fog_color_density;
+    vec4 jacobian_scale;
+    vec4 len_scales_lod_scale;
     float foam_bias;
     float foam_scale;
     float foam_threshold;
     float sss_base;
     float sss_scale;
-} u_pc;
-
-layout (set = 0, binding = 0) uniform U_OceanTessParams {
-    vec4 fog_color_density;
-    vec4 texco_offset_rot_[3];
-    vec4 height_map_size_fbuf_size;
-    vec2 tile_dimensions;
 } u_params;
 
 layout (set = 0, binding = 1) uniform sampler2D u_disp_map[3];
@@ -69,9 +69,9 @@ void main() {
     vec3 p = (p1 - p0) * v + p0;
 
     float p_dist = length((u_pc.view * u_pc.model * vec4(p, 1)).xyz);
-    float lod_c0 = min(u_pc.len_scales_lod_scale[3] * u_pc.len_scales_lod_scale[0] / p_dist, 1);
-    float lod_c1 = min(u_pc.len_scales_lod_scale[3] * u_pc.len_scales_lod_scale[1] / p_dist, 1);
-    float lod_c2 = min(u_pc.len_scales_lod_scale[3] * u_pc.len_scales_lod_scale[2] / p_dist, 1);
+    float lod_c0 = min(u_params.len_scales_lod_scale[3] * u_params.len_scales_lod_scale[0] / p_dist, 1);
+    float lod_c1 = min(u_params.len_scales_lod_scale[3] * u_params.len_scales_lod_scale[1] / p_dist, 1);
+    float lod_c2 = min(u_params.len_scales_lod_scale[3] * u_params.len_scales_lod_scale[2] / p_dist, 1);
 
     vec3 displacement = vec3(0);
     float largeWavesBias = 0;
@@ -80,7 +80,7 @@ void main() {
     displacement += texture(u_disp_map[1], transform_uv(tex_coord, 1)).xyz * lod_c1;
     displacement += texture(u_disp_map[2], transform_uv(tex_coord, 2)).xyz * lod_c2;
     p += displacement;
-    o_lod_scales = vec4(lod_c0, lod_c1, lod_c2, max(displacement.y - largeWavesBias * 0.8 - u_pc.sss_base, 0) / u_pc.sss_scale);
+    o_lod_scales = vec4(lod_c0, lod_c1, lod_c2, max(displacement.y - largeWavesBias * 0.8 - u_params.sss_base, 0) / u_params.sss_scale);
 
     o_frag_pos = (u_pc.view * u_pc.model * vec4(p, 1)).xyz;
     gl_Position = u_pc.pvm * vec4(p, 1);
