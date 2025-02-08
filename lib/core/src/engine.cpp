@@ -665,7 +665,7 @@ namespace {
                 );
 
                 ImGui::SliderFloat(
-                    "Wind speed", &ocean->wind_speed_, 0.0, 10000, 0, flog
+                    "Wind speed", &ocean->wind_speed_, 0.1, 10000, 0, flog
                 );
                 ImGui::SliderFloat("Fetch", &ocean->fetch_, 0, 50000, 0, flog);
                 ImGui::SliderFloat(
@@ -683,9 +683,11 @@ namespace {
                     std::sin(sung::to_radians(wind_dir))
                 };
 
-                ImGui::SliderFloat("Tile size", &ocean->tile_size_, 1, 1000);
-                ImGui::SliderInt("Tile count X", &ocean->tile_count_x_, 1, 100);
-                ImGui::SliderInt("Tile count Y", &ocean->tile_count_y_, 1, 100);
+                float amp = ocean->cascades_[0].amplitude_;
+                ImGui::SliderFloat(
+                    "Amplitude", &amp, 1000, 10000000000, 0, flog
+                );
+                for (auto& cascade : ocean->cascades_) cascade.amplitude_ = amp;
 
                 if (ImGui::CollapsingHeader("Cascade###Header")) {
                     ImGui::Indent(10);
@@ -701,30 +703,23 @@ namespace {
 
                     ImGui::Checkbox("Active", &cascade.active_);
                     ImGui::SliderFloat(
-                        "Amplitude",
-                        &cascade.amplitude_,
-                        1000,
-                        10000000000,
-                        0,
-                        flog
+                        "Jacobian scale", &cascade.jacobian_scale_, 0, 10
                     );
                     ImGui::SliderFloat(
-                        "Jacobian scale", &cascade.jacobian_scale_, 0.1f, 10
+                        "LOD scale", &cascade.lod_scale_, 1, 10000, 0, flog
                     );
                     ImGui::SliderFloat("L", &cascade.L_, 1, 1000);
 
-                    const auto max_wl = Ocean::max_wavelen(cascade.L_);
-
-                    float low = cascade.cutoff_low_ / max_wl;
-                    ImGui::SliderFloat("Cut low", &low, 0, 1);
-                    cascade.cutoff_low_ = low * max_wl;
-
-                    float high = cascade.cutoff_high_ / max_wl;
-                    ImGui::SliderFloat("Cut high", &high, 0, 1);
-                    cascade.cutoff_high_ = high * max_wl;
-
-                    cascade.texco_scale_[0] = 1.0 / cascade.L_;
+                    cascade.texco_scale_[0] = 1.f / cascade.L_;
                     cascade.texco_scale_[1] = 0;
+
+                    const auto max_wl = (float)Ocean::max_wavelen(cascade.L_);
+                    ImGui::SliderFloat(
+                        "Cut low", &cascade.cutoff_low_, 0, max_wl
+                    );
+                    ImGui::SliderFloat(
+                        "Cut high", &cascade.cutoff_high_, 0, max_wl
+                    );
 
                     ImGui::PopID();
                     ImGui::Unindent(10);
