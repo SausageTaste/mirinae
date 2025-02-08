@@ -27,9 +27,6 @@ namespace {
     sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
     sung::AutoCVarFlt cv_displace_scale_x{ "ocean:displace_scale_x", "", 1 };
     sung::AutoCVarFlt cv_displace_scale_y{ "ocean:displace_scale_y", "", 1 };
-    sung::AutoCVarFlt cv_len_scale_x{ "ocean:len_scale_x", "", 10 };
-    sung::AutoCVarFlt cv_len_scale_y{ "ocean:len_scale_y", "", 10 };
-    sung::AutoCVarFlt cv_len_scale_z{ "ocean:len_scale_z", "", 10 };
     sung::AutoCVarFlt cv_lod_scale{ "ocean:lod_scale", "", 1 };
 
 
@@ -1941,6 +1938,12 @@ namespace {
         }
 
         template <typename T>
+        U_OceanTessParams& len_scale(size_t idx, T x) {
+            len_scales_lod_scale_[idx] = static_cast<float>(x);
+            return *this;
+        }
+
+        template <typename T>
         U_OceanTessParams& len_scales(T x, T y, T z) {
             len_scales_lod_scale_.x = static_cast<float>(x);
             len_scales_lod_scale_.y = static_cast<float>(y);
@@ -2300,11 +2303,9 @@ namespace {
                 .lod_scale(cv_lod_scale.get())
                 .sss_base(cv_foam_sss_base.get())
                 .sss_scale(cv_foam_sss_scale.get())
-                .len_scales(
-                    cv_len_scale_x.get(),
-                    cv_len_scale_y.get(),
-                    cv_len_scale_z.get()
-                );
+                .len_scale(0, ocean_entt.cascades_[0].lod_scale_)
+                .len_scale(1, ocean_entt.cascades_[1].lod_scale_)
+                .len_scale(2, ocean_entt.cascades_[2].lod_scale_);
             for (size_t i = 0; i < CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);

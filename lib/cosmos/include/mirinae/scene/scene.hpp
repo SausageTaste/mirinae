@@ -145,6 +145,7 @@ namespace mirinae::cpnt {
             float jacobian_scale_ = 1;
             float cutoff_high_ = 0;
             float cutoff_low_ = 0;
+            float lod_scale_ = 100;
             float L_ = 100;
             bool active_ = true;
         };
