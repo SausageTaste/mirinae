@@ -255,6 +255,7 @@ namespace mirinae {
         mirinae::ShainImageIndex i_index_;
         glm::dmat4 proj_mat_;
         glm::dmat4 view_mat_;
+        glm::dvec3 view_pos_;
         VkCommandBuffer cmdbuf_;
     };
 
