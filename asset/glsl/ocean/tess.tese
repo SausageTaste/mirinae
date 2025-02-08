@@ -16,6 +16,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 pvm;
     mat4 view;
     mat4 model;
+    vec4 patch_offset_scale;
     vec4 tile_dims_n_fbuf_size;
     vec4 tile_index_count;
 } u_pc;
@@ -40,7 +41,7 @@ vec2 transform_uv(vec2 uv, int cascade) {
     vec2 offset = u_params.texco_offset_rot_[cascade].xy;
     vec2 scale = u_params.texco_offset_rot_[cascade].zw;
 
-    const vec2 global_uv = complex_init(uv + tile_idx);
+    const vec2 global_uv = complex_init(uv);
     const vec2 offset_rot = complex_init(scale);
     return complex_mul(global_uv, offset_rot) + offset;
 }

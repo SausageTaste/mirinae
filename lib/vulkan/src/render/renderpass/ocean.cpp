@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/ocean.hpp"
 
+#include <sung/basic/aabb.hpp>
 #include <sung/basic/cvar.hpp>
 #include <sung/basic/time.hpp>
 
@@ -1839,6 +1840,20 @@ namespace {
         }
 
         template <typename T>
+        U_OceanTessPushConst& patch_offset(T x, T y) {
+            patch_offset_scale_.x = static_cast<float>(x);
+            patch_offset_scale_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTessPushConst& patch_scale(T x, T y) {
+            patch_offset_scale_.z = static_cast<float>(x);
+            patch_offset_scale_.w = static_cast<float>(y);
+            return *this;
+        }
+
+        template <typename T>
         U_OceanTessPushConst& tile_dimensions(T x, T y) {
             tile_dims_n_fbuf_size_.x = static_cast<float>(x);
             tile_dims_n_fbuf_size_.y = static_cast<float>(y);
@@ -1876,6 +1891,7 @@ namespace {
         glm::mat4 pvm_;
         glm::mat4 view_;
         glm::mat4 model_;
+        glm::vec4 patch_offset_scale_;
         glm::vec4 tile_dims_n_fbuf_size_;
         glm::vec4 tile_index_count_;
     };
@@ -2329,19 +2345,22 @@ namespace {
             pc.fbuf_size(fbuf_exd)
                 .tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
                 .tile_dimensions(ocean_entt.tile_size_)
-                .pvm(
-                    ctxt.proj_mat_,
-                    ctxt.view_mat_,
-                    ocean_entt.transform_.make_model_mat()
-                );
+                .pvm(ctxt.proj_mat_, ctxt.view_mat_, glm::dmat4(1));
 
-            for (int x = 0; x < ocean_entt.tile_count_x_; ++x) {
-                for (int y = 0; y < ocean_entt.tile_count_y_; ++y) {
-                    pc.tile_index(x, y);
-                    pc_info.record(cmdbuf, pc);
-                    vkCmdDraw(cmdbuf, 4, 1, 0, 0);
-                }
-            }
+            const auto f = ctxt.proj_mat_[3][2] / (ctxt.proj_mat_[2][2] + 1) *
+                           1.5;
+            const auto pv = ctxt.proj_mat_ * ctxt.view_mat_;
+            this->shit(
+                0,
+                ctxt.view_pos_.x - f,
+                ctxt.view_pos_.x + f,
+                ctxt.view_pos_.z - f,
+                ctxt.view_pos_.z + f,
+                cmdbuf,
+                pc,
+                pc_info,
+                pv
+            );
 
             vkCmdEndRenderPass(cmdbuf);
         }
@@ -2358,6 +2377,118 @@ namespace {
             mirinae::Buffer ubuf_;
             VkDescriptorSet desc_set_;
         };
+
+        void shit(
+            const int depth,
+            const double x_min,
+            const double x_max,
+            const double y_min,
+            const double y_max,
+            VkCommandBuffer cmdbuf,
+            U_OceanTessPushConst& pc,
+            const mirinae::PushConstInfo& pc_info,
+            const glm::dmat4& pv
+        ) {
+            constexpr double HEIGHT = 5;
+
+            if (depth > 8) {
+                pc.patch_offset(x_min, y_min)
+                    .patch_scale(x_max - x_min, y_max - y_min);
+                pc_info.record(cmdbuf, pc);
+                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                return;
+            }
+
+            const std::array<glm::vec4, 4> points{
+                glm::vec4(x_min, 0, y_min, 1),
+                glm::vec4(x_min, 0, y_max, 1),
+                glm::vec4(x_max, 0, y_max, 1),
+                glm::vec4(x_max, 0, y_min, 1),
+            };
+
+            std::array<glm::vec3, 4> ndc_points;
+            for (size_t i = 0; i < 4; ++i) {
+                auto ndc4 = glm::mat4(pv) * points[i];
+                ndc4 /= ndc4.w;
+                ndc_points[i] = glm::vec3(ndc4);
+            }
+
+            const static sung::AABB2<double> BOUNDING(-1, 1, -1, 1);
+            sung::AABB2<double> box;
+            box.set(ndc_points[0].x, ndc_points[0].y);
+            for (size_t i = 1; i < 4; ++i)
+                box.expand_to_span(ndc_points[i].x, ndc_points[i].y);
+            if (depth != 0 && !box.is_intersecting_cl(BOUNDING))
+                return;
+
+            double longest_edge = 0;
+            for (size_t i = 0; i < 4; ++i) {
+                const auto& p0 = glm::dvec2(ndc_points[i]) * 0.5 + 0.5;
+                const auto& p1 = glm::dvec2(
+                                     ndc_points[(i + 1) % ndc_points.size()]
+                                 ) * 0.5 +
+                                 0.5;
+                auto edge = p1 - p0;
+                edge *= glm::dvec2(fbuf_width_, fbuf_height_);
+                const auto len = glm::length(edge);
+                longest_edge = (std::max<double>)(longest_edge, len);
+            }
+
+            if (glm::length(longest_edge) > 1000) {
+                const auto x_mid = (x_min + x_max) * 0.5;
+                const auto y_mid = (y_min + y_max) * 0.5;
+                this->shit(
+                    depth + 1,
+                    x_min,
+                    x_mid,
+                    y_min,
+                    y_mid,
+                    cmdbuf,
+                    pc,
+                    pc_info,
+                    pv
+                );
+                this->shit(
+                    depth + 1,
+                    x_min,
+                    x_mid,
+                    y_mid,
+                    y_max,
+                    cmdbuf,
+                    pc,
+                    pc_info,
+                    pv
+                );
+                this->shit(
+                    depth + 1,
+                    x_mid,
+                    x_max,
+                    y_mid,
+                    y_max,
+                    cmdbuf,
+                    pc,
+                    pc_info,
+                    pv
+                );
+                this->shit(
+                    depth + 1,
+                    x_mid,
+                    x_max,
+                    y_min,
+                    y_mid,
+                    cmdbuf,
+                    pc,
+                    pc_info,
+                    pv
+                );
+            } else {
+                pc.patch_offset(x_min, y_min)
+                    .patch_scale(x_max - x_min, y_max - y_min);
+                pc_info.record(cmdbuf, pc);
+                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                return;
+            }
+        }
 
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;

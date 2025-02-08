@@ -13,6 +13,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
     mat4 pvm;
     mat4 view;
     mat4 model;
+    vec4 patch_offset_scale;
     vec4 tile_dims_n_fbuf_size;
     vec4 tile_index_count;
 } u_pc;

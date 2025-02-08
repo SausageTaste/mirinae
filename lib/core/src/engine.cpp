@@ -711,7 +711,7 @@ namespace {
                     ImGui::SliderFloat(
                         "Jacobian scale", &cascade.jacobian_scale_, 0.1f, 10
                     );
-                    ImGui::SliderFloat("L", &cascade.L_, 1, 100);
+                    ImGui::SliderFloat("L", &cascade.L_, 1, 1000);
 
                     const auto max_wl = Ocean::max_wavelen(cascade.L_);
 
@@ -723,29 +723,8 @@ namespace {
                     ImGui::SliderFloat("Cut high", &high, 0, 1);
                     cascade.cutoff_high_ = high * max_wl;
 
-                    ImGui::SliderFloat2(
-                        "TexCo offset", &cascade.texco_offset_[0], -10, 10
-                    );
-                    ImGui::SliderFloat2(
-                        "TexCo scale", &cascade.texco_scale_[0], -10, 10
-                    );
-
-                    float magnitude = 1.f / glm::length(cascade.texco_scale_);
-                    float phase = std::atan2(
-                        cascade.texco_scale_.y, cascade.texco_scale_.x
-                    );
-                    ImGui::SliderFloat(
-                        "TexCo Magnitude",
-                        &magnitude,
-                        0.01f,
-                        10,
-                        nullptr,
-                        ImGuiSliderFlags_Logarithmic
-                    );
-                    ImGui::SliderAngle("TexCo Phase", &phase, -179, 179);
-                    cascade.texco_scale_ = glm::vec2{
-                        std::cos(phase) / magnitude, std::sin(phase) / magnitude
-                    };
+                    cascade.texco_scale_[0] = 1.0 / cascade.L_;
+                    cascade.texco_scale_[1] = 0;
 
                     ImGui::PopID();
                     ImGui::Unindent(10);

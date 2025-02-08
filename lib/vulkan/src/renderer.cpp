@@ -993,6 +993,7 @@ namespace {
             ren_ctxt.i_index_ = image_index;
             ren_ctxt.proj_mat_ = proj_mat;
             ren_ctxt.view_mat_ = view_mat;
+            ren_ctxt.view_pos_ = cam.view_.pos_;
             ren_ctxt.cosmos_ = cosmos_;
             ren_ctxt.cmdbuf_ = cmd_buf_.at(framesync_.get_frame_index().get());
             ren_ctxt.draw_sheet_ = std::make_shared<mirinae::DrawSheet>(
@@ -1091,6 +1092,7 @@ namespace {
 
             rpm_.compo_sky().record(ren_ctxt);
 
+            const auto forward = cam.view_.make_forward_dir();
             rpm_.ocean_tess().record(ren_ctxt);
 
             rp_states_transp_.record_static(
