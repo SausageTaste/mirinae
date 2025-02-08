@@ -15,6 +15,9 @@
 
 namespace {
 
+    constexpr uint32_t INIT_WIDTH = 1920;
+    constexpr uint32_t INIT_HEIGHT = 1080;
+
     std::filesystem::path find_asset_folder() {
         std::filesystem::path cur_path = ".";
 
@@ -89,6 +92,7 @@ namespace {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
             window_ = glfwCreateWindow(width, height, title, nullptr, nullptr);
+            glfwSetWindowPos(window_, 100, 100);
 
             glfwSetFramebufferSizeCallback(window_, callback_fbuf_size);
             glfwSetMouseButtonCallback(window_, callback_mouse);
@@ -460,7 +464,7 @@ namespace {
     class CombinedEngine {
 
     public:
-        CombinedEngine() : window_(800, 600, "Mirinapp") {
+        CombinedEngine() : window_(INIT_WIDTH, INIT_HEIGHT, "Mirinapp") {
             system("chcp 65001");
 
             mirinae::EngineCreateInfo create_info;
@@ -484,8 +488,8 @@ namespace {
             create_info.imgui_new_frame_ = []() { ImGui_ImplGlfw_NewFrame(); };
             create_info.ui_scale_ = window_.content_scale();
             create_info.enable_validation_layers_ = true;
-            create_info.init_width_ = 800;
-            create_info.init_height_ = 600;
+            create_info.init_width_ = INIT_WIDTH;
+            create_info.init_height_ = INIT_HEIGHT;
 
             engine_ = mirinae::create_engine(std::move(create_info));
             window_.set_userdata(engine_.get());
