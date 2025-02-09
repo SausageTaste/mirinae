@@ -20,14 +20,11 @@
 namespace {
 
     sung::AutoCVarFlt cv_foam_add{ "ocean:foam_add", "", 1 };
-    sung::AutoCVarFlt cv_foam_bias{ "ocean:foam_bias", "", 2 };
-    sung::AutoCVarFlt cv_foam_scale{ "ocean:foam_scale", "", 1 };
     sung::AutoCVarFlt cv_foam_sss_base{ "ocean:foam_sss_base", "", 0 };
     sung::AutoCVarFlt cv_foam_sss_scale{ "ocean:foam_sss_scale", "", 4 };
     sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
     sung::AutoCVarFlt cv_displace_scale_x{ "ocean:displace_scale_x", "", 1 };
     sung::AutoCVarFlt cv_displace_scale_y{ "ocean:displace_scale_y", "", 1 };
-    sung::AutoCVarFlt cv_lod_scale{ "ocean:lod_scale", "", 1 };
 
 
     VkPipeline create_compute_pipeline(
@@ -1452,9 +1449,6 @@ namespace {
 
     struct U_OceanFinalizePushConst {
         glm::vec2 hor_displace_scale_;
-        float foam_threshold_;
-        float foam_bias_;
-        float foam_add_;
         float dt_;
         int32_t N_;
     };
@@ -1780,9 +1774,6 @@ namespace {
             U_OceanFinalizePushConst pc;
             pc.hor_displace_scale_.x = cv_displace_scale_x.get();
             pc.hor_displace_scale_.y = cv_displace_scale_y.get();
-            pc.foam_threshold_ = cv_foam_threshold.get();
-            pc.foam_bias_ = cv_foam_bias.get();
-            pc.foam_add_ = cv_foam_add.get();
             pc.dt_ = ctxt.cosmos_->scene().clock().dt();
             pc.N_ = ::OCEAN_TEX_DIM;
 
@@ -2317,10 +2308,10 @@ namespace {
                                            : glm::vec3(0);
 
             U_OceanTessParams ubuf;
-            ubuf.foam_bias(cv_foam_bias.get())
-                .dlight_color(dlight_color)
+            ubuf.dlight_color(dlight_color)
                 .dlight_dir(dlight_dir)
-                .foam_scale(cv_foam_scale.get())
+                .foam_bias(ocean_entt.foam_bias_)
+                .foam_scale(ocean_entt.foam_scale_)
                 .foam_threshold(cv_foam_threshold.get())
                 .jacobian_scale(0, ocean_entt.cascades_[0].jacobian_scale_)
                 .jacobian_scale(1, ocean_entt.cascades_[1].jacobian_scale_)
@@ -2328,7 +2319,7 @@ namespace {
                 .len_scale(0, ocean_entt.cascades_[0].lod_scale_)
                 .len_scale(1, ocean_entt.cascades_[1].lod_scale_)
                 .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
-                .lod_scale(cv_lod_scale.get())
+                .lod_scale(ocean_entt.lod_scale_)
                 .sss_base(cv_foam_sss_base.get())
                 .sss_scale(cv_foam_sss_scale.get());
             for (size_t i = 0; i < CASCADE_COUNT; i++)
@@ -2374,15 +2365,17 @@ namespace {
                 .pvm(ctxt.proj_mat_, ctxt.view_mat_, glm::dmat4(1));
 
             const auto f = ctxt.proj_mat_[3][2] / (ctxt.proj_mat_[2][2] + 1) *
-                           1.5;
+                           1.25;
             const auto pv = ctxt.proj_mat_ * ctxt.view_mat_;
-            this->shit(
+            const auto cam_x = std::round(ctxt.view_pos_.x * 0.1) * 10;
+            const auto cam_z = std::round(ctxt.view_pos_.z * 0.1) * 10;
+            this->traverse_quad_tree(
                 0,
-                ctxt.view_pos_.x - f,
-                ctxt.view_pos_.x + f,
-                ctxt.view_pos_.z - f,
-                ctxt.view_pos_.z + f,
-                cmdbuf,
+                cam_x - f,
+                cam_x + f,
+                cam_z - f,
+                cam_z + f,
+                ctxt,
                 pc,
                 pc_info,
                 pv
@@ -2404,114 +2397,90 @@ namespace {
             VkDescriptorSet desc_set_;
         };
 
-        void shit(
+        void traverse_quad_tree(
             const int depth,
             const double x_min,
             const double x_max,
             const double y_min,
             const double y_max,
-            VkCommandBuffer cmdbuf,
+            const mirinae::RpContext& ctxt,
             U_OceanTessPushConst& pc,
             const mirinae::PushConstInfo& pc_info,
             const glm::dmat4& pv
         ) {
             constexpr double HEIGHT = 5;
 
-            if (depth > 8) {
-                pc.patch_offset(x_min, y_min)
-                    .patch_scale(x_max - x_min, y_max - y_min);
-                pc_info.record(cmdbuf, pc);
-                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
-                return;
-            }
-
-            const std::array<glm::vec4, 4> points{
-                glm::vec4(x_min, 0, y_min, 1),
-                glm::vec4(x_min, 0, y_max, 1),
-                glm::vec4(x_max, 0, y_max, 1),
-                glm::vec4(x_max, 0, y_min, 1),
+            const std::array<glm::dvec4, 4> points{
+                glm::dvec4(x_min, HEIGHT, y_min, 1),
+                glm::dvec4(x_min, HEIGHT, y_max, 1),
+                glm::dvec4(x_max, HEIGHT, y_max, 1),
+                glm::dvec4(x_max, HEIGHT, y_min, 1),
             };
 
-            std::array<glm::vec3, 4> ndc_points;
+            std::array<glm::dvec3, 4> ndc_points;
             for (size_t i = 0; i < 4; ++i) {
-                auto ndc4 = glm::mat4(pv) * points[i];
+                auto ndc4 = pv * points[i];
                 ndc4 /= ndc4.w;
-                ndc_points[i] = glm::vec3(ndc4);
+                ndc_points[i] = glm::dvec3(ndc4);
             }
 
-            const static sung::AABB2<double> BOUNDING(-1, 1, -1, 1);
+            const static sung::AABB2<double> BOUNDING(-1.1, 1.1, -1.1, 1.1);
             sung::AABB2<double> box;
             box.set(ndc_points[0].x, ndc_points[0].y);
             for (size_t i = 1; i < 4; ++i)
                 box.expand_to_span(ndc_points[i].x, ndc_points[i].y);
-            if (depth != 0 && !box.is_intersecting_cl(BOUNDING))
+            if (depth != 0 && !box.is_intersecting_op(BOUNDING))
                 return;
 
             double longest_edge = 0;
             for (size_t i = 0; i < 4; ++i) {
+                const auto next_idx = (i + 1) % ndc_points.size();
                 const auto& p0 = glm::dvec2(ndc_points[i]) * 0.5 + 0.5;
-                const auto& p1 = glm::dvec2(
-                                     ndc_points[(i + 1) % ndc_points.size()]
-                                 ) * 0.5 +
-                                 0.5;
+                const auto& p1 = glm::dvec2(ndc_points[next_idx]) * 0.5 + 0.5;
+                auto edge = p1 - p0;
+                edge *= glm::dvec2(fbuf_width_, fbuf_height_);
+                const auto len = glm::length(edge);
+                longest_edge = (std::max<double>)(longest_edge, len);
+            }
+            for (size_t i = 0; i < 2; ++i) {
+                const auto curr_idx = i * 2;
+                const auto next_idx = (i + 1) % ndc_points.size();
+                const auto& p0 = glm::dvec2(ndc_points[curr_idx]) * 0.5 + 0.5;
+                const auto& p1 = glm::dvec2(ndc_points[next_idx]) * 0.5 + 0.5;
                 auto edge = p1 - p0;
                 edge *= glm::dvec2(fbuf_width_, fbuf_height_);
                 const auto len = glm::length(edge);
                 longest_edge = (std::max<double>)(longest_edge, len);
             }
 
+            if (depth > 8) {
+                pc.patch_offset(x_min, y_min)
+                    .patch_scale(x_max - x_min, y_max - y_min);
+                pc_info.record(ctxt.cmdbuf_, pc);
+                vkCmdDraw(ctxt.cmdbuf_, 4, 1, 0, 0);
+                return;
+            }
+
             if (glm::length(longest_edge) > 1000) {
                 const auto x_mid = (x_min + x_max) * 0.5;
                 const auto y_mid = (y_min + y_max) * 0.5;
-                this->shit(
-                    depth + 1,
-                    x_min,
-                    x_mid,
-                    y_min,
-                    y_mid,
-                    cmdbuf,
-                    pc,
-                    pc_info,
-                    pv
+                this->traverse_quad_tree(
+                    depth + 1, x_min, x_mid, y_min, y_mid, ctxt, pc, pc_info, pv
                 );
-                this->shit(
-                    depth + 1,
-                    x_min,
-                    x_mid,
-                    y_mid,
-                    y_max,
-                    cmdbuf,
-                    pc,
-                    pc_info,
-                    pv
+                this->traverse_quad_tree(
+                    depth + 1, x_min, x_mid, y_mid, y_max, ctxt, pc, pc_info, pv
                 );
-                this->shit(
-                    depth + 1,
-                    x_mid,
-                    x_max,
-                    y_mid,
-                    y_max,
-                    cmdbuf,
-                    pc,
-                    pc_info,
-                    pv
+                this->traverse_quad_tree(
+                    depth + 1, x_mid, x_max, y_mid, y_max, ctxt, pc, pc_info, pv
                 );
-                this->shit(
-                    depth + 1,
-                    x_mid,
-                    x_max,
-                    y_min,
-                    y_mid,
-                    cmdbuf,
-                    pc,
-                    pc_info,
-                    pv
+                this->traverse_quad_tree(
+                    depth + 1, x_mid, x_max, y_min, y_mid, ctxt, pc, pc_info, pv
                 );
             } else {
                 pc.patch_offset(x_min, y_min)
                     .patch_scale(x_max - x_min, y_max - y_min);
-                pc_info.record(cmdbuf, pc);
-                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                pc_info.record(ctxt.cmdbuf_, pc);
+                vkCmdDraw(ctxt.cmdbuf_, 4, 1, 0, 0);
                 return;
             }
         }
