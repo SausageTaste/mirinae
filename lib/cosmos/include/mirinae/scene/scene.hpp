@@ -161,6 +161,9 @@ namespace mirinae::cpnt {
         float swell_ = 0.5;
         float spread_blend_ = 0.5;
         float tile_size_ = 20;
+        float foam_scale_ = 1;
+        float foam_bias_ = 2;
+        float lod_scale_ = 1;
         int tile_count_x_ = 10;
         int tile_count_y_ = 10;
     };

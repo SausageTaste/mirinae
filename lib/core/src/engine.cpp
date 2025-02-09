@@ -389,6 +389,8 @@ namespace {
             auto transformf = transform.copy<float>();
             glm::vec3 rot{ 0 };
 
+            ImGui::PushID(&transform);
+
             ImGui::DragFloat3("Pos", &transformf.pos_[0]);
             ImGui::DragFloat3("Rot", &rot[0]);
             if (ImGui::Button("Reset rotation"))
@@ -408,11 +410,13 @@ namespace {
                 mirinae::cpnt::Transform::Angle::from_deg(rot.z),
                 glm::vec3{ 0, 0, 1 }
             );
+
+            ImGui::PopID();
         }
 
         static void render_color_intensity(mirinae::cpnt::ColorIntensity& ci) {
+            ImGui::PushID(&ci);
             ImGui::ColorEdit3("Color", &ci.color()[0]);
-
             ImGui::SliderFloat(
                 "Intensity",
                 &ci.intensity(),
@@ -421,6 +425,7 @@ namespace {
                 nullptr,
                 ImGuiSliderFlags_Logarithmic
             );
+            ImGui::PopID();
         }
 
         void render_cvar() { sung::gcvars().visit(CvarVisitor{}); }
@@ -438,11 +443,18 @@ namespace {
             if (ImGui::CollapsingHeader(name.c_str())) {
                 this->render_transform(cam.view_);
 
-                float angle = cam.proj_.fov_.rad();
-                ImGui::SliderAngle("FOV", &angle, 1, 179);
-                cam.proj_.fov_.set_rad(angle);
+                float angle = (float)cam.proj_.fov_.deg();
+                ImGui::SliderFloat(
+                    "FOV",
+                    &angle,
+                    0.01f,
+                    179.99f,
+                    nullptr,
+                    ImGuiSliderFlags_Logarithmic
+                );
+                cam.proj_.fov_.set_deg(angle);
 
-                float near = cam.proj_.near_;
+                float near = (float)cam.proj_.near_;
                 ImGui::SliderFloat(
                     "Near",
                     &near,
@@ -453,7 +465,7 @@ namespace {
                 );
                 cam.proj_.near_ = near;
 
-                float far = cam.proj_.far_;
+                float far = (float)cam.proj_.far_;
                 ImGui::SliderFloat(
                     "Far",
                     &far,
@@ -664,6 +676,12 @@ namespace {
                     0.1f
                 );
 
+                float amp = ocean->cascades_[0].amplitude_;
+                ImGui::SliderFloat(
+                    "Amplitude", &amp, 1000, 10000000000, 0, flog
+                );
+                for (auto& cascade : ocean->cascades_) cascade.amplitude_ = amp;
+
                 ImGui::SliderFloat(
                     "Wind speed", &ocean->wind_speed_, 0.1, 10000, 0, flog
                 );
@@ -683,11 +701,11 @@ namespace {
                     std::sin(sung::to_radians(wind_dir))
                 };
 
-                float amp = ocean->cascades_[0].amplitude_;
+                ImGui::SliderFloat("Foam Bias", &ocean->foam_bias_, -10, 10);
+                ImGui::SliderFloat("Foam Scale", &ocean->foam_scale_, 0, 10);
                 ImGui::SliderFloat(
-                    "Amplitude", &amp, 1000, 10000000000, 0, flog
+                    "LOD Scale", &ocean->lod_scale_, 0, 10000, 0, flog
                 );
-                for (auto& cascade : ocean->cascades_) cascade.amplitude_ = amp;
 
                 if (ImGui::CollapsingHeader("Cascade###Header")) {
                     ImGui::Indent(10);
@@ -865,23 +883,23 @@ namespace {
 
                 const auto max_wl = ocean.max_wavelen(20);
 
+                ocean.cascades_[0].L_ = 20;
                 ocean.cascades_[0].amplitude_ = 190622176;
                 ocean.cascades_[0].cutoff_low_ = 0 * max_wl;
                 ocean.cascades_[0].cutoff_high_ = 0.015 * max_wl;
-                ocean.cascades_[0].texco_scale_ = { 0.585, 0 };
-                ocean.cascades_[0].L_ = 20;
+                ocean.cascades_[0].texco_scale_ = { 1.0 / 20, 0 };
 
-                ocean.cascades_[1].amplitude_ = 132246544;
+                ocean.cascades_[1].L_ = 20;
+                ocean.cascades_[1].amplitude_ = 190622176;
                 ocean.cascades_[1].cutoff_low_ = 0.008 * max_wl;
                 ocean.cascades_[1].cutoff_high_ = 0.103 * max_wl;
-                ocean.cascades_[1].texco_scale_ = { 1.122, -0.098 };
-                ocean.cascades_[1].L_ = 20;
+                ocean.cascades_[1].texco_scale_ = { 1.0 / 20, 0 };
 
-                ocean.cascades_[2].amplitude_ = 107366056;
+                ocean.cascades_[2].L_ = 20;
+                ocean.cascades_[2].amplitude_ = 190622176;
                 ocean.cascades_[2].cutoff_low_ = 0.098 * max_wl;
                 ocean.cascades_[2].cutoff_high_ = 1 * max_wl;
-                ocean.cascades_[2].texco_scale_ = { 0.886, 0.062 };
-                ocean.cascades_[2].L_ = 20;
+                ocean.cascades_[2].texco_scale_ = { 1.0 / 20, 0 };
             }
 
             // Atmosphere

@@ -11,9 +11,6 @@ layout (binding = 5, rgba32f) uniform readonly  image2D in_hkt_ddxddz[3];
 
 layout (push_constant) uniform U_OceanFinalizePushConst {
     vec2 hor_displace_scale;
-    float foam_threshold;
-    float foam_bias;
-    float foam_add;
     float dt;
     int N;
 } u_pc;
