@@ -1450,6 +1450,7 @@ namespace {
     struct U_OceanFinalizePushConst {
         glm::vec2 hor_displace_scale_;
         float dt_;
+        float turb_time_factor_;
         int32_t N_;
     };
 
@@ -1775,6 +1776,7 @@ namespace {
             pc.hor_displace_scale_.x = cv_displace_scale_x.get();
             pc.hor_displace_scale_.y = cv_displace_scale_y.get();
             pc.dt_ = ctxt.cosmos_->scene().clock().dt();
+            pc.turb_time_factor_ = ocean_entt.trub_time_factor_;
             pc.N_ = ::OCEAN_TEX_DIM;
 
             mirinae::PushConstInfo{}

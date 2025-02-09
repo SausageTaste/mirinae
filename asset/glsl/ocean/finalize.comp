@@ -12,6 +12,7 @@ layout (binding = 5, rgba32f) uniform readonly  image2D in_hkt_ddxddz[3];
 layout (push_constant) uniform U_OceanFinalizePushConst {
     vec2 hor_displace_scale;
     float dt;
+    float turb_time_factor;
     int N;
 } u_pc;
 
@@ -50,7 +51,7 @@ void main() {
 
     vec4 turb_texel = imageLoad(out_turbulence[cascade], nm);
     const float jacobian = (1 + lambda.x * DxxDzz.x) * (1 + lambda.y * DxxDzz.y) - lambda.x * lambda.y * DyDxz.y * DyDxz.y;
-    const float factor = turb_texel.r + u_pc.dt * 0.5 / max(jacobian, 0.5);
+    const float factor = turb_texel.r + u_pc.dt * u_pc.turb_time_factor / max(jacobian, 0.5);
     turb_texel.r = min(jacobian, factor);
 
     imageStore(out_turbulence[cascade], nm, turb_texel);
