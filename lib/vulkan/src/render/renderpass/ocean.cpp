@@ -1919,6 +1919,20 @@ namespace {
             return this->texco_scale(idx, v.x, v.y);
         }
 
+        U_OceanTessParams& dlight_color(const glm::vec3& dir) {
+            dlight_color_.x = dir.x;
+            dlight_color_.y = dir.y;
+            dlight_color_.z = dir.z;
+            return *this;
+        }
+
+        U_OceanTessParams& dlight_dir(const glm::vec3& dir) {
+            dlight_dir_.x = dir.x;
+            dlight_dir_.y = dir.y;
+            dlight_dir_.z = dir.z;
+            return *this;
+        }
+
         U_OceanTessParams& fog_color(const glm::vec3& color) {
             fog_color_density_.x = color.r;
             fog_color_density_.y = color.g;
@@ -1989,6 +2003,8 @@ namespace {
 
     private:
         glm::vec4 texco_offset_rot_[CASCADE_COUNT];
+        glm::vec4 dlight_color_;
+        glm::vec4 dlight_dir_;
         glm::vec4 fog_color_density_;
         glm::vec4 jacobian_scale_;
         glm::vec4 len_scales_lod_scale_;
@@ -2292,20 +2308,29 @@ namespace {
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
             const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
+            const auto dlight = this->find_dlight(*ctxt.cosmos_);
+            const auto dlight_color = dlight ? dlight->color_.scaled_color()
+                                             : glm::vec3(0);
+            const auto dlight_dir = dlight ? dlight->calc_to_light_dir(
+                                                 ctxt.view_mat_
+                                             )
+                                           : glm::vec3(0);
 
             U_OceanTessParams ubuf;
             ubuf.foam_bias(cv_foam_bias.get())
+                .dlight_color(dlight_color)
+                .dlight_dir(dlight_dir)
                 .foam_scale(cv_foam_scale.get())
                 .foam_threshold(cv_foam_threshold.get())
                 .jacobian_scale(0, ocean_entt.cascades_[0].jacobian_scale_)
                 .jacobian_scale(1, ocean_entt.cascades_[1].jacobian_scale_)
                 .jacobian_scale(2, ocean_entt.cascades_[2].jacobian_scale_)
-                .lod_scale(cv_lod_scale.get())
-                .sss_base(cv_foam_sss_base.get())
-                .sss_scale(cv_foam_sss_scale.get())
                 .len_scale(0, ocean_entt.cascades_[0].lod_scale_)
                 .len_scale(1, ocean_entt.cascades_[1].lod_scale_)
-                .len_scale(2, ocean_entt.cascades_[2].lod_scale_);
+                .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
+                .lod_scale(cv_lod_scale.get())
+                .sss_base(cv_foam_sss_base.get())
+                .sss_scale(cv_foam_sss_scale.get());
             for (size_t i = 0; i < CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
@@ -2489,6 +2514,18 @@ namespace {
                 vkCmdDraw(cmdbuf, 4, 1, 0, 0);
                 return;
             }
+        }
+
+        static const mirinae::cpnt::DLight* find_dlight(
+            mirinae::CosmosSimulator& cosmos
+        ) {
+            auto& reg = cosmos.reg();
+
+            for (auto e : reg.view<mirinae::cpnt::DLight>()) {
+                return reg.try_get<mirinae::cpnt::DLight>(e);
+            }
+
+            return nullptr;
         }
 
         mirinae::VulkanDevice& device_;

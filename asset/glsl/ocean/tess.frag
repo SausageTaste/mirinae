@@ -22,6 +22,8 @@ layout (push_constant) uniform U_OceanTessPushConst {
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
     vec4 texco_offset_rot_[3];
+    vec4 dlight_color;
+    vec4 dlight_dir;
     vec4 fog_color_density;
     vec4 jacobian_scale;
     vec4 len_scales_lod_scale;
@@ -82,13 +84,10 @@ void main() {
     );
     const vec3 world_normal = normalize(vec3(-slope.x, 1, -slope.y));
     const vec3 normal = normalize(mat3(u_pc.view * u_pc.model) * world_normal);
-
+    const vec3 light_dir = u_params.dlight_dir.xyz;
 
     vec3 light = vec3(0);
 
-    const vec3 light_dir = mat3(u_pc.view) *  normalize(vec3(0.5653, 0.3, 0.3812));
-
-    /*
     light += calc_pbr_illumination(
         roughness,
         metallic,
@@ -97,10 +96,10 @@ void main() {
         F0,
         -normalize(i_frag_pos),
         light_dir,
-        vec3(3)
+        u_params.dlight_color.xyz
     );
-    */
 
+    /*
     {
         vec3 n = normal;
         vec3 v = to_view;
@@ -138,6 +137,7 @@ void main() {
         vec3 oceanColor = albedo;
         light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
     }
+    */
 
     // Foam
     {
