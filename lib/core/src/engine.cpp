@@ -701,6 +701,14 @@ namespace {
                     std::sin(sung::to_radians(wind_dir))
                 };
 
+                ImGui::SliderFloat(
+                    "Turb Time Factor",
+                    &ocean->trub_time_factor_,
+                    0.01f,
+                    2,
+                    0,
+                    flog
+                );
                 ImGui::SliderFloat("Foam Bias", &ocean->foam_bias_, -10, 10);
                 ImGui::SliderFloat("Foam Scale", &ocean->foam_scale_, 0, 10);
                 ImGui::SliderFloat(
@@ -721,7 +729,12 @@ namespace {
 
                     ImGui::Checkbox("Active", &cascade.active_);
                     ImGui::SliderFloat(
-                        "Jacobian scale", &cascade.jacobian_scale_, 0, 10
+                        "Jacobian scale",
+                        &cascade.jacobian_scale_,
+                        0,
+                        10,
+                        0,
+                        flog
                     );
                     ImGui::SliderFloat(
                         "LOD scale", &cascade.lod_scale_, 1, 10000, 0, flog
@@ -884,19 +897,19 @@ namespace {
                 const auto max_wl = ocean.max_wavelen(20);
 
                 ocean.cascades_[0].L_ = 20;
-                ocean.cascades_[0].amplitude_ = 190622176;
+                ocean.cascades_[0].amplitude_ = 100000000;
                 ocean.cascades_[0].cutoff_low_ = 0 * max_wl;
                 ocean.cascades_[0].cutoff_high_ = 0.015 * max_wl;
                 ocean.cascades_[0].texco_scale_ = { 1.0 / 20, 0 };
 
                 ocean.cascades_[1].L_ = 20;
-                ocean.cascades_[1].amplitude_ = 190622176;
+                ocean.cascades_[1].amplitude_ = 100000000;
                 ocean.cascades_[1].cutoff_low_ = 0.008 * max_wl;
                 ocean.cascades_[1].cutoff_high_ = 0.103 * max_wl;
                 ocean.cascades_[1].texco_scale_ = { 1.0 / 20, 0 };
 
                 ocean.cascades_[2].L_ = 20;
-                ocean.cascades_[2].amplitude_ = 190622176;
+                ocean.cascades_[2].amplitude_ = 100000000;
                 ocean.cascades_[2].cutoff_low_ = 0.098 * max_wl;
                 ocean.cascades_[2].cutoff_high_ = 1 * max_wl;
                 ocean.cascades_[2].texco_scale_ = { 1.0 / 20, 0 };
