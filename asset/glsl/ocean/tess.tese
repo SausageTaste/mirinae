@@ -23,6 +23,8 @@ layout (push_constant) uniform U_OceanTessPushConst {
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
     vec4 texco_offset_rot_[3];
+    vec4 dlight_color;
+    vec4 dlight_dir;
     vec4 fog_color_density;
     vec4 jacobian_scale;
     vec4 len_scales_lod_scale;
