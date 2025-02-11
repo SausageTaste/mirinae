@@ -971,8 +971,6 @@ namespace {
             }
             const auto image_index = image_index_opt.value();
 
-            const auto aspect_ratio = (double)swapchain_.width() /
-                                      (double)swapchain_.height();
             const auto proj_mat = cam.proj_.make_proj_mat(
                 swapchain_.width(), swapchain_.height()
             );
@@ -989,6 +987,7 @@ namespace {
             overlay_man_.widgets().tick(widget_ren_data);
 
             mirinae::RpContext ren_ctxt;
+            ren_ctxt.view_frustum_.update(proj_mat, view_mat);
             ren_ctxt.f_index_ = framesync_.get_frame_index();
             ren_ctxt.i_index_ = image_index;
             ren_ctxt.proj_mat_ = proj_mat;
@@ -1119,7 +1118,6 @@ namespace {
             rp_states_debug_mesh_.end_record(
                 ren_ctxt.cmdbuf_, fbuf_images_.extent(), image_index, rp_
             );
-
             rp_states_fillscreen_.record(
                 ren_ctxt.cmdbuf_,
                 swapchain_.extent(),

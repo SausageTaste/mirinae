@@ -248,11 +248,21 @@ namespace mirinae {
     using HRpImage = std::shared_ptr<RpImage>;
 
 
+    struct ViewFrustum {
+        void update(const glm::dmat4& proj, const glm::dmat4& view);
+
+        std::vector<glm::vec3> vertices_;
+        std::vector<glm::vec3> axes_;
+        glm::dmat4 view_inv_;
+    };
+
+
     struct RpContext {
         std::shared_ptr<CosmosSimulator> cosmos_;
         std::shared_ptr<DrawSheet> draw_sheet_;
-        mirinae::FrameIndex f_index_;
-        mirinae::ShainImageIndex i_index_;
+        ViewFrustum view_frustum_;
+        FrameIndex f_index_;
+        ShainImageIndex i_index_;
         glm::dmat4 proj_mat_;
         glm::dmat4 view_mat_;
         glm::dvec3 view_pos_;
