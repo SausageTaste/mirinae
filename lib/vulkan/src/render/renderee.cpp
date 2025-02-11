@@ -385,7 +385,7 @@ namespace mirinae {
 // ModelManager
 namespace {
 
-    class ModelLoadTask : public sung::StandardLoadTask {
+    class ModelLoadTask : public sung::IStandardLoadTask {
 
     public:
         ModelLoadTask(const dal::path& path, dal::Filesystem& filesys)
