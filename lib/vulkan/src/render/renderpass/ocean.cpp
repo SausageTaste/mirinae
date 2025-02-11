@@ -2371,7 +2371,7 @@ namespace {
             const auto pv = ctxt.proj_mat_ * ctxt.view_mat_;
             const auto cam_x = std::round(ctxt.view_pos_.x * 0.1) * 10;
             const auto cam_z = std::round(ctxt.view_pos_.z * 0.1) * 10;
-            this->traverse_quad_tree(
+            this->traverse_quad_tree<double>(
                 0,
                 cam_x - f,
                 cam_x + f,
@@ -2399,65 +2399,77 @@ namespace {
             VkDescriptorSet desc_set_;
         };
 
+        template <typename T>
         void traverse_quad_tree(
             const int depth,
-            const double x_min,
-            const double x_max,
-            const double y_min,
-            const double y_max,
+            const T x_min,
+            const T x_max,
+            const T y_min,
+            const T y_max,
             const mirinae::RpContext& ctxt,
             U_OceanTessPushConst& pc,
             const mirinae::PushConstInfo& pc_info,
-            const glm::dmat4& pv
+            const glm::tmat4x4<T>& pv
         ) {
-            constexpr double HEIGHT = 5;
+            using Vec2 = glm::tvec2<T>;
+            using Vec3 = glm::tvec3<T>;
+            using Vec4 = glm::tvec4<T>;
 
-            const std::array<glm::dvec4, 4> points{
-                glm::dvec4(x_min, HEIGHT, y_min, 1),
-                glm::dvec4(x_min, HEIGHT, y_max, 1),
-                glm::dvec4(x_max, HEIGHT, y_max, 1),
-                glm::dvec4(x_max, HEIGHT, y_min, 1),
+            constexpr T HALF = 0.5;
+            constexpr T HEIGHT = 5;
+            constexpr T MARGIN = 0.1;
+
+            const auto x_margin = (x_max - x_min) * MARGIN;
+            const auto y_margin = (y_max - y_min) * MARGIN;
+            const std::array<Vec4, 4> points{
+                Vec4(x_min - x_margin, HEIGHT, y_min - y_margin, 1),
+                Vec4(x_min - x_margin, HEIGHT, y_max + y_margin, 1),
+                Vec4(x_max + x_margin, HEIGHT, y_max + y_margin, 1),
+                Vec4(x_max + x_margin, HEIGHT, y_min - y_margin, 1),
             };
 
-            std::array<glm::dvec3, 4> ndc_points;
+            std::array<Vec3, 4> ndc_points;
             for (size_t i = 0; i < 4; ++i) {
                 auto ndc4 = pv * points[i];
                 ndc4 /= ndc4.w;
-                ndc_points[i] = glm::dvec3(ndc4);
+                ndc_points[i] = Vec3(ndc4);
             }
 
-            const static sung::AABB2<double> BOUNDING(-1.1, 1.1, -1.1, 1.1);
-            sung::AABB2<double> box;
+            const static sung::AABB2<T> BOUNDING(-1.1, 1.1, -1.1, 1.1);
+            sung::AABB2<T> box;
             box.set(ndc_points[0].x, ndc_points[0].y);
             for (size_t i = 1; i < 4; ++i)
                 box.expand_to_span(ndc_points[i].x, ndc_points[i].y);
             if (depth != 0 && !box.is_intersecting_op(BOUNDING))
                 return;
 
-            double longest_edge = 0;
+            T longest_edge = 0;
             for (size_t i = 0; i < 4; ++i) {
                 const auto next_idx = (i + 1) % ndc_points.size();
-                const auto& p0 = glm::dvec2(ndc_points[i]) * 0.5 + 0.5;
-                const auto& p1 = glm::dvec2(ndc_points[next_idx]) * 0.5 + 0.5;
+                const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
+                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
                 auto edge = p1 - p0;
-                edge *= glm::dvec2(fbuf_width_, fbuf_height_);
+                edge *= Vec2(fbuf_width_, fbuf_height_);
                 const auto len = glm::length(edge);
-                longest_edge = (std::max<double>)(longest_edge, len);
+                longest_edge = (std::max<T>)(longest_edge, len);
             }
             for (size_t i = 0; i < 2; ++i) {
                 const auto curr_idx = i * 2;
                 const auto next_idx = (i + 1) % ndc_points.size();
-                const auto& p0 = glm::dvec2(ndc_points[curr_idx]) * 0.5 + 0.5;
-                const auto& p1 = glm::dvec2(ndc_points[next_idx]) * 0.5 + 0.5;
+                const auto& p0 = Vec2(ndc_points[curr_idx]) * HALF + HALF;
+                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
                 auto edge = p1 - p0;
-                edge *= glm::dvec2(fbuf_width_, fbuf_height_);
+                edge *= Vec2(fbuf_width_, fbuf_height_);
                 const auto len = glm::length(edge);
-                longest_edge = (std::max<double>)(longest_edge, len);
+                longest_edge = (std::max<T>)(longest_edge, len);
             }
 
             if (depth > 8) {
-                pc.patch_offset(x_min, y_min)
-                    .patch_scale(x_max - x_min, y_max - y_min);
+                pc.patch_offset(x_min - x_margin, y_min - y_margin)
+                    .patch_scale(
+                        x_max - x_min + x_margin + x_margin,
+                        y_max - y_min + y_margin + y_margin
+                    );
                 pc_info.record(ctxt.cmdbuf_, pc);
                 vkCmdDraw(ctxt.cmdbuf_, 4, 1, 0, 0);
                 return;
@@ -2466,21 +2478,24 @@ namespace {
             if (glm::length(longest_edge) > 1000) {
                 const auto x_mid = (x_min + x_max) * 0.5;
                 const auto y_mid = (y_min + y_max) * 0.5;
-                this->traverse_quad_tree(
+                this->traverse_quad_tree<T>(
                     depth + 1, x_min, x_mid, y_min, y_mid, ctxt, pc, pc_info, pv
                 );
-                this->traverse_quad_tree(
+                this->traverse_quad_tree<T>(
                     depth + 1, x_min, x_mid, y_mid, y_max, ctxt, pc, pc_info, pv
                 );
-                this->traverse_quad_tree(
+                this->traverse_quad_tree<T>(
                     depth + 1, x_mid, x_max, y_mid, y_max, ctxt, pc, pc_info, pv
                 );
-                this->traverse_quad_tree(
+                this->traverse_quad_tree<T>(
                     depth + 1, x_mid, x_max, y_min, y_mid, ctxt, pc, pc_info, pv
                 );
             } else {
-                pc.patch_offset(x_min, y_min)
-                    .patch_scale(x_max - x_min, y_max - y_min);
+                pc.patch_offset(x_min - x_margin, y_min - y_margin)
+                    .patch_scale(
+                        x_max - x_min + x_margin + x_margin,
+                        y_max - y_min + y_margin + y_margin
+                    );
                 pc_info.record(ctxt.cmdbuf_, pc);
                 vkCmdDraw(ctxt.cmdbuf_, 4, 1, 0, 0);
                 return;
