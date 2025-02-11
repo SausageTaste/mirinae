@@ -15,8 +15,8 @@
 
 namespace {
 
-    constexpr uint32_t INIT_WIDTH = 1920;
-    constexpr uint32_t INIT_HEIGHT = 1080;
+    constexpr uint32_t INIT_WIDTH = 1280;
+    constexpr uint32_t INIT_HEIGHT = 720;
 
     std::filesystem::path find_asset_folder() {
         std::filesystem::path cur_path = ".";
