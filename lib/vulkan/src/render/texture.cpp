@@ -497,7 +497,7 @@ namespace {
     }
 
 
-    class ImageLoadTask : public sung::StandardLoadTask {
+    class ImageLoadTask : public sung::IStandardLoadTask {
 
     public:
         ImageLoadTask(
