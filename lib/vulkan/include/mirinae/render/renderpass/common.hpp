@@ -257,9 +257,46 @@ namespace mirinae {
     };
 
 
+    struct DebugRender {
+        struct Triangle {
+            std::array<glm::vec4, 4> vertices_;
+            glm::vec4 color_{ 1, 0, 0, 0.5f };
+        };
+
+        void clear() { tri_.clear(); }
+
+        Triangle& new_tri() { return tri_.emplace_back(); }
+
+        void add_tri(
+            const glm::vec4& p0, const glm::vec4& p1, const glm::vec4& p2
+        ) {
+            auto& tri = this->new_tri();
+            tri.vertices_[0] = p0;
+            tri.vertices_[1] = p1;
+            tri.vertices_[2] = p2;
+        }
+
+        void add_tri(
+            const glm::vec4& p0,
+            const glm::vec4& p1,
+            const glm::vec4& p2,
+            const glm::vec4& color
+        ) {
+            auto& tri = this->new_tri();
+            tri.vertices_[0] = p0;
+            tri.vertices_[1] = p1;
+            tri.vertices_[2] = p2;
+            tri.color_ = color;
+        }
+
+        std::vector<Triangle> tri_;
+    };
+
+
     struct RpContext {
         std::shared_ptr<CosmosSimulator> cosmos_;
         std::shared_ptr<DrawSheet> draw_sheet_;
+        DebugRender debug_ren_;
         ViewFrustum view_frustum_;
         FrameIndex f_index_;
         ShainImageIndex i_index_;
