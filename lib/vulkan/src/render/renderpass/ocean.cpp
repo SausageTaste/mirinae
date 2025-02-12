@@ -2296,7 +2296,7 @@ namespace {
             fbufs_.clear();
         }
 
-        void record(const mirinae::RpContext& ctxt) override {
+        void record(mirinae::RpContext& ctxt) override {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
@@ -2400,13 +2400,53 @@ namespace {
         };
 
         template <typename T>
+        static bool has_separating_axis(
+            const mirinae::ViewFrustum& view_frustum,
+            const std::array<glm::tvec3<T>, 4>& points
+        ) {
+            const auto to_patch = glm::tmat4x4<T>(view_frustum.view_inv_);
+            const auto to_patch3 = glm::tmat3x3<T>(to_patch);
+
+            MIRINAE_ASSERT(view_frustum.vtx_.size() == 8);
+            std::array<glm::tvec3<T>, 8> frustum_points;
+            for (size_t i = 0; i < 8; ++i) {
+                const auto& p = glm::tvec4<T>(view_frustum.vtx_[i], 1);
+                frustum_points[i] = glm::tvec3<T>(to_patch * p);
+            }
+
+            std::vector<glm::tvec3<T>> axes;
+            axes.reserve(view_frustum.axes_.size() + 3);
+            for (auto& v : view_frustum.axes_) {
+                axes.push_back(to_patch3 * v);
+            }
+            axes.push_back(glm::tvec3<T>(1, 0, 0));
+            axes.push_back(glm::tvec3<T>(0, 1, 0));
+            axes.push_back(glm::tvec3<T>(0, 0, 1));
+
+            for (auto& axis : axes) {
+                sung::AABB1<T> frustum_aabb;
+                for (auto& p : frustum_points)
+                    frustum_aabb.set_or_expand(glm::dot(p, axis));
+
+                sung::AABB1<T> points_aabb;
+                for (auto& p : points)
+                    points_aabb.set_or_expand(glm::dot(p, axis));
+
+                if (!frustum_aabb.is_intersecting_cl(points_aabb))
+                    return true;
+            }
+
+            return false;
+        }
+
+        template <typename T>
         void traverse_quad_tree(
             const int depth,
             const T x_min,
             const T x_max,
             const T y_min,
             const T y_max,
-            const mirinae::RpContext& ctxt,
+            mirinae::RpContext& ctxt,
             U_OceanTessPushConst& pc,
             const mirinae::PushConstInfo& pc_info,
             const glm::tmat4x4<T>& pv
@@ -2421,16 +2461,20 @@ namespace {
 
             const auto x_margin = (x_max - x_min) * MARGIN;
             const auto y_margin = (y_max - y_min) * MARGIN;
-            const std::array<Vec4, 4> points{
-                Vec4(x_min - x_margin, HEIGHT, y_min - y_margin, 1),
-                Vec4(x_min - x_margin, HEIGHT, y_max + y_margin, 1),
-                Vec4(x_max + x_margin, HEIGHT, y_max + y_margin, 1),
-                Vec4(x_max + x_margin, HEIGHT, y_min - y_margin, 1),
+            const std::array<Vec3, 4> points{
+                Vec3(x_min - x_margin, HEIGHT, y_min - y_margin),
+                Vec3(x_min - x_margin, HEIGHT, y_max + y_margin),
+                Vec3(x_max + x_margin, HEIGHT, y_max + y_margin),
+                Vec3(x_max + x_margin, HEIGHT, y_min - y_margin),
             };
+
+            // Check frustum
+            if (this->has_separating_axis<T>(ctxt.view_frustum_, points))
+                return;
 
             std::array<Vec3, 4> ndc_points;
             for (size_t i = 0; i < 4; ++i) {
-                auto ndc4 = pv * points[i];
+                auto ndc4 = pv * Vec4(points[i], 1);
                 ndc4 /= ndc4.w;
                 ndc_points[i] = Vec3(ndc4);
             }

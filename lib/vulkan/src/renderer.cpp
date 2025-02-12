@@ -469,16 +469,16 @@ namespace {
 
         void draw(
             const VkCommandBuffer cmdbuf,
-            const glm::vec3& p0,
-            const glm::vec3& p1,
-            const glm::vec3& p2,
+            const glm::vec4& p0,
+            const glm::vec4& p1,
+            const glm::vec4& p2,
             const glm::vec4& color,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             mirinae::U_DebugMeshPushConst pc;
-            pc.vertices_[0] = glm::vec4(p0, 1);
-            pc.vertices_[1] = glm::vec4(p1, 1);
-            pc.vertices_[2] = glm::vec4(p2, 1);
+            pc.vertices_[0] = p0;
+            pc.vertices_[1] = p1;
+            pc.vertices_[2] = p2;
             pc.color_ = color;
 
             mirinae::PushConstInfo{}
@@ -986,8 +986,8 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            mirinae::RpContext ren_ctxt;
             ren_ctxt.view_frustum_.update(proj_mat, view_mat);
+            ren_ctxt.debug_ren_.clear();
             ren_ctxt.f_index_ = framesync_.get_frame_index();
             ren_ctxt.i_index_ = image_index;
             ren_ctxt.proj_mat_ = proj_mat;
@@ -1115,6 +1115,16 @@ namespace {
             rp_states_debug_mesh_.begin_record(
                 ren_ctxt.cmdbuf_, fbuf_images_.extent(), image_index, rp_
             );
+            for (auto& tri : ren_ctxt.debug_ren_.tri_) {
+                rp_states_debug_mesh_.draw(
+                    ren_ctxt.cmdbuf_,
+                    tri.vertices_[0],
+                    tri.vertices_[1],
+                    tri.vertices_[2],
+                    tri.color_,
+                    rp_
+                );
+            }
             rp_states_debug_mesh_.end_record(
                 ren_ctxt.cmdbuf_, fbuf_images_.extent(), image_index, rp_
             );
@@ -1572,6 +1582,7 @@ namespace {
         ::RpStatesImgui rp_states_imgui_;
         mirinae::Swapchain swapchain_;
         ::FrameSync framesync_;
+        mirinae::RpContext ren_ctxt;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> cmd_buf_;
         mirinae::InputProcesserMgr input_mgrs_;
