@@ -251,8 +251,8 @@ namespace mirinae {
     struct ViewFrustum {
         void update(const glm::dmat4& proj, const glm::dmat4& view);
 
-        std::vector<glm::vec3> vertices_;
-        std::vector<glm::vec3> axes_;
+        std::array<glm::vec3, 8> vtx_;
+        std::array<glm::vec3, 6> axes_;
         glm::dmat4 view_inv_;
     };
 
@@ -310,7 +310,11 @@ namespace mirinae {
     struct IRpStates {
         virtual ~IRpStates() = default;
         virtual const std::string& name() const = 0;
-        virtual void record(const RpContext& context) = 0;
+
+        virtual void record(const RpContext& context) {}
+        virtual void record(RpContext& context) {
+            this->record(const_cast<const RpContext&>(context));
+        }
     };
 
     using URpStates = std::unique_ptr<IRpStates>;

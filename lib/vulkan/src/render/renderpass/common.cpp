@@ -101,7 +101,7 @@ namespace mirinae {
 namespace mirinae {
 
     void ViewFrustum::update(const glm::dmat4& proj, const glm::dmat4& view) {
-        constexpr float VALUE = 0.8;
+        constexpr float VALUE = 1;
 
         const static std::vector<glm::vec3> v{
             glm::vec3(VALUE, VALUE, VALUE),    // 0
@@ -117,22 +117,20 @@ namespace mirinae {
         view_inv_ = glm::inverse(view);
 
         const auto proj_inv = glm::mat4(glm::inverse(proj));
-        vertices_.resize(v.size());
         for (size_t i = 0; i < v.size(); ++i) {
             auto ndc = proj_inv * glm::vec4(v[i], 1);
             auto ndc3 = glm::vec3(ndc) / ndc.w;
-            vertices_[i] = ndc3;
+            vtx_[i] = ndc3;
         }
 
         // Since 'Separating Axis Theorem' is used, the direction of normal
         // doesn't really matter
-        axes_.resize(6);
-        axes_[0] = ::make_normal(v[0], v[2], v[3]);  // Fixed +x
-        axes_[1] = ::make_normal(v[1], v[4], v[5]);  // Fixed -x
-        axes_[2] = ::make_normal(v[0], v[1], v[3]);  // Fixed +y
-        axes_[3] = ::make_normal(v[2], v[4], v[6]);  // Fixed -y
-        axes_[4] = ::make_normal(v[0], v[1], v[2]);  // Fixed +z
-        axes_[5] = ::make_normal(v[3], v[5], v[6]);  // Fixed -z
+        axes_[0] = ::make_normal(vtx_[0], vtx_[2], vtx_[3]);  // Fixed +x
+        axes_[1] = ::make_normal(vtx_[1], vtx_[4], vtx_[5]);  // Fixed -x
+        axes_[2] = ::make_normal(vtx_[0], vtx_[1], vtx_[3]);  // Fixed +y
+        axes_[3] = ::make_normal(vtx_[2], vtx_[4], vtx_[6]);  // Fixed -y
+        axes_[4] = ::make_normal(vtx_[0], vtx_[1], vtx_[2]);  // Fixed +z
+        axes_[5] = ::make_normal(vtx_[3], vtx_[5], vtx_[6]);  // Fixed -z
 
         return;
     }
