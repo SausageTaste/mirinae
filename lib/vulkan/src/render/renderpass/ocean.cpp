@@ -2457,10 +2457,10 @@ namespace {
 
             constexpr T HALF = 0.5;
             constexpr T HEIGHT = 5;
-            constexpr T MARGIN = 0.1;
+            constexpr T MARGIN = 1;
 
-            const auto x_margin = (x_max - x_min) * MARGIN;
-            const auto y_margin = (y_max - y_min) * MARGIN;
+            const auto x_margin = MARGIN;
+            const auto y_margin = MARGIN;
             const std::array<Vec3, 4> points{
                 Vec3(x_min - x_margin, HEIGHT, y_min - y_margin),
                 Vec3(x_min - x_margin, HEIGHT, y_max + y_margin),
