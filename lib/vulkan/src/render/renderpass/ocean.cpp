@@ -2469,43 +2469,30 @@ namespace {
             };
 
             // Check frustum
-            if (this->has_separating_axis<T>(ctxt.view_frustum_, points))
+            if (this->has_separating_axis<T>(ctxt.view_frustum_, points)) {
+                /*
+                auto& dbg = ctxt.debug_ren_;
+                dbg.add_tri(
+                    pv * Vec4(points[0], 1),
+                    pv * Vec4(points[1], 1),
+                    pv * Vec4(points[2], 1),
+                    glm::vec4(1, 0, 0, 0.1)
+                );
+                dbg.add_tri(
+                    pv * Vec4(points[0], 1),
+                    pv * Vec4(points[2], 1),
+                    pv * Vec4(points[3], 1),
+                    glm::vec4(1, 0, 0, 0.1)
+                );
+                */
                 return;
+            }
 
             std::array<Vec3, 4> ndc_points;
             for (size_t i = 0; i < 4; ++i) {
                 auto ndc4 = pv * Vec4(points[i], 1);
                 ndc4 /= ndc4.w;
                 ndc_points[i] = Vec3(ndc4);
-            }
-
-            const static sung::AABB2<T> BOUNDING(-1.1, 1.1, -1.1, 1.1);
-            sung::AABB2<T> box;
-            box.set(ndc_points[0].x, ndc_points[0].y);
-            for (size_t i = 1; i < 4; ++i)
-                box.expand_to_span(ndc_points[i].x, ndc_points[i].y);
-            if (depth != 0 && !box.is_intersecting_op(BOUNDING))
-                return;
-
-            T longest_edge = 0;
-            for (size_t i = 0; i < 4; ++i) {
-                const auto next_idx = (i + 1) % ndc_points.size();
-                const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
-                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
-                auto edge = p1 - p0;
-                edge *= Vec2(fbuf_width_, fbuf_height_);
-                const auto len = glm::length(edge);
-                longest_edge = (std::max<T>)(longest_edge, len);
-            }
-            for (size_t i = 0; i < 2; ++i) {
-                const auto curr_idx = i * 2;
-                const auto next_idx = (i + 1) % ndc_points.size();
-                const auto& p0 = Vec2(ndc_points[curr_idx]) * HALF + HALF;
-                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
-                auto edge = p1 - p0;
-                edge *= Vec2(fbuf_width_, fbuf_height_);
-                const auto len = glm::length(edge);
-                longest_edge = (std::max<T>)(longest_edge, len);
             }
 
             if (depth > 8) {
@@ -2517,6 +2504,25 @@ namespace {
                 pc_info.record(ctxt.cmdbuf_, pc);
                 vkCmdDraw(ctxt.cmdbuf_, 4, 1, 0, 0);
                 return;
+            }
+
+            T longest_edge = 0;
+            const Vec2 fbuf_size(fbuf_width_, fbuf_height_);
+            for (size_t i = 0; i < 4; ++i) {
+                const auto next_idx = (i + 1) % ndc_points.size();
+                const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
+                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
+                const auto edge = (p1 - p0) * fbuf_size;
+                const auto len = glm::length(edge);
+                longest_edge = (std::max<T>)(longest_edge, len);
+            }
+            for (size_t i = 0; i < 2; ++i) {
+                const auto next_idx = (i + 2) % ndc_points.size();
+                const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
+                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
+                const auto edge = (p1 - p0) * fbuf_size;
+                const auto len = glm::length(edge);
+                longest_edge = (std::max<T>)(longest_edge, len);
             }
 
             if (glm::length(longest_edge) > 1000) {
