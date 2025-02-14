@@ -2,6 +2,7 @@
 
 #include <sung/basic/aabb.hpp>
 
+#include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 
 
@@ -601,6 +602,11 @@ namespace mirinae {
 
     void Scene::do_frame() {
         clock_.tick();
+
+        reg_.view<cpnt::Ocean>().each([this](cpnt::Ocean& ocean) {
+            ocean.do_frame(clock_);
+        });
+
         return;
     }
 

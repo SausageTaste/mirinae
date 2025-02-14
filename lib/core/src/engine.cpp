@@ -6,6 +6,7 @@
 #include <daltools/common/glm_tool.hpp>
 #include <sung/basic/cvar.hpp>
 
+#include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/network.hpp"
 #include "mirinae/renderer.hpp"
@@ -343,12 +344,6 @@ namespace {
             }
 
             ImGui::End();
-
-            if (play_ocean_) {
-                if (auto ocean = try_find_ocaen()) {
-                    ocean->time_ += cosmos_->scene().clock().dt();
-                }
-            }
         }
 
     private:
@@ -662,100 +657,7 @@ namespace {
 
             if (ImGui::CollapsingHeader(name.c_str())) {
                 ImGui::Indent(10);
-                this->render_transform(ocean->transform_);
-
-                if (ImGui::Button("Play"))
-                    play_ocean_ = !play_ocean_;
-                ImGui::DragScalar(
-                    "Time", ImGuiDataType_Double, &ocean->time_, 0.1f
-                );
-                ImGui::DragScalar(
-                    "Repeat time",
-                    ImGuiDataType_Double,
-                    &ocean->repeat_time_,
-                    0.1f
-                );
-
-                float amp = ocean->cascades_[0].amplitude_;
-                ImGui::SliderFloat(
-                    "Amplitude", &amp, 1000, 10000000000, 0, flog
-                );
-                for (auto& cascade : ocean->cascades_) cascade.amplitude_ = amp;
-
-                ImGui::SliderFloat(
-                    "Wind speed", &ocean->wind_speed_, 0.1, 10000, 0, flog
-                );
-                ImGui::SliderFloat("Fetch", &ocean->fetch_, 0, 50000, 0, flog);
-                ImGui::SliderFloat(
-                    "Depth", &ocean->depth_, 0.0000001f, 100000, "%.6f", flog
-                );
-                ImGui::SliderFloat("Swell", &ocean->swell_, 0, 1);
-                ImGui::SliderFloat("Spread blend", &ocean->spread_blend_, 0, 1);
-
-                float wind_dir = sung::to_degrees(
-                    std::atan2(ocean->wind_dir_.y, ocean->wind_dir_.x)
-                );
-                ImGui::SliderFloat("Wind dir", &wind_dir, -179, 179);
-                ocean->wind_dir_ = glm::vec2{
-                    std::cos(sung::to_radians(wind_dir)),
-                    std::sin(sung::to_radians(wind_dir))
-                };
-
-                ImGui::SliderFloat(
-                    "Turb Time Factor",
-                    &ocean->trub_time_factor_,
-                    0.01f,
-                    2,
-                    0,
-                    flog
-                );
-                ImGui::SliderFloat("Foam Bias", &ocean->foam_bias_, -10, 10);
-                ImGui::SliderFloat("Foam Scale", &ocean->foam_scale_, 0, 10);
-                ImGui::SliderFloat(
-                    "LOD Scale", &ocean->lod_scale_, 0, 10000, 0, flog
-                );
-
-                if (ImGui::CollapsingHeader("Cascade###Header")) {
-                    ImGui::Indent(10);
-                    ImGui::SliderInt(
-                        "Cascade", &cascade_, 0, Ocean::CASCADE_COUNT - 1
-                    );
-                    const auto i = cascade_;
-
-                    ImGui::PushID(i);
-                    ImGui::Text("Cascade %d", i);
-
-                    auto& cascade = ocean->cascades_[i];
-
-                    ImGui::Checkbox("Active", &cascade.active_);
-                    ImGui::SliderFloat(
-                        "Jacobian scale",
-                        &cascade.jacobian_scale_,
-                        0,
-                        10,
-                        0,
-                        flog
-                    );
-                    ImGui::SliderFloat(
-                        "LOD scale", &cascade.lod_scale_, 1, 10000, 0, flog
-                    );
-                    ImGui::SliderFloat("L", &cascade.L_, 1, 1000);
-
-                    cascade.texco_scale_[0] = 1.f / cascade.L_;
-                    cascade.texco_scale_[1] = 0;
-
-                    const auto max_wl = (float)Ocean::max_wavelen(cascade.L_);
-                    ImGui::SliderFloat(
-                        "Cut low", &cascade.cutoff_low_, 0, max_wl
-                    );
-                    ImGui::SliderFloat(
-                        "Cut high", &cascade.cutoff_high_, 0, max_wl
-                    );
-
-                    ImGui::PopID();
-                    ImGui::Unindent(10);
-                }
-
+                ocean->render_imgui(cosmos_->scene().clock());
                 ImGui::Unindent(10);
             }
         }
@@ -888,31 +790,7 @@ namespace {
             // Ocean
             {
                 const auto entt = reg.create();
-                auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.transform_.pos_ = { -30, 8, -30 };
-                ocean.wind_speed_ = 300.0;
-                ocean.swell_ = 0.3f;
-                ocean.spread_blend_ = 0.7f;
-
-                const auto max_wl = ocean.max_wavelen(20);
-
-                ocean.cascades_[0].L_ = 20;
-                ocean.cascades_[0].amplitude_ = 100000000;
-                ocean.cascades_[0].cutoff_low_ = 0 * max_wl;
-                ocean.cascades_[0].cutoff_high_ = 0.015 * max_wl;
-                ocean.cascades_[0].texco_scale_ = { 1.0 / 20, 0 };
-
-                ocean.cascades_[1].L_ = 20;
-                ocean.cascades_[1].amplitude_ = 100000000;
-                ocean.cascades_[1].cutoff_low_ = 0.008 * max_wl;
-                ocean.cascades_[1].cutoff_high_ = 0.103 * max_wl;
-                ocean.cascades_[1].texco_scale_ = { 1.0 / 20, 0 };
-
-                ocean.cascades_[2].L_ = 20;
-                ocean.cascades_[2].amplitude_ = 100000000;
-                ocean.cascades_[2].cutoff_low_ = 0.098 * max_wl;
-                ocean.cascades_[2].cutoff_high_ = 1 * max_wl;
-                ocean.cascades_[2].texco_scale_ = { 1.0 / 20, 0 };
+                reg.emplace<mirinae::cpnt::Ocean>(entt);
             }
 
             // Atmosphere
