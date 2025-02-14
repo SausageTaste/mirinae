@@ -13,9 +13,6 @@
 
 namespace mirinae::cpnt {
 
-    using Transform = TransformQuat<double>;
-
-
     template <typename T>
     class TColorIntensity {
 

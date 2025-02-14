@@ -7,6 +7,7 @@
 #include <sung/basic/cvar.hpp>
 
 #include "mirinae/cpnt/ocean.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/network.hpp"
 #include "mirinae/renderer.hpp"
@@ -141,7 +142,7 @@ namespace {
         }
 
         void apply(
-            mirinae::cpnt::Transform& transform, const double delta_time
+            mirinae::TransformQuat<double>& transform, const double delta_time
         ) {
             {
                 glm::dvec3 move_dir{ 0, 0, 0 };
@@ -380,32 +381,12 @@ namespace {
             return nullptr;
         }
 
-        static void render_transform(mirinae::cpnt::Transform& transform) {
+        void render_transform(mirinae::cpnt::Transform& transform) {
             auto transformf = transform.copy<float>();
             glm::vec3 rot{ 0 };
 
             ImGui::PushID(&transform);
-
-            ImGui::DragFloat3("Pos", &transformf.pos_[0]);
-            ImGui::DragFloat3("Rot", &rot[0]);
-            if (ImGui::Button("Reset rotation"))
-                transformf.rot_ = glm::quat(1, 0, 0, 0);
-            ImGui::DragFloat3("Scale", &transformf.scale_[0]);
-
-            transform = transformf.copy<double>();
-            transform.rotate(
-                mirinae::cpnt::Transform::Angle::from_deg(rot.x),
-                glm::vec3{ 1, 0, 0 }
-            );
-            transform.rotate(
-                mirinae::cpnt::Transform::Angle::from_deg(rot.y),
-                glm::vec3{ 0, 1, 0 }
-            );
-            transform.rotate(
-                mirinae::cpnt::Transform::Angle::from_deg(rot.z),
-                glm::vec3{ 0, 0, 1 }
-            );
-
+            transform.render_imgui(cosmos_->scene().clock());
             ImGui::PopID();
         }
 
@@ -436,8 +417,6 @@ namespace {
             const auto name = fmt::format("StandardCamera-{}", (ENTT_ID_TYPE)e);
 
             if (ImGui::CollapsingHeader(name.c_str())) {
-                this->render_transform(cam.view_);
-
                 float angle = (float)cam.proj_.fov_.deg();
                 ImGui::SliderFloat(
                     "FOV",
@@ -599,7 +578,6 @@ namespace {
             const auto name = fmt::format("DLight-{}", (ENTT_ID_TYPE)e);
 
             if (ImGui::CollapsingHeader(name.c_str())) {
-                this->render_transform(dlight->transform_);
                 this->render_color_intensity(dlight->color_);
             }
         }
@@ -614,7 +592,6 @@ namespace {
             const auto name = fmt::format("SLight-{}", (ENTT_ID_TYPE)e);
 
             if (ImGui::CollapsingHeader(name.c_str())) {
-                this->render_transform(slight->transform_);
                 this->render_color_intensity(slight->color_);
 
                 float inner_angle = slight->inner_angle_.rad();
