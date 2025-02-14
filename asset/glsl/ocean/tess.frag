@@ -73,7 +73,7 @@ void main() {
     float jacobian = 0;
     vec4 derivatives = vec4(0);
     for (int i = 0; i < 3; i++) {
-        const vec2 t_uv = transform_uv(i_uv, i);
+        const vec2 t_uv = transform_uv(i_uv, i) / u_params.len_scales_lod_scale[i];
         derivatives += texture(u_deri_map[i], t_uv) * i_lod_scales[i];
         jacobian += texture(u_turb_map[i], t_uv).x * u_params.jacobian_scale[i];
     }
@@ -88,6 +88,7 @@ void main() {
 
     vec3 light = vec3(0);
 
+    /*/
     light += calc_pbr_illumination(
         roughness,
         metallic,
@@ -98,8 +99,7 @@ void main() {
         light_dir,
         u_params.dlight_color.xyz
     );
-
-    /*
+    /*/
     {
         vec3 n = normal;
         vec3 v = to_view;
@@ -107,7 +107,7 @@ void main() {
 
         // Fresnel faktor (levegő IOR: 1.000293f, víz IOR: 1.33f)
         float F0 = 0.020018673;
-        float F = F0 + (1.0 - F0) * pow(1.0 - dot(n, l), 5.0);
+        float F = F0 + (1.0 - F0) * pow(1.0 - max(0.1, dot(n, l)), 5.0);
 
         // tükröződő égbolt
         vec3 l_world = (inverse(u_pc.view) * vec4(l, 0)).xyz;
@@ -137,7 +137,7 @@ void main() {
         vec3 oceanColor = albedo;
         light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
     }
-    */
+    //*/
 
     // Foam
     {
