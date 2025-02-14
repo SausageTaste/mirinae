@@ -790,7 +790,8 @@ namespace {
             // Ocean
             {
                 const auto entt = reg.create();
-                reg.emplace<mirinae::cpnt::Ocean>(entt);
+                auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
+                ocean.height_ = 2;
             }
 
             // Atmosphere
