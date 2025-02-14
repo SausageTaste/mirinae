@@ -1,6 +1,7 @@
 add_library(mirinae_cosmos STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cosmos.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/ocean.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/transform.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene.cpp
 )
 add_library(mirinae::cosmos ALIAS mirinae_cosmos)

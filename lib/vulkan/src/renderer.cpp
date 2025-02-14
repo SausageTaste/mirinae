@@ -4,6 +4,7 @@
 #include <sung/basic/time.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/script.hpp"
 #include "mirinae/math/mamath.hpp"
