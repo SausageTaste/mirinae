@@ -55,7 +55,7 @@ namespace {
 // Ocean Tilde H
 namespace {
 
-    constexpr uint32_t CASCADE_COUNT = mirinae::cpnt::Ocean::CASCADE_COUNT;
+    constexpr uint32_t CASCADE_COUNT = mirinae::cpnt::OCEAN_CASCADE_COUNT;
     constexpr uint32_t OCEAN_TEX_DIM = 256;
     const uint32_t OCEAN_TEX_DIM_LOG2 = std::log(OCEAN_TEX_DIM) / std::log(2);
 
