@@ -35,6 +35,7 @@ namespace mirinae::cpnt {
 
     Ocean::Ocean()
         : wind_dir_{ 1, 1 }
+        , height_(0)
         , repeat_time_(100)
         , time_(0)
         , depth_(1000)
@@ -79,6 +80,8 @@ namespace mirinae::cpnt {
         ImGui::DragScalar(
             "Repeat time", ImGuiDataType_Double, &repeat_time_, 0.1f
         );
+
+        ImGui::DragScalar("Height", ImGuiDataType_Double, &height_, 0.1f);
 
         float amp = cascades_[0].amplitude_ / AMP_BASE;
         ImGui::SliderFloat("Amplitude", &amp, 0.0001f, 100, 0, flog);

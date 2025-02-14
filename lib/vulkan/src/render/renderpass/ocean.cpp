@@ -1877,6 +1877,12 @@ namespace {
             return *this;
         }
 
+        template <typename T>
+        U_OceanTessPushConst& patch_height(T x) {
+            patch_height_ = static_cast<float>(x);
+            return *this;
+        }
+
     private:
         glm::mat4 pvm_;
         glm::mat4 view_;
@@ -1884,6 +1890,7 @@ namespace {
         glm::vec4 patch_offset_scale_;
         glm::vec4 tile_dims_n_fbuf_size_;
         glm::vec4 tile_index_count_;
+        float patch_height_;
     };
 
     static_assert(sizeof(U_OceanTessPushConst) < 256, "");
@@ -2364,7 +2371,8 @@ namespace {
             pc.fbuf_size(fbuf_exd)
                 .tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
                 .tile_dimensions(ocean_entt.tile_size_)
-                .pvm(ctxt.proj_mat_, ctxt.view_mat_, glm::dmat4(1));
+                .pvm(ctxt.proj_mat_, ctxt.view_mat_, glm::dmat4(1))
+                .patch_height(ocean_entt.height_);
 
             const auto f = ctxt.proj_mat_[3][2] / (ctxt.proj_mat_[2][2] + 1) *
                            1.25;
@@ -2377,6 +2385,7 @@ namespace {
                 cam_x + f,
                 cam_z - f,
                 cam_z + f,
+                ocean_entt.height_,
                 ctxt,
                 pc,
                 pc_info,
@@ -2446,6 +2455,7 @@ namespace {
             const T x_max,
             const T y_min,
             const T y_max,
+            const T height,
             mirinae::RpContext& ctxt,
             U_OceanTessPushConst& pc,
             const mirinae::PushConstInfo& pc_info,
@@ -2456,16 +2466,15 @@ namespace {
             using Vec4 = glm::tvec4<T>;
 
             constexpr T HALF = 0.5;
-            constexpr T HEIGHT = 5;
             constexpr T MARGIN = 1;
 
             const auto x_margin = MARGIN;
             const auto y_margin = MARGIN;
             const std::array<Vec3, 4> points{
-                Vec3(x_min - x_margin, HEIGHT, y_min - y_margin),
-                Vec3(x_min - x_margin, HEIGHT, y_max + y_margin),
-                Vec3(x_max + x_margin, HEIGHT, y_max + y_margin),
-                Vec3(x_max + x_margin, HEIGHT, y_min - y_margin),
+                Vec3(x_min - x_margin, height, y_min - y_margin),
+                Vec3(x_min - x_margin, height, y_max + y_margin),
+                Vec3(x_max + x_margin, height, y_max + y_margin),
+                Vec3(x_max + x_margin, height, y_min - y_margin),
             };
 
             // Check frustum
@@ -2529,16 +2538,52 @@ namespace {
                 const auto x_mid = (x_min + x_max) * 0.5;
                 const auto y_mid = (y_min + y_max) * 0.5;
                 this->traverse_quad_tree<T>(
-                    depth + 1, x_min, x_mid, y_min, y_mid, ctxt, pc, pc_info, pv
+                    depth + 1,
+                    x_min,
+                    x_mid,
+                    y_min,
+                    y_mid,
+                    height,
+                    ctxt,
+                    pc,
+                    pc_info,
+                    pv
                 );
                 this->traverse_quad_tree<T>(
-                    depth + 1, x_min, x_mid, y_mid, y_max, ctxt, pc, pc_info, pv
+                    depth + 1,
+                    x_min,
+                    x_mid,
+                    y_mid,
+                    y_max,
+                    height,
+                    ctxt,
+                    pc,
+                    pc_info,
+                    pv
                 );
                 this->traverse_quad_tree<T>(
-                    depth + 1, x_mid, x_max, y_mid, y_max, ctxt, pc, pc_info, pv
+                    depth + 1,
+                    x_mid,
+                    x_max,
+                    y_mid,
+                    y_max,
+                    height,
+                    ctxt,
+                    pc,
+                    pc_info,
+                    pv
                 );
                 this->traverse_quad_tree<T>(
-                    depth + 1, x_mid, x_max, y_min, y_mid, ctxt, pc, pc_info, pv
+                    depth + 1,
+                    x_mid,
+                    x_max,
+                    y_min,
+                    y_mid,
+                    height,
+                    ctxt,
+                    pc,
+                    pc_info,
+                    pv
                 );
             } else {
                 pc.patch_offset(x_min - x_margin, y_min - y_margin)

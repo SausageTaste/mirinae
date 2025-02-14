@@ -18,6 +18,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
     vec4 patch_offset_scale;
     vec4 tile_dims_n_fbuf_size;
     vec4 tile_index_count;
+    float patch_height;
 } u_pc;
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {

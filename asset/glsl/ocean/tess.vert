@@ -11,6 +11,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
     vec4 patch_offset_scale;
     vec4 tile_dims_n_fbuf_size;
     vec4 tile_index_count;
+    float patch_height;
 } u_pc;
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
@@ -47,7 +48,7 @@ void main() {
     const vec2 offset = u_pc.patch_offset_scale.xy;
     const vec2 scale = u_pc.patch_offset_scale.zw;
     const vec2 patch_pos = TEX_COORDS[gl_VertexIndex] * scale + offset;
-    gl_Position.xyz = vec3(patch_pos.x, 5, patch_pos.y);
+    gl_Position.xyz = vec3(patch_pos.x, u_pc.patch_height, patch_pos.y);
     gl_Position.w = 1;
     v_uv = patch_pos;
     v_normal = vec3(0, 1, 0);

@@ -43,6 +43,7 @@ namespace mirinae::cpnt {
         TransformQuat<double> transform_;
         std::array<Cascade, OCEAN_CASCADE_COUNT> cascades_;
         glm::dvec2 wind_dir_;
+        double height_;
         double repeat_time_;
         double time_;
         float depth_;
