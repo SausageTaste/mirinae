@@ -78,10 +78,10 @@ void main() {
 
     vec3 displacement = vec3(0);
     float largeWavesBias = 0;
-    displacement += texture(u_disp_map[0], transform_uv(tex_coord, 0)).xyz * lod_c0;
+    displacement += texture(u_disp_map[0], transform_uv(tex_coord, 0) / u_params.len_scales_lod_scale[0]).xyz * lod_c0;
     largeWavesBias = displacement.y;
-    displacement += texture(u_disp_map[1], transform_uv(tex_coord, 1)).xyz * lod_c1;
-    displacement += texture(u_disp_map[2], transform_uv(tex_coord, 2)).xyz * lod_c2;
+    displacement += texture(u_disp_map[1], transform_uv(tex_coord, 1) / u_params.len_scales_lod_scale[1]).xyz * lod_c1;
+    displacement += texture(u_disp_map[2], transform_uv(tex_coord, 2) / u_params.len_scales_lod_scale[2]).xyz * lod_c2;
     p += displacement;
     o_lod_scales = vec4(lod_c0, lod_c1, lod_c2, max(displacement.y - largeWavesBias * 0.8 - u_params.sss_base, 0) / u_params.sss_scale);
 
