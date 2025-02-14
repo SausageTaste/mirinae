@@ -342,6 +342,10 @@ namespace {
                         this->render_atmosphere(e);
                     ImGui::Unindent(20);
                 }
+
+                for (auto e : this->reg().view<entt::entity>()) {
+                    this->render_entt(e);
+                }
             }
 
             ImGui::End();
@@ -371,6 +375,8 @@ namespace {
 
             virtual void visit(sung::ICVarStr& cvar) {}
         };
+
+        const sung::SimClock& clock() const { return cosmos_->scene().clock(); }
 
         entt::registry& reg() { return cosmos_->reg(); }
 
@@ -660,6 +666,36 @@ namespace {
                     "%.6f",
                     ImGuiSliderFlags_Logarithmic
                 );
+            }
+        }
+
+        template <typename T>
+        void render_cpnt(T& component, const char* name) {
+            const auto h_name = fmt::format(
+                "{}###{}", name, fmt::ptr(&component)
+            );
+
+            ImGui::Indent(10);
+            if (ImGui::CollapsingHeader(h_name.c_str())) {
+                ImGui::Indent(10);
+                ImGui::PushID(&component);
+                component.render_imgui(this->clock());
+                ImGui::PopID();
+                ImGui::Unindent(10);
+            }
+            ImGui::Unindent(10);
+        }
+
+        void render_entt(entt::entity e) {
+            namespace cpnt = mirinae::cpnt;
+
+            const auto entt_name = fmt::format("Entity {}", (ENTT_ID_TYPE)e);
+
+            if (ImGui::CollapsingHeader(entt_name.c_str())) {
+                if (auto c = this->reg().try_get<cpnt::Transform>(e))
+                    this->render_cpnt(*c, "Transform");
+                if (auto c = this->reg().try_get<cpnt::Ocean>(e))
+                    this->render_cpnt(*c, "Ocean");
             }
         }
 
