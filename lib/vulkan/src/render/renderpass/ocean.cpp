@@ -4,6 +4,8 @@
 #include <sung/basic/cvar.hpp>
 #include <sung/basic/time.hpp>
 
+#include "mirinae/cpnt/light.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
@@ -2306,20 +2308,10 @@ namespace {
         void record(mirinae::RpContext& ctxt) override {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
-
             const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
-            const auto dlight = this->find_dlight(*ctxt.cosmos_);
-            const auto dlight_color = dlight ? dlight->color_.scaled_color()
-                                             : glm::vec3(0);
-            const auto dlight_dir = dlight ? dlight->calc_to_light_dir(
-                                                 ctxt.view_mat_
-                                             )
-                                           : glm::vec3(0);
 
             U_OceanTessParams ubuf;
-            ubuf.dlight_color(dlight_color)
-                .dlight_dir(dlight_dir)
-                .foam_bias(ocean_entt.foam_bias_)
+            ubuf.foam_bias(ocean_entt.foam_bias_)
                 .foam_scale(ocean_entt.foam_scale_)
                 .foam_threshold(cv_foam_threshold.get())
                 .jacobian_scale(0, ocean_entt.cascades_[0].jacobian_scale_)
@@ -2337,6 +2329,16 @@ namespace {
             if (auto& atmos = ctxt.draw_sheet_->atmosphere_)
                 ubuf.fog_color(atmos->fog_color_)
                     .fog_density(atmos->fog_density_);
+
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = ctxt.cosmos_->reg();
+            for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                auto& light = reg.get<cpnt::DLight>(e);
+                auto& tform = reg.get<cpnt::Transform>(e);
+                ubuf.dlight_color(light.color_.scaled_color());
+                ubuf.dlight_dir(light.calc_to_light_dir(ctxt.view_mat_, tform));
+                break;
+            }
 
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());
 
@@ -2595,18 +2597,6 @@ namespace {
                 vkCmdDraw(ctxt.cmdbuf_, 4, 1, 0, 0);
                 return;
             }
-        }
-
-        static const mirinae::cpnt::DLight* find_dlight(
-            mirinae::CosmosSimulator& cosmos
-        ) {
-            auto& reg = cosmos.reg();
-
-            for (auto e : reg.view<mirinae::cpnt::DLight>()) {
-                return reg.try_get<mirinae::cpnt::DLight>(e);
-            }
-
-            return nullptr;
         }
 
         mirinae::VulkanDevice& device_;

@@ -3,6 +3,7 @@
 #include <map>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/render/renderee.hpp"
 #include "mirinae/render/vkdevice.hpp"

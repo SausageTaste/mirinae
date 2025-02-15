@@ -403,7 +403,8 @@ namespace mirinae::rp::shadow {
         const double ratio,
         const glm::dmat4& view_inv,
         const PerspectiveCamera<double>& pers,
-        const cpnt::DLight& dlight
+        const cpnt::DLight& dlight,
+        const cpnt::DLight::Tform& tform
     ) {
         const auto dist = this->make_plane_distances(pers.near_, pers.far_);
 
@@ -421,7 +422,7 @@ namespace mirinae::rp::shadow {
                 ratio, c.far_, pers.fov_, view_inv, c.frustum_verts_.data() + 4
             );
 
-            c.light_mat_ = dlight.make_light_mat(c.frustum_verts_);
+            c.light_mat_ = dlight.make_light_mat(c.frustum_verts_, tform);
 
             far_depths_[i] = this->calc_clip_depth(
                 -c.far_, pers.near_, pers.far_
