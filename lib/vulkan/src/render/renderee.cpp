@@ -158,6 +158,7 @@ namespace {
 namespace mirinae {
 
     void RenderUnit::init(
+        const std::string& name,
         uint32_t max_flight_count,
         const VerticesStaticPair& vertices,
         const U_GbufModel& ubuf_data,
@@ -168,6 +169,8 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
+        name_ = name;
+
         auto& desclayout = desclayouts.get("gbuf:model");
         desc_pool_.init(
             max_flight_count, desclayout.size_info(), device.logi_device()
@@ -227,6 +230,7 @@ namespace mirinae {
 namespace mirinae {
 
     void RenderUnitSkinned::init(
+        const std::string& name,
         uint32_t max_flight_count,
         const VerticesSkinnedPair& vertices,
         const U_GbufModel& ubuf_data,
@@ -237,6 +241,8 @@ namespace mirinae {
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
+        name_ = name;
+
         auto& desclayout = desclayouts.get("gbuf:model");
         desc_pool_.init(
             max_flight_count, desclayout.size_info(), device.logi_device()
@@ -353,6 +359,9 @@ namespace mirinae {
 // RenderModel
 namespace mirinae {
 
+    RenderModel::RenderModel(VulkanDevice& vulkan_device)
+        : device_(vulkan_device) {}
+
     RenderModel::~RenderModel() {
         for (auto& unit : render_units_)
             unit.destroy(device_.mem_alloc(), device_.logi_device());
@@ -363,11 +372,28 @@ namespace mirinae {
         render_units_alpha_.clear();
     }
 
+    size_t RenderModel::ren_unit_count() const {
+        return render_units_.size() + render_units_alpha_.size();
+    }
+
+    std::string_view RenderModel::ren_unit_name(size_t index) const {
+        if (index < render_units_.size())
+            return render_units_.at(index).name();
+        else if (index < render_units_.size() + render_units_alpha_.size())
+            return render_units_alpha_.at(index - render_units_.size()).name();
+        else
+            return "";
+    }
+
 }  // namespace mirinae
 
 
 // RenderModelSkinned
 namespace mirinae {
+
+    RenderModelSkinned::RenderModelSkinned(VulkanDevice& vulkan_device)
+        : skel_anim_(std::make_shared<SkelAnimPair>())
+        , device_(vulkan_device) {}
 
     RenderModelSkinned::~RenderModelSkinned() {
         for (auto& unit : runits_)
@@ -377,6 +403,19 @@ namespace mirinae {
         for (auto& unit : runits_alpha_)
             unit.destroy(device_.mem_alloc(), device_.logi_device());
         runits_alpha_.clear();
+    }
+
+    size_t RenderModelSkinned::ren_unit_count() const {
+        return runits_.size() + runits_alpha_.size();
+    }
+
+    std::string_view RenderModelSkinned::ren_unit_name(size_t index) const {
+        if (index < runits_.size())
+            return runits_.at(index).name();
+        else if (index < runits_.size() + runits_alpha_.size())
+            return runits_alpha_.at(index - runits_.size()).name();
+        else
+            return "";
     }
 
 }  // namespace mirinae
@@ -648,6 +687,7 @@ namespace {
                          ? output->render_units_alpha_.emplace_back()
                          : output->render_units_.emplace_back());
                 dst_unit.init(
+                    src_unit.name_,
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     dst_vertices,
                     mat_res.model_ubuf_,
@@ -710,6 +750,7 @@ namespace {
                                      ? output->runits_alpha_.emplace_back()
                                      : output->runits_.emplace_back();
                 dst_unit.init(
+                    src_unit.name_,
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     dst_vertices,
                     mat_res.model_ubuf_,
@@ -763,6 +804,11 @@ namespace {
 // RenderActor
 namespace mirinae {
 
+    RenderActor::RenderActor(VulkanDevice& vulkan_device)
+        : device_(vulkan_device) {}
+
+    RenderActor::~RenderActor() { this->destroy(); }
+
     void RenderActor::init(
         uint32_t max_flight_count, DesclayoutManager& desclayouts
     ) {
@@ -809,6 +855,11 @@ namespace mirinae {
 
 // RenderActorSkinned
 namespace mirinae {
+
+    RenderActorSkinned::RenderActorSkinned(VulkanDevice& vulkan_device)
+        : device_(vulkan_device) {}
+
+    RenderActorSkinned::~RenderActorSkinned() { this->destroy(); }
 
     void RenderActorSkinned::init(
         uint32_t max_flight_count, DesclayoutManager& desclayouts

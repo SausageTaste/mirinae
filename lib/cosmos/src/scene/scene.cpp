@@ -3,6 +3,7 @@
 #include <sung/basic/aabb.hpp>
 
 #include "mirinae/cpnt/ocean.hpp"
+#include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 
@@ -294,10 +295,10 @@ namespace { namespace scene {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
 
-            if (auto c = reg.try_get<cpnt::StaticModelActor>(self)) {
+            if (auto c = reg.try_get<cpnt::MdlActorStatic>(self)) {
                 lua_pushstring(L, c->model_path_.u8string().c_str());
                 return 1;
-            } else if (auto c = reg.try_get<cpnt::SkinnedModelActor>(self)) {
+            } else if (auto c = reg.try_get<cpnt::MdlActorSkinned>(self)) {
                 lua_pushstring(L, c->model_path_.u8string().c_str());
                 return 1;
             } else {
@@ -322,7 +323,7 @@ namespace { namespace scene {
             GET_SCENE_PTR();
             auto& self = check_udata(L, 1);
 
-            auto mactor = reg.try_get<cpnt::SkinnedModelActor>(self);
+            auto mactor = reg.try_get<cpnt::MdlActorSkinned>(self);
             if (!mactor)
                 return luaL_error(L, "This entity is not a skinned model.");
 
@@ -408,7 +409,7 @@ namespace { namespace scene {
         {
             scene.entt_without_model_.push_back(enttid);
 
-            auto& mactor = reg.emplace<cpnt::StaticModelActor>(enttid);
+            auto& mactor = reg.emplace<cpnt::MdlActorStatic>(enttid);
             mactor.model_path_.assign(model_path);
 
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
@@ -427,7 +428,7 @@ namespace { namespace scene {
         {
             scene.entt_without_model_.push_back(enttid);
 
-            auto& mactor = reg.emplace<cpnt::SkinnedModelActor>(enttid);
+            auto& mactor = reg.emplace<cpnt::MdlActorSkinned>(enttid);
             mactor.model_path_.assign(model_path);
 
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
@@ -593,7 +594,7 @@ namespace mirinae::cpnt {
 // Scene
 namespace mirinae {
 
-    Scene::Scene(const clock_t& global_clock, ScriptEngine& script)
+    Scene::Scene(const sung::SimClock& global_clock, ScriptEngine& script)
         : script_(script) {
         clock_.sync_rt(global_clock);
 

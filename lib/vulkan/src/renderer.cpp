@@ -222,44 +222,64 @@ namespace {
 
 
     mirinae::DrawSheet make_draw_sheet(mirinae::Scene& scene) {
-        using CTrans = mirinae::cpnt::Transform;
-        using CStaticModelActor = mirinae::cpnt::StaticActorVk;
-        using CSkinnedModelActor = mirinae::cpnt::SkinnedActorVk;
+        namespace cpnt = mirinae::cpnt;
 
         mirinae::DrawSheet sheet;
+        auto& reg = scene.reg_;
 
-        for (auto enttid : scene.reg_.view<CTrans, CStaticModelActor>()) {
-            auto& pair = scene.reg_.get<CStaticModelActor>(enttid);
-            auto& trans = scene.reg_.get<CTrans>(enttid);
+        for (const auto e : reg.view<cpnt::MdlActorStatic>()) {
+            auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
+            if (!mactor.model_)
+                continue;
+            auto renmdl = mactor.get_model<mirinae::RenderModel>();
+            if (!renmdl)
+                continue;
+            auto actor = mactor.get_actor<mirinae::RenderActor>();
+            if (!actor)
+                continue;
 
-            auto& dst = sheet.get_static_pair(*pair.model_);
-            auto& actor = dst.actors_.emplace_back();
-            actor.actor_ = pair.actor_.get();
-            actor.model_mat_ = trans.make_model_mat();
+            auto& dst = sheet.get_static_pair(*renmdl);
+            auto& dst_actor = dst.actors_.emplace_back();
+            dst_actor.actor_ = actor;
+
+            if (auto tfrom = reg.try_get<cpnt::Transform>(e))
+                dst_actor.model_mat_ = tfrom->make_model_mat();
+            else
+                dst_actor.model_mat_ = glm::dmat4(1.0);
         }
 
-        for (auto& enttid : scene.reg_.view<CTrans, CSkinnedModelActor>()) {
-            auto& pair = scene.reg_.get<CSkinnedModelActor>(enttid);
-            auto& trans = scene.reg_.get<CTrans>(enttid);
+        for (const auto e : reg.view<cpnt::MdlActorSkinned>()) {
+            auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
+            if (!mactor.model_)
+                continue;
+            auto renmdl = mactor.get_model<mirinae::RenderModelSkinned>();
+            if (!renmdl)
+                continue;
+            auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
+            if (!actor)
+                continue;
 
-            auto& dst = sheet.get_skinn_pair(*pair.model_);
-            auto& actor = dst.actors_.emplace_back();
-            actor.actor_ = pair.actor_.get();
-            actor.model_mat_ = trans.make_model_mat();
+            auto& dst = sheet.get_skinn_pair(*renmdl);
+            auto& dst_actor = dst.actors_.emplace_back();
+            dst_actor.actor_ = actor;
+
+            if (auto tfrom = reg.try_get<cpnt::Transform>(e))
+                dst_actor.model_mat_ = tfrom->make_model_mat();
+            else
+                dst_actor.model_mat_ = glm::dmat4(1.0);
         }
 
         sheet.ocean_ = nullptr;
-        for (auto& eid : scene.reg_.view<mirinae::cpnt::Ocean>()) {
-            sheet.ocean_ = &scene.reg_.get<mirinae::cpnt::Ocean>(eid);
+        for (auto e : scene.reg_.view<cpnt::Ocean>()) {
             // Only one ocean is allowed
+            sheet.ocean_ = &scene.reg_.get<cpnt::Ocean>(e);
             break;
         }
 
         sheet.atmosphere_ = nullptr;
-        for (auto& eid : scene.reg_.view<mirinae::cpnt::AtmosphereSimple>()) {
-            sheet.atmosphere_ =
-                &scene.reg_.get<mirinae::cpnt::AtmosphereSimple>(eid);
+        for (auto e : reg.view<cpnt::AtmosphereSimple>()) {
             // Only one atmosphere is allowed
+            sheet.atmosphere_ = &scene.reg_.get<cpnt::AtmosphereSimple>(e);
             break;
         }
 
@@ -927,10 +947,16 @@ namespace {
             ImGui_ImplVulkan_Shutdown();
 
             auto& reg = cosmos_->reg();
-            for (auto enttid : reg.view<mirinae::cpnt::StaticActorVk>())
-                reg.remove<mirinae::cpnt::StaticActorVk>(enttid);
-            for (auto& enttid : reg.view<mirinae::cpnt::SkinnedActorVk>())
-                reg.remove<mirinae::cpnt::SkinnedActorVk>(enttid);
+            for (auto e : reg.view<mirinae::cpnt::MdlActorStatic>()) {
+                auto& mactor = reg.get<mirinae::cpnt::MdlActorStatic>(e);
+                mactor.model_.reset();
+                mactor.actor_.reset();
+            }
+            for (auto& e : reg.view<mirinae::cpnt::MdlActorSkinned>()) {
+                auto& mactor = reg.get<mirinae::cpnt::MdlActorSkinned>(e);
+                mactor.model_.reset();
+                mactor.actor_.reset();
+            }
 
             // Destroy swapchain's relatives
             {
@@ -1379,73 +1405,75 @@ namespace {
 
         void update_unloaded_models() {
             namespace cpnt = mirinae::cpnt;
-            using SrcSkinn = cpnt::SkinnedModelActor;
-            using mirinae::RenderActorSkinned;
 
             auto& scene = cosmos_->scene();
             auto& reg = cosmos_->reg();
 
-            for (auto e : reg.view<cpnt::StaticModelActor>()) {
-                auto mavk = reg.try_get<cpnt::StaticActorVk>(e);
-                if (mavk)
-                    continue;
+            for (auto e : reg.view<cpnt::MdlActorStatic>()) {
+                auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
 
-                const auto& moac = reg.get<cpnt::StaticModelActor>(e);
-                const auto res_result = model_man_->request_static(
-                    moac.model_path_
-                );
-                if (dal::ReqResult::loading == res_result)
-                    continue;
-                else if (dal::ReqResult::ready != res_result) {
-                    SPDLOG_WARN(
-                        "Failed to get model: {}", moac.model_path_.u8string()
-                    );
-                    reg.destroy(e);
-                    continue;
+                if (!mactor.model_) {
+                    const auto mdl_path = mactor.model_path_;
+                    const auto res = model_man_->request_static(mdl_path);
+                    if (dal::ReqResult::loading == res) {
+                        continue;
+                    } else if (dal::ReqResult::ready != res) {
+                        const auto path_str = mdl_path.u8string();
+                        SPDLOG_WARN("Failed to get model: {}", path_str);
+                        reg.destroy(e);
+                        continue;
+                    }
+
+                    mactor.model_ = model_man_->get_static(mdl_path);
+                    if (!mactor.model_) {
+                        const auto path_str = mdl_path.u8string();
+                        SPDLOG_WARN("Failed to get model: {}", path_str);
+                        reg.destroy(e);
+                        continue;
+                    }
                 }
 
-                auto model = model_man_->get_static(moac.model_path_);
-                if (!model)
-                    continue;
-
-                mavk = &reg.emplace<cpnt::StaticActorVk>(e);
-                mavk->model_ = model;
-                mavk->actor_ = std::make_shared<mirinae::RenderActor>(device_);
-                mavk->actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                return;
+                if (!mactor.actor_) {
+                    auto a = std::make_shared<mirinae::RenderActor>(device_);
+                    a->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                    mactor.actor_ = a;
+                }
             }
 
-            for (auto e : reg.view<cpnt::SkinnedModelActor>()) {
-                auto mavk = reg.try_get<cpnt::SkinnedActorVk>(e);
-                if (mavk)
-                    continue;
+            for (auto e : reg.view<cpnt::MdlActorSkinned>()) {
+                auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
 
-                auto& moac = reg.get<cpnt::SkinnedModelActor>(e);
-                const auto res_result = model_man_->request_skinned(
-                    moac.model_path_
-                );
-                if (dal::ReqResult::loading == res_result)
-                    continue;
-                else if (dal::ReqResult::ready != res_result) {
-                    SPDLOG_WARN(
-                        "Failed to get model: {}", moac.model_path_.u8string()
-                    );
-                    reg.destroy(e);
-                    continue;
+                if (!mactor.model_) {
+                    const auto mdl_path = mactor.model_path_;
+                    const auto res = model_man_->request_skinned(mdl_path);
+                    if (dal::ReqResult::loading == res) {
+                        continue;
+                    } else if (dal::ReqResult::ready != res) {
+                        const auto path_str = mdl_path.u8string();
+                        SPDLOG_WARN("Failed to get model: {}", path_str);
+                        reg.destroy(e);
+                        continue;
+                    }
+
+                    auto model = model_man_->get_skinned(mdl_path);
+                    if (!model) {
+                        const auto path_str = mdl_path.u8string();
+                        SPDLOG_WARN("Failed to get model: {}", path_str);
+                        reg.destroy(e);
+                        continue;
+                    }
+
+                    mactor.model_ = model;
+                    mactor.anim_state_.set_skel_anim(model->skel_anim_);
                 }
 
-                auto model = model_man_->get_skinned(moac.model_path_);
-                if (!model)
-                    continue;
-
-                mavk = &reg.emplace<cpnt::SkinnedActorVk>(e);
-                mavk->model_ = model;
-                mavk->actor_ = std::make_shared<mirinae::RenderActorSkinned>(
-                    device_
-                );
-                mavk->actor_->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                moac.anim_state_.set_skel_anim(model->skel_anim_);
-                return;
+                if (!mactor.actor_) {
+                    auto a = std::make_shared<mirinae::RenderActorSkinned>(
+                        device_
+                    );
+                    a->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
+                    mactor.actor_ = a;
+                }
             }
 
             scene.entt_without_model_.clear();
@@ -1461,48 +1489,59 @@ namespace {
             auto& reg = cosmos_->reg();
 
             // Update ubuf: U_GbufActor
-            reg.view<cpnt::Transform, cpnt::StaticActorVk>().each(
-                [&](auto enttid, auto& transform, auto& ren_pair) {
-                    const auto model_mat = transform.make_model_mat();
+            for (const auto e : reg.view<cpnt::MdlActorStatic>()) {
+                auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
+                auto actor = mactor.get_actor<mirinae::RenderActor>();
+                if (!actor)
+                    continue;
 
-                    mirinae::U_GbufActor ubuf_data;
-                    ubuf_data.model = model_mat;
-                    ubuf_data.view_model = view_mat * model_mat;
-                    ubuf_data.pvm = proj_mat * view_mat * model_mat;
+                glm::dmat4 model_mat(1);
+                if (auto tform = reg.try_get<cpnt::Transform>(e))
+                    model_mat = tform->make_model_mat();
+                const auto vm = view_mat * model_mat;
+                const auto pvm = proj_mat * vm;
 
-                    ren_pair.actor_->udpate_ubuf(
-                        framesync_.get_frame_index().get(),
-                        ubuf_data,
-                        device_.mem_alloc()
-                    );
-                }
-            );
+                mirinae::U_GbufActor udata;
+                udata.model = model_mat;
+                udata.view_model = vm;
+                udata.pvm = pvm;
+
+                actor->udpate_ubuf(
+                    framesync_.get_frame_index().get(),
+                    udata,
+                    device_.mem_alloc()
+                );
+            }
 
             // Update ubuf: U_GbufActorSkinned
-            reg.view<
-                   cpnt::Transform,
-                   cpnt::SkinnedActorVk,
-                   cpnt::SkinnedModelActor>()
-                .each([&](auto enttid,
-                          auto& transform,
-                          auto& ren_pair,
-                          auto& mactor) {
-                    const auto model_m = transform.make_model_mat();
-                    mactor.anim_state_.update_tick(clock);
+            for (const auto e : reg.view<cpnt::MdlActorSkinned>()) {
+                auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
+                auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
+                if (!actor)
+                    continue;
 
-                    mirinae::U_GbufActorSkinned ubuf_data;
-                    mactor.anim_state_.sample_anim(
-                        ubuf_data.joint_transforms_, mirinae::MAX_JOINTS, clock
-                    );
-                    ubuf_data.view_model = view_mat * model_m;
-                    ubuf_data.pvm = proj_mat * view_mat * model_m;
+                mactor.anim_state_.update_tick(clock);
 
-                    ren_pair.actor_->udpate_ubuf(
-                        framesync_.get_frame_index().get(),
-                        ubuf_data,
-                        device_.mem_alloc()
-                    );
-                });
+                glm::dmat4 model_mat(1);
+                if (auto tform = reg.try_get<cpnt::Transform>(e))
+                    model_mat = tform->make_model_mat();
+                const auto vm = view_mat * model_mat;
+                const auto pvm = proj_mat * vm;
+
+                mirinae::U_GbufActorSkinned udata;
+                udata.view_model = vm;
+                udata.pvm = pvm;
+
+                mactor.anim_state_.sample_anim(
+                    udata.joint_transforms_, mirinae::MAX_JOINTS, clock
+                );
+
+                actor->udpate_ubuf(
+                    framesync_.get_frame_index().get(),
+                    udata,
+                    device_.mem_alloc()
+                );
+            }
 
             // Update ubuf: U_CompoMain
             {
