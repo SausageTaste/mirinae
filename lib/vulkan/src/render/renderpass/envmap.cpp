@@ -1,5 +1,7 @@
 #include "mirinae/render/renderpass/envmap.hpp"
 
+#include "mirinae/cpnt/light.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
@@ -1147,7 +1149,9 @@ namespace {
             const mirinae::ShainImageIndex image_index,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
+            namespace cpnt = mirinae::cpnt;
             auto& rp = rp_pkg.get("env_base");
+            auto& reg = cosmos.reg();
 
             mirinae::RenderPassBeginInfo rp_info{};
             rp_info.rp(rp.renderpass())
@@ -1185,11 +1189,11 @@ namespace {
                     );
 
                     mirinae::U_EnvmapPushConst push_const;
-                    for (auto e : cosmos.reg().view<mirinae::cpnt::DLight>()) {
-                        const auto& light =
-                            cosmos.reg().get<mirinae::cpnt::DLight>(e);
+                    for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                        const auto& light = reg.get<cpnt::DLight>(e);
+                        const auto& tform = reg.get<cpnt::Transform>(e);
                         push_const.dlight_dir_ = glm::vec4{
-                            light.calc_to_light_dir(glm::dmat4(1)), 0
+                            light.calc_to_light_dir(glm::dmat4(1), tform), 0
                         };
                         push_const.dlight_color_ = glm::vec4{
                             light.color_.scaled_color(), 0

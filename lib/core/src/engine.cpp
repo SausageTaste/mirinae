@@ -6,6 +6,7 @@
 #include <daltools/common/glm_tool.hpp>
 #include <sung/basic/cvar.hpp>
 
+#include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/transform.hpp"
@@ -295,41 +296,6 @@ namespace {
                     ImGui::Unindent(20);
                 }
 
-                if (ImGui::CollapsingHeader("DLight")) {
-                    ImGui::Indent(20);
-                    for (const auto e : reg.view<DLight>())
-                        this->render_dlight(e);
-                    ImGui::Unindent(20);
-                }
-
-                if (ImGui::CollapsingHeader("SLight")) {
-                    ImGui::Indent(20);
-                    for (const auto e : reg.view<SLight>())
-                        this->render_dlight(e);
-                    ImGui::Unindent(20);
-                }
-
-                if (ImGui::CollapsingHeader("VPLight")) {
-                    ImGui::Indent(20);
-                    for (const auto e : reg.view<VPLight>())
-                        this->render_vplight(e);
-                    ImGui::Unindent(20);
-                }
-
-                if (ImGui::CollapsingHeader("Ocean")) {
-                    ImGui::Indent(20);
-                    for (const auto e : reg.view<Ocean>())
-                        this->render_ocean(e);
-                    ImGui::Unindent(20);
-                }
-
-                if (ImGui::CollapsingHeader("AtmosphereSimple")) {
-                    ImGui::Indent(20);
-                    for (const auto e : reg.view<AtmosphereSimple>())
-                        this->render_atmosphere(e);
-                    ImGui::Unindent(20);
-                }
-
                 for (auto e : this->reg().view<entt::entity>()) {
                     this->render_entt(e);
                 }
@@ -380,20 +346,6 @@ namespace {
 
             ImGui::PushID(&transform);
             transform.render_imgui(cosmos_->scene().clock());
-            ImGui::PopID();
-        }
-
-        static void render_color_intensity(mirinae::cpnt::ColorIntensity& ci) {
-            ImGui::PushID(&ci);
-            ImGui::ColorEdit3("Color", &ci.color()[0]);
-            ImGui::SliderFloat(
-                "Intensity",
-                &ci.intensity(),
-                0.0,
-                1000.0,
-                nullptr,
-                ImGuiSliderFlags_Logarithmic
-            );
             ImGui::PopID();
         }
 
@@ -457,109 +409,15 @@ namespace {
             }
         }
 
-        void render_dlight(entt::entity e) {
-            using namespace mirinae::cpnt;
-
-            auto dlight = this->reg().try_get<DLight>(e);
-            if (!dlight)
-                return;
-
-            const auto name = fmt::format("DLight-{}", (ENTT_ID_TYPE)e);
-
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                this->render_color_intensity(dlight->color_);
-            }
-        }
-
-        void render_slight(entt::entity e) {
-            using namespace mirinae::cpnt;
-
-            auto slight = this->reg().try_get<SLight>(e);
-            if (!slight)
-                return;
-
-            const auto name = fmt::format("SLight-{}", (ENTT_ID_TYPE)e);
-
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                this->render_color_intensity(slight->color_);
-
-                float inner_angle = slight->inner_angle_.rad();
-                ImGui::SliderAngle("Inner angle", &inner_angle, 0, 180);
-                slight->inner_angle_.set_rad(inner_angle);
-
-                float outer_angle = slight->outer_angle_.rad();
-                ImGui::SliderAngle("Outer angle", &outer_angle, 0, 180);
-                slight->outer_angle_.set_rad(outer_angle);
-            }
-        }
-
-        void render_vplight(entt::entity e) {
-            using namespace mirinae::cpnt;
-
-            auto vplight = this->reg().try_get<VPLight>(e);
-            if (!vplight)
-                return;
-
-            const auto name = fmt::format("VPLight-{}", (ENTT_ID_TYPE)e);
-
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                glm::vec3 pos = vplight->pos_;
-                ImGui::DragFloat3("Position", &pos[0]);
-                vplight->pos_ = pos;
-
-                this->render_color_intensity(vplight->color_);
-            }
-        }
-
-        void render_ocean(entt::entity e) {
-            using namespace mirinae::cpnt;
-            constexpr auto flog = ImGuiSliderFlags_Logarithmic;
-
-            auto ocean = this->reg().try_get<Ocean>(e);
-            if (!ocean)
-                return;
-
-            const auto name = fmt::format("Ocean-{}", (ENTT_ID_TYPE)e);
-
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                ImGui::Indent(10);
-                ocean->render_imgui(cosmos_->scene().clock());
-                ImGui::Unindent(10);
-            }
-        }
-
-        void render_atmosphere(entt::entity e) {
-            using namespace mirinae::cpnt;
-
-            auto atmosphere = this->reg().try_get<AtmosphereSimple>(e);
-            if (!atmosphere)
-                return;
-
-            const auto name = fmt::format(
-                "AtmosphereSimple-{}", (ENTT_ID_TYPE)e
-            );
-
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                ImGui::ColorEdit3("Fog color", &atmosphere->fog_color_[0]);
-                ImGui::SliderFloat(
-                    "Fog density",
-                    &atmosphere->fog_density_,
-                    0.0,
-                    0.01,
-                    "%.6f",
-                    ImGuiSliderFlags_Logarithmic
-                );
-            }
-        }
-
         template <typename T>
         void render_cpnt(T& component, const char* name) {
+            constexpr auto flags = ImGuiTreeNodeFlags_DefaultOpen;
             const auto h_name = fmt::format(
                 "{}###{}", name, fmt::ptr(&component)
             );
 
             ImGui::Indent(10);
-            if (ImGui::CollapsingHeader(h_name.c_str())) {
+            if (ImGui::CollapsingHeader(h_name.c_str(), flags)) {
                 ImGui::Indent(10);
                 ImGui::PushID(&component);
                 component.render_imgui(this->clock());
@@ -579,6 +437,14 @@ namespace {
                     this->render_cpnt(*c, "Static Actor");
                 if (auto c = this->reg().try_get<cpnt::MdlActorSkinned>(e))
                     this->render_cpnt(*c, "Skinned Actor");
+                if (auto c = this->reg().try_get<cpnt::DLight>(e))
+                    this->render_cpnt(*c, "Directional Light");
+                if (auto c = this->reg().try_get<cpnt::SLight>(e))
+                    this->render_cpnt(*c, "Spotlight");
+                if (auto c = this->reg().try_get<cpnt::VPLight>(e))
+                    this->render_cpnt(*c, "Volumetric Point Light");
+                if (auto c = this->reg().try_get<cpnt::AtmosphereSimple>(e))
+                    this->render_cpnt(*c, "Atmosphere Simple");
                 if (auto c = this->reg().try_get<cpnt::Transform>(e))
                     this->render_cpnt(*c, "Transform");
                 if (auto c = this->reg().try_get<cpnt::Ocean>(e))
@@ -621,17 +487,21 @@ namespace {
                 const auto entt = reg.create();
                 auto& d = reg.emplace<mirinae::cpnt::DLight>(entt);
                 d.color_.set_scaled_color(2, 2, 2);
-                d.set_light_dir(-0.5613, -0.7396, -0.3713);
+
+                auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
+                d.set_light_dir(-0.5613, -0.7396, -0.3713, t);
             }
 
             // SLight
             {
                 flashlight_ = reg.create();
                 auto& s = reg.emplace<mirinae::cpnt::SLight>(flashlight_);
-                s.transform_.pos_ = { 0, 2, 0 };
                 s.color_.set_scaled_color(0, 0, 0);
                 s.inner_angle_.set_deg(10);
                 s.outer_angle_.set_deg(25);
+
+                auto& t = reg.emplace<mirinae::cpnt::Transform>(flashlight_);
+                t.pos_ = { 0, 2, 0 };
             }
 
             // VPLight
@@ -655,9 +525,12 @@ namespace {
 
                 for (size_t i = 0; i < positions.size(); ++i) {
                     const auto e = reg.create();
-                    const auto l = &reg.emplace<mirinae::cpnt::VPLight>(e);
-                    l->pos_ = positions[i];
-                    l->color_.set_scaled_color(colors[i]);
+
+                    auto& l = reg.emplace<mirinae::cpnt::VPLight>(e);
+                    l.color_.set_scaled_color(colors[i]);
+
+                    auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
+                    t.pos_ = positions[i];
                 }
             }
 

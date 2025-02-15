@@ -1061,12 +1061,16 @@ namespace {
                 make_draw_sheet(cosmos_->scene())
             );
 
-            for (auto& l : cosmos_->reg().view<mirinae::cpnt::DLight>()) {
-                auto& dlight = cosmos_->reg().get<mirinae::cpnt::DLight>(l);
-                dlight.transform_.pos_ = cam.view_.pos_;
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = cosmos_->reg();
+            for (auto& l : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                auto& light = reg.get<cpnt::DLight>(l);
+                auto& tfrom = reg.get<cpnt::Transform>(l);
+
+                tfrom.pos_ = cam.view_.pos_;
 
                 rpm_.shadow().cascade().update(
-                    swapchain_.calc_ratio(), view_inv, cam.proj_, dlight
+                    swapchain_.calc_ratio(), view_inv, cam.proj_, light, tfrom
                 );
                 rpm_.shadow().pool().at(0).mat_ =
                     rpm_.shadow().cascade().cascades_.front().light_mat_;
@@ -1074,17 +1078,18 @@ namespace {
                 break;
             }
 
-            for (auto& l : cosmos_->reg().view<mirinae::cpnt::SLight>()) {
-                auto& slight = cosmos_->reg().get<mirinae::cpnt::SLight>(l);
-                slight.transform_.pos_ = cam.view_.pos_ +
-                                         glm::dvec3{ 0, -0.1, 0 };
-                slight.transform_.rot_ = cam.view_.rot_;
-                slight.transform_.rotate(
+            for (auto& l : reg.view<cpnt::SLight, cpnt::Transform>()) {
+                auto& light = reg.get<cpnt::SLight>(l);
+                auto& tfrom = reg.get<cpnt::Transform>(l);
+
+                tfrom.pos_ = cam.view_.pos_ + glm::dvec3{ 0, -0.1, 0 };
+                tfrom.rot_ = cam.view_.rot_;
+                tfrom.rotate(
                     sung::TAngle<double>::from_deg(std::atan(0.1 / 5.0)),
                     cam.view_.make_right_dir()
                 );
 
-                rpm_.shadow().pool().at(1).mat_ = slight.make_light_mat();
+                rpm_.shadow().pool().at(1).mat_ = light.make_light_mat(tfrom);
                 break;
             }
 
@@ -1583,25 +1588,27 @@ namespace {
                 mirinae::U_CompoMain ubuf_data;
                 ubuf_data.set_proj(proj_mat).set_view(view_mat);
 
-                for (auto e : cosmos_->reg().view<cpnt::DLight>()) {
-                    const auto& light = cosmos_->reg().get<cpnt::DLight>(e);
+                for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                    const auto& l = reg.get<cpnt::DLight>(e);
+                    const auto& t = reg.get<cpnt::Transform>(e);
                     const auto& cascade = rpm_.shadow().cascade();
                     const auto& cascades = cascade.cascades_;
 
                     for (size_t i = 0; i < cascades.size(); ++i)
                         ubuf_data.set_dlight_mat(i, cascades.at(i).light_mat_);
 
-                    ubuf_data.set_dlight_dir(light.calc_to_light_dir(view_mat))
-                        .set_dlight_color(light.color_.scaled_color())
+                    ubuf_data.set_dlight_dir(l.calc_to_light_dir(view_mat, t))
+                        .set_dlight_color(l.color_.scaled_color())
                         .set_dlight_cascade_depths(cascade.far_depths_);
                     break;
                 }
 
-                for (auto e : cosmos_->reg().view<cpnt::SLight>()) {
-                    const auto& l = cosmos_->reg().get<cpnt::SLight>(e);
-                    ubuf_data.set_slight_mat(l.make_light_mat())
-                        .set_slight_pos(l.calc_view_space_pos(view_mat))
-                        .set_slight_dir(l.calc_to_light_dir(view_mat))
+                for (auto e : reg.view<cpnt::SLight, cpnt::Transform>()) {
+                    const auto& l = reg.get<cpnt::SLight>(e);
+                    const auto& t = reg.get<cpnt::Transform>(e);
+                    ubuf_data.set_slight_mat(l.make_light_mat(t))
+                        .set_slight_pos(l.calc_view_space_pos(view_mat, t))
+                        .set_slight_dir(l.calc_to_light_dir(view_mat, t))
                         .set_slight_color(l.color_.scaled_color())
                         .set_slight_inner_angle(l.inner_angle_)
                         .set_slight_outer_angle(l.outer_angle_)
@@ -1610,14 +1617,14 @@ namespace {
                 }
 
                 size_t i = 0;
-                for (auto e : cosmos_->reg().view<cpnt::VPLight>()) {
+                for (auto e : reg.view<cpnt::VPLight, cpnt::Transform>()) {
                     if (i >= 8)
                         break;
 
-                    const auto& l = cosmos_->reg().get<cpnt::VPLight>(e);
-                    ubuf_data  //
-                        .set_vpl_pos(i, l.pos_)
-                        .set_vpl_color(i, l.color_.scaled_color());
+                    const auto& l = reg.get<cpnt::VPLight>(e);
+                    const auto& t = reg.get<cpnt::Transform>(e);
+                    ubuf_data.set_vpl_color(i, l.color_.scaled_color())
+                        .set_vpl_pos(i, t.pos_);
 
                     ++i;
                 }

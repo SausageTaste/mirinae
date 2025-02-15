@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mirinae/cpnt/light.hpp"
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/render/renderpass/common.hpp"
 #include "mirinae/scene/scene.hpp"
@@ -32,7 +33,8 @@ namespace mirinae::rp::shadow {
                 const double ratio,
                 const glm::dmat4& view_inv,
                 const PerspectiveCamera<double>& pers,
-                const cpnt::DLight& dlight
+                const cpnt::DLight& dlight,
+                const cpnt::DLight::Tform& tform
             );
 
             std::array<Cascade, 4> cascades_;
