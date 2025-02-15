@@ -7,7 +7,6 @@
 #include <sung/basic/time.hpp>
 
 #include "mirinae/lightweight/script.hpp"
-#include "mirinae/lightweight/skin_anim.hpp"
 #include "mirinae/math/mamath.hpp"
 
 
@@ -105,17 +104,6 @@ namespace mirinae::cpnt {
     };
 
 
-    struct StaticModelActor {
-        std::filesystem::path model_path_;
-    };
-
-
-    struct SkinnedModelActor {
-        std::filesystem::path model_path_;
-        SkinAnimState anim_state_;
-    };
-
-
     struct StandardCamera {
         TransformQuat<double> view_;
         PerspectiveCamera<double> proj_;
@@ -137,9 +125,9 @@ namespace mirinae {
     class Scene {
 
     public:
-        Scene(const clock_t& global_clock, ScriptEngine& script);
+        Scene(const sung::SimClock& global_clock, ScriptEngine& script);
 
-        auto& clock() const { return clock_; }
+        const sung::SimClock& clock() const { return clock_; }
 
         void do_frame();
 
@@ -156,7 +144,7 @@ namespace mirinae {
 
     private:
         ScriptEngine& script_;
-        clock_t clock_;
+        sung::SimClock clock_;
     };
 
 }  // namespace mirinae

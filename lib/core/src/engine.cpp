@@ -7,6 +7,7 @@
 #include <sung/basic/cvar.hpp>
 
 #include "mirinae/cpnt/ocean.hpp"
+#include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/network.hpp"
@@ -294,20 +295,6 @@ namespace {
                     ImGui::Unindent(20);
                 }
 
-                if (ImGui::CollapsingHeader("StaticModelActor")) {
-                    ImGui::Indent(20);
-                    for (const auto e : reg.view<StaticModelActor>())
-                        this->render_static_model_actor(e);
-                    ImGui::Unindent(20);
-                }
-
-                if (ImGui::CollapsingHeader("SkinnedModelActor")) {
-                    ImGui::Indent(20);
-                    for (const auto e : reg.view<SkinnedModelActor>())
-                        this->render_skinned_model_actor(e);
-                    ImGui::Unindent(20);
-                }
-
                 if (ImGui::CollapsingHeader("DLight")) {
                     ImGui::Indent(20);
                     for (const auto e : reg.view<DLight>())
@@ -470,110 +457,6 @@ namespace {
             }
         }
 
-        void render_static_model_actor(entt::entity e) {
-            using namespace mirinae::cpnt;
-
-            auto p_actor = this->reg().try_get<StaticModelActor>(e);
-            if (!p_actor)
-                return;
-            auto& actor = *p_actor;
-
-            const auto name = fmt::format(
-                "StaticModelActor-{}", (ENTT_ID_TYPE)e
-            );
-
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                ImGui::Text(
-                    "Model path: %s", actor.model_path_.u8string().c_str()
-                );
-
-                if (auto transform = this->reg().try_get<Transform>(e))
-                    this->render_transform(*transform);
-            }
-        }
-
-        void render_skinned_model_actor(entt::entity e) {
-            using namespace mirinae::cpnt;
-
-            auto p_actor = this->reg().try_get<SkinnedModelActor>(e);
-            if (!p_actor)
-                return;
-            auto& actor = *p_actor;
-
-            const auto name = fmt::format(
-                "SkinnedModelActor-{}", (ENTT_ID_TYPE)e
-            );
-
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                ImGui::Text(
-                    "Model path: %s", actor.model_path_.u8string().c_str()
-                );
-
-                if (auto transform = this->reg().try_get<Transform>(e))
-                    this->render_transform(*transform);
-
-                auto& anim = actor.anim_state_;
-
-                float anim_speed = anim.play_speed();
-                ImGui::SliderFloat("Animation speed", &anim_speed, 0.0, 10.0);
-                anim.set_play_speed(anim_speed);
-
-                const auto anim_name = anim.get_cur_anim_name();
-                if (anim_name) {
-                    ImGui::Text("Current animation: %s", anim_name->c_str());
-                }
-
-                if (ImGui::Button("Next animation")) {
-                    const auto anim_count = anim.anims().size();
-                    if (anim_count > 0) {
-                        const auto cur_idx = anim.get_cur_anim_idx();
-                        if (cur_idx) {
-                            const auto next_idx = (*cur_idx + 1) % anim_count;
-                            anim.select_anim_index(
-                                next_idx, cosmos_->scene().clock()
-                            );
-                        } else {
-                            anim.select_anim_index(0, cosmos_->scene().clock());
-                        }
-                    }
-                }
-
-                auto selected_index = anim.get_cur_anim_idx().value_or(0);
-                const auto prev_anim_name = anim.get_cur_anim_name().value_or(
-                    "None"
-                );
-                ImGui::InputText(
-                    "Search Animation",
-                    search_buffer_.data(),
-                    search_buffer_.size()
-                );
-
-                if (ImGui::BeginCombo("Animations", prev_anim_name.c_str())) {
-                    for (int i = 0; i < anim.anims().size(); i++) {
-                        const auto& i_anim = anim.anims().at(i);
-                        const auto similarity = std::strstr(
-                            i_anim.name_.c_str(), search_buffer_.data()
-                        );
-                        if (similarity) {  // Filter based on input
-                            bool is_selected = (selected_index == i);
-                            if (ImGui::Selectable(
-                                    anim.anims()[i].name_.c_str(), is_selected
-                                )) {
-                                selected_index = i;
-                                anim.select_anim_index(
-                                    i, cosmos_->scene().clock()
-                                );
-                            }
-                            if (is_selected) {
-                                ImGui::SetItemDefaultFocus();
-                            }
-                        }
-                    }
-                    ImGui::EndCombo();
-                }
-            }
-        }
-
         void render_dlight(entt::entity e) {
             using namespace mirinae::cpnt;
 
@@ -692,6 +575,10 @@ namespace {
             const auto entt_name = fmt::format("Entity {}", (ENTT_ID_TYPE)e);
 
             if (ImGui::CollapsingHeader(entt_name.c_str())) {
+                if (auto c = this->reg().try_get<cpnt::MdlActorStatic>(e))
+                    this->render_cpnt(*c, "Static Actor");
+                if (auto c = this->reg().try_get<cpnt::MdlActorSkinned>(e))
+                    this->render_cpnt(*c, "Skinned Actor");
                 if (auto c = this->reg().try_get<cpnt::Transform>(e))
                     this->render_cpnt(*c, "Transform");
                 if (auto c = this->reg().try_get<cpnt::Ocean>(e))
@@ -700,7 +587,6 @@ namespace {
         }
 
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
-        std::array<char, 128> search_buffer_{};
         int cascade_ = 0;
         bool play_ocean_ = true;
     };

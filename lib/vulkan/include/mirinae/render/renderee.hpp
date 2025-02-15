@@ -4,6 +4,7 @@
 
 #include <daltools/scene/struct.h>
 
+#include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/lightweight/skin_anim.hpp"
 #include "mirinae/render/texture.hpp"
 #include "mirinae/render/uniform.hpp"
@@ -16,6 +17,7 @@ namespace mirinae {
 
     public:
         void init(
+            const std::string& name,
             uint32_t max_flight_count,
             const VerticesStaticPair& vertices,
             const U_GbufModel& ubuf_data,
@@ -28,11 +30,13 @@ namespace mirinae {
         );
         void destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
 
+        const std::string& name() const { return name_; }
         VkDescriptorSet get_desc_set(size_t index);
         void record_bind_vert_buf(VkCommandBuffer cmdbuf);
         uint32_t vertex_count() const;
 
     private:
+        std::string name_;
         DescPool desc_pool_;
         VertexIndexPair vert_index_pair_;
         Buffer uniform_buf_;
@@ -44,6 +48,7 @@ namespace mirinae {
 
     public:
         void init(
+            const std::string& name,
             uint32_t max_flight_count,
             const VerticesSkinnedPair& vertices,
             const U_GbufModel& ubuf_data,
@@ -56,11 +61,13 @@ namespace mirinae {
         );
         void destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
 
+        const std::string& name() const { return name_; }
         VkDescriptorSet get_desc_set(size_t index);
         void record_bind_vert_buf(VkCommandBuffer cmdbuf);
         uint32_t vertex_count() const;
 
     private:
+        std::string name_;
         DescPool desc_pool_;
         VertexIndexPair vert_index_pair_;
         Buffer uniform_buf_;
@@ -99,11 +106,14 @@ namespace mirinae {
     };
 
 
-    class RenderModel {
+    class RenderModel : public IRenModel {
 
     public:
-        RenderModel(VulkanDevice& vulkan_device) : device_(vulkan_device) {}
+        RenderModel(VulkanDevice& vulkan_device);
         ~RenderModel();
+
+        size_t ren_unit_count() const override;
+        std::string_view ren_unit_name(size_t index) const override;
 
     public:
         std::vector<RenderUnit> render_units_;
@@ -112,14 +122,14 @@ namespace mirinae {
     };
 
 
-    class RenderModelSkinned {
+    class RenderModelSkinned : public IRenModel {
 
     public:
-        RenderModelSkinned(VulkanDevice& vulkan_device)
-            : skel_anim_(std::make_shared<SkelAnimPair>())
-            , device_(vulkan_device) {}
-
+        RenderModelSkinned(VulkanDevice& vulkan_device);
         ~RenderModelSkinned();
+
+        size_t ren_unit_count() const override;
+        std::string_view ren_unit_name(size_t index) const override;
 
     public:
         std::vector<RenderUnitSkinned> runits_;
@@ -127,7 +137,6 @@ namespace mirinae {
         HSkelAnim skel_anim_;
         VulkanDevice& device_;
     };
-
 
     using HRenMdlStatic = std::shared_ptr<RenderModel>;
     using HRenMdlSkinned = std::shared_ptr<RenderModelSkinned>;
@@ -152,11 +161,11 @@ namespace mirinae {
     );
 
 
-    class RenderActor {
+    class RenderActor : public IRenActor {
 
     public:
-        RenderActor(VulkanDevice& vulkan_device) : device_(vulkan_device) {}
-        ~RenderActor() { this->destroy(); }
+        RenderActor(VulkanDevice& vulkan_device);
+        ~RenderActor();
 
         void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
         void destroy();
@@ -176,12 +185,11 @@ namespace mirinae {
     };
 
 
-    class RenderActorSkinned {
+    class RenderActorSkinned : public IRenActor {
 
     public:
-        RenderActorSkinned(VulkanDevice& vulkan_device)
-            : device_(vulkan_device) {}
-        ~RenderActorSkinned() { this->destroy(); }
+        RenderActorSkinned(VulkanDevice& vulkan_device);
+        ~RenderActorSkinned();
 
         void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
         void destroy();
@@ -199,21 +207,5 @@ namespace mirinae {
         std::vector<VkDescriptorSet> desc_sets_;
         VulkanDevice& device_;
     };
-
-
-    namespace cpnt {
-
-        struct StaticActorVk {
-            std::shared_ptr<mirinae::RenderModel> model_;
-            std::shared_ptr<mirinae::RenderActor> actor_;
-        };
-
-
-        struct SkinnedActorVk {
-            std::shared_ptr<mirinae::RenderModelSkinned> model_;
-            std::shared_ptr<mirinae::RenderActorSkinned> actor_;
-        };
-
-    }  // namespace cpnt
 
 }  // namespace mirinae
