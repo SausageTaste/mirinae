@@ -651,23 +651,22 @@ namespace {
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            for (auto& pair : draw_sheet.static_pairs_) {
-                for (auto& unit : pair.model_->render_units_) {
-                    descset_info.first_set(0)
-                        .set(unit.get_desc_set(frame_index.get()))
+            for (auto& pair : draw_sheet.static_) {
+                auto& unit = *pair.unit_;
+                descset_info.first_set(0)
+                    .set(unit.get_desc_set(frame_index.get()))
+                    .record(cur_cmd_buf);
+
+                unit.record_bind_vert_buf(cur_cmd_buf);
+
+                for (auto& actor : pair.actors_) {
+                    descset_info.first_set(1)
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
                         .record(cur_cmd_buf);
 
-                    unit.record_bind_vert_buf(cur_cmd_buf);
-
-                    for (auto& actor : pair.actors_) {
-                        descset_info.first_set(1)
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
-
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
                 }
             }
 
@@ -701,23 +700,22 @@ namespace {
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            for (auto& pair : draw_sheet.skinned_pairs_) {
-                for (auto& unit : pair.model_->runits_) {
-                    descset_info.first_set(0)
-                        .set(unit.get_desc_set(frame_index.get()))
+            for (auto& pair : draw_sheet.skinned_) {
+                auto& unit = *pair.unit_;
+                descset_info.first_set(0)
+                    .set(unit.get_desc_set(frame_index.get()))
+                    .record(cur_cmd_buf);
+
+                unit.record_bind_vert_buf(cur_cmd_buf);
+
+                for (auto& actor : pair.actors_) {
+                    descset_info.first_set(1)
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
                         .record(cur_cmd_buf);
 
-                    unit.record_bind_vert_buf(cur_cmd_buf);
-
-                    for (auto& actor : pair.actors_) {
-                        descset_info.first_set(1)
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
-
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
                 }
             }
 

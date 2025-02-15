@@ -580,29 +580,26 @@ namespace mirinae::rp::shadow {
                     .set_wh(half_width, half_height)
                     .record_scissor(cur_cmd_buf);
 
-                for (auto& pair : draw_sheet.static_pairs_) {
-                    for (auto& unit : pair.model_->render_units_) {
-                        unit.record_bind_vert_buf(cur_cmd_buf);
+                for (auto& pair : draw_sheet.static_) {
+                    auto& unit = *pair.unit_;
+                    unit.record_bind_vert_buf(cur_cmd_buf);
 
-                        for (auto& actor : pair.actors_) {
-                            descset_info
-                                .set(actor.actor_->get_desc_set(frame_index.get(
-                                )))
-                                .record(cur_cmd_buf);
+                    for (auto& actor : pair.actors_) {
+                        descset_info
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
-                            U_ShadowPushConst push_const;
-                            push_const.pvm_ = cascade.light_mat_ *
-                                              actor.model_mat_;
+                        U_ShadowPushConst push_const;
+                        push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
 
-                            PushConstInfo{}
-                                .layout(rp.pipeline_layout())
-                                .add_stage_vert()
-                                .record(cur_cmd_buf, push_const);
+                        PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .record(cur_cmd_buf, push_const);
 
-                            vkCmdDrawIndexed(
-                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                            );
-                        }
+                        vkCmdDrawIndexed(
+                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                        );
                     }
                 }
             }
@@ -632,28 +629,27 @@ namespace mirinae::rp::shadow {
 
             DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            for (auto& pair : draw_sheet.static_pairs_) {
-                for (auto& unit : pair.model_->render_units_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    unit.record_bind_vert_buf(cur_cmd_buf);
+            for (auto& pair : draw_sheet.static_) {
+                auto& unit = *pair.unit_;
+                auto unit_desc = unit.get_desc_set(frame_index.get());
+                unit.record_bind_vert_buf(cur_cmd_buf);
 
-                    for (auto& actor : pair.actors_) {
-                        descset_info
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
+                for (auto& actor : pair.actors_) {
+                    descset_info
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
 
-                        U_ShadowPushConst push_const;
-                        push_const.pvm_ = shadow.mat_ * actor.model_mat_;
+                    U_ShadowPushConst push_const;
+                    push_const.pvm_ = shadow.mat_ * actor.model_mat_;
 
-                        PushConstInfo{}
-                            .layout(rp.pipeline_layout())
-                            .add_stage_vert()
-                            .record(cur_cmd_buf, push_const);
+                    PushConstInfo{}
+                        .layout(rp.pipeline_layout())
+                        .add_stage_vert()
+                        .record(cur_cmd_buf, push_const);
 
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
                 }
             }
             vkCmdEndRenderPass(cur_cmd_buf);
@@ -707,30 +703,27 @@ namespace mirinae::rp::shadow {
                     .set_wh(half_width, half_height)
                     .record_scissor(cur_cmd_buf);
 
-                for (auto& pair : draw_sheet.skinned_pairs_) {
-                    for (auto& unit : pair.model_->runits_) {
-                        auto unit_desc = unit.get_desc_set(frame_index.get());
-                        unit.record_bind_vert_buf(cur_cmd_buf);
+                for (auto& pair : draw_sheet.skinned_) {
+                    auto& unit = *pair.unit_;
+                    auto unit_desc = unit.get_desc_set(frame_index.get());
+                    unit.record_bind_vert_buf(cur_cmd_buf);
 
-                        for (auto& actor : pair.actors_) {
-                            descset_info
-                                .set(actor.actor_->get_desc_set(frame_index.get(
-                                )))
-                                .record(cur_cmd_buf);
+                    for (auto& actor : pair.actors_) {
+                        descset_info
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
 
-                            U_ShadowPushConst push_const;
-                            push_const.pvm_ = cascade.light_mat_ *
-                                              actor.model_mat_;
+                        U_ShadowPushConst push_const;
+                        push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
 
-                            mirinae::PushConstInfo{}
-                                .layout(rp.pipeline_layout())
-                                .add_stage_vert()
-                                .record(cur_cmd_buf, push_const);
+                        mirinae::PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .record(cur_cmd_buf, push_const);
 
-                            vkCmdDrawIndexed(
-                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                            );
-                        }
+                        vkCmdDrawIndexed(
+                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                        );
                     }
                 }
             }
@@ -762,28 +755,27 @@ namespace mirinae::rp::shadow {
 
             DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            for (auto& pair : draw_sheet.skinned_pairs_) {
-                for (auto& unit : pair.model_->runits_) {
-                    auto unit_desc = unit.get_desc_set(frame_index.get());
-                    unit.record_bind_vert_buf(cur_cmd_buf);
+            for (auto& pair : draw_sheet.skinned_) {
+                auto& unit = *pair.unit_;
+                auto unit_desc = unit.get_desc_set(frame_index.get());
+                unit.record_bind_vert_buf(cur_cmd_buf);
 
-                    for (auto& actor : pair.actors_) {
-                        descset_info
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
+                for (auto& actor : pair.actors_) {
+                    descset_info
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
 
-                        U_ShadowPushConst push_const;
-                        push_const.pvm_ = shadow.mat_ * actor.model_mat_;
+                    U_ShadowPushConst push_const;
+                    push_const.pvm_ = shadow.mat_ * actor.model_mat_;
 
-                        PushConstInfo{}
-                            .layout(rp.pipeline_layout())
-                            .add_stage_vert()
-                            .record(cur_cmd_buf, push_const);
+                    PushConstInfo{}
+                        .layout(rp.pipeline_layout())
+                        .add_stage_vert()
+                        .record(cur_cmd_buf, push_const);
 
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
                 }
             }
             vkCmdEndRenderPass(cur_cmd_buf);
@@ -837,33 +829,30 @@ namespace mirinae::rp::shadow {
                     .set_wh(half_width, half_height)
                     .record_scissor(cur_cmd_buf);
 
-                for (auto& pair : draw_sheet.skinned_pairs_) {
-                    for (auto& unit : pair.model_->runits_alpha_) {
-                        unit.record_bind_vert_buf(cur_cmd_buf);
+                for (auto& pair : draw_sheet.skinned_trs_) {
+                    auto& unit = *pair.unit_;
+                    unit.record_bind_vert_buf(cur_cmd_buf);
 
-                        descset_info.first_set(1)
-                            .set(unit.get_desc_set(frame_index.get()))
+                    descset_info.first_set(1)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
+                    for (auto& actor : pair.actors_) {
+                        descset_info.first_set(0)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
                             .record(cur_cmd_buf);
 
-                        for (auto& actor : pair.actors_) {
-                            descset_info.first_set(0)
-                                .set(actor.actor_->get_desc_set(frame_index.get(
-                                )))
-                                .record(cur_cmd_buf);
+                        U_ShadowPushConst push_const;
+                        push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
 
-                            U_ShadowPushConst push_const;
-                            push_const.pvm_ = cascade.light_mat_ *
-                                              actor.model_mat_;
+                        mirinae::PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .record(cur_cmd_buf, push_const);
 
-                            mirinae::PushConstInfo{}
-                                .layout(rp.pipeline_layout())
-                                .add_stage_vert()
-                                .record(cur_cmd_buf, push_const);
-
-                            vkCmdDrawIndexed(
-                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                            );
-                        }
+                        vkCmdDrawIndexed(
+                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                        );
                     }
                 }
             }
@@ -895,31 +884,30 @@ namespace mirinae::rp::shadow {
 
             DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            for (auto& pair : draw_sheet.skinned_pairs_) {
-                for (auto& unit : pair.model_->runits_alpha_) {
-                    unit.record_bind_vert_buf(cur_cmd_buf);
+            for (auto& pair : draw_sheet.skinned_trs_) {
+                auto& unit = *pair.unit_;
+                unit.record_bind_vert_buf(cur_cmd_buf);
 
-                    descset_info.first_set(1)
-                        .set(unit.get_desc_set(frame_index.get()))
+                descset_info.first_set(1)
+                    .set(unit.get_desc_set(frame_index.get()))
+                    .record(cur_cmd_buf);
+
+                for (auto& actor : pair.actors_) {
+                    descset_info.first_set(0)
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
                         .record(cur_cmd_buf);
 
-                    for (auto& actor : pair.actors_) {
-                        descset_info.first_set(0)
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
+                    U_ShadowPushConst push_const;
+                    push_const.pvm_ = shadow.mat_ * actor.model_mat_;
 
-                        U_ShadowPushConst push_const;
-                        push_const.pvm_ = shadow.mat_ * actor.model_mat_;
+                    PushConstInfo{}
+                        .layout(rp.pipeline_layout())
+                        .add_stage_vert()
+                        .record(cur_cmd_buf, push_const);
 
-                        PushConstInfo{}
-                            .layout(rp.pipeline_layout())
-                            .add_stage_vert()
-                            .record(cur_cmd_buf, push_const);
-
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
                 }
             }
             vkCmdEndRenderPass(cur_cmd_buf);

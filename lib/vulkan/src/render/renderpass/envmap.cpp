@@ -1197,33 +1197,31 @@ namespace {
                         break;
                     }
 
-                    for (auto& pair : draw_sheet.static_pairs_) {
-                        for (auto& unit : pair.model_->render_units_) {
-                            descset_info.first_set(0)
-                                .set(unit.get_desc_set(frame_index.get()))
+                    for (auto& pair : draw_sheet.static_) {
+                        auto& unit = *pair.unit_;
+                        descset_info.first_set(0)
+                            .set(unit.get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
+
+                        unit.record_bind_vert_buf(cur_cmd_buf);
+
+                        for (auto& actor : pair.actors_) {
+                            descset_info.first_set(1)
+                                .set(actor.actor_->get_desc_set(frame_index.get(
+                                )))
                                 .record(cur_cmd_buf);
 
-                            unit.record_bind_vert_buf(cur_cmd_buf);
+                            push_const.proj_view_ =
+                                (proj_mat * CUBE_VIEW_MATS[i] * world_mat);
 
-                            for (auto& actor : pair.actors_) {
-                                descset_info.first_set(1)
-                                    .set(actor.actor_->get_desc_set(
-                                        frame_index.get()
-                                    ))
-                                    .record(cur_cmd_buf);
+                            mirinae::PushConstInfo{}
+                                .layout(rp.pipeline_layout())
+                                .add_stage_vert()
+                                .record(cur_cmd_buf, push_const);
 
-                                push_const.proj_view_ =
-                                    (proj_mat * CUBE_VIEW_MATS[i] * world_mat);
-
-                                mirinae::PushConstInfo{}
-                                    .layout(rp.pipeline_layout())
-                                    .add_stage_vert()
-                                    .record(cur_cmd_buf, push_const);
-
-                                vkCmdDrawIndexed(
-                                    cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                                );
-                            }
+                            vkCmdDrawIndexed(
+                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                            );
                         }
                     }
 

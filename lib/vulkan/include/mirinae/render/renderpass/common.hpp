@@ -20,7 +20,7 @@ namespace mirinae {
                 glm::dmat4 model_mat_;
             };
 
-            mirinae::RenderModel* model_;
+            mirinae::RenderUnit* unit_;
             std::vector<Actor> actors_;
         };
 
@@ -30,34 +30,58 @@ namespace mirinae {
                 glm::dmat4 model_mat_;
             };
 
-            mirinae::RenderModelSkinned* model_;
+            mirinae::RenderUnitSkinned* unit_;
             std::vector<Actor> actors_;
         };
 
-        StaticRenderPairs& get_static_pair(mirinae::RenderModel& model) {
-            for (auto& x : static_pairs_) {
-                if (x.model_ == &model)
+        StaticRenderPairs& get_static(mirinae::RenderUnit& unit) {
+            for (auto& x : static_) {
+                if (x.unit_ == &unit)
                     return x;
             }
 
-            auto& output = static_pairs_.emplace_back();
-            output.model_ = &model;
+            auto& output = static_.emplace_back();
+            output.unit_ = &unit;
             return output;
         }
 
-        SkinnedRenderPairs& get_skinn_pair(mirinae::RenderModelSkinned& model) {
-            for (auto& x : skinned_pairs_) {
-                if (x.model_ == &model)
+        StaticRenderPairs& get_static_trs(mirinae::RenderUnit& unit) {
+            for (auto& x : static_trs_) {
+                if (x.unit_ == &unit)
                     return x;
             }
 
-            auto& output = skinned_pairs_.emplace_back();
-            output.model_ = &model;
+            auto& output = static_trs_.emplace_back();
+            output.unit_ = &unit;
             return output;
         }
 
-        std::vector<StaticRenderPairs> static_pairs_;
-        std::vector<SkinnedRenderPairs> skinned_pairs_;
+        SkinnedRenderPairs& get_skinned(mirinae::RenderUnitSkinned& unit) {
+            for (auto& x : skinned_) {
+                if (x.unit_ == &unit)
+                    return x;
+            }
+
+            auto& output = skinned_.emplace_back();
+            output.unit_ = &unit;
+            return output;
+        }
+
+        SkinnedRenderPairs& get_skinned_trs(mirinae::RenderUnitSkinned& unit) {
+            for (auto& x : skinned_trs_) {
+                if (x.unit_ == &unit)
+                    return x;
+            }
+
+            auto& output = skinned_trs_.emplace_back();
+            output.unit_ = &unit;
+            return output;
+        }
+
+        std::vector<StaticRenderPairs> static_;
+        std::vector<StaticRenderPairs> static_trs_;
+        std::vector<SkinnedRenderPairs> skinned_;
+        std::vector<SkinnedRenderPairs> skinned_trs_;
         cpnt::Ocean* ocean_ = nullptr;
         cpnt::AtmosphereSimple* atmosphere_ = nullptr;
     };
