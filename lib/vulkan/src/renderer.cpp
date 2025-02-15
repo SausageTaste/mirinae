@@ -238,14 +238,33 @@ namespace {
             if (!actor)
                 continue;
 
-            auto& dst = sheet.get_static_pair(*renmdl);
-            auto& dst_actor = dst.actors_.emplace_back();
-            dst_actor.actor_ = actor;
-
+            glm::dmat4 model_mat(1);
             if (auto tfrom = reg.try_get<cpnt::Transform>(e))
-                dst_actor.model_mat_ = tfrom->make_model_mat();
-            else
-                dst_actor.model_mat_ = glm::dmat4(1.0);
+                model_mat = tfrom->make_model_mat();
+
+            const auto unit_count = renmdl->render_units_.size();
+            for (size_t i = 0; i < unit_count; ++i) {
+                if (!mactor.visibility_.get(i))
+                    continue;
+
+                auto& unit = renmdl->render_units_[i];
+                auto& dst = sheet.get_static(unit);
+                auto& dst_actor = dst.actors_.emplace_back();
+                dst_actor.actor_ = actor;
+                dst_actor.model_mat_ = model_mat;
+            }
+
+            const auto unit_trs_count = renmdl->render_units_alpha_.size();
+            for (size_t i = 0; i < unit_trs_count; ++i) {
+                if (!mactor.visibility_.get(i + unit_count))
+                    continue;
+
+                auto& unit = renmdl->render_units_alpha_[i];
+                auto& dst = sheet.get_static_trs(unit);
+                auto& dst_actor = dst.actors_.emplace_back();
+                dst_actor.actor_ = actor;
+                dst_actor.model_mat_ = model_mat;
+            }
         }
 
         for (const auto e : reg.view<cpnt::MdlActorSkinned>()) {
@@ -259,14 +278,33 @@ namespace {
             if (!actor)
                 continue;
 
-            auto& dst = sheet.get_skinn_pair(*renmdl);
-            auto& dst_actor = dst.actors_.emplace_back();
-            dst_actor.actor_ = actor;
-
+            glm::dmat4 model_mat(1);
             if (auto tfrom = reg.try_get<cpnt::Transform>(e))
-                dst_actor.model_mat_ = tfrom->make_model_mat();
-            else
-                dst_actor.model_mat_ = glm::dmat4(1.0);
+                model_mat = tfrom->make_model_mat();
+
+            const auto unit_count = renmdl->runits_.size();
+            for (size_t i = 0; i < unit_count; ++i) {
+                if (!mactor.visibility_.get(i))
+                    continue;
+
+                auto& unit = renmdl->runits_[i];
+                auto& dst = sheet.get_skinned(unit);
+                auto& dst_actor = dst.actors_.emplace_back();
+                dst_actor.actor_ = actor;
+                dst_actor.model_mat_ = model_mat;
+            }
+
+            const auto unit_trs_count = renmdl->runits_alpha_.size();
+            for (size_t i = 0; i < unit_trs_count; ++i) {
+                if (!mactor.visibility_.get(i + unit_count))
+                    continue;
+
+                auto& unit = renmdl->runits_alpha_[i];
+                auto& dst = sheet.get_skinned_trs(unit);
+                auto& dst_actor = dst.actors_.emplace_back();
+                dst_actor.actor_ = actor;
+                dst_actor.model_mat_ = model_mat;
+            }
         }
 
         sheet.ocean_ = nullptr;
@@ -375,23 +413,21 @@ namespace {
                 .set(desc_sets_.at(frame_index.get()))
                 .record(cur_cmd_buf);
 
-            for (auto& pair : draw_sheet.static_pairs_) {
-                for (auto& unit : pair.model_->render_units_alpha_) {
-                    descset_info.first_set(1)
-                        .set(unit.get_desc_set(frame_index.get()))
+            for (auto& pair : draw_sheet.static_trs_) {
+                auto& unit = *pair.unit_;
+                descset_info.first_set(1)
+                    .set(unit.get_desc_set(frame_index.get()))
+                    .record(cur_cmd_buf);
+                unit.record_bind_vert_buf(cur_cmd_buf);
+
+                for (auto& actor : pair.actors_) {
+                    descset_info.first_set(2)
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
                         .record(cur_cmd_buf);
 
-                    unit.record_bind_vert_buf(cur_cmd_buf);
-
-                    for (auto& actor : pair.actors_) {
-                        descset_info.first_set(2)
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
-
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
                 }
             }
 
@@ -428,23 +464,22 @@ namespace {
                 .set(desc_sets_.at(frame_index.get()))
                 .record(cur_cmd_buf);
 
-            for (auto& pair : draw_sheet.skinned_pairs_) {
-                for (auto& unit : pair.model_->runits_alpha_) {
-                    descset_info.first_set(1)
-                        .set(unit.get_desc_set(frame_index.get()))
+            for (auto& pair : draw_sheet.skinned_trs_) {
+                auto& unit = *pair.unit_;
+                descset_info.first_set(1)
+                    .set(unit.get_desc_set(frame_index.get()))
+                    .record(cur_cmd_buf);
+
+                unit.record_bind_vert_buf(cur_cmd_buf);
+
+                for (auto& actor : pair.actors_) {
+                    descset_info.first_set(2)
+                        .set(actor.actor_->get_desc_set(frame_index.get()))
                         .record(cur_cmd_buf);
 
-                    unit.record_bind_vert_buf(cur_cmd_buf);
-
-                    for (auto& actor : pair.actors_) {
-                        descset_info.first_set(2)
-                            .set(actor.actor_->get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
-
-                        vkCmdDrawIndexed(
-                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
+                    vkCmdDrawIndexed(
+                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                    );
                 }
             }
 
