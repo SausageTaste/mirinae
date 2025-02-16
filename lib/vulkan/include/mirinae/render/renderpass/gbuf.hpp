@@ -37,6 +37,12 @@ namespace mirinae::rp::gbuf {
             return *this;
         }
 
+        U_GbufTerrainPushConst& height_map_size(const VkExtent2D& e) {
+            height_map_size_fbuf_size_.x = static_cast<float>(e.width);
+            height_map_size_fbuf_size_.y = static_cast<float>(e.height);
+            return *this;
+        }
+
         U_GbufTerrainPushConst& fbuf_size(const VkExtent2D& x) {
             height_map_size_fbuf_size_.z = static_cast<float>(x.width);
             height_map_size_fbuf_size_.w = static_cast<float>(x.height);
@@ -96,21 +102,24 @@ namespace mirinae::rp::gbuf {
         virtual ~IRpMasterTerrain() = default;
 
         virtual void init(
-            mirinae::ITextureManager& tex_man,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::VulkanDevice& device
+            ITextureManager& tex_man,
+            DesclayoutManager& desclayouts,
+            VulkanDevice& device
+        ) = 0;
+
+        virtual void init_ren_units(
+            CosmosSimulator& cosmos,
+            ITextureManager& tex_man,
+            DesclayoutManager& desclayouts,
+            VulkanDevice& device
         ) = 0;
 
         virtual void destroy(VulkanDevice& device) = 0;
 
         virtual void record(
-            const VkCommandBuffer cmdbuf,
-            const glm::dmat4& proj_mat,
-            const glm::dmat4& view_mat,
+            RpContext& ctxt,
             const VkExtent2D& fbuf_exd,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::IRenderPassRegistry& rp_pkg
+            const IRenderPassRegistry& rp_pkg
         ) = 0;
     };
 

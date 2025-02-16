@@ -2,6 +2,9 @@
 
 #include <sung/basic/time.hpp>
 
+#include "mirinae/cpnt/terrain.hpp"
+#include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
@@ -736,6 +739,42 @@ namespace mirinae::rp::gbuf {
 // RpMasterTerrain
 namespace {
 
+    class TerrainRenUnit : public mirinae::ITerrainRenUnit {
+
+    public:
+        TerrainRenUnit(
+            const mirinae::cpnt::Terrain& src_terr,
+            mirinae::ITextureManager& tex,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::DescPool& desc_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            height_map_ = tex.block_for_tex(src_terr.height_map_path_, false);
+            albedo_map_ = tex.block_for_tex(src_terr.albedo_map_path_, false);
+
+            auto& layout = desclayouts.get("gbuf_terrain:main");
+            desc_set_ = desc_pool.alloc(layout.layout(), device.logi_device());
+
+            auto& sam = device.samplers();
+            mirinae::DescWriteInfoBuilder{}
+                .set_descset(desc_set_)
+                .add_img_sampler(height_map_->image_view(), sam.get_heightmap())
+                .add_img_sampler(albedo_map_->image_view(), sam.get_linear())
+                .apply_all(device.logi_device());
+        }
+
+        ~TerrainRenUnit() override {
+            if (VK_NULL_HANDLE != desc_set_) {
+                SPDLOG_WARN("TerrainRenUnit: Descriptor set not freed");
+            }
+        }
+
+        std::shared_ptr<mirinae::ITexture> height_map_;
+        std::shared_ptr<mirinae::ITexture> albedo_map_;
+        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
+    };
+
+
     class RpMasterTerrain : public mirinae::rp::gbuf::IRpMasterTerrain {
 
     public:
@@ -746,22 +785,26 @@ namespace {
         ) override {
             auto& layout = desclayouts.get("gbuf_terrain:main");
             desc_pool_.init(3, layout.size_info(), device.logi_device());
-            desc_set_ = desc_pool_.alloc(layout.layout(), device.logi_device());
+        }
 
-            albedo_map_ = tex_man.block_for_tex(
-                ":asset/textures/mountains512.png", false
-            );
-            height_map_ = tex_man.block_for_tex(
-                ":asset/textures/mountains512.png", false
-            );
+        void init_ren_units(
+            mirinae::CosmosSimulator& cosmos,
+            mirinae::ITextureManager& tex_man,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        ) {
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = cosmos.reg();
 
-            auto& sam = device.samplers();
+            for (auto e : reg.view<cpnt::Terrain>()) {
+                auto& terr = reg.get<cpnt::Terrain>(e);
+                if (terr.ren_unit_)
+                    continue;
 
-            mirinae::DescWriteInfoBuilder{}
-                .set_descset(desc_set_)
-                .add_img_sampler(height_map_->image_view(), sam.get_heightmap())
-                .add_img_sampler(albedo_map_->image_view(), sam.get_linear())
-                .apply_all(device.logi_device());
+                terr.ren_unit_ = std::make_unique<TerrainRenUnit>(
+                    terr, tex_man, desclayouts, desc_pool_, device
+                );
+            }
         }
 
         void destroy(mirinae::VulkanDevice& device) override {
@@ -769,19 +812,19 @@ namespace {
         }
 
         void record(
-            const VkCommandBuffer cmdbuf,
-            const glm::dmat4& proj_mat,
-            const glm::dmat4& view_mat,
+            mirinae::RpContext& ctxt,
             const VkExtent2D& fbuf_exd,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) override {
+            namespace cpnt = mirinae::cpnt;
+
+            const auto cmdbuf = ctxt.cmdbuf_;
             auto& rp = rp_pkg.get("gbuf_terrain");
+            auto& reg = ctxt.cosmos_->reg();
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
+                .fbuf(rp.fbuf_at(ctxt.i_index_.get()))
                 .wh(fbuf_exd)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())
@@ -794,11 +837,6 @@ namespace {
             mirinae::Viewport{ fbuf_exd }.record_single(cmdbuf);
             mirinae::Rect2D{ fbuf_exd }.record_scissor(cmdbuf);
 
-            mirinae::DescSetBindInfo{}
-                .layout(rp.pipeline_layout())
-                .add(desc_set_)
-                .record(cmdbuf);
-
             mirinae::PushConstInfo pc_info;
             pc_info.layout(rp.pipeline_layout())
                 .add_stage_vert()
@@ -806,23 +844,35 @@ namespace {
                 .add_stage_tese()
                 .add_stage_frag();
 
-            const auto t = timer_.elapsed();
-            const auto model_mat = glm::translate(
-                glm::dmat4{ 1 }, glm::dvec3{ -360 + 100, -5, -360 - 400 }
-            );
+            for (auto e : reg.view<cpnt::Terrain>()) {
+                auto& terr = reg.get<cpnt::Terrain>(e);
 
-            mirinae::rp::gbuf::U_GbufTerrainPushConst pc;
-            pc.pvm(proj_mat, view_mat, model_mat)
-                .tile_count(24, 24)
-                .height_map_size(height_map_->width(), height_map_->height())
-                .fbuf_size(fbuf_exd)
-                .height_scale(64);
+                const auto unit = terr.ren_unit<::TerrainRenUnit>();
+                if (!unit)
+                    continue;
 
-            for (int x = 0; x < 24; ++x) {
-                for (int y = 0; y < 24; ++y) {
-                    pc.tile_index(x, y);
-                    pc_info.record(cmdbuf, pc);
-                    vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                mirinae::DescSetBindInfo{}
+                    .layout(rp.pipeline_layout())
+                    .add(unit->desc_set_)
+                    .record(cmdbuf);
+
+                glm::dmat4 model_mat(1);
+                if (auto tform = reg.try_get<cpnt::Transform>(e))
+                    model_mat = tform->make_model_mat();
+
+                mirinae::rp::gbuf::U_GbufTerrainPushConst pc;
+                pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
+                    .tile_count(24, 24)
+                    .height_map_size(unit->height_map_->extent())
+                    .fbuf_size(fbuf_exd)
+                    .height_scale(64);
+
+                for (int x = 0; x < 24; ++x) {
+                    for (int y = 0; y < 24; ++y) {
+                        pc.tile_index(x, y);
+                        pc_info.record(cmdbuf, pc);
+                        vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                    }
                 }
             }
 
@@ -831,10 +881,7 @@ namespace {
 
     private:
         sung::MonotonicRealtimeTimer timer_;
-        std::shared_ptr<mirinae::ITexture> height_map_;
-        std::shared_ptr<mirinae::ITexture> albedo_map_;
         mirinae::DescPool desc_pool_;
-        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
 }  // namespace

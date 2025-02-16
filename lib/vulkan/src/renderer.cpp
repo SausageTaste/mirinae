@@ -1138,15 +1138,7 @@ namespace {
                 rp_
             );
 
-            rpm_.gbuf_terrain().record(
-                ren_ctxt.cmdbuf_,
-                proj_mat,
-                view_mat,
-                fbuf_images_.extent(),
-                framesync_.get_frame_index(),
-                image_index,
-                rp_
-            );
+            rpm_.gbuf_terrain().record(ren_ctxt, fbuf_images_.extent(), rp_);
 
             rpm_.compo_basic().record(
                 ren_ctxt.cmdbuf_,
@@ -1516,6 +1508,9 @@ namespace {
                 }
             }
 
+            rpm_.gbuf_terrain().init_ren_units(
+                *cosmos_, *tex_man_, desclayout_, device_
+            );
             scene.entt_without_model_.clear();
         }
 
