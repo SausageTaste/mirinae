@@ -746,14 +746,15 @@ namespace {
             const mirinae::cpnt::Terrain& src_terr,
             mirinae::ITextureManager& tex,
             mirinae::DesclayoutManager& desclayouts,
-            mirinae::DescPool& desc_pool,
             mirinae::VulkanDevice& device
-        ) {
+        )
+            : device_(device) {
             height_map_ = tex.block_for_tex(src_terr.height_map_path_, false);
             albedo_map_ = tex.block_for_tex(src_terr.albedo_map_path_, false);
 
             auto& layout = desclayouts.get("gbuf_terrain:main");
-            desc_set_ = desc_pool.alloc(layout.layout(), device.logi_device());
+            desc_pool_.init(3, layout.size_info(), device.logi_device());
+            desc_set_ = desc_pool_.alloc(layout.layout(), device.logi_device());
 
             auto& sam = device.samplers();
             mirinae::DescWriteInfoBuilder{}
@@ -764,13 +765,13 @@ namespace {
         }
 
         ~TerrainRenUnit() override {
-            if (VK_NULL_HANDLE != desc_set_) {
-                SPDLOG_WARN("TerrainRenUnit: Descriptor set not freed");
-            }
+            desc_pool_.destroy(device_.logi_device());
         }
 
+        mirinae::VulkanDevice& device_;
         std::shared_ptr<mirinae::ITexture> height_map_;
         std::shared_ptr<mirinae::ITexture> albedo_map_;
+        mirinae::DescPool desc_pool_;
         VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
@@ -784,7 +785,6 @@ namespace {
             mirinae::VulkanDevice& device
         ) override {
             auto& layout = desclayouts.get("gbuf_terrain:main");
-            desc_pool_.init(3, layout.size_info(), device.logi_device());
         }
 
         void init_ren_units(
@@ -802,14 +802,12 @@ namespace {
                     continue;
 
                 terr.ren_unit_ = std::make_unique<TerrainRenUnit>(
-                    terr, tex_man, desclayouts, desc_pool_, device
+                    terr, tex_man, desclayouts, device
                 );
             }
         }
 
-        void destroy(mirinae::VulkanDevice& device) override {
-            desc_pool_.destroy(device.logi_device());
-        }
+        void destroy(mirinae::VulkanDevice& device) override {}
 
         void record(
             mirinae::RpContext& ctxt,
@@ -881,7 +879,6 @@ namespace {
 
     private:
         sung::MonotonicRealtimeTimer timer_;
-        mirinae::DescPool desc_pool_;
     };
 
 }  // namespace
