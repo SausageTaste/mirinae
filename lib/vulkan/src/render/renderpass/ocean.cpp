@@ -1974,6 +1974,14 @@ namespace {
         }
 
         template <typename T>
+        U_OceanTessParams& ocean_color(const glm::tvec3<T>& color) {
+            ocean_color_.x = static_cast<float>(color.x);
+            ocean_color_.y = static_cast<float>(color.y);
+            ocean_color_.z = static_cast<float>(color.z);
+            return *this;
+        }
+
+        template <typename T>
         U_OceanTessParams& foam_bias(T x) {
             foam_bias_ = static_cast<float>(x);
             return *this;
@@ -2010,6 +2018,7 @@ namespace {
         glm::vec4 fog_color_density_;
         glm::vec4 jacobian_scale_;
         glm::vec4 len_scales_lod_scale_;
+        glm::vec4 ocean_color_;
         float foam_bias_;
         float foam_scale_;
         float foam_threshold_;
@@ -2321,6 +2330,7 @@ namespace {
                 .len_scale(1, ocean_entt.cascades_[1].lod_scale_)
                 .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
                 .lod_scale(ocean_entt.lod_scale_)
+                .ocean_color(ocean_entt.ocean_color_)
                 .sss_base(cv_foam_sss_base.get())
                 .sss_scale(cv_foam_sss_scale.get());
             for (size_t i = 0; i < CASCADE_COUNT; i++)

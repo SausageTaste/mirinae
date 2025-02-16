@@ -34,7 +34,8 @@ namespace mirinae::cpnt {
 namespace mirinae::cpnt {
 
     Ocean::Ocean()
-        : wind_dir_{ 1, 1 }
+        : ocean_color_(0.1, 0.15, 0.25)
+        , wind_dir_{ 1, 1 }
         , height_(0)
         , repeat_time_(100)
         , time_(0)
@@ -104,6 +105,7 @@ namespace mirinae::cpnt {
         ImGui::SliderFloat("Foam Bias", &foam_bias_, -10, 10);
         ImGui::SliderFloat("Foam Scale", &foam_scale_, 0, 10);
         ImGui::SliderFloat("LOD Scale", &lod_scale_, 0, 10000, 0, flog);
+        ImGui::ColorEdit3("Ocean color", &ocean_color_.x);
 
         if (ImGui::CollapsingHeader("Cascade###Header")) {
             ImGui::Indent(10);

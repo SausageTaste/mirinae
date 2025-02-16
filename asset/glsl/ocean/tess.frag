@@ -28,6 +28,7 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     vec4 fog_color_density;
     vec4 jacobian_scale;
     vec4 len_scales_lod_scale;
+    vec4 ocean_color;
     float foam_bias;
     float foam_scale;
     float foam_threshold;
@@ -64,7 +65,7 @@ vec2 transform_uv(vec2 uv, int cascade) {
 
 void main() {
     const mat3 tbn = make_tbn_mat(vec3(0, 1, 0), vec3(1, 0, 0), u_pc.view * u_pc.model);
-    const vec3 albedo = vec3(0.1, 0.15, 0.25);
+    const vec3 albedo = u_params.ocean_color.xyz;
     const float roughness = 0.1;
     const float metallic = 0;
     const float frag_dist = length(i_frag_pos);
@@ -136,7 +137,7 @@ void main() {
         float spec = mult * exp(-((hdotx * hdotx) + (hdoty * hdoty)) / (hdotn * hdotn));
 
         vec3 oceanColor = albedo;
-        light += vec3(mix(oceanColor, refl * color_mod, F) + vec3(1) * spec);
+        light += vec3(mix(oceanColor, refl * color_mod, F) + u_params.dlight_color.xyz * spec);
     }
     //*/
 
