@@ -2,6 +2,7 @@
 
 #include <sung/basic/aabb.hpp>
 
+#include "mirinae/cpnt/identifier.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/transform.hpp"
@@ -412,6 +413,9 @@ namespace { namespace scene {
             auto& mactor = reg.emplace<cpnt::MdlActorStatic>(enttid);
             mactor.model_path_.assign(model_path);
 
+            auto& id = reg.emplace<cpnt::Id>(enttid);
+            id.set_name(mactor.model_path_.filename().u8string().c_str());
+
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
         }
 
@@ -430,6 +434,9 @@ namespace { namespace scene {
 
             auto& mactor = reg.emplace<cpnt::MdlActorSkinned>(enttid);
             mactor.model_path_.assign(model_path);
+
+            auto& id = reg.emplace<cpnt::Id>(enttid);
+            id.set_name(mactor.model_path_.filename().u8string().c_str());
 
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
         }
