@@ -9,6 +9,7 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/cpnt/ren_model.hpp"
+#include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/network.hpp"
@@ -443,12 +444,14 @@ namespace {
                     this->render_cpnt(*c, "Spotlight");
                 if (auto c = this->reg().try_get<cpnt::VPLight>(e))
                     this->render_cpnt(*c, "Volumetric Point Light");
+                if (auto c = this->reg().try_get<cpnt::Terrain>(e))
+                    this->render_cpnt(*c, "Terrain");
+                if (auto c = this->reg().try_get<cpnt::Ocean>(e))
+                    this->render_cpnt(*c, "Ocean");
                 if (auto c = this->reg().try_get<cpnt::AtmosphereSimple>(e))
                     this->render_cpnt(*c, "Atmosphere Simple");
                 if (auto c = this->reg().try_get<cpnt::Transform>(e))
                     this->render_cpnt(*c, "Transform");
-                if (auto c = this->reg().try_get<cpnt::Ocean>(e))
-                    this->render_cpnt(*c, "Ocean");
             }
         }
 
@@ -571,6 +574,17 @@ namespace {
                 const auto entt = reg.create();
                 auto& atm = reg.emplace<mirinae::cpnt::AtmosphereSimple>(entt);
                 atm.fog_color_ = { 0.556, 0.707, 0.846 };
+            }
+
+            // Terrain
+            {
+                const auto entt = reg.create();
+                auto& terrain = reg.emplace<mirinae::cpnt::Terrain>(entt);
+                terrain.height_map_path_ = ":asset/textures/mountains512.png";
+                terrain.albedo_map_path_ = ":asset/textures/mountains512.png";
+
+                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
+                tform.pos_ = { -360 + 100, -5, -360 - 400 };
             }
 
             // Script
