@@ -21,6 +21,7 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     vec4 fog_color_density;
     vec4 jacobian_scale;
     vec4 len_scales_lod_scale;
+    vec4 ocean_color;
     float foam_bias;
     float foam_scale;
     float foam_threshold;
