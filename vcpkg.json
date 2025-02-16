@@ -1,11 +1,20 @@
 {
     "dependencies": [
-        "dalbaragi",
+        "aklomp-base64",
+        "argparse",
+        "brotli",
         "entt",
         "glfw3",
+        "glm",
+        "gtest",
         "lua",
+        "nlohmann-json",
+        "spdlog",
+        "stb",
         "uni-algo",
         "vulkan-memory-allocator",
+        "yaml-cpp",
+        "zlib",
         {
             "name": "imgui",
             "features": [
