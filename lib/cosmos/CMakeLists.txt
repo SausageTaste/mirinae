@@ -1,5 +1,6 @@
 add_library(mirinae_cosmos STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cosmos.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/identifier.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/light.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/ocean.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/ren_model.cpp

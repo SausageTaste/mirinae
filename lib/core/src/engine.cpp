@@ -6,6 +6,7 @@
 #include <daltools/common/glm_tool.hpp>
 #include <sung/basic/cvar.hpp>
 
+#include "mirinae/cpnt/identifier.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/cpnt/ren_model.hpp"
@@ -431,9 +432,15 @@ namespace {
         void render_entt(entt::entity e) {
             namespace cpnt = mirinae::cpnt;
 
-            const auto entt_name = fmt::format("Entity {}", (ENTT_ID_TYPE)e);
+            auto entt_name = fmt::format("[{}]", (ENTT_ID_TYPE)e);
+            if (auto c = this->reg().try_get<cpnt::Id>(e)) {
+                entt_name += ' ';
+                entt_name += c->name_.data();
+            }
 
             if (ImGui::CollapsingHeader(entt_name.c_str())) {
+                if (auto c = this->reg().try_get<cpnt::Id>(e))
+                    this->render_cpnt(*c, "ID");
                 if (auto c = this->reg().try_get<cpnt::MdlActorStatic>(e))
                     this->render_cpnt(*c, "Static Actor");
                 if (auto c = this->reg().try_get<cpnt::MdlActorSkinned>(e))
@@ -488,6 +495,10 @@ namespace {
             // DLight
             {
                 const auto entt = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("Sun Light");
+
                 auto& d = reg.emplace<mirinae::cpnt::DLight>(entt);
                 d.color_.set_scaled_color(2, 2, 2);
 
@@ -498,6 +509,10 @@ namespace {
             // SLight
             {
                 flashlight_ = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(flashlight_);
+                i.set_name("Flashlight");
+
                 auto& s = reg.emplace<mirinae::cpnt::SLight>(flashlight_);
                 s.color_.set_scaled_color(0, 0, 0);
                 s.inner_angle_.set_deg(10);
@@ -529,6 +544,9 @@ namespace {
                 for (size_t i = 0; i < positions.size(); ++i) {
                     const auto e = reg.create();
 
+                    auto& id = reg.emplace<mirinae::cpnt::Id>(e);
+                    id.set_name(fmt::format("VPLight-{}", i).c_str());
+
                     auto& l = reg.emplace<mirinae::cpnt::VPLight>(e);
                     l.color_.set_scaled_color(colors[i]);
 
@@ -542,8 +560,10 @@ namespace {
                 const auto entt = reg.create();
                 cosmos_->scene().main_camera_ = entt;
 
-                auto& d = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("Main Camera");
 
+                auto& d = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
                 d.view_.pos_ = {
                     1.9518,
                     0.6559,
@@ -565,6 +585,10 @@ namespace {
             // Ocean
             {
                 const auto entt = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("Ocean");
+
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
                 ocean.height_ = 2;
             }
@@ -572,6 +596,10 @@ namespace {
             // Atmosphere
             {
                 const auto entt = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("Atmosphere Simple");
+
                 auto& atm = reg.emplace<mirinae::cpnt::AtmosphereSimple>(entt);
                 atm.fog_color_ = { 0.556, 0.707, 0.846 };
             }
@@ -579,6 +607,10 @@ namespace {
             // Terrain
             {
                 const auto entt = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("Terrain");
+
                 auto& terrain = reg.emplace<mirinae::cpnt::Terrain>(entt);
                 terrain.height_map_path_ = ":asset/textures/mountains512.png";
                 terrain.albedo_map_path_ = ":asset/textures/mountains512.png";
