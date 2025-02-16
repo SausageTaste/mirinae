@@ -142,7 +142,9 @@ void main() {
 
     // Foam
     {
-        jacobian = min(1, max(0, (-jacobian + u_params.foam_bias) * u_params.foam_scale));
+        jacobian = (-jacobian + u_params.foam_bias) * u_params.foam_scale;
+        jacobian = clamp(jacobian, 0, 1);
+        jacobian *= clamp(u_params.len_scales_lod_scale[3] / frag_dist, 0, 1);
         light = mix(light, vec3(1), jacobian);
     }
 
