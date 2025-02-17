@@ -228,6 +228,15 @@ namespace mirinae {
     };
 
 
+    struct IShadowMapBundle {
+        virtual ~IShadowMapBundle() = default;
+
+        virtual VkImageView dlight_view_at(size_t idx) = 0;
+        virtual VkImageView slight_view_at(size_t idx) = 0;
+    };
+    using HShadowMaps = std::shared_ptr<IShadowMapBundle>;
+
+
     class RpResources {
 
     public:
@@ -262,6 +271,8 @@ namespace mirinae {
         // The user will be a reader.
         // Returns nullptr if the image does not exist.
         HImage get_img_reader(const str& id, const str& user_id);
+
+        HShadowMaps shadow_maps_;
 
     private:
         class ImageRecord;

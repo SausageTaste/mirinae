@@ -109,6 +109,8 @@ namespace mirinae::cpnt {
 
     public:
         void render_imgui(const sung::SimClock& clock);
+
+        CascadeInfo cascades_;
     };
 
 
