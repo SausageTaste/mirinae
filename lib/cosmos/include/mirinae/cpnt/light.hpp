@@ -32,19 +32,13 @@ namespace mirinae {
         T intensity_ = 0;
     };
 
-}  // namespace mirinae
 
-
-namespace mirinae::cpnt {
-
-    class DLight {
+    class DirectionalLight {
 
     public:
         using Tform = TransformQuat<double>;
 
     public:
-        void render_imgui(const sung::SimClock& clock);
-
         glm::dvec3 calc_to_light_dir(const glm::dmat4 view, const Tform& tform)
             const;
 
@@ -64,6 +58,57 @@ namespace mirinae::cpnt {
 
     public:
         ColorIntensity color_;
+    };
+
+
+    class CascadeInfo {
+
+    public:
+        using Angle = sung::TAngle<double>;
+
+        struct Cascade {
+            std::array<glm::dvec3, 8> frustum_verts_;
+            glm::dmat4 light_mat_;
+            double near_;
+            double far_;
+        };
+
+        void update(
+            const double ratio,
+            const glm::dmat4& view_inv,
+            const PerspectiveCamera<double>& pers,
+            const DirectionalLight& dlight,
+            const DirectionalLight::Tform& tform
+        );
+
+        std::array<Cascade, 4> cascades_;
+        std::array<double, 4> far_depths_;
+
+    private:
+        static void make_frustum_vertices(
+            const double screen_ratio,
+            const double plane_dist,
+            const Angle fov,
+            const glm::dmat4& view_inv,
+            glm::dvec3* const out
+        );
+
+        static std::array<double, 5> make_plane_distances(
+            const double p_near, const double p_far
+        );
+
+        double calc_clip_depth(double z, double n, double f);
+    };
+
+}  // namespace mirinae
+
+
+namespace mirinae::cpnt {
+
+    class DLight : public DirectionalLight {
+
+    public:
+        void render_imgui(const sung::SimClock& clock);
     };
 
 

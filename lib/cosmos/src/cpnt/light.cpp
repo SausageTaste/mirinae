@@ -31,6 +31,7 @@ namespace {
 }  // namespace
 
 
+// ColorIntensity
 namespace mirinae {
 
     ColorIntensity::Vec3 ColorIntensity::scaled_color() const {
@@ -69,14 +70,10 @@ namespace mirinae {
 }  // namespace mirinae
 
 
-// DLight
-namespace mirinae::cpnt {
+// DirectionalLight
+namespace mirinae {
 
-    void DLight::render_imgui(const sung::SimClock& clock) {
-        ::render_color_intensity(color_);
-    }
-
-    glm::dvec3 DLight::calc_to_light_dir(
+    glm::dvec3 DirectionalLight::calc_to_light_dir(
         const glm::dmat4 view_mat, const Tform& tform
     ) const {
         const auto v = view_mat * tform.make_model_mat() *
@@ -98,7 +95,7 @@ namespace mirinae::cpnt {
         return make_proj_mat() * make_view_mat();
     }*/
 
-    glm::dmat4 DLight::make_light_mat(
+    glm::dmat4 DirectionalLight::make_light_mat(
         const std::array<glm::dvec3, 8>& p, const Tform& tform
     ) const {
         const auto view_mat = tform.make_view_mat();
@@ -125,13 +122,104 @@ namespace mirinae::cpnt {
         return proj_mat * view_mat;
     }
 
-    void DLight::set_light_dir(glm::dvec3 dir, Tform& tform) {
+    void DirectionalLight::set_light_dir(glm::dvec3 dir, Tform& tform) {
         dir = glm::normalize(dir);
         const auto axis = glm::cross(glm::dvec3{ 0, 0, -1 }, dir);
         const auto cos_angle = glm::dot(glm::dvec3{ 0, 0, -1 }, dir);
         const auto angle = sung::acos_safe(cos_angle);
         tform.reset_rotation();
         tform.rotate(Tform::Angle::from_rad(angle), axis);
+    }
+
+}  // namespace mirinae
+
+
+// CascadeInfo
+namespace mirinae {
+
+    void CascadeInfo::update(
+        const double ratio,
+        const glm::dmat4& view_inv,
+        const PerspectiveCamera<double>& pers,
+        const DirectionalLight& dlight,
+        const DirectionalLight::Tform& tform
+    ) {
+        const auto dist = this->make_plane_distances(pers.near_, pers.far_);
+
+        for (size_t i = 0; i < dist.size() - 1; ++i) {
+            auto& c = cascades_.at(i);
+
+            c.near_ = dist[i];
+            c.far_ = dist[i + 1];
+
+            this->make_frustum_vertices(
+                ratio, c.near_, pers.fov_, view_inv, c.frustum_verts_.data()
+            );
+
+            this->make_frustum_vertices(
+                ratio, c.far_, pers.fov_, view_inv, c.frustum_verts_.data() + 4
+            );
+
+            c.light_mat_ = dlight.make_light_mat(c.frustum_verts_, tform);
+
+            far_depths_[i] = this->calc_clip_depth(
+                -c.far_, pers.near_, pers.far_
+            );
+        }
+
+        return;
+    }
+
+    void CascadeInfo::make_frustum_vertices(
+        const double screen_ratio,
+        const double plane_dist,
+        const Angle fov,
+        const glm::dmat4& view_inv,
+        glm::dvec3* const out
+    ) {
+        const auto tan_half_angle_vertical = std::tan(fov.rad() * 0.5);
+        const auto tan_half_angle_horizontal = tan_half_angle_vertical *
+                                               screen_ratio;
+
+        const auto half_width = plane_dist * tan_half_angle_horizontal;
+        const auto half_height = plane_dist * tan_half_angle_vertical;
+
+        out[0] = glm::dvec3{ -half_width, -half_height, -plane_dist };
+        out[1] = glm::dvec3{ half_width, -half_height, -plane_dist };
+        out[2] = glm::dvec3{ -half_width, half_height, -plane_dist };
+        out[3] = glm::dvec3{ half_width, half_height, -plane_dist };
+
+        for (size_t i = 0; i < 4; ++i)
+            out[i] = view_inv * glm::dvec4{ out[i], 1 };
+    }
+
+    std::array<double, 5> CascadeInfo::make_plane_distances(
+        const double p_near, const double p_far
+    ) {
+        std::array<double, 5> out;
+        const auto dist = p_far - p_near;
+
+        out[0] = p_near;
+        out[1] = p_near + dist * 0.05;
+        out[2] = p_near + dist * 0.2;
+        out[3] = p_near + dist * 0.5;
+        out[4] = p_far;
+
+        return out;
+    }
+
+    double CascadeInfo::calc_clip_depth(double z, double n, double f) {
+        return (f * (z + n)) / (z * (f - n));
+    }
+
+}  // namespace mirinae
+
+
+// DLight
+namespace mirinae::cpnt {
+
+    void DLight::render_imgui(const sung::SimClock& clock) {
+        ::render_color_intensity(color_);
     }
 
 }  // namespace mirinae::cpnt
