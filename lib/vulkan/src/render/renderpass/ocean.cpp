@@ -414,35 +414,24 @@ namespace {
 
                     for (size_t j = 0; j < CASCADE_COUNT; ++j) {
                         const auto img_name = fmt::format(
-                            "hkt_dxdy_c{}_f{}", j, i
+                            "hkt_1_c{}_f{}", j, i
                         );
                         auto img = rp_res.new_img(img_name, this->name());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
-                        fd.hkt_dxdy_[j] = img;
+                        fd.hkt_1_[j] = img;
                     }
 
                     for (size_t j = 0; j < CASCADE_COUNT; ++j) {
                         const auto img_name = fmt::format(
-                            "hkt_dz_c{}_f{}", j, i
+                            "hkt_2_c{}_f{}", j, i
                         );
                         auto img = rp_res.new_img(img_name, this->name());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
-                        fd.hkt_dz_[j] = img;
-                    }
-
-                    for (size_t j = 0; j < CASCADE_COUNT; ++j) {
-                        const auto img_name = fmt::format(
-                            "hkt_ddxddz_c{}_f{}", j, i
-                        );
-                        auto img = rp_res.new_img(img_name, this->name());
-                        img->img_.init(cinfo.get(), device.mem_alloc());
-                        builder.image(img->img_.image());
-                        img->view_.reset(builder, device);
-                        fd.hkt_ddxddz_[j] = img;
+                        fd.hkt_2_[j] = img;
                     }
                 }
             }
@@ -463,21 +452,14 @@ namespace {
                 auto cmdbuf = cmd_pool.begin_single_time(device);
                 for (auto& fd : frame_data_) {
                     for (size_t i = 0; i < CASCADE_COUNT; ++i) {
-                        barrier.image(fd.hkt_dxdy_[i]->img_.image());
+                        barrier.image(fd.hkt_1_[i]->img_.image());
                         barrier.record_single(
                             cmdbuf,
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                             VK_PIPELINE_STAGE_TRANSFER_BIT
                         );
 
-                        barrier.image(fd.hkt_dz_[i]->img_.image());
-                        barrier.record_single(
-                            cmdbuf,
-                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                            VK_PIPELINE_STAGE_TRANSFER_BIT
-                        );
-
-                        barrier.image(fd.hkt_ddxddz_[i]->img_.image());
+                        barrier.image(fd.hkt_2_[i]->img_.image());
                         barrier.record_single(
                             cmdbuf,
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -505,17 +487,12 @@ namespace {
             {
                 mirinae::DescLayoutBuilder builder{ name() + ":main" };
                 builder
-                    .new_binding()  // hkt_dxdy
+                    .new_binding()  // hkt_1
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(3)
                     .finish_binding()
-                    .new_binding()  // hkt_dz
-                    .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(3)
-                    .finish_binding()
-                    .new_binding()  // hkt_ddxddz
+                    .new_binding()  // hkt_2
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(3)
@@ -549,22 +526,18 @@ namespace {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
-                    writer.add_storage_img_info(fd.hkt_dxdy_[0]->view_.get())
-                        .add_storage_img_info(fd.hkt_dxdy_[1]->view_.get())
-                        .add_storage_img_info(fd.hkt_dxdy_[2]->view_.get())
+                    writer.add_storage_img_info(fd.hkt_1_[0]->view_.get())
+                        .add_storage_img_info(fd.hkt_1_[1]->view_.get())
+                        .add_storage_img_info(fd.hkt_1_[2]->view_.get())
                         .add_storage_img_write(fd.desc_set_, 0);
-                    writer.add_storage_img_info(fd.hkt_dz_[0]->view_.get())
-                        .add_storage_img_info(fd.hkt_dz_[1]->view_.get())
-                        .add_storage_img_info(fd.hkt_dz_[2]->view_.get())
+                    writer.add_storage_img_info(fd.hkt_2_[0]->view_.get())
+                        .add_storage_img_info(fd.hkt_2_[1]->view_.get())
+                        .add_storage_img_info(fd.hkt_2_[2]->view_.get())
                         .add_storage_img_write(fd.desc_set_, 1);
-                    writer.add_storage_img_info(fd.hkt_ddxddz_[0]->view_.get())
-                        .add_storage_img_info(fd.hkt_ddxddz_[1]->view_.get())
-                        .add_storage_img_info(fd.hkt_ddxddz_[2]->view_.get())
-                        .add_storage_img_write(fd.desc_set_, 2);
                     writer.add_storage_img_info(fd.hk_[0]->view_.get())
                         .add_storage_img_info(fd.hk_[1]->view_.get())
                         .add_storage_img_info(fd.hk_[2]->view_.get())
-                        .add_storage_img_write(fd.desc_set_, 3);
+                        .add_storage_img_write(fd.desc_set_, 2);
                 }
                 writer.apply_all(device.logi_device());
             }
@@ -611,9 +584,8 @@ namespace {
             for (auto& fd : frame_data_) {
                 for (size_t i = 0; i < CASCADE_COUNT; ++i) {
                     rp_res_.free_img(fd.hk_[i]->id(), this->name());
-                    rp_res_.free_img(fd.hkt_dxdy_[i]->id(), this->name());
-                    rp_res_.free_img(fd.hkt_dz_[i]->id(), this->name());
-                    rp_res_.free_img(fd.hkt_ddxddz_[i]->id(), this->name());
+                    rp_res_.free_img(fd.hkt_1_[i]->id(), this->name());
+                    rp_res_.free_img(fd.hkt_2_[i]->id(), this->name());
                 }
             }
 
@@ -696,9 +668,8 @@ namespace {
     private:
         struct FrameData {
             std::array<mirinae::HRpImage, CASCADE_COUNT> hk_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_dxdy_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_dz_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_ddxddz_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_1_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_2_;
             VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
         };
 
@@ -905,17 +876,19 @@ namespace {
 
             // Desc layouts
             {
+                MIRINAE_ASSERT(6 == fdata_[0].ppong_textures_.size());
+
                 mirinae::DescLayoutBuilder builder{ name() + ":main" };
                 builder
                     .new_binding(0)  // Pingpong images
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(9)
+                    .set_count(6)
                     .finish_binding()
                     .new_binding(1)  // hkt images
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(9)
+                    .set_count(6)
                     .finish_binding()
                     .new_binding(2)  // butfly_cache
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
@@ -945,8 +918,6 @@ namespace {
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = fdata_[i];
                     fd.desc_set_ = sets[i];
-
-                    MIRINAE_ASSERT(9 == fd.ppong_textures_.size());
 
                     // Pingpong images
                     for (auto& ppong : fd.ppong_textures_)
@@ -1066,7 +1037,10 @@ namespace {
                 );
 
                 vkCmdDispatch(
-                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 9
+                    cmdbuf,
+                    OCEAN_TEX_DIM / 16,
+                    OCEAN_TEX_DIM / 16,
+                    fd.ppong_textures_.size()
                 );
 
                 pc.pingpong_ = !pc.pingpong_;
@@ -1091,7 +1065,10 @@ namespace {
                 );
 
                 vkCmdDispatch(
-                    cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 9
+                    cmdbuf,
+                    OCEAN_TEX_DIM / 16,
+                    OCEAN_TEX_DIM / 16,
+                    fd.ppong_textures_.size()
                 );
 
                 pc.pingpong_ = !pc.pingpong_;
@@ -1111,15 +1088,11 @@ namespace {
                 const auto suffix = fmt::format("_c{}_f{}", j, frame_index);
 
                 out.push_back(rp_res.get_img_reader(
-                    fmt::format("{}hkt_dxdy{}", prefix, suffix), name
+                    fmt::format("{}hkt_1{}", prefix, suffix), name
                 ));
                 MIRINAE_ASSERT(nullptr != out.back());
                 out.push_back(rp_res.get_img_reader(
-                    fmt::format("{}hkt_dz{}", prefix, suffix), name
-                ));
-                MIRINAE_ASSERT(nullptr != out.back());
-                out.push_back(rp_res.get_img_reader(
-                    fmt::format("{}hkt_ddxddz{}", prefix, suffix), name
+                    fmt::format("{}hkt_2{}", prefix, suffix), name
                 ));
                 MIRINAE_ASSERT(nullptr != out.back());
             }
@@ -1251,17 +1224,19 @@ namespace {
 
             // Desc layouts
             {
+                MIRINAE_ASSERT(6 == fdata_[0].ppong_textures_.size());
+
                 mirinae::DescLayoutBuilder builder{ name() + ":main" };
                 builder
                     .new_binding(0)  // Pingpong images
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(9)
+                    .set_count(6)
                     .finish_binding()
                     .new_binding(1)  // hkt images
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .set_count(9)
+                    .set_count(6)
                     .finish_binding();
                 desclayouts.add(builder, device.logi_device());
             }
@@ -1286,8 +1261,6 @@ namespace {
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = fdata_[i];
                     fd.desc_set_ = sets[i];
-
-                    MIRINAE_ASSERT(9 == fd.ppong_textures_.size());
 
                     // Pingpong images
                     for (auto& ppong : fd.ppong_textures_)
@@ -1406,7 +1379,12 @@ namespace {
                 nullptr
             );
 
-            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 9);
+            vkCmdDispatch(
+                cmdbuf,
+                OCEAN_TEX_DIM / 16,
+                OCEAN_TEX_DIM / 16,
+                fd.ppong_textures_.size()
+            );
 
             pc.stage_ = 1;
             pc_info.record(cmdbuf, pc);
@@ -1424,7 +1402,12 @@ namespace {
                 nullptr
             );
 
-            vkCmdDispatch(cmdbuf, OCEAN_TEX_DIM / 16, OCEAN_TEX_DIM / 16, 9);
+            vkCmdDispatch(
+                cmdbuf,
+                OCEAN_TEX_DIM / 16,
+                OCEAN_TEX_DIM / 16,
+                fd.ppong_textures_.size()
+            );
         }
 
     private:
@@ -1474,21 +1457,16 @@ namespace {
                 auto& fd = fdata_[i];
 
                 for (size_t j = 0; j < CASCADE_COUNT; j++) {
-                    fd.hkt_dxdy_[j] = rp_res.get_img_reader(
-                        fmt::format("ocean_tilde_hkt:hkt_dxdy_c{}_f{}", j, i),
+                    fd.hkt_1_[j] = rp_res.get_img_reader(
+                        fmt::format("ocean_tilde_hkt:hkt_1_c{}_f{}", j, i),
                         name()
                     );
-                    MIRINAE_ASSERT(nullptr != fd.hkt_dxdy_[j]);
-                    fd.hkt_dz_[j] = rp_res.get_img_reader(
-                        fmt::format("ocean_tilde_hkt:hkt_dz_c{}_f{}", j, i),
+                    MIRINAE_ASSERT(nullptr != fd.hkt_1_[j]);
+                    fd.hkt_2_[j] = rp_res.get_img_reader(
+                        fmt::format("ocean_tilde_hkt:hkt_2_c{}_f{}", j, i),
                         name()
                     );
-                    MIRINAE_ASSERT(nullptr != fd.hkt_dz_[j]);
-                    fd.hkt_ddxddz_[j] = rp_res.get_img_reader(
-                        fmt::format("ocean_tilde_hkt:hkt_ddxddz_c{}_f{}", j, i),
-                        name()
-                    );
-                    MIRINAE_ASSERT(nullptr != fd.hkt_ddxddz_[j]);
+                    MIRINAE_ASSERT(nullptr != fd.hkt_2_[j]);
                 }
             }
 
@@ -1669,18 +1647,14 @@ namespace {
                         .add_storage_img_info(turb_[1]->view_.get())
                         .add_storage_img_info(turb_[2]->view_.get())
                         .add_storage_img_write(fd.desc_set_, 2);
-                    writer.add_storage_img_info(fd.hkt_dxdy_[0]->view_.get())
-                        .add_storage_img_info(fd.hkt_dxdy_[1]->view_.get())
-                        .add_storage_img_info(fd.hkt_dxdy_[2]->view_.get())
+                    writer.add_storage_img_info(fd.hkt_1_[0]->view_.get())
+                        .add_storage_img_info(fd.hkt_1_[1]->view_.get())
+                        .add_storage_img_info(fd.hkt_1_[2]->view_.get())
                         .add_storage_img_write(fd.desc_set_, 3);
-                    writer.add_storage_img_info(fd.hkt_dz_[0]->view_.get())
-                        .add_storage_img_info(fd.hkt_dz_[1]->view_.get())
-                        .add_storage_img_info(fd.hkt_dz_[2]->view_.get())
+                    writer.add_storage_img_info(fd.hkt_2_[0]->view_.get())
+                        .add_storage_img_info(fd.hkt_2_[1]->view_.get())
+                        .add_storage_img_info(fd.hkt_2_[2]->view_.get())
                         .add_storage_img_write(fd.desc_set_, 4);
-                    writer.add_storage_img_info(fd.hkt_ddxddz_[0]->view_.get())
-                        .add_storage_img_info(fd.hkt_ddxddz_[1]->view_.get())
-                        .add_storage_img_info(fd.hkt_ddxddz_[2]->view_.get())
-                        .add_storage_img_write(fd.desc_set_, 5);
                 }
                 writer.apply_all(device.logi_device());
             }
@@ -1709,9 +1683,8 @@ namespace {
         ~RpStatesOceanFinalize() override {
             for (auto& fdata : fdata_) {
                 for (size_t i = 0; i < CASCADE_COUNT; i++) {
-                    rp_res_.free_img(fdata.hkt_dxdy_[i]->id(), this->name());
-                    rp_res_.free_img(fdata.hkt_dz_[i]->id(), this->name());
-                    rp_res_.free_img(fdata.hkt_ddxddz_[i]->id(), this->name());
+                    rp_res_.free_img(fdata.hkt_1_[i]->id(), this->name());
+                    rp_res_.free_img(fdata.hkt_2_[i]->id(), this->name());
                     rp_res_.free_img(fdata.disp_[i]->id(), this->name());
                     rp_res_.free_img(fdata.deri_[i]->id(), this->name());
                 }
@@ -1793,9 +1766,8 @@ namespace {
 
     private:
         struct FrameData {
-            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_dxdy_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_dz_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_ddxddz_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_1_;
+            std::array<mirinae::HRpImage, CASCADE_COUNT> hkt_2_;
             std::array<mirinae::HRpImage, CASCADE_COUNT> disp_;
             std::array<mirinae::HRpImage, CASCADE_COUNT> deri_;
             VkDescriptorSet desc_set_;
