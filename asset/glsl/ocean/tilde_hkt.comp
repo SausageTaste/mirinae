@@ -5,10 +5,9 @@
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout (binding = 0, rgba32f) uniform writeonly image2D out_hkt_dxdy[3];
-layout (binding = 1, rgba32f) uniform writeonly image2D out_hkt_dz[3];
-layout (binding = 2, rgba32f) uniform writeonly image2D out_hkt_ddxddz[3];
-layout (binding = 3, rgba32f) uniform readonly image2D in_hk[3];
+layout (binding = 0, rgba32f) uniform writeonly image2D out_hkt_1[3];
+layout (binding = 1, rgba32f) uniform writeonly image2D out_hkt_2[3];
+layout (binding = 2, rgba32f) uniform readonly image2D in_hk[3];
 
 layout (push_constant) uniform U_OceanTildeHktPushConst {
     float time;
@@ -58,13 +57,12 @@ void main() {
     const vec2 displacementY_dz = ih * k.y;
     const vec2 displacementZ_dz = -h * k.y * k.y * mag_rcp;
 
-    imageStore(out_hkt_dxdy[cascade], global_idx, vec4(
+    imageStore(out_hkt_1[cascade], global_idx, vec4(
         vec2(displacementX.x - displacementZ.y, displacementX.y + displacementZ.x),
         vec2(displacementY.x - displacementZ_dx.y, displacementY.y + displacementZ_dx.x)
     ));
-    imageStore(out_hkt_dz[cascade], global_idx, vec4(
+    imageStore(out_hkt_2[cascade], global_idx, vec4(
         vec2(displacementY_dx.x - displacementY_dz.y, displacementY_dx.y + displacementY_dz.x),
         vec2(displacementX_dx.x - displacementZ_dz.y, displacementX_dx.y + displacementZ_dz.x)
     ));
-    imageStore(out_hkt_ddxddz[cascade], global_idx, vec4(0));
 }
