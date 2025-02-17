@@ -196,7 +196,6 @@ namespace {
             return *gbuf_terrain_;
         }
         mirinae::rp::envmap::IRpMaster& envmap() { return *envmap_; }
-        mirinae::rp::shadow::RpMaster& shadow() { return shadow_; }
         mirinae::rp::compo::RpMasterBasic& compo_basic() {
             return compo_basic_;
         }
@@ -218,7 +217,6 @@ namespace {
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterBasic> gbuf_basic_;
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterTerrain> gbuf_terrain_;
         std::unique_ptr<mirinae::rp::envmap::IRpMaster> envmap_;
-        mirinae::rp::shadow::RpMaster shadow_;
         mirinae::rp::compo::RpMasterBasic compo_basic_;
 
         std::vector<mirinae::URpStates> rp_states_;
@@ -853,9 +851,6 @@ namespace {
             rp_res_.shadow_maps_ =
                 mirinae::rp::shadow::create_shadow_maps_bundle(device_);
 
-            rpm_.shadow().pool().add(4096, 4096, device_);
-            rpm_.shadow().pool().add(256, 256, device_);
-
             // Create swapchain and its relatives
             {
                 swapchain_.init(fbuf_width_, fbuf_height_, device_);
@@ -875,9 +870,6 @@ namespace {
                     device_
                 );
                 mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
-                mirinae::rp::shadow::create_rp(
-                    rp_, fbuf_images_.depth().format(), desclayout_, device_
-                );
                 mirinae::rp::compo::create_rp(
                     rp_,
                     fbuf_images_.width(),
@@ -894,10 +886,6 @@ namespace {
                     desclayout_,
                     swapchain_,
                     device_
-                );
-
-                rpm_.shadow().pool().recreate_fbufs(
-                    rp_.get("shadowmap"), device_
                 );
 
                 rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
@@ -1003,8 +991,6 @@ namespace {
 
             // Destroy swapchain's relatives
             {
-                rpm_.shadow().pool().destroy_fbufs(device_);
-
                 rpm_.destroy_std_rp();
                 // rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
@@ -1079,14 +1065,6 @@ namespace {
                 light.cascades_.update(
                     swapchain_.calc_ratio(), view_inv, cam.proj_, light, tfrom
                 );
-
-                rpm_.shadow().cascade().update(
-                    swapchain_.calc_ratio(), view_inv, cam.proj_, light, tfrom
-                );
-                rpm_.shadow().pool().at(0).mat_ =
-                    rpm_.shadow().cascade().cascades_.front().light_mat_;
-
-                break;
             }
 
             for (auto& l : reg.view<cpnt::SLight, cpnt::Transform>()) {
@@ -1099,9 +1077,6 @@ namespace {
                     sung::TAngle<double>::from_deg(std::atan(0.1 / 5.0)),
                     cam.view_.make_right_dir()
                 );
-
-                rpm_.shadow().pool().at(1).mat_ = light.make_light_mat(tfrom);
-                break;
             }
 
             this->update_ubufs(proj_mat, view_mat);
@@ -1313,8 +1288,6 @@ namespace {
 
             // Destroy
             {
-                rpm_.shadow().pool().destroy_fbufs(device_);
-
                 rpm_.destroy_std_rp();
                 // rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
@@ -1347,9 +1320,6 @@ namespace {
                     device_
                 );
                 mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
-                mirinae::rp::shadow::create_rp(
-                    rp_, fbuf_images_.depth().format(), desclayout_, device_
-                );
                 mirinae::rp::compo::create_rp(
                     rp_,
                     fbuf_images_.width(),
@@ -1368,18 +1338,14 @@ namespace {
                     device_
                 );
 
-                rpm_.shadow().pool().recreate_fbufs(
-                    rp_.get("shadowmap"), device_
-                );
-
                 rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
                 rpm_.gbuf_basic().init();
                 rpm_.gbuf_terrain().init(*tex_man_, desclayout_, device_);
                 rpm_.compo_basic().init(
                     desclayout_,
                     fbuf_images_,
-                    rpm_.shadow().pool().get_img_view_at(0),
-                    rpm_.shadow().pool().get_img_view_at(1),
+                    rp_res_.shadow_maps_->dlight_view_at(0),
+                    rp_res_.shadow_maps_->slight_view_at(0),
                     rpm_.envmap().diffuse_view(0),
                     rpm_.envmap().specular_view(0),
                     rpm_.envmap().brdf_lut_view(),
@@ -1387,8 +1353,8 @@ namespace {
                 );
                 rp_states_transp_.init(
                     desclayout_,
-                    rpm_.shadow().pool().get_img_view_at(0),
-                    rpm_.shadow().pool().get_img_view_at(1),
+                    rp_res_.shadow_maps_->dlight_view_at(0),
+                    rp_res_.shadow_maps_->slight_view_at(0),
                     rpm_.envmap().diffuse_view(0),
                     rpm_.envmap().specular_view(0),
                     rpm_.envmap().brdf_lut_view(),
@@ -1590,7 +1556,7 @@ namespace {
                 for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
                     const auto& l = reg.get<cpnt::DLight>(e);
                     const auto& t = reg.get<cpnt::Transform>(e);
-                    const auto& cascade = rpm_.shadow().cascade();
+                    const auto& cascade = l.cascades_;
                     const auto& cascades = cascade.cascades_;
 
                     for (size_t i = 0; i < cascades.size(); ++i)
