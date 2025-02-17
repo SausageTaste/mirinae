@@ -168,6 +168,12 @@ namespace {
             );
 
             rp_states_.push_back(
+                mirinae::rp::shadow::create_rp_states_shadow_static(
+                    rp_res, desclayouts, device
+                )
+            );
+
+            rp_states_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tess(
                     swapchain.views_count(),
                     envmap_->sky_tex_view(),
@@ -198,7 +204,7 @@ namespace {
         mirinae::IRpStates& compo_sky() { return *compo_sky_; }
         mirinae::IRpStates& ocean_tess() { return *ocean_tess_; }
 
-        void record_computes(const mirinae::RpContext& ctxt) {
+        void record_computes(mirinae::RpContext& ctxt) {
             for (auto& rp : rp_states_) {
                 if (rp.get() == ocean_tess_)
                     continue;
@@ -844,6 +850,9 @@ namespace {
             , fbuf_height_(init_height) {
             framesync_.init(device_.logi_device());
 
+            rp_res_.shadow_maps_ =
+                mirinae::rp::shadow::create_shadow_maps_bundle(device_);
+
             rpm_.shadow().pool().add(4096, 4096, device_);
             rpm_.shadow().pool().add(256, 256, device_);
 
@@ -892,13 +901,16 @@ namespace {
                 );
 
                 rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
+                rpm_.create_std_rp(
+                    rp_res_, desclayout_, fbuf_images_, swapchain_, device_
+                );
                 rpm_.gbuf_basic().init();
                 rpm_.gbuf_terrain().init(*tex_man_, desclayout_, device_);
                 rpm_.compo_basic().init(
                     desclayout_,
                     fbuf_images_,
-                    rpm_.shadow().pool().get_img_view_at(0),
-                    rpm_.shadow().pool().get_img_view_at(1),
+                    rp_res_.shadow_maps_->dlight_view_at(0),
+                    rp_res_.shadow_maps_->slight_view_at(0),
                     rpm_.envmap().diffuse_view(0),
                     rpm_.envmap().specular_view(0),
                     rpm_.envmap().brdf_lut_view(),
@@ -906,8 +918,8 @@ namespace {
                 );
                 rp_states_transp_.init(
                     desclayout_,
-                    rpm_.shadow().pool().get_img_view_at(0),
-                    rpm_.shadow().pool().get_img_view_at(1),
+                    rp_res_.shadow_maps_->dlight_view_at(0),
+                    rp_res_.shadow_maps_->slight_view_at(0),
                     rpm_.envmap().diffuse_view(0),
                     rpm_.envmap().specular_view(0),
                     rpm_.envmap().brdf_lut_view(),
@@ -916,10 +928,6 @@ namespace {
                 rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(desclayout_, fbuf_images_, device_);
                 rp_states_imgui_.init(swapchain_);
-
-                rpm_.create_std_rp(
-                    rp_res_, desclayout_, fbuf_images_, swapchain_, device_
-                );
             }
 
             cmd_pool_.init(
@@ -1068,6 +1076,9 @@ namespace {
                 auto& tfrom = reg.get<cpnt::Transform>(l);
 
                 tfrom.pos_ = cam.view_.pos_;
+                light.cascades_.update(
+                    swapchain_.calc_ratio(), view_inv, cam.proj_, light, tfrom
+                );
 
                 rpm_.shadow().cascade().update(
                     swapchain_.calc_ratio(), view_inv, cam.proj_, light, tfrom
@@ -1119,13 +1130,6 @@ namespace {
                 framesync_.get_frame_index(),
                 *cosmos_,
                 image_index,
-                rp_
-            );
-
-            rpm_.shadow().record(
-                ren_ctxt.cmdbuf_,
-                *ren_ctxt.draw_sheet_,
-                framesync_.get_frame_index(),
                 rp_
             );
 
