@@ -8,12 +8,14 @@
 
 namespace mirinae::rp::shadow {
 
+    /*
     void create_rp(
         IRenderPassRegistry& reg,
         VkFormat depth_format,
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     );
+    */
 
 
     class RpMaster {
