@@ -262,7 +262,6 @@ namespace {
     public:
         RpStatesCompoSky(
             VkImageView sky_tex,
-            mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
@@ -310,13 +309,13 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(fbuf_bundle.depth().format())
+                    .add(rp_res.gbuf_.depth().format())
                     .ini_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
                     .stor_op(VK_ATTACHMENT_STORE_OP_STORE);
                 builder.attach_desc()
-                    .add(fbuf_bundle.compo().format())
+                    .add(rp_res.gbuf_.compo().format())
                     .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
@@ -364,14 +363,14 @@ namespace {
             {
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_)
-                    .set_dim(fbuf_bundle.width(), fbuf_bundle.height())
-                    .add_attach(fbuf_bundle.depth().image_view())
-                    .add_attach(fbuf_bundle.compo().image_view());
+                    .set_dim(rp_res.gbuf_.width(), rp_res.gbuf_.height())
+                    .add_attach(rp_res.gbuf_.depth().image_view())
+                    .add_attach(rp_res.gbuf_.compo().image_view());
                 for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
                     frame_data_[i].fbuf_ = fbuf_cinfo.build(device);
 
-                fbuf_width_ = fbuf_bundle.width();
-                fbuf_height_ = fbuf_bundle.height();
+                fbuf_width_ = rp_res.gbuf_.width();
+                fbuf_height_ = rp_res.gbuf_.height();
             }
 
             // Misc
@@ -483,13 +482,12 @@ namespace mirinae::rp::compo {
 
     URpStates create_rps_sky(
         VkImageView sky_tex,
-        mirinae::FbufImageBundle& fbuf_bundle,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<RpStatesCompoSky>(
-            sky_tex, fbuf_bundle, rp_res, desclayouts, device
+            sky_tex, rp_res, desclayouts, device
         );
     }
 

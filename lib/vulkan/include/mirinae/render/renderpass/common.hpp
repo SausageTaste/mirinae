@@ -273,6 +273,7 @@ namespace mirinae {
         HImage get_img_reader(const str& id, const str& user_id);
 
         HShadowMaps shadow_maps_;
+        FbufImageBundle gbuf_;
 
     private:
         class ImageRecord;

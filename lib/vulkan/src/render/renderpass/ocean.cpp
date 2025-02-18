@@ -2005,7 +2005,6 @@ namespace {
         RpStatesOceanTess(
             size_t swapchain_count,
             VkImageView sky_tex,
-            mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
@@ -2167,12 +2166,12 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(fbuf_bundle.compo().format())
+                    .add(rp_res.gbuf_.compo().format())
                     .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
                 builder.attach_desc()
-                    .add(fbuf_bundle.depth().format())
+                    .add(rp_res.gbuf_.depth().format())
                     .ini_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .op_pair_load_store();
@@ -2231,13 +2230,13 @@ namespace {
 
             // Framebuffers
             {
-                fbuf_width_ = fbuf_bundle.width();
-                fbuf_height_ = fbuf_bundle.height();
+                fbuf_width_ = rp_res.gbuf_.width();
+                fbuf_height_ = rp_res.gbuf_.height();
 
                 mirinae::FbufCinfo cinfo;
                 cinfo.set_rp(render_pass_)
-                    .add_attach(fbuf_bundle.compo().image_view())
-                    .add_attach(fbuf_bundle.depth().image_view())
+                    .add_attach(rp_res.gbuf_.compo().image_view())
+                    .add_attach(rp_res.gbuf_.depth().image_view())
                     .set_dim(fbuf_width_, fbuf_height_);
                 for (int i = 0; i < swapchain_count; ++i)
                     fbufs_.push_back(cinfo.build(device));
@@ -2655,13 +2654,12 @@ namespace mirinae::rp::ocean {
     URpStates create_rp_states_ocean_tess(
         size_t swapchain_count,
         VkImageView sky_tex,
-        mirinae::FbufImageBundle& fbuf_bundle,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<RpStatesOceanTess>(
-            swapchain_count, sky_tex, fbuf_bundle, rp_res, desclayouts, device
+            swapchain_count, sky_tex, rp_res, desclayouts, device
         );
     }
 

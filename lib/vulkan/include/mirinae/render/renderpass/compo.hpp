@@ -48,7 +48,6 @@ namespace mirinae::rp::compo {
 
     URpStates create_rps_sky(
         VkImageView sky_tex,
-        mirinae::FbufImageBundle& fbuf_bundle,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
