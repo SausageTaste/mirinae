@@ -7,20 +7,6 @@
 #include <sung/basic/time.hpp>
 
 #include "mirinae/lightweight/script.hpp"
-#include "mirinae/math/mamath.hpp"
-
-
-namespace mirinae::cpnt {
-
-    struct StandardCamera {
-        TransformQuat<double> view_;
-        PerspectiveCamera<double> proj_;
-        float exposure_ = 1;
-        float gamma_ = 1;
-    };
-
-
-}  // namespace mirinae::cpnt
 
 
 namespace mirinae {

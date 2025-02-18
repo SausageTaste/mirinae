@@ -6,6 +6,7 @@
 #include <daltools/common/glm_tool.hpp>
 #include <sung/basic/cvar.hpp>
 
+#include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/envmap.hpp"
 #include "mirinae/cpnt/identifier.hpp"
 #include "mirinae/cpnt/light.hpp"
@@ -292,13 +293,6 @@ namespace {
                     ImGui::Unindent(20);
                 }
 
-                if (ImGui::CollapsingHeader("StandardCamera")) {
-                    ImGui::Indent(20);
-                    for (const auto e : reg.view<StandardCamera>())
-                        this->render_standard_camera(e);
-                    ImGui::Unindent(20);
-                }
-
                 for (auto e : this->reg().view<entt::entity>()) {
                     this->render_entt(e);
                 }
@@ -354,64 +348,6 @@ namespace {
 
         void render_cvar() { sung::gcvars().visit(CvarVisitor{}); }
 
-        void render_standard_camera(entt::entity e) {
-            using namespace mirinae::cpnt;
-
-            auto p_cam = this->reg().try_get<StandardCamera>(e);
-            if (!p_cam)
-                return;
-            auto& cam = *p_cam;
-
-            const auto name = fmt::format("StandardCamera-{}", (ENTT_ID_TYPE)e);
-
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                float angle = (float)cam.proj_.fov_.deg();
-                ImGui::SliderFloat(
-                    "FOV",
-                    &angle,
-                    0.01f,
-                    179.99f,
-                    nullptr,
-                    ImGuiSliderFlags_Logarithmic
-                );
-                cam.proj_.fov_.set_deg(angle);
-
-                float near = (float)cam.proj_.near_;
-                ImGui::SliderFloat(
-                    "Near",
-                    &near,
-                    0.001f,
-                    30000,
-                    nullptr,
-                    ImGuiSliderFlags_Logarithmic
-                );
-                cam.proj_.near_ = near;
-
-                float far = (float)cam.proj_.far_;
-                ImGui::SliderFloat(
-                    "Far",
-                    &far,
-                    0.001f,
-                    30000,
-                    nullptr,
-                    ImGuiSliderFlags_Logarithmic
-                );
-                cam.proj_.far_ = far;
-
-                ImGui::SliderFloat(
-                    "Exposure",
-                    &cam.exposure_,
-                    0,
-                    10,
-                    nullptr,
-                    ImGuiSliderFlags_Logarithmic
-                );
-
-                ImGui::SliderFloat("Gamma", &cam.gamma_, 0, 3);
-                cam.gamma_ = std::round(cam.gamma_ * 10.f) / 10.f;
-            }
-        }
-
         template <typename T>
         void render_cpnt(T& component, const char* name) {
             constexpr auto flags = ImGuiTreeNodeFlags_DefaultOpen;
@@ -442,6 +378,8 @@ namespace {
             if (ImGui::CollapsingHeader(entt_name.c_str())) {
                 if (auto c = this->reg().try_get<cpnt::Id>(e))
                     this->render_cpnt(*c, "ID");
+                if (auto c = this->reg().try_get<cpnt::StandardCamera>(e))
+                    this->render_cpnt(*c, "Static Actor");
                 if (auto c = this->reg().try_get<cpnt::MdlActorStatic>(e))
                     this->render_cpnt(*c, "Static Actor");
                 if (auto c = this->reg().try_get<cpnt::MdlActorSkinned>(e))
@@ -563,13 +501,17 @@ namespace {
                 auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
                 i.set_name("Main Camera");
 
-                auto& d = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
-                d.view_.pos_ = {
+                auto& cam = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
+                cam.proj_.near_ = 0.1;
+                cam.proj_.far_ = 1000;
+
+                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
+                tform.pos_ = {
                     1.9518,
                     0.6559,
                     0.0913,
                 };
-                d.view_.rot_ = glm::normalize(
+                tform.rot_ = glm::normalize(
                     glm::dquat{
                         -0.921,
                         -0.051,
@@ -578,8 +520,6 @@ namespace {
                     } *
                     5.0
                 );
-                d.proj_.near_ = 0.1;
-                d.proj_.far_ = 1000;
             }
 
             // Envmap
@@ -662,10 +602,11 @@ namespace {
                 client_->send();
             }
 
-            auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
+            auto cam_view = cosmos_->reg().try_get<mirinae::cpnt::Transform>(
                 cosmos_->scene().main_camera_
             );
-            camera_controller_.apply(cam.view_, clock.dt());
+            if (cam_view)
+                camera_controller_.apply(*cam_view, clock.dt());
 
             client_->do_frame();
             cosmos_->do_frame();
@@ -706,17 +647,23 @@ namespace {
         }
 
         bool on_mouse_event(const mirinae::mouse::Event& e) override {
+            namespace cpnt = mirinae::cpnt;
+
             if (renderer_->on_mouse_event(e))
                 return true;
 
             if (e.button_ == mirinae::mouse::ButtonCode::left &&
                 e.action_ == mirinae::mouse::ActionType::up) {
-                auto cam =
-                    cosmos_->reg().try_get<mirinae::cpnt::StandardCamera>(
-                        cosmos_->scene().main_camera_
-                    );
+                auto& reg = cosmos_->reg();
+                const auto e_cam = cosmos_->scene().main_camera_;
+                auto cam = reg.try_get<cpnt::StandardCamera>(e_cam);
                 if (!cam) {
                     SPDLOG_WARN("No camera entity found.");
+                    return true;
+                }
+                auto tform = reg.try_get<cpnt::Transform>(e_cam);
+                if (!tform) {
+                    SPDLOG_WARN("A camera entity without Transform component.");
                     return true;
                 }
 
@@ -734,13 +681,13 @@ namespace {
                 auto in_view = proj_inv * in_ndc;
                 in_view /= in_view.w;
 
-                const auto view_mat = cam->view_.make_view_mat();
+                const auto view_mat = tform->make_view_mat();
                 const auto view_inv = glm::inverse(view_mat);
                 const auto in_world = view_inv * in_view;
-                const auto dir = glm::dvec3{ in_world } - cam->view_.pos_;
+                const auto dir = glm::dvec3{ in_world } - tform->pos_;
 
                 const sung::LineSegment3 ray{
-                    dal::vec_cast(cam->view_.pos_),
+                    dal::vec_cast(tform->pos_),
                     dal::vec_cast(glm::normalize(dir) * 1000.0),
                 };
                 cosmos_->scene().pick_entt(ray);
