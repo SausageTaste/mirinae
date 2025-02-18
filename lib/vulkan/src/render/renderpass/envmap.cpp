@@ -7,6 +7,368 @@
 #include "mirinae/render/renderpass/builder.hpp"
 
 
+namespace {
+
+    class ColorCubeMap {
+
+    public:
+        bool init(
+            uint32_t width,
+            uint32_t height,
+            mirinae::IRenderPassRegistry& rp_pkg,
+            mirinae::VulkanDevice& device
+        ) {
+            mirinae::ImageCreateInfo cinfo;
+            cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
+                .set_dimensions(width, height)
+                .set_mip_levels(1)
+                .set_arr_layers(6)
+                .add_usage_sampled()
+                .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+            img_.init(cinfo.get(), device.mem_alloc());
+
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
+                .format(img_.format())
+                .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .arr_layers(6)
+                .image(img_.image());
+            cubemap_view_.reset(iv_builder, device);
+
+            iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D).arr_layers(1);
+            for (uint32_t i = 0; i < 6; i++) {
+                iv_builder.base_arr_layer(i);
+                face_views_[i].reset(iv_builder, device);
+            }
+
+            for (uint32_t i = 0; i < 6; i++) {
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(rp_pkg.get("env_diffuse").renderpass())
+                    .add_attach(face_views_[i].get())
+                    .set_dim(width, height);
+                fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
+            }
+
+            return true;
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            for (auto& x : fbufs_) x.destroy(device.logi_device());
+
+            cubemap_view_.destroy(device);
+            for (auto& x : face_views_) x.destroy(device);
+
+            img_.destroy(device.mem_alloc());
+        }
+
+        uint32_t width() const { return img_.width(); }
+        uint32_t height() const { return img_.height(); }
+        VkExtent2D extent2d() const { return img_.extent2d(); }
+
+        VkFramebuffer face_fbuf(size_t index) const {
+            return fbufs_.at(index).get();
+        }
+        VkImageView face_view(size_t index) const {
+            return face_views_.at(index).get();
+        }
+        VkImageView cube_view() const { return cubemap_view_.get(); }
+
+    private:
+        mirinae::Image img_;
+        mirinae::ImageView cubemap_view_;
+        std::array<mirinae::ImageView, 6> face_views_;
+        std::array<mirinae::Fbuf, 6> fbufs_;
+    };
+
+
+    class ColorCubeMapWithMips {
+
+    public:
+        bool init(
+            uint32_t base_width,
+            uint32_t base_height,
+            mirinae::IRenderPassRegistry& rp_pkg,
+            mirinae::VulkanDevice& device
+        ) {
+            constexpr uint32_t MAX_MIP_LEVELS = 4;
+
+            mirinae::ImageCreateInfo cinfo;
+            cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
+                .set_dimensions(base_width, base_height)
+                .deduce_mip_levels()
+                .set_arr_layers(6)
+                .add_usage_sampled()
+                .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+            if (cinfo.mip_levels() > MAX_MIP_LEVELS)
+                cinfo.set_mip_levels(MAX_MIP_LEVELS);
+            img_.init(cinfo.get(), device.mem_alloc());
+
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
+                .format(img_.format())
+                .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .arr_layers(6)
+                .mip_levels(img_.mip_levels())
+                .image(img_.image());
+            cubemap_view_.reset(iv_builder, device);
+
+            iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D)
+                .arr_layers(1)
+                .mip_levels(1);
+
+            mips_.resize(img_.mip_levels());
+            for (uint32_t lvl = 0; lvl < img_.mip_levels(); ++lvl) {
+                auto& mip = mips_[lvl];
+
+                iv_builder.base_mip_level(lvl);
+                mip.roughness_ = static_cast<float>(lvl) /
+                                 (img_.mip_levels() - 1);
+                mip.width_ = img_.width() >> lvl;
+                mip.height_ = img_.height() >> lvl;
+
+                for (uint32_t face_i = 0; face_i < 6; ++face_i) {
+                    auto& face = mip.faces_[face_i];
+
+                    iv_builder.base_arr_layer(face_i);
+                    face.view_.reset(iv_builder, device);
+
+                    mirinae::FbufCinfo fbuf_cinfo;
+                    fbuf_cinfo.set_rp(rp_pkg.get("env_diffuse").renderpass())
+                        .add_attach(face.view_.get())
+                        .set_dim(mip.width_, mip.height_);
+                    face.fbuf_.init(fbuf_cinfo.get(), device.logi_device());
+                }
+            }
+
+            return true;
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            for (auto& mip : mips_) mip.destroy(device);
+
+            cubemap_view_.destroy(device);
+            img_.destroy(device.mem_alloc());
+        }
+
+        VkImageView cube_view() const { return cubemap_view_.get(); }
+
+        auto base_width() const { return img_.width(); }
+        auto base_height() const { return img_.height(); }
+
+        auto& mips() const { return mips_; }
+
+    private:
+        struct FaceData {
+            void destroy(mirinae::VulkanDevice& device) {
+                view_.destroy(device);
+                fbuf_.destroy(device.logi_device());
+            }
+
+            mirinae::ImageView view_;
+            mirinae::Fbuf fbuf_;
+        };
+
+        struct MipData {
+            void destroy(mirinae::VulkanDevice& device) {
+                for (auto& x : faces_) x.destroy(device);
+            }
+
+            VkExtent2D extent2d() const {
+                VkExtent2D out;
+                out.width = width_;
+                out.height = height_;
+                return out;
+            }
+
+            std::array<FaceData, 6> faces_;
+            float roughness_ = 0.0;
+            uint32_t width_ = 0;
+            uint32_t height_ = 0;
+        };
+
+        mirinae::Image img_;
+        mirinae::ImageView cubemap_view_;
+        std::vector<MipData> mips_;
+    };
+
+
+    class ColorDepthCubeMap {
+
+    public:
+        bool init(
+            uint32_t width,
+            uint32_t height,
+            mirinae::IRenderPassRegistry& rp_pkg,
+            mirinae::VulkanDevice& device
+        ) {
+            mirinae::ImageCreateInfo cinfo;
+            cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
+                .set_dimensions(width, height)
+                .deduce_mip_levels()
+                .set_arr_layers(6)
+                .add_usage_sampled()
+                .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+            img_.init(cinfo.get(), device.mem_alloc());
+
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
+                .format(img_.format())
+                .mip_levels(img_.mip_levels())
+                .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .arr_layers(6)
+                .image(img_.image());
+            cubemap_view_.reset(iv_builder, device);
+
+            iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D).arr_layers(1);
+            for (uint32_t i = 0; i < 6; i++) {
+                iv_builder.base_arr_layer(i);
+                face_views_[i].reset(iv_builder, device);
+            }
+            iv_builder.mip_levels(1);
+            for (uint32_t i = 0; i < 6; i++) {
+                iv_builder.base_arr_layer(i);
+                fbuf_face_views_[i].reset(iv_builder, device);
+            }
+
+            depth_map_ = mirinae::create_tex_depth(
+                img_.width(), img_.height(), device
+            );
+
+            for (uint32_t i = 0; i < 6; i++) {
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(rp_pkg.get("env_base").renderpass())
+                    .add_attach(depth_map_->image_view())
+                    .add_attach(fbuf_face_views_[i].get())
+                    .set_dim(img_.width(), img_.height());
+                fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
+            }
+
+            return true;
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            for (auto& x : fbufs_) x.destroy(device.logi_device());
+
+            cubemap_view_.destroy(device);
+            for (auto& x : face_views_) x.destroy(device);
+            for (auto& x : fbuf_face_views_) x.destroy(device);
+
+            depth_map_.reset();
+            img_.destroy(device.mem_alloc());
+        }
+
+        uint32_t width() const { return img_.width(); }
+        uint32_t height() const { return img_.height(); }
+        VkExtent2D extent2d() const { return img_.extent2d(); }
+
+        VkFramebuffer face_fbuf(size_t index) const {
+            return fbufs_.at(index).get();
+        }
+        VkImageView face_view(size_t index) const {
+            return face_views_.at(index).get();
+        }
+        VkImageView cube_view() const { return cubemap_view_.get(); }
+
+    public:
+        mirinae::Image img_;
+        mirinae::Semaphore semaphores_;
+
+    private:
+        std::unique_ptr<mirinae::ITexture> depth_map_;
+        mirinae::ImageView cubemap_view_;
+        std::array<mirinae::ImageView, 6> face_views_;
+        std::array<mirinae::ImageView, 6> fbuf_face_views_;
+        std::array<mirinae::Fbuf, 6> fbufs_;
+    };
+
+
+    class CubeMap {
+
+    public:
+        bool init(
+            mirinae::IRenderPassRegistry& rp_pkg,
+            mirinae::DescPool& desc_pool,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        ) {
+            if (!base_.init(256, 256, rp_pkg, device))
+                return false;
+            if (!diffuse_.init(256, 256, rp_pkg, device))
+                return false;
+            if (!specular_.init(128, 128, rp_pkg, device))
+                return false;
+
+            desc_set_ = desc_pool.alloc(
+                desclayouts.get("envdiffuse:main").layout(),
+                device.logi_device()
+            );
+            auto sampler = device.samplers().get_linear();
+            mirinae::DescWriteInfoBuilder write;
+            write.set_descset(desc_set_)
+                .add_img_sampler(base_.cube_view(), sampler)
+                .apply_all(device.logi_device());
+
+            return true;
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            base_.destroy(device);
+            diffuse_.destroy(device);
+            specular_.destroy(device);
+        }
+
+        const ColorDepthCubeMap& base() const { return base_; }
+        const ColorCubeMap& diffuse() const { return diffuse_; }
+        const ColorCubeMapWithMips& specular() const { return specular_; }
+        VkDescriptorSet desc_set() const { return desc_set_; }
+
+        glm::dvec3 world_pos_;
+
+    private:
+        ColorDepthCubeMap base_;
+        ColorCubeMap diffuse_;
+        ColorCubeMapWithMips specular_;
+        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
+    };
+
+
+    class EnvmapRenUnit : public mirinae::rp::envmap::IEnvmapRenUnitVk {
+
+    public:
+        EnvmapRenUnit(
+            mirinae::IRenderPassRegistry& rp_pkg,
+            mirinae::DescPool& desc_pool,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device) {
+            cube_map_.init(rp_pkg, desc_pool, desclayouts, device);
+        }
+
+        ~EnvmapRenUnit() override { cube_map_.destroy(device_); }
+
+        VkImageView diffuse_view() override {
+            return cube_map_.diffuse().cube_view();
+        }
+
+        VkImageView specular_view() override {
+            return cube_map_.specular().cube_view();
+        }
+
+        CubeMap cube_map_;
+
+    private:
+        mirinae::VulkanDevice& device_;
+    };
+
+}  // namespace
+
+
 // env_sky
 namespace { namespace env_sky {
 
@@ -640,12 +1002,6 @@ namespace {
                 device.logi_device()
             );
 
-            auto& added = cube_map_.emplace_back();
-            added.init(rp_pkg, tex_man, desc_pool_, desclayouts, device);
-            added.world_pos_ = { 0.14983922321477,
-                                 0.66663010560478,
-                                 -1.1615585516897 };
-
             brdf_lut_.init(512, 512, rp_pkg, device);
 
             sky_tex_ = tex_man.block_for_tex("Sung/satara_night_4k.hdr", false);
@@ -674,47 +1030,80 @@ namespace {
         }
 
         void destroy(mirinae::VulkanDevice& device) override {
-            for (auto& x : cube_map_) x.destroy(device);
-            cube_map_.clear();
             desc_pool_.destroy(device.logi_device());
             brdf_lut_.destroy(device);
         }
 
-        void record(
-            const VkCommandBuffer cur_cmd_buf,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::CosmosSimulator& cosmos,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::IRenderPassRegistry& rp_pkg
+        size_t init_ren_units(
+            mirinae::CosmosSimulator& cosmos,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::IRenderPassRegistry& rp_pkg,
+            mirinae::VulkanDevice& device
         ) override {
-            if (timer_.check_if_elapsed(100)) {
-                record_sky(cur_cmd_buf, desc_set_, rp_pkg);
+            namespace cpnt = mirinae::cpnt;
 
-                record_base(
-                    cur_cmd_buf,
-                    draw_sheet,
-                    frame_index,
-                    cosmos,
-                    image_index,
-                    rp_pkg
-                );
+            size_t out = 0;
+            auto& reg = cosmos.reg();
 
-                record_diffuse(
-                    cur_cmd_buf, draw_sheet, frame_index, image_index, rp_pkg
+            for (auto e_env : reg.view<cpnt::Envmap>()) {
+                auto& cube_cpnt = reg.get<cpnt::Envmap>(e_env);
+                auto cube_renunit = cube_cpnt.ren_unit<::EnvmapRenUnit>();
+                if (cube_renunit)
+                    continue;
+
+                cube_cpnt.ren_unit_ = std::make_unique<::EnvmapRenUnit>(
+                    rp_pkg, desc_pool_, desclayouts, device
                 );
-                record_specular(
-                    cur_cmd_buf, draw_sheet, frame_index, image_index, rp_pkg
-                );
+                cube_cpnt.last_updated_.set_min();
+                ++out;
+            }
+
+            return out;
+        }
+
+        void destroy_ren_units(mirinae::CosmosSimulator& cosmos) override {
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = cosmos.reg();
+
+            for (auto e_env : reg.view<cpnt::Envmap>()) {
+                auto& cube_cpnt = reg.get<cpnt::Envmap>(e_env);
+                cube_cpnt.ren_unit_.reset();
             }
         }
 
-        VkImageView diffuse_view(size_t index) const override {
-            return cube_map_.at(index).diffuse().cube_view();
-        }
+        void record(
+            mirinae::RpContext& ctxt,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::IRenderPassRegistry& rp_pkg,
+            mirinae::VulkanDevice& device
+        ) override {
+            if (!timer_.check_if_elapsed(3))
+                return;
 
-        VkImageView specular_view(size_t index) const override {
-            return cube_map_.at(index).specular().cube_view();
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = ctxt.cosmos_->reg();
+            entt::entity e_selected = entt::null;
+            double waiting_time = 0;
+            for (auto e_env : reg.view<cpnt::Envmap>()) {
+                auto& cube_cpnt = reg.get<cpnt::Envmap>(e_env);
+                auto cube_renunit = cube_cpnt.ren_unit<::EnvmapRenUnit>();
+                if (!cube_renunit)
+                    continue;
+
+                const auto wait = cube_cpnt.last_updated_.elapsed();
+                if (wait > waiting_time) {
+                    e_selected = e_env;
+                    waiting_time = wait;
+                }
+            }
+
+            auto& env_cpnt = reg.get<cpnt::Envmap>(e_selected);
+            env_cpnt.last_updated_.check();
+
+            this->record_sky(e_selected, env_cpnt, ctxt, desc_set_, rp_pkg);
+            this->record_base(e_selected, env_cpnt, ctxt, rp_pkg);
+            this->record_diffuse(e_selected, env_cpnt, ctxt, rp_pkg);
+            this->record_specular(e_selected, env_cpnt, ctxt, rp_pkg);
         }
 
         VkImageView brdf_lut_view() const override { return brdf_lut_.view(); }
@@ -723,340 +1112,7 @@ namespace {
             return sky_tex_->image_view();
         }
 
-        glm::dvec3& envmap_pos(size_t index) override {
-            return cube_map_.at(index).world_pos_;
-        }
-
     private:
-        class ColorCubeMap {
-
-        public:
-            bool init(
-                uint32_t width,
-                uint32_t height,
-                mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::ITextureManager& tex_man,
-                mirinae::VulkanDevice& device
-            ) {
-                mirinae::ImageCreateInfo cinfo;
-                cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
-                    .set_dimensions(width, height)
-                    .set_mip_levels(1)
-                    .set_arr_layers(6)
-                    .add_usage_sampled()
-                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-                    .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-                img_.init(cinfo.get(), device.mem_alloc());
-
-                mirinae::ImageViewBuilder iv_builder;
-                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
-                    .format(img_.format())
-                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .arr_layers(6)
-                    .image(img_.image());
-                cubemap_view_.reset(iv_builder, device);
-
-                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D).arr_layers(1);
-                for (uint32_t i = 0; i < 6; i++) {
-                    iv_builder.base_arr_layer(i);
-                    face_views_[i].reset(iv_builder, device);
-                }
-
-                for (uint32_t i = 0; i < 6; i++) {
-                    mirinae::FbufCinfo fbuf_cinfo;
-                    fbuf_cinfo.set_rp(rp_pkg.get("env_diffuse").renderpass())
-                        .add_attach(face_views_[i].get())
-                        .set_dim(width, height);
-                    fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
-                }
-
-                return true;
-            }
-
-            void destroy(mirinae::VulkanDevice& device) {
-                for (auto& x : fbufs_) x.destroy(device.logi_device());
-
-                cubemap_view_.destroy(device);
-                for (auto& x : face_views_) x.destroy(device);
-
-                img_.destroy(device.mem_alloc());
-            }
-
-            uint32_t width() const { return img_.width(); }
-            uint32_t height() const { return img_.height(); }
-            VkExtent2D extent2d() const { return img_.extent2d(); }
-
-            VkFramebuffer face_fbuf(size_t index) const {
-                return fbufs_.at(index).get();
-            }
-            VkImageView face_view(size_t index) const {
-                return face_views_.at(index).get();
-            }
-            VkImageView cube_view() const { return cubemap_view_.get(); }
-
-        private:
-            mirinae::Image img_;
-            mirinae::ImageView cubemap_view_;
-            std::array<mirinae::ImageView, 6> face_views_;
-            std::array<mirinae::Fbuf, 6> fbufs_;
-        };
-
-        class ColorCubeMapWithMips {
-
-        public:
-            bool init(
-                uint32_t base_width,
-                uint32_t base_height,
-                mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::ITextureManager& tex_man,
-                mirinae::VulkanDevice& device
-            ) {
-                constexpr uint32_t MAX_MIP_LEVELS = 4;
-
-                mirinae::ImageCreateInfo cinfo;
-                cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
-                    .set_dimensions(base_width, base_height)
-                    .deduce_mip_levels()
-                    .set_arr_layers(6)
-                    .add_usage_sampled()
-                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-                    .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-                if (cinfo.mip_levels() > MAX_MIP_LEVELS)
-                    cinfo.set_mip_levels(MAX_MIP_LEVELS);
-                img_.init(cinfo.get(), device.mem_alloc());
-
-                mirinae::ImageViewBuilder iv_builder;
-                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
-                    .format(img_.format())
-                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .arr_layers(6)
-                    .mip_levels(img_.mip_levels())
-                    .image(img_.image());
-                cubemap_view_.reset(iv_builder, device);
-
-                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D)
-                    .arr_layers(1)
-                    .mip_levels(1);
-
-                mips_.resize(img_.mip_levels());
-                for (uint32_t lvl = 0; lvl < img_.mip_levels(); ++lvl) {
-                    auto& mip = mips_[lvl];
-
-                    iv_builder.base_mip_level(lvl);
-                    mip.roughness_ = static_cast<float>(lvl) /
-                                     (img_.mip_levels() - 1);
-                    mip.width_ = img_.width() >> lvl;
-                    mip.height_ = img_.height() >> lvl;
-
-                    for (uint32_t face_i = 0; face_i < 6; ++face_i) {
-                        auto& face = mip.faces_[face_i];
-
-                        iv_builder.base_arr_layer(face_i);
-                        face.view_.reset(iv_builder, device);
-
-                        mirinae::FbufCinfo fbuf_cinfo;
-                        fbuf_cinfo
-                            .set_rp(rp_pkg.get("env_diffuse").renderpass())
-                            .add_attach(face.view_.get())
-                            .set_dim(mip.width_, mip.height_);
-                        face.fbuf_.init(fbuf_cinfo.get(), device.logi_device());
-                    }
-                }
-
-                return true;
-            }
-
-            void destroy(mirinae::VulkanDevice& device) {
-                for (auto& mip : mips_) mip.destroy(device);
-
-                cubemap_view_.destroy(device);
-                img_.destroy(device.mem_alloc());
-            }
-
-            VkImageView cube_view() const { return cubemap_view_.get(); }
-
-            auto base_width() const { return img_.width(); }
-            auto base_height() const { return img_.height(); }
-
-            auto& mips() const { return mips_; }
-
-        private:
-            struct FaceData {
-                void destroy(mirinae::VulkanDevice& device) {
-                    view_.destroy(device);
-                    fbuf_.destroy(device.logi_device());
-                }
-
-                mirinae::ImageView view_;
-                mirinae::Fbuf fbuf_;
-            };
-
-            struct MipData {
-                void destroy(mirinae::VulkanDevice& device) {
-                    for (auto& x : faces_) x.destroy(device);
-                }
-
-                VkExtent2D extent2d() const {
-                    VkExtent2D out;
-                    out.width = width_;
-                    out.height = height_;
-                    return out;
-                }
-
-                std::array<FaceData, 6> faces_;
-                float roughness_ = 0.0;
-                uint32_t width_ = 0;
-                uint32_t height_ = 0;
-            };
-
-            mirinae::Image img_;
-            mirinae::ImageView cubemap_view_;
-            std::vector<MipData> mips_;
-        };
-
-        class ColorDepthCubeMap {
-
-        public:
-            bool init(
-                uint32_t width,
-                uint32_t height,
-                mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::ITextureManager& tex_man,
-                mirinae::VulkanDevice& device
-            ) {
-                mirinae::ImageCreateInfo cinfo;
-                cinfo.set_format(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
-                    .set_dimensions(width, height)
-                    .deduce_mip_levels()
-                    .set_arr_layers(6)
-                    .add_usage_sampled()
-                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-                    .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
-                    .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-                    .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-                img_.init(cinfo.get(), device.mem_alloc());
-
-                mirinae::ImageViewBuilder iv_builder;
-                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
-                    .format(img_.format())
-                    .mip_levels(img_.mip_levels())
-                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .arr_layers(6)
-                    .image(img_.image());
-                cubemap_view_.reset(iv_builder, device);
-
-                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D).arr_layers(1);
-                for (uint32_t i = 0; i < 6; i++) {
-                    iv_builder.base_arr_layer(i);
-                    face_views_[i].reset(iv_builder, device);
-                }
-                iv_builder.mip_levels(1);
-                for (uint32_t i = 0; i < 6; i++) {
-                    iv_builder.base_arr_layer(i);
-                    fbuf_face_views_[i].reset(iv_builder, device);
-                }
-
-                depth_map_ = mirinae::create_tex_depth(
-                    img_.width(), img_.height(), device
-                );
-
-                for (uint32_t i = 0; i < 6; i++) {
-                    mirinae::FbufCinfo fbuf_cinfo;
-                    fbuf_cinfo.set_rp(rp_pkg.get("env_base").renderpass())
-                        .add_attach(depth_map_->image_view())
-                        .add_attach(fbuf_face_views_[i].get())
-                        .set_dim(img_.width(), img_.height());
-                    fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
-                }
-
-                return true;
-            }
-
-            void destroy(mirinae::VulkanDevice& device) {
-                for (auto& x : fbufs_) x.destroy(device.logi_device());
-
-                cubemap_view_.destroy(device);
-                for (auto& x : face_views_) x.destroy(device);
-                for (auto& x : fbuf_face_views_) x.destroy(device);
-
-                depth_map_.reset();
-                img_.destroy(device.mem_alloc());
-            }
-
-            uint32_t width() const { return img_.width(); }
-            uint32_t height() const { return img_.height(); }
-            VkExtent2D extent2d() const { return img_.extent2d(); }
-
-            VkFramebuffer face_fbuf(size_t index) const {
-                return fbufs_.at(index).get();
-            }
-            VkImageView face_view(size_t index) const {
-                return face_views_.at(index).get();
-            }
-            VkImageView cube_view() const { return cubemap_view_.get(); }
-
-        public:
-            mirinae::Image img_;
-            mirinae::Semaphore semaphores_;
-
-        private:
-            std::unique_ptr<mirinae::ITexture> depth_map_;
-            mirinae::ImageView cubemap_view_;
-            std::array<mirinae::ImageView, 6> face_views_;
-            std::array<mirinae::ImageView, 6> fbuf_face_views_;
-            std::array<mirinae::Fbuf, 6> fbufs_;
-        };
-
-        class CubeMap {
-
-        public:
-            bool init(
-                mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::ITextureManager& tex_man,
-                mirinae::DescPool& desc_pool,
-                mirinae::DesclayoutManager& desclayouts,
-                mirinae::VulkanDevice& device
-            ) {
-                if (!base_.init(256, 256, rp_pkg, tex_man, device))
-                    return false;
-                if (!diffuse_.init(256, 256, rp_pkg, tex_man, device))
-                    return false;
-                if (!specular_.init(128, 128, rp_pkg, tex_man, device))
-                    return false;
-
-                desc_set_ = desc_pool.alloc(
-                    desclayouts.get("envdiffuse:main").layout(),
-                    device.logi_device()
-                );
-                auto sampler = device.samplers().get_linear();
-                mirinae::DescWriteInfoBuilder write;
-                write.set_descset(desc_set_)
-                    .add_img_sampler(base_.cube_view(), sampler)
-                    .apply_all(device.logi_device());
-
-                return true;
-            }
-
-            void destroy(mirinae::VulkanDevice& device) {
-                base_.destroy(device);
-                diffuse_.destroy(device);
-                specular_.destroy(device);
-            }
-
-            const ColorDepthCubeMap& base() const { return base_; }
-            const ColorCubeMap& diffuse() const { return diffuse_; }
-            const ColorCubeMapWithMips& specular() const { return specular_; }
-            VkDescriptorSet desc_set() const { return desc_set_; }
-
-            glm::dvec3 world_pos_;
-
-        private:
-            ColorDepthCubeMap base_;
-            ColorCubeMap diffuse_;
-            ColorCubeMapWithMips specular_;
-            VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
-        };
-
         class BrdfLut {
 
         public:
@@ -1142,16 +1198,15 @@ namespace {
         };
 
         void record_base(
-            const VkCommandBuffer cur_cmd_buf,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::CosmosSimulator& cosmos,
-            const mirinae::ShainImageIndex image_index,
+            entt::entity e_env,
+            mirinae::cpnt::Envmap& env_cpnt,
+            mirinae::RpContext& ctxt,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
             namespace cpnt = mirinae::cpnt;
             auto& rp = rp_pkg.get("env_base");
-            auto& reg = cosmos.reg();
+            auto& reg = ctxt.cosmos_->reg();
+            const auto cmdbuf = ctxt.cmdbuf_;
 
             mirinae::RenderPassBeginInfo rp_info{};
             rp_info.rp(rp.renderpass())
@@ -1164,339 +1219,344 @@ namespace {
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            for (auto& cube_map : cube_map_) {
-                auto& base_cube = cube_map.base();
-                const auto world_mat = glm::translate<double>(
-                    glm::dmat4(1), -cube_map.world_pos_
-                );
+            auto cube_renunit = env_cpnt.ren_unit<::EnvmapRenUnit>();
+            MIRINAE_ASSERT(cube_renunit != nullptr);
+            auto& cube_map = cube_renunit->cube_map_;
+            auto& base_cube = cube_map.base();
 
-                mirinae::Viewport{}
-                    .set_wh(base_cube.extent2d())
-                    .record_single(cur_cmd_buf);
-                mirinae::Rect2D{}
-                    .set_wh(base_cube.extent2d())
-                    .record_scissor(cur_cmd_buf);
-                rp_info.wh(base_cube.width(), base_cube.height());
-
-                for (int i = 0; i < 6; ++i) {
-                    rp_info.fbuf(cube_map.base().face_fbuf(i))
-                        .record_begin(cur_cmd_buf);
-
-                    vkCmdBindPipeline(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline()
-                    );
-
-                    mirinae::U_EnvmapPushConst push_const;
-                    for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
-                        const auto& light = reg.get<cpnt::DLight>(e);
-                        const auto& tform = reg.get<cpnt::Transform>(e);
-                        push_const.dlight_dir_ = glm::vec4{
-                            light.calc_to_light_dir(glm::dmat4(1), tform), 0
-                        };
-                        push_const.dlight_color_ = glm::vec4{
-                            light.color_.scaled_color(), 0
-                        };
-                        break;
-                    }
-
-                    for (auto& pair : draw_sheet.static_) {
-                        auto& unit = *pair.unit_;
-                        descset_info.first_set(0)
-                            .set(unit.get_desc_set(frame_index.get()))
-                            .record(cur_cmd_buf);
-
-                        unit.record_bind_vert_buf(cur_cmd_buf);
-
-                        for (auto& actor : pair.actors_) {
-                            descset_info.first_set(1)
-                                .set(actor.actor_->get_desc_set(frame_index.get(
-                                )))
-                                .record(cur_cmd_buf);
-
-                            push_const.proj_view_ =
-                                (proj_mat * CUBE_VIEW_MATS[i] * world_mat);
-
-                            mirinae::PushConstInfo{}
-                                .layout(rp.pipeline_layout())
-                                .add_stage_vert()
-                                .record(cur_cmd_buf, push_const);
-
-                            vkCmdDrawIndexed(
-                                cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                            );
-                        }
-                    }
-
-                    vkCmdEndRenderPass(cur_cmd_buf);
-                }
-
-                auto& img = cube_map.base().img_;
-                for (uint32_t i = 1; i < img.mip_levels(); ++i) {
-                    mirinae::ImageMemoryBarrier barrier;
-                    barrier.image(img.image())
-                        .set_src_access(VK_ACCESS_NONE)
-                        .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
-                        .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                        .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                        .mip_base(i)
-                        .mip_count(1)
-                        .layer_base(0)
-                        .layer_count(6);
-                    barrier.record_single(
-                        cur_cmd_buf,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT
-                    );
-
-                    mirinae::ImageBlit blit;
-                    blit.set_src_offsets_full(
-                        img.width() >> (i - 1), img.height() >> (i - 1)
-                    );
-                    blit.set_dst_offsets_full(
-                        img.width() >> i, img.height() >> i
-                    );
-                    blit.src_subres()
-                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                        .mip_level(i - 1)
-                        .layer_base(0)
-                        .layer_count(6);
-                    blit.dst_subres()
-                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                        .mip_level(i)
-                        .layer_base(0)
-                        .layer_count(6);
-
-                    vkCmdBlitImage(
-                        cur_cmd_buf,
-                        img.image(),
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        img.image(),
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        1,
-                        &blit.get(),
-                        VK_FILTER_LINEAR
-                    );
-
-                    barrier.image(img.image())
-                        .set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
-                        .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
-                        .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                        .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-                    barrier.record_single(
-                        cur_cmd_buf,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT
-                    );
-                }
-
-                mirinae::ImageMemoryBarrier barrier;
-                barrier.image(img.image())
-                    .set_src_access(VK_ACCESS_TRANSFER_READ_BIT)
-                    .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
-                    .old_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-                    .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .mip_base(0)
-                    .mip_count(img.mip_levels())
-                    .layer_base(0)
-                    .layer_count(6);
-                barrier.record_single(
-                    cur_cmd_buf,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-                );
+            glm::dmat4 world_mat(1);
+            if (auto tform = reg.try_get<cpnt::Transform>(e_env)) {
+                world_mat = glm::translate<double>(world_mat, -tform->pos_);
             }
-        }
 
-        void record_sky(
-            const VkCommandBuffer cur_cmd_buf,
-            const VkDescriptorSet desc_set,
-            const mirinae::IRenderPassRegistry& rp_pkg
-        ) {
-            auto& rp = rp_pkg.get("env_sky");
+            mirinae::Viewport{}
+                .set_wh(base_cube.extent2d())
+                .record_single(cmdbuf);
+            mirinae::Rect2D{}
+                .set_wh(base_cube.extent2d())
+                .record_scissor(cmdbuf);
+            rp_info.wh(base_cube.width(), base_cube.height());
 
-            mirinae::RenderPassBeginInfo rp_info{};
-            rp_info.rp(rp.renderpass())
-                .clear_value_count(rp.clear_value_count())
-                .clear_values(rp.clear_values());
+            for (int i = 0; i < 6; ++i) {
+                rp_info.fbuf(cube_map.base().face_fbuf(i)).record_begin(cmdbuf);
 
-            const auto proj_mat = glm::perspectiveRH_ZO(
-                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
-            );
-
-            for (auto& cube_map : cube_map_) {
-                auto& base_cube = cube_map.base();
-                const auto world_mat = glm::translate<double>(
-                    glm::dmat4(1), -cube_map.world_pos_
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                mirinae::Viewport{}
-                    .set_wh(base_cube.width(), base_cube.height())
-                    .record_single(cur_cmd_buf);
-                mirinae::Rect2D{}
-                    .set_wh(base_cube.width(), base_cube.height())
-                    .record_scissor(cur_cmd_buf);
-                rp_info.wh(base_cube.width(), base_cube.height());
-
-                for (int i = 0; i < 6; ++i) {
-                    rp_info.fbuf(cube_map.base().face_fbuf(i))
-                        .record_begin(cur_cmd_buf);
-
-                    vkCmdBindPipeline(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline()
-                    );
-
-                    mirinae::DescSetBindInfo{}
-                        .layout(rp.pipeline_layout())
-                        .set(desc_set)
-                        .record(cur_cmd_buf);
-
-                    mirinae::U_EnvSkyPushConst pc;
-                    pc.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
-
-                    mirinae::PushConstInfo{}
-                        .layout(rp.pipeline_layout())
-                        .add_stage_vert()
-                        .record(cur_cmd_buf, pc);
-
-                    vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
-
-                    vkCmdEndRenderPass(cur_cmd_buf);
+                mirinae::U_EnvmapPushConst push_const;
+                for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                    const auto& light = reg.get<cpnt::DLight>(e);
+                    const auto& tform = reg.get<cpnt::Transform>(e);
+                    push_const.dlight_dir_ = glm::vec4{
+                        light.calc_to_light_dir(glm::dmat4(1), tform), 0
+                    };
+                    push_const.dlight_color_ = glm::vec4{
+                        light.color_.scaled_color(), 0
+                    };
+                    break;
                 }
-            }
-        }
 
-        void record_diffuse(
-            const VkCommandBuffer cur_cmd_buf,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::IRenderPassRegistry& rp_pkg
-        ) {
-            auto& rp = rp_pkg.get("env_diffuse");
+                for (auto& pair : ctxt.draw_sheet_->static_) {
+                    auto& unit = *pair.unit_;
+                    descset_info.first_set(0)
+                        .set(unit.get_desc_set(ctxt.f_index_.get()))
+                        .record(cmdbuf);
 
-            mirinae::RenderPassBeginInfo rp_info{};
-            rp_info.rp(rp.renderpass())
-                .clear_value_count(rp.clear_value_count())
-                .clear_values(rp.clear_values());
+                    unit.record_bind_vert_buf(cmdbuf);
 
-            const auto proj_mat = glm::perspectiveRH_ZO(
-                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
-            );
+                    for (auto& actor : pair.actors_) {
+                        descset_info.first_set(1)
+                            .set(actor.actor_->get_desc_set(ctxt.f_index_.get())
+                            )
+                            .record(cmdbuf);
 
-            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
-
-            for (auto& cube_map : cube_map_) {
-                const auto& diffuse = cube_map.diffuse();
-                const auto world_mat = glm::translate<double>(
-                    glm::dmat4(1), -cube_map.world_pos_
-                );
-
-                const mirinae::Viewport viewport{ diffuse.extent2d() };
-                const mirinae::Rect2D scissor{ diffuse.extent2d() };
-                rp_info.wh(diffuse.extent2d());
-
-                for (int i = 0; i < 6; ++i) {
-                    rp_info.fbuf(diffuse.face_fbuf(i))
-                        .record_begin(cur_cmd_buf);
-
-                    vkCmdBindPipeline(
-                        cur_cmd_buf,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        rp.pipeline()
-                    );
-
-                    viewport.record_single(cur_cmd_buf);
-                    scissor.record_scissor(cur_cmd_buf);
-
-                    descset_info.set(cube_map.desc_set()).record(cur_cmd_buf);
-
-                    mirinae::U_EnvdiffusePushConst push_const;
-                    push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
-
-                    mirinae::PushConstInfo{}
-                        .layout(rp.pipeline_layout())
-                        .add_stage_vert()
-                        .record(cur_cmd_buf, push_const);
-
-                    vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
-                    vkCmdEndRenderPass(cur_cmd_buf);
-                }
-            }
-        }
-
-        void record_specular(
-            const VkCommandBuffer cur_cmd_buf,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::IRenderPassRegistry& rp_pkg
-        ) {
-            auto& rp = rp_pkg.get("env_specular");
-
-            mirinae::RenderPassBeginInfo rp_info{};
-            rp_info.rp(rp.renderpass())
-                .clear_value_count(rp.clear_value_count())
-                .clear_values(rp.clear_values());
-
-            const auto proj_mat = glm::perspectiveRH_ZO(
-                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
-            );
-
-            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
-
-            for (auto& cube_map : cube_map_) {
-                auto& specular = cube_map.specular();
-                const auto world_mat = glm::translate<double>(
-                    glm::dmat4(1), -cube_map.world_pos_
-                );
-
-                for (auto& mip : specular.mips()) {
-                    const mirinae::Rect2D scissor{ mip.extent2d() };
-                    const mirinae::Viewport viewport{ scissor.extent2d() };
-                    rp_info.wh(scissor.extent2d());
-
-                    for (int i = 0; i < 6; ++i) {
-                        auto& face = mip.faces_[i];
-
-                        rp_info.fbuf(face.fbuf_.get())
-                            .record_begin(cur_cmd_buf);
-
-                        vkCmdBindPipeline(
-                            cur_cmd_buf,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            rp.pipeline()
-                        );
-
-                        viewport.record_single(cur_cmd_buf);
-                        scissor.record_scissor(cur_cmd_buf);
-
-                        descset_info.set(cube_map.desc_set())
-                            .record(cur_cmd_buf);
-
-                        mirinae::U_EnvSpecularPushConst push_const;
-                        push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
-                        push_const.roughness_ = mip.roughness_;
+                        push_const.proj_view_ =
+                            (proj_mat * CUBE_VIEW_MATS[i] * world_mat);
 
                         mirinae::PushConstInfo{}
                             .layout(rp.pipeline_layout())
                             .add_stage_vert()
-                            .add_stage_frag()
-                            .record(cur_cmd_buf, push_const);
+                            .record(cmdbuf, push_const);
 
-                        vkCmdDraw(cur_cmd_buf, 36, 1, 0, 0);
-                        vkCmdEndRenderPass(cur_cmd_buf);
+                        vkCmdDrawIndexed(
+                            cmdbuf, unit.vertex_count(), 1, 0, 0, 0
+                        );
                     }
+                }
+
+                vkCmdEndRenderPass(cmdbuf);
+            }
+
+            auto& img = cube_map.base().img_;
+            for (uint32_t i = 1; i < img.mip_levels(); ++i) {
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.image(img.image())
+                    .set_src_access(VK_ACCESS_NONE)
+                    .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_base(i)
+                    .mip_count(1)
+                    .layer_base(0)
+                    .layer_count(6);
+                barrier.record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT
+                );
+
+                mirinae::ImageBlit blit;
+                blit.set_src_offsets_full(
+                    img.width() >> (i - 1), img.height() >> (i - 1)
+                );
+                blit.set_dst_offsets_full(img.width() >> i, img.height() >> i);
+                blit.src_subres()
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_level(i - 1)
+                    .layer_base(0)
+                    .layer_count(6);
+                blit.dst_subres()
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_level(i)
+                    .layer_base(0)
+                    .layer_count(6);
+
+                vkCmdBlitImage(
+                    cmdbuf,
+                    img.image(),
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    img.image(),
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    1,
+                    &blit.get(),
+                    VK_FILTER_LINEAR
+                );
+
+                barrier.image(img.image())
+                    .set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                    .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                barrier.record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT
+                );
+            }
+
+            mirinae::ImageMemoryBarrier barrier;
+            barrier.image(img.image())
+                .set_src_access(VK_ACCESS_TRANSFER_READ_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .mip_base(0)
+                .mip_count(img.mip_levels())
+                .layer_base(0)
+                .layer_count(6);
+            barrier.record_single(
+                cmdbuf,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            );
+        }
+
+        void record_sky(
+            entt::entity e_env,
+            mirinae::cpnt::Envmap& env_cpnt,
+            mirinae::RpContext& ctxt,
+            const VkDescriptorSet desc_set,
+            const mirinae::IRenderPassRegistry& rp_pkg
+        ) {
+            namespace cpnt = mirinae::cpnt;
+            auto& rp = rp_pkg.get("env_sky");
+            auto& reg = ctxt.cosmos_->reg();
+            const auto cmdbuf = ctxt.cmdbuf_;
+
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
+
+            const auto proj_mat = glm::perspectiveRH_ZO(
+                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
+            );
+
+            auto cube_renunit = env_cpnt.ren_unit<::EnvmapRenUnit>();
+            MIRINAE_ASSERT(cube_renunit != nullptr);
+            auto& cube_map = cube_renunit->cube_map_;
+            auto& base_cube = cube_map.base();
+
+            glm::dmat4 world_mat(1);
+            if (auto tform = reg.try_get<cpnt::Transform>(e_env)) {
+                world_mat = glm::translate<double>(world_mat, -tform->pos_);
+            }
+
+            mirinae::Viewport{}
+                .set_wh(base_cube.width(), base_cube.height())
+                .record_single(cmdbuf);
+            mirinae::Rect2D{}
+                .set_wh(base_cube.width(), base_cube.height())
+                .record_scissor(cmdbuf);
+            rp_info.wh(base_cube.width(), base_cube.height());
+
+            for (int i = 0; i < 6; ++i) {
+                rp_info.fbuf(cube_map.base().face_fbuf(i)).record_begin(cmdbuf);
+
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+
+                mirinae::DescSetBindInfo{}
+                    .layout(rp.pipeline_layout())
+                    .set(desc_set)
+                    .record(cmdbuf);
+
+                mirinae::U_EnvSkyPushConst pc;
+                pc.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+
+                mirinae::PushConstInfo{}
+                    .layout(rp.pipeline_layout())
+                    .add_stage_vert()
+                    .record(cmdbuf, pc);
+
+                vkCmdDraw(cmdbuf, 36, 1, 0, 0);
+
+                vkCmdEndRenderPass(cmdbuf);
+            }
+        }
+
+        void record_diffuse(
+            entt::entity e_env,
+            mirinae::cpnt::Envmap& env_cpnt,
+            mirinae::RpContext& ctxt,
+            const mirinae::IRenderPassRegistry& rp_pkg
+        ) {
+            namespace cpnt = mirinae::cpnt;
+            auto& rp = rp_pkg.get("env_diffuse");
+            auto& reg = ctxt.cosmos_->reg();
+            const auto cmdbuf = ctxt.cmdbuf_;
+
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
+
+            const auto proj_mat = glm::perspectiveRH_ZO(
+                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
+            );
+
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
+            auto cube_renunit = env_cpnt.ren_unit<::EnvmapRenUnit>();
+            MIRINAE_ASSERT(cube_renunit != nullptr);
+            auto& cube_map = cube_renunit->cube_map_;
+            auto& diffuse = cube_map.diffuse();
+
+            glm::dmat4 world_mat(1);
+            if (auto tform = reg.try_get<cpnt::Transform>(e_env)) {
+                world_mat = glm::translate<double>(world_mat, -tform->pos_);
+            }
+
+            const mirinae::Viewport viewport{ diffuse.extent2d() };
+            const mirinae::Rect2D scissor{ diffuse.extent2d() };
+            rp_info.wh(diffuse.extent2d());
+
+            for (int i = 0; i < 6; ++i) {
+                rp_info.fbuf(diffuse.face_fbuf(i)).record_begin(cmdbuf);
+
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+
+                viewport.record_single(cmdbuf);
+                scissor.record_scissor(cmdbuf);
+
+                descset_info.set(cube_map.desc_set()).record(cmdbuf);
+
+                mirinae::U_EnvdiffusePushConst push_const;
+                push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+
+                mirinae::PushConstInfo{}
+                    .layout(rp.pipeline_layout())
+                    .add_stage_vert()
+                    .record(cmdbuf, push_const);
+
+                vkCmdDraw(cmdbuf, 36, 1, 0, 0);
+                vkCmdEndRenderPass(cmdbuf);
+            }
+        }
+
+        void record_specular(
+            entt::entity e_env,
+            mirinae::cpnt::Envmap& env_cpnt,
+            mirinae::RpContext& ctxt,
+            const mirinae::IRenderPassRegistry& rp_pkg
+        ) {
+            namespace cpnt = mirinae::cpnt;
+            auto& rp = rp_pkg.get("env_specular");
+            auto& reg = ctxt.cosmos_->reg();
+            const auto cmdbuf = ctxt.cmdbuf_;
+
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.renderpass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
+
+            const auto proj_mat = glm::perspectiveRH_ZO(
+                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
+            );
+
+            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
+
+            auto cube_renunit = env_cpnt.ren_unit<::EnvmapRenUnit>();
+            MIRINAE_ASSERT(cube_renunit != nullptr);
+            auto& cube_map = cube_renunit->cube_map_;
+            auto& specular = cube_map.specular();
+
+            glm::dmat4 world_mat(1);
+            if (auto tform = reg.try_get<cpnt::Transform>(e_env)) {
+                world_mat = glm::translate<double>(world_mat, -tform->pos_);
+            }
+
+            for (auto& mip : specular.mips()) {
+                const mirinae::Rect2D scissor{ mip.extent2d() };
+                const mirinae::Viewport viewport{ scissor.extent2d() };
+                rp_info.wh(scissor.extent2d());
+
+                for (int i = 0; i < 6; ++i) {
+                    auto& face = mip.faces_[i];
+
+                    rp_info.fbuf(face.fbuf_.get()).record_begin(cmdbuf);
+
+                    vkCmdBindPipeline(
+                        cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                    );
+
+                    viewport.record_single(cmdbuf);
+                    scissor.record_scissor(cmdbuf);
+
+                    descset_info.set(cube_map.desc_set()).record(cmdbuf);
+
+                    mirinae::U_EnvSpecularPushConst push_const;
+                    push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+                    push_const.roughness_ = mip.roughness_;
+
+                    mirinae::PushConstInfo{}
+                        .layout(rp.pipeline_layout())
+                        .add_stage_vert()
+                        .add_stage_frag()
+                        .record(cmdbuf, push_const);
+
+                    vkCmdDraw(cmdbuf, 36, 1, 0, 0);
+                    vkCmdEndRenderPass(cmdbuf);
                 }
             }
         }
 
-        std::vector<CubeMap> cube_map_;
         mirinae::DescPool desc_pool_;
         sung::MonotonicRealtimeTimer timer_;
         BrdfLut brdf_lut_;

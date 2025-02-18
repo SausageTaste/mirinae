@@ -6,6 +6,7 @@
 #include <daltools/common/glm_tool.hpp>
 #include <sung/basic/cvar.hpp>
 
+#include "mirinae/cpnt/envmap.hpp"
 #include "mirinae/cpnt/identifier.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
@@ -457,6 +458,8 @@ namespace {
                     this->render_cpnt(*c, "Ocean");
                 if (auto c = this->reg().try_get<cpnt::AtmosphereSimple>(e))
                     this->render_cpnt(*c, "Atmosphere Simple");
+                if (auto c = this->reg().try_get<cpnt::Envmap>(e))
+                    this->render_cpnt(*c, "Envmap");
                 if (auto c = this->reg().try_get<cpnt::Transform>(e))
                     this->render_cpnt(*c, "Transform");
             }
@@ -486,9 +489,6 @@ namespace {
             client_ = mirinae::create_client();
             script_ = std::make_shared<mirinae::ScriptEngine>();
             cosmos_ = std::make_shared<mirinae::CosmosSimulator>(*script_);
-            renderer_ = mirinae::create_vk_renderer(
-                cinfo, task_sche, script_, cosmos_
-            );
 
             auto& reg = cosmos_->reg();
 
@@ -582,6 +582,18 @@ namespace {
                 d.proj_.far_ = 1000;
             }
 
+            // Envmap
+            {
+                const auto e = reg.create();
+
+                auto& envmap = reg.emplace<mirinae::cpnt::Envmap>(e);
+
+                auto& tform = reg.emplace<mirinae::cpnt::Transform>(e);
+                tform.pos_ = { 0.14983922321477,
+                               0.66663010560478,
+                               -1.1615585516897 };
+            }
+
             // Ocean
             {
                 const auto entt = reg.create();
@@ -634,6 +646,10 @@ namespace {
             {
                 cosmos_->imgui_.push_back(std::make_shared<ImGuiEntt>(cosmos_));
             }
+
+            renderer_ = mirinae::create_vk_renderer(
+                cinfo, task_sche, script_, cosmos_
+            );
         }
 
         ~Engine() override {}
