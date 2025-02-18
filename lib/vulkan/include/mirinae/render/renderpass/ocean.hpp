@@ -45,7 +45,6 @@ namespace mirinae::rp::ocean {
     URpStates create_rp_states_ocean_tess(
         size_t swapchain_count,
         VkImageView sky_tex,
-        mirinae::FbufImageBundle& fbuf_bundle,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
