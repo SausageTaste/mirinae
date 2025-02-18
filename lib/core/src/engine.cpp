@@ -330,22 +330,6 @@ namespace {
 
         entt::registry& reg() { return cosmos_->reg(); }
 
-        mirinae::cpnt::Ocean* try_find_ocaen() {
-            for (auto& eid : reg().view<mirinae::cpnt::Ocean>()) {
-                return &reg().get<mirinae::cpnt::Ocean>(eid);
-            }
-            return nullptr;
-        }
-
-        void render_transform(mirinae::cpnt::Transform& transform) {
-            auto transformf = transform.copy<float>();
-            glm::vec3 rot{ 0 };
-
-            ImGui::PushID(&transform);
-            transform.render_imgui();
-            ImGui::PopID();
-        }
-
         void render_cvar() { sung::gcvars().visit(CvarVisitor{}); }
 
         template <typename T, typename... Args>
@@ -404,8 +388,6 @@ namespace {
         }
 
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
-        int cascade_ = 0;
-        bool play_ocean_ = true;
     };
 
 }  // namespace
