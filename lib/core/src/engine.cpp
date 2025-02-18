@@ -275,30 +275,63 @@ namespace {
         double move_speed_ = 10;
     };
 
+}  // namespace
 
-    class ImGuiEntt : public mirinae::ImGuiRenderUnit {
+
+namespace {
+
+    struct IWindowDialog : mirinae::ImGuiRenderUnit {
+
+    public:
+        bool begin(const char* title) {
+            if (!show_)
+                return false;
+
+            if (!set_size_once_) {
+                set_size_once_ = true;
+                ImGui::SetNextWindowSize(init_size_);
+            }
+
+            const auto t = fmt::format("{}###{}", title, fmt::ptr(this));
+            if (ImGui::Begin(t.c_str(), &show_)) {
+                return true;
+            } else {
+                this->end();
+                return false;
+            }
+        }
+
+        void end() { ImGui::End(); }
+
+        bool show_ = false;
+
+    private:
+        ImVec2 init_size_{ 300, 200 };
+        bool set_size_once_ = false;
+    };
+
+
+    class ImGuiEntt : public IWindowDialog {
 
     public:
         ImGuiEntt(std::shared_ptr<mirinae::CosmosSimulator>& cosmos)
             : cosmos_(cosmos) {}
 
-        void render() {
-            using namespace mirinae::cpnt;
+        void render() override {
+            if (!this->begin("Entities"))
+                return;
 
-            auto& reg = this->reg();
-            if (ImGui::Begin("Entities")) {
-                if (ImGui::CollapsingHeader("CVars")) {
-                    ImGui::Indent(20);
-                    this->render_cvar();
-                    ImGui::Unindent(20);
-                }
-
-                for (auto e : this->reg().view<entt::entity>()) {
-                    this->render_entt(e);
-                }
+            if (ImGui::CollapsingHeader("CVars")) {
+                ImGui::Indent(20);
+                this->render_cvar();
+                ImGui::Unindent(20);
             }
 
-            ImGui::End();
+            for (auto e : this->reg().view<entt::entity>()) {
+                this->render_entt(e);
+            }
+
+            this->end();
         }
 
     private:
@@ -388,6 +421,30 @@ namespace {
         }
 
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
+    };
+
+
+    class ImGuiMainWin : public IWindowDialog {
+
+    public:
+        ImGuiMainWin(std::shared_ptr<mirinae::CosmosSimulator>& cosmos)
+            : entt_(cosmos) {
+            show_ = true;
+        }
+
+        void render() override {
+            if (this->begin("Main Window")) {
+                if (ImGui::Button("Entities"))
+                    entt_.show_ = !entt_.show_;
+
+                this->end();
+            }
+
+            entt_.render();
+        }
+
+    private:
+        ImGuiEntt entt_;
     };
 
 }  // namespace
@@ -566,7 +623,8 @@ namespace {
 
             // ImGui Widgets
             {
-                cosmos_->imgui_.push_back(std::make_shared<ImGuiEntt>(cosmos_));
+                cosmos_->imgui_.push_back(std::make_shared<ImGuiMainWin>(cosmos_
+                ));
             }
 
             renderer_ = mirinae::create_vk_renderer(
