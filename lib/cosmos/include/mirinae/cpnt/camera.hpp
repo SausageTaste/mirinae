@@ -1,7 +1,5 @@
 #pragma once
 
-#include <sung/basic/time.hpp>
-
 #include "mirinae/math/mamath.hpp"
 
 
@@ -10,7 +8,7 @@ namespace mirinae::cpnt {
     class StandardCamera {
 
     public:
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
 
         PerspectiveCamera<double> proj_;
         float exposure_ = 1;

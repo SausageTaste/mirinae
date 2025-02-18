@@ -5,7 +5,7 @@
 
 namespace mirinae::cpnt {
 
-    void Envmap::render_imgui(const sung::SimClock& clock) {
+    void Envmap::render_imgui() {
         ImGui::Text("Last updated: %f", last_updated_.elapsed());
 
         if (ImGui::Button("Update Now"))

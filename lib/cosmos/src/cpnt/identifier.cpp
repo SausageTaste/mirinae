@@ -5,7 +5,7 @@
 
 namespace mirinae::cpnt {
 
-    void Id::render_imgui(const sung::SimClock& clock) {
+    void Id::render_imgui() {
         ImGui::InputText("Name", name_.data(), name_.size());
     }
 

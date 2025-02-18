@@ -10,7 +10,7 @@ namespace mirinae::cpnt {
     class Transform : public TransformQuat<double> {
 
     public:
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
     };
 
 }  // namespace mirinae::cpnt

@@ -7,7 +7,7 @@
 
 namespace mirinae::cpnt {
 
-    void MdlActorStatic::render_imgui(const sung::SimClock& clock) {
+    void MdlActorStatic::render_imgui() {
         ImGui::Text("Model path: %s", model_path_.u8string().c_str());
 
         if (!model_) {

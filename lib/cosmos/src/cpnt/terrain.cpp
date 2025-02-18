@@ -5,7 +5,7 @@
 
 namespace mirinae::cpnt {
 
-    void Terrain::render_imgui(const sung::SimClock& clock) {
+    void Terrain::render_imgui() {
         ImGui::Text("Height map: %s", height_map_path_.u8string().c_str());
         ImGui::Text("Albedo map: %s", albedo_map_path_.u8string().c_str());
     }

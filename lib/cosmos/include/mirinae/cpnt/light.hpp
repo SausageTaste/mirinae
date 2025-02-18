@@ -5,7 +5,6 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <sung/basic/angle.hpp>
-#include <sung/basic/time.hpp>
 
 #include "mirinae/math/mamath.hpp"
 
@@ -108,7 +107,7 @@ namespace mirinae::cpnt {
     class DLight : public DirectionalLight {
 
     public:
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
 
         CascadeInfo cascades_;
     };
@@ -119,7 +118,7 @@ namespace mirinae::cpnt {
         using Tform = TransformQuat<double>;
 
     public:
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
 
         glm::dvec3 calc_view_space_pos(
             const glm::dmat4 view_mat, const Tform& tform
@@ -144,7 +143,7 @@ namespace mirinae::cpnt {
     class VPLight {
 
     public:
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
 
     public:
         ColorIntensity color_;
@@ -154,7 +153,7 @@ namespace mirinae::cpnt {
     struct AtmosphereSimple {
 
     public:
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
 
     public:
         glm::vec3 fog_color_{ 0.5, 0.5, 0.5 };
