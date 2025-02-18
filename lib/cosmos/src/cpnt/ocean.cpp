@@ -72,7 +72,7 @@ namespace mirinae::cpnt {
             time_ += clock.dt();
     }
 
-    void Ocean::render_imgui(const sung::SimClock& clock) {
+    void Ocean::render_imgui() {
         constexpr auto flog = ImGuiSliderFlags_Logarithmic;
 
         if (ImGui::Button("Play"))

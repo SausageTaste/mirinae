@@ -35,7 +35,7 @@ namespace mirinae::cpnt {
         Ocean();
 
         void do_frame(const sung::SimClock& clock);
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
 
         static double max_wavelen(double L);
 

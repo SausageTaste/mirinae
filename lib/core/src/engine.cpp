@@ -342,14 +342,14 @@ namespace {
             glm::vec3 rot{ 0 };
 
             ImGui::PushID(&transform);
-            transform.render_imgui(cosmos_->scene().clock());
+            transform.render_imgui();
             ImGui::PopID();
         }
 
         void render_cvar() { sung::gcvars().visit(CvarVisitor{}); }
 
-        template <typename T>
-        void render_cpnt(T& component, const char* name) {
+        template <typename T, typename... Args>
+        void render_cpnt(T& component, const char* name, Args&&... args) {
             constexpr auto flags = ImGuiTreeNodeFlags_DefaultOpen;
             const auto h_name = fmt::format(
                 "{}###{}", name, fmt::ptr(&component)
@@ -359,7 +359,7 @@ namespace {
             if (ImGui::CollapsingHeader(h_name.c_str(), flags)) {
                 ImGui::Indent(10);
                 ImGui::PushID(&component);
-                component.render_imgui(this->clock());
+                component.render_imgui(std::forward<Args>(args)...);
                 ImGui::PopID();
                 ImGui::Unindent(10);
             }
@@ -379,11 +379,11 @@ namespace {
                 if (auto c = this->reg().try_get<cpnt::Id>(e))
                     this->render_cpnt(*c, "ID");
                 if (auto c = this->reg().try_get<cpnt::StandardCamera>(e))
-                    this->render_cpnt(*c, "Static Actor");
+                    this->render_cpnt(*c, "Standard Camera");
                 if (auto c = this->reg().try_get<cpnt::MdlActorStatic>(e))
                     this->render_cpnt(*c, "Static Actor");
                 if (auto c = this->reg().try_get<cpnt::MdlActorSkinned>(e))
-                    this->render_cpnt(*c, "Skinned Actor");
+                    this->render_cpnt(*c, "Skinned Actor", this->clock());
                 if (auto c = this->reg().try_get<cpnt::DLight>(e))
                     this->render_cpnt(*c, "Directional Light");
                 if (auto c = this->reg().try_get<cpnt::SLight>(e))

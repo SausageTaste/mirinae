@@ -218,9 +218,7 @@ namespace mirinae {
 // DLight
 namespace mirinae::cpnt {
 
-    void DLight::render_imgui(const sung::SimClock& clock) {
-        ::render_color_intensity(color_);
-    }
+    void DLight::render_imgui() { ::render_color_intensity(color_); }
 
 }  // namespace mirinae::cpnt
 
@@ -228,7 +226,7 @@ namespace mirinae::cpnt {
 // SLight
 namespace mirinae::cpnt {
 
-    void SLight::render_imgui(const sung::SimClock& clock) {
+    void SLight::render_imgui() {
         ::render_color_intensity(color_);
 
         float inner_angle = inner_angle_.rad();
@@ -274,11 +272,9 @@ namespace mirinae::cpnt {
 
 namespace mirinae::cpnt {
 
-    void VPLight::render_imgui(const sung::SimClock& clock) {
-        ::render_color_intensity(color_);
-    }
+    void VPLight::render_imgui() { ::render_color_intensity(color_); }
 
-    void AtmosphereSimple::render_imgui(const sung::SimClock& clock) {
+    void AtmosphereSimple::render_imgui() {
         ImGui::ColorEdit3("Fog color", &fog_color_[0]);
         ImGui::SliderFloat(
             "Fog density",

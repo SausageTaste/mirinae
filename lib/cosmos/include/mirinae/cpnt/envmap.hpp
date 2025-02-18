@@ -19,7 +19,7 @@ namespace mirinae::cpnt {
     class Envmap : public RenUnitHolder<IEnvmapRenUnit> {
 
     public:
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
 
         sung::MonotonicRealtimeTimer last_updated_;
     };

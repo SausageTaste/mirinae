@@ -6,7 +6,7 @@
 // Transform
 namespace mirinae::cpnt {
 
-    void Transform::render_imgui(const sung::SimClock& clock) {
+    void Transform::render_imgui() {
         const float POS_SPEED = 0.1f;
         const float ROT_SPEED = 0.1f;
         const float SCALE_SPEED = 0.01f;

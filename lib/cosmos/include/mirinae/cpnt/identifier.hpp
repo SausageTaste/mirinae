@@ -2,16 +2,13 @@
 
 #include <array>
 
-#include <sung/basic/time.hpp>
-
 
 namespace mirinae::cpnt {
 
     class Id {
 
     public:
-        void render_imgui(const sung::SimClock& clock);
-
+        void render_imgui();
         void set_name(const char* name);
 
         std::array<char, 128> name_{};

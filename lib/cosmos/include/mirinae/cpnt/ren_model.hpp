@@ -59,7 +59,7 @@ namespace mirinae::cpnt {
     class MdlActorStatic {
 
     public:
-        void render_imgui(const sung::SimClock& clock);
+        void render_imgui();
 
         template <typename T>
         T* get_model() {

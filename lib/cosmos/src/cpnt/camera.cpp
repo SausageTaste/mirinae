@@ -5,7 +5,7 @@
 
 namespace mirinae::cpnt {
 
-    void StandardCamera::render_imgui(const sung::SimClock& clock) {
+    void StandardCamera::render_imgui() {
         float angle = (float)proj_.fov_.deg();
         ImGui::SliderFloat(
             "FOV", &angle, 0.01f, 179.99f, nullptr, ImGuiSliderFlags_Logarithmic
