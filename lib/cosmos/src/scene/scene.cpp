@@ -2,6 +2,7 @@
 
 #include <sung/basic/aabb.hpp>
 
+#include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/identifier.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/cpnt/ren_model.hpp"
@@ -352,12 +353,12 @@ namespace { namespace scene {
 
     int get_cam_pos(lua_State* const L) {
         GET_SCENE_PTR();
-        auto cam = reg.try_get<cpnt::StandardCamera>(scene.main_camera_);
+        auto cam = reg.try_get<cpnt::Transform>(scene.main_camera_);
 
         if (cam) {
-            lua_pushnumber(L, cam->view_.pos_.x);
-            lua_pushnumber(L, cam->view_.pos_.y);
-            lua_pushnumber(L, cam->view_.pos_.z);
+            lua_pushnumber(L, cam->pos_.x);
+            lua_pushnumber(L, cam->pos_.y);
+            lua_pushnumber(L, cam->pos_.z);
         } else {
             lua_pushnumber(L, 0);
             lua_pushnumber(L, 0);
@@ -368,13 +369,13 @@ namespace { namespace scene {
 
     int get_cam_quat(lua_State* const L) {
         GET_SCENE_PTR();
-        auto cam = reg.try_get<cpnt::StandardCamera>(scene.main_camera_);
+        auto cam = reg.try_get<cpnt::Transform>(scene.main_camera_);
 
         if (cam) {
-            lua_pushnumber(L, cam->view_.rot_.w);
-            lua_pushnumber(L, cam->view_.rot_.x);
-            lua_pushnumber(L, cam->view_.rot_.y);
-            lua_pushnumber(L, cam->view_.rot_.z);
+            lua_pushnumber(L, cam->rot_.w);
+            lua_pushnumber(L, cam->rot_.x);
+            lua_pushnumber(L, cam->rot_.y);
+            lua_pushnumber(L, cam->rot_.z);
         } else {
             lua_pushnumber(L, 1);
             lua_pushnumber(L, 0);
@@ -386,10 +387,10 @@ namespace { namespace scene {
 
     int get_cam_dir(lua_State* const L) {
         GET_SCENE_PTR();
-        auto cam = reg.try_get<cpnt::StandardCamera>(scene.main_camera_);
+        auto cam = reg.try_get<cpnt::Transform>(scene.main_camera_);
 
         if (cam) {
-            const auto dir = cam->view_.make_forward_dir();
+            const auto dir = cam->make_forward_dir();
             lua_pushnumber(L, dir.x);
             lua_pushnumber(L, dir.y);
             lua_pushnumber(L, dir.z);

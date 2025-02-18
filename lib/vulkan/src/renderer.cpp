@@ -4,6 +4,7 @@
 #include <sung/basic/time.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/script.hpp"
@@ -1026,6 +1027,9 @@ namespace {
             auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
                 cosmos_->scene().main_camera_
             );
+            auto& cam_view = cosmos_->reg().get<mirinae::cpnt::Transform>(
+                cosmos_->scene().main_camera_
+            );
 
             this->update_unloaded_models();
 
@@ -1039,7 +1043,7 @@ namespace {
                 swapchain_.width(), swapchain_.height()
             );
             const auto proj_inv = glm::inverse(proj_mat);
-            const auto view_mat = cam.view_.make_view_mat();
+            const auto view_mat = cam_view.make_view_mat();
             const auto view_inv = glm::inverse(view_mat);
 
             // Update widgets
@@ -1056,7 +1060,7 @@ namespace {
             ren_ctxt.i_index_ = image_index;
             ren_ctxt.proj_mat_ = proj_mat;
             ren_ctxt.view_mat_ = view_mat;
-            ren_ctxt.view_pos_ = cam.view_.pos_;
+            ren_ctxt.view_pos_ = cam_view.pos_;
             ren_ctxt.cosmos_ = cosmos_;
             ren_ctxt.cmdbuf_ = cmd_buf_.at(framesync_.get_frame_index().get());
             ren_ctxt.draw_sheet_ = std::make_shared<mirinae::DrawSheet>(
@@ -1069,7 +1073,7 @@ namespace {
                 auto& light = reg.get<cpnt::DLight>(l);
                 auto& tfrom = reg.get<cpnt::Transform>(l);
 
-                tfrom.pos_ = cam.view_.pos_;
+                tfrom.pos_ = cam_view.pos_;
                 light.cascades_.update(
                     swapchain_.calc_ratio(), view_inv, cam.proj_, light, tfrom
                 );
@@ -1079,11 +1083,11 @@ namespace {
                 auto& light = reg.get<cpnt::SLight>(l);
                 auto& tfrom = reg.get<cpnt::Transform>(l);
 
-                tfrom.pos_ = cam.view_.pos_ + glm::dvec3{ 0, -0.1, 0 };
-                tfrom.rot_ = cam.view_.rot_;
+                tfrom.pos_ = cam_view.pos_ + glm::dvec3{ 0, -0.1, 0 };
+                tfrom.rot_ = cam_view.rot_;
                 tfrom.rotate(
                     sung::TAngle<double>::from_deg(std::atan(0.1 / 5.0)),
-                    cam.view_.make_right_dir()
+                    cam_view.make_right_dir()
                 );
             }
 
@@ -1130,7 +1134,7 @@ namespace {
 
             rpm_.compo_sky().record(ren_ctxt);
 
-            const auto forward = cam.view_.make_forward_dir();
+            const auto forward = cam_view.make_forward_dir();
             rpm_.ocean_tess().record(ren_ctxt);
 
             rp_states_transp_.record_static(
