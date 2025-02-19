@@ -4,6 +4,7 @@
 
 #include <imgui.h>
 #include <imgui_stdlib.h>
+#include <spdlog/sinks/base_sink.h>
 #include <daltools/common/glm_tool.hpp>
 #include <sung/basic/cvar.hpp>
 
@@ -281,6 +282,34 @@ namespace {
 
 namespace {
 
+    std::vector<std::string> g_texts;
+
+    class MySink : public spdlog::sinks::base_sink<std::mutex> {
+
+    protected:
+        void sink_it_(const spdlog::details::log_msg& msg) override {
+            std::string_view sv{ msg.payload.data(), msg.payload.size() };
+
+            std::string ss;
+            for (auto c : sv) {
+                if (c == '\n') {
+                    g_texts.push_back(ss);
+                    ss.clear();
+                } else {
+                    ss += c;
+                }
+            }
+
+            if (!ss.empty())
+                g_texts.push_back(ss);
+        }
+
+        void flush_() override {
+            // Do nothing because statement executed in sink_it_().
+        }
+    };
+
+
     struct IWindowDialog : mirinae::ImGuiRenderUnit {
 
     public:
@@ -531,12 +560,12 @@ namespace {
                         ImGuiWindowFlags_HorizontalScrollbar
                     )) {
                     ImGuiListClipper clipper;
-                    clipper.Begin(texts_.size());
+                    clipper.Begin(g_texts.size());
                     while (clipper.Step())
                         for (int i = clipper.DisplayStart;
                              i < clipper.DisplayEnd;
                              i++) {
-                            ImGui::TextUnformatted(texts_[i].c_str());
+                            ImGui::TextUnformatted(g_texts[i].c_str());
                         }
 
                     if (scroll_to_bottom_)
@@ -551,7 +580,7 @@ namespace {
                         input_buf_.size(),
                         ImGuiInputTextFlags_EnterReturnsTrue
                     )) {
-                    texts_.push_back(input_buf_.data());
+                    g_texts.push_back(input_buf_.data());
                     input_buf_.fill(0);
                     scroll_to_bottom_ = true;
                     ImGui::SetKeyboardFocusHere(-1);  // Keep focus on input box
@@ -559,7 +588,7 @@ namespace {
 
                 ImGui::SameLine();
                 if (ImGui::Button("Submit")) {
-                    texts_.push_back(input_buf_.data());
+                    g_texts.push_back(input_buf_.data());
                     input_buf_.fill(0);
                 }
             }
@@ -567,7 +596,6 @@ namespace {
             void scroll_to_bottom() { scroll_to_bottom_ = true; }
 
         private:
-            std::vector<std::string> texts_;
             std::array<char, 256> input_buf_{};
             bool scroll_to_bottom_ = false;
         };
@@ -599,6 +627,10 @@ namespace {
             client_ = mirinae::create_client();
             script_ = std::make_shared<mirinae::ScriptEngine>();
             cosmos_ = std::make_shared<mirinae::CosmosSimulator>(*script_);
+
+            spdlog::default_logger()->sinks().push_back(
+                std::make_shared<MySink>()
+            );
 
             auto& reg = cosmos_->reg();
 
