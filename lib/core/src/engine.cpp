@@ -488,20 +488,12 @@ namespace {
                 auto& fonts = *io.Fonts;
                 fonts.Clear();
 
-                ImFontConfig config;
-                config.MergeMode = false;
-                config.OversampleH = 3;
-                config.OversampleV = 3;
-                fonts.AddFontFromMemoryTTF(
-                    arr, arr_size, 20, &config, fonts.GetGlyphRangesKorean()
-                );
+                ImFontGlyphRangesBuilder builder;
+                builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+                // builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+                builder.BuildRanges(&ranges_);
 
-                /*
-                config.MergeMode = true;
-                fonts.AddFontFromMemoryTTF(
-                    arr, arr_size, 20, &config, fonts.GetGlyphRangesJapanese()
-                );
-                */
+                fonts.AddFontFromMemoryTTF(arr, arr_size, 20, 0, ranges_.Data);
             }
         }
 
@@ -584,6 +576,8 @@ namespace {
 
         ImGuiEntt entt_;
         ImGuiCvars cvars_;
+
+        ImVector<ImWchar> ranges_;
     };
 
 }  // namespace
