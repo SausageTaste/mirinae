@@ -939,6 +939,7 @@ namespace {
             }
 
             // Widget: Dev console
+            /*
             {
                 dev_console_output_ = mirinae::create_text_blocks();
                 script->replace_output_buf(dev_console_output_);
@@ -954,6 +955,7 @@ namespace {
                 w->hide(true);
                 overlay_man_.widgets().add_widget(std::move(w));
             }
+            */
 
             // ImGui
             {
