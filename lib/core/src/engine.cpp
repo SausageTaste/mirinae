@@ -3,6 +3,7 @@
 #include <deque>
 
 #include <imgui.h>
+#include <imgui_stdlib.h>
 #include <daltools/common/glm_tool.hpp>
 #include <sung/basic/cvar.hpp>
 
@@ -289,6 +290,7 @@ namespace {
 
             if (!set_size_once_) {
                 set_size_once_ = true;
+                ImGui::SetNextWindowPos(init_pos_);
                 ImGui::SetNextWindowSize(init_size_);
             }
 
@@ -303,9 +305,22 @@ namespace {
 
         void end() { ImGui::End(); }
 
+        template <typename T>
+        void set_init_pos(T x, T y) {
+            init_pos_.x = x;
+            init_pos_.y = y;
+        }
+
+        template <typename T>
+        void set_init_size(T x, T y) {
+            init_size_.x = x;
+            init_size_.y = y;
+        }
+
         bool show_ = false;
 
     private:
+        ImVec2 init_pos_{ 10, 10 };
         ImVec2 init_size_{ 300, 200 };
         bool set_size_once_ = false;
     };
@@ -321,12 +336,6 @@ namespace {
             if (!this->begin("Entities"))
                 return;
 
-            if (ImGui::CollapsingHeader("CVars")) {
-                ImGui::Indent(20);
-                this->render_cvar();
-                ImGui::Unindent(20);
-            }
-
             for (auto e : this->reg().view<entt::entity>()) {
                 this->render_entt(e);
             }
@@ -335,35 +344,9 @@ namespace {
         }
 
     private:
-        class CvarVisitor : public sung::ICVarVisitor {
-
-        public:
-            virtual void visit(sung::ICVarInt& cvar) {
-                int value = cvar.get();
-                ImGui::PushID(&cvar);
-                ImGui::DragInt(cvar.id().c_str(), &value);
-                ImGui::PopID();
-                cvar.set(value);
-            }
-
-            virtual void visit(sung::ICVarFloat& cvar) {
-                double value = cvar.get();
-                ImGui::PushID(&cvar);
-                ImGui::DragScalar(
-                    cvar.id().c_str(), ImGuiDataType_Double, &value, 0.1
-                );
-                ImGui::PopID();
-                cvar.set(value);
-            }
-
-            virtual void visit(sung::ICVarStr& cvar) {}
-        };
-
         const sung::SimClock& clock() const { return cosmos_->scene().clock(); }
 
         entt::registry& reg() { return cosmos_->reg(); }
-
-        void render_cvar() { sung::gcvars().visit(CvarVisitor{}); }
 
         template <typename T, typename... Args>
         void render_cpnt(T& component, const char* name, Args&&... args) {
@@ -424,27 +407,92 @@ namespace {
     };
 
 
+    class ImGuiCvars : public IWindowDialog {
+
+    public:
+        void render() override {
+            if (!this->begin("CVars"))
+                return;
+
+            CvarVisitor visitor{};
+            sung::gcvars().visit(visitor);
+
+            this->end();
+        }
+
+    private:
+        class CvarVisitor : public sung::ICVarVisitor {
+
+        public:
+            void visit(sung::ICVarInt& cvar) override {
+                int64_t v = cvar.get();
+                if (ImGui::DragScalar(cvar.id().c_str(), ImGuiDataType_S64, &v))
+                    cvar.set(v);
+                if (this->need_tooltip(cvar))
+                    ImGui::SetTooltip(cvar.help().c_str());
+            }
+
+            void visit(sung::ICVarFloat& cvar) override {
+                double v = cvar.get();
+                const auto name = cvar.id().c_str();
+                if (ImGui::DragScalar(name, ImGuiDataType_Double, &v, 0.1f))
+                    cvar.set(v);
+                if (this->need_tooltip(cvar))
+                    ImGui::SetTooltip(cvar.help().c_str());
+            }
+
+            void visit(sung::ICVarStr& cvar) override {
+                auto str = cvar.get();
+                if (ImGui::InputText(cvar.id().c_str(), &str))
+                    cvar.set(str);
+                if (this->need_tooltip(cvar))
+                    ImGui::SetTooltip(cvar.help().c_str());
+            }
+
+        private:
+            static bool need_tooltip(sung::ICVarValue& cvar) {
+                if (cvar.help().empty())
+                    return false;
+                return ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled
+                );
+            }
+        };
+
+        void render_cvar() { sung::gcvars().visit(CvarVisitor{}); }
+    };
+
+
     class ImGuiMainWin : public IWindowDialog {
 
     public:
         ImGuiMainWin(std::shared_ptr<mirinae::CosmosSimulator>& cosmos)
             : entt_(cosmos) {
             show_ = true;
+
+            entt_.set_init_size(480, 640);
+            entt_.set_init_pos(20, 20);
+
+            cvars_.set_init_size(480, 640);
+            cvars_.set_init_pos(20, 20);
         }
 
         void render() override {
             if (this->begin("Main Window")) {
                 if (ImGui::Button("Entities"))
                     entt_.show_ = !entt_.show_;
+                if (ImGui::Button("CVars"))
+                    cvars_.show_ = !cvars_.show_;
 
                 this->end();
             }
 
             entt_.render();
+            cvars_.render();
         }
 
     private:
         ImGuiEntt entt_;
+        ImGuiCvars cvars_;
     };
 
 }  // namespace
@@ -623,8 +671,8 @@ namespace {
 
             // ImGui Widgets
             {
-                cosmos_->imgui_.push_back(std::make_shared<ImGuiMainWin>(cosmos_
-                ));
+                imgui_main_ = std::make_shared<ImGuiMainWin>(cosmos_);
+                cosmos_->imgui_.push_back(imgui_main_);
             }
 
             renderer_ = mirinae::create_vk_renderer(
@@ -671,6 +719,10 @@ namespace {
                     else
                         slight.color_.intensity() = 0;
                 }
+                return true;
+            } else if (e.key == mirinae::key::KeyCode::backquote) {
+                if (e.action_type == mirinae::key::ActionType::up)
+                    imgui_main_->show_ = !imgui_main_->show_;
                 return true;
             }
 
@@ -764,6 +816,7 @@ namespace {
         std::unique_ptr<mirinae::INetworkClient> client_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
+        std::shared_ptr<::ImGuiMainWin> imgui_main_;
         std::unique_ptr<mirinae::IRenderer> renderer_;
 
         sung::MonotonicRealtimeTimer delta_timer_, sec5_;
