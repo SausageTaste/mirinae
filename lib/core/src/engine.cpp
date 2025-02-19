@@ -477,6 +477,17 @@ namespace {
 
             cvars_.set_init_size(360, 480);
             cvars_.set_init_pos(50, 50);
+
+            if (auto dat = filesys->read_file("Sung/NotoSansKR-Regular.ttf")) {
+                const int arr_size = dat->size();
+                const auto arr = new sung::byte8[arr_size];
+                std::copy(dat->begin(), dat->end(), arr);
+
+                auto& io = ImGui::GetIO();
+                io.Fonts->AddFontFromMemoryTTF(
+                    arr, arr_size, 20, nullptr, io.Fonts->GetGlyphRangesKorean()
+                );
+            }
         }
 
         void render() override {
