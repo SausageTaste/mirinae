@@ -295,7 +295,7 @@ namespace {
             }
 
             const auto t = fmt::format("{}###{}", title, fmt::ptr(this));
-            if (ImGui::Begin(t.c_str(), &show_)) {
+            if (ImGui::Begin(t.c_str(), &show_, begin_flags_)) {
                 return true;
             } else {
                 this->end();
@@ -317,11 +317,14 @@ namespace {
             init_size_.y = y;
         }
 
+        void add_begin_flag(ImGuiWindowFlags flag) { begin_flags_ |= flag; }
+
         bool show_ = false;
 
     private:
         ImVec2 init_pos_{ 10, 10 };
         ImVec2 init_size_{ 300, 200 };
+        ImGuiWindowFlags begin_flags_ = 0;
         bool set_size_once_ = false;
     };
 
@@ -464,22 +467,32 @@ namespace {
     class ImGuiMainWin : public IWindowDialog {
 
     public:
-        ImGuiMainWin(mirinae::HCosmos& cosmos) : entt_(cosmos) {
+        ImGuiMainWin(mirinae::HCosmos& cosmos, dal::HFilesys& filesys)
+            : entt_(cosmos) {
             show_ = true;
+            this->add_begin_flag(ImGuiWindowFlags_MenuBar);
 
             entt_.set_init_size(480, 640);
-            entt_.set_init_pos(20, 20);
+            entt_.set_init_pos(50, 50);
 
-            cvars_.set_init_size(480, 640);
-            cvars_.set_init_pos(20, 20);
+            cvars_.set_init_size(360, 480);
+            cvars_.set_init_pos(50, 50);
         }
 
         void render() override {
             if (this->begin("Main Window")) {
-                if (ImGui::Button("Entities"))
-                    entt_.show_ = !entt_.show_;
-                if (ImGui::Button("CVars"))
-                    cvars_.show_ = !cvars_.show_;
+                if (ImGui::BeginMenuBar()) {
+                    if (ImGui::BeginMenu("View")) {
+                        ImGui::MenuItem("Entities", nullptr, &entt_.show_);
+                        ImGui::MenuItem("CVars", nullptr, &cvars_.show_);
+                        ImGui::EndMenu();
+                    }
+
+                    ImGui::EndMenuBar();
+                }
+
+                ImGui::Text("FPS (ImGui): %.1f", ImGui::GetIO().Framerate);
+                console_.render_imgui();
 
                 this->end();
             }
@@ -489,6 +502,60 @@ namespace {
         }
 
     private:
+        class DevConsole {
+
+        public:
+            void render_imgui() {
+                if (ImGui::BeginChild(
+                        "ScrollingRegion",
+                        ImVec2(0, -30),
+                        true,
+                        ImGuiWindowFlags_HorizontalScrollbar
+                    )) {
+                    ImGuiListClipper clipper;
+                    clipper.Begin(texts_.size());
+                    while (clipper.Step())
+                        for (int i = clipper.DisplayStart;
+                             i < clipper.DisplayEnd;
+                             i++) {
+                            ImGui::TextUnformatted(texts_[i].c_str());
+                        }
+
+                    if (scroll_to_bottom_)
+                        ImGui::SetScrollHereY(1.0f);
+                    scroll_to_bottom_ = false;
+                }
+
+                ImGui::EndChild();
+                if (ImGui::InputText(
+                        "##input",
+                        input_buf_.data(),
+                        input_buf_.size(),
+                        ImGuiInputTextFlags_EnterReturnsTrue
+                    )) {
+                    texts_.push_back(input_buf_.data());
+                    input_buf_.fill(0);
+                    scroll_to_bottom_ = true;
+                    ImGui::SetKeyboardFocusHere(-1);  // Keep focus on input box
+                }
+
+                ImGui::SameLine();
+                if (ImGui::Button("Submit")) {
+                    texts_.push_back(input_buf_.data());
+                    input_buf_.fill(0);
+                }
+            }
+
+            void scroll_to_bottom() { scroll_to_bottom_ = true; }
+
+        private:
+            std::vector<std::string> texts_;
+            std::array<char, 256> input_buf_{};
+            bool scroll_to_bottom_ = false;
+        };
+
+        DevConsole console_;
+
         ImGuiEntt entt_;
         ImGuiCvars cvars_;
     };
@@ -669,7 +736,7 @@ namespace {
 
             // ImGui Widgets
             {
-                imgui_main_ = std::make_shared<ImGuiMainWin>(cosmos_);
+                imgui_main_ = std::make_shared<ImGuiMainWin>(cosmos_, filesys_);
                 cosmos_->imgui_.push_back(imgui_main_);
             }
 
