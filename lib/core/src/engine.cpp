@@ -469,7 +469,8 @@ namespace {
     public:
         ImGuiMainWin(mirinae::HCosmos& cosmos, dal::HFilesys& filesys)
             : entt_(cosmos) {
-            show_ = true;
+            show_ = false;
+            this->set_init_size(680, 640);
             this->add_begin_flag(ImGuiWindowFlags_MenuBar);
 
             entt_.set_init_size(480, 640);
@@ -484,9 +485,23 @@ namespace {
                 std::copy(dat->begin(), dat->end(), arr);
 
                 auto& io = ImGui::GetIO();
-                io.Fonts->AddFontFromMemoryTTF(
-                    arr, arr_size, 20, nullptr, io.Fonts->GetGlyphRangesKorean()
+                auto& fonts = *io.Fonts;
+                fonts.Clear();
+
+                ImFontConfig config;
+                config.MergeMode = false;
+                config.OversampleH = 3;
+                config.OversampleV = 3;
+                fonts.AddFontFromMemoryTTF(
+                    arr, arr_size, 20, &config, fonts.GetGlyphRangesKorean()
                 );
+
+                /*
+                config.MergeMode = true;
+                fonts.AddFontFromMemoryTTF(
+                    arr, arr_size, 20, &config, fonts.GetGlyphRangesJapanese()
+                );
+                */
             }
         }
 
