@@ -329,8 +329,7 @@ namespace {
     class ImGuiEntt : public IWindowDialog {
 
     public:
-        ImGuiEntt(std::shared_ptr<mirinae::CosmosSimulator>& cosmos)
-            : cosmos_(cosmos) {}
+        ImGuiEntt(mirinae::HCosmos& cosmos) : cosmos_(cosmos) {}
 
         void render() override {
             if (!this->begin("Entities"))
@@ -403,7 +402,7 @@ namespace {
             }
         }
 
-        std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
+        mirinae::HCosmos cosmos_;
     };
 
 
@@ -465,8 +464,7 @@ namespace {
     class ImGuiMainWin : public IWindowDialog {
 
     public:
-        ImGuiMainWin(std::shared_ptr<mirinae::CosmosSimulator>& cosmos)
-            : entt_(cosmos) {
+        ImGuiMainWin(mirinae::HCosmos& cosmos) : entt_(cosmos) {
             show_ = true;
 
             entt_.set_init_size(480, 640);
