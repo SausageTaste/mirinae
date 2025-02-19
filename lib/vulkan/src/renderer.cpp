@@ -1219,7 +1219,7 @@ namespace {
                 ImGui_ImplVulkan_NewFrame();
                 imgui_new_frame_();
                 ImGui::NewFrame();
-                ImGui::ShowDemoWindow();
+                // ImGui::ShowDemoWindow();
 
                 for (auto& w : cosmos_->imgui_) {
                     w->render();
