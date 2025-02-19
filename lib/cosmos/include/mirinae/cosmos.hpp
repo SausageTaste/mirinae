@@ -32,4 +32,6 @@ namespace mirinae {
         sung::SimClock clock_;
     };
 
+    using HCosmos = std::shared_ptr<CosmosSimulator>;
+
 }  // namespace mirinae
