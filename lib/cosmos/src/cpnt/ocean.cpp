@@ -16,12 +16,12 @@ namespace mirinae::cpnt {
 
     Ocean::Cascade::Cascade()
         : texco_offset_{ 0, 0 }
-        , texco_scale_{ 1.f / INIT_L, 0 }
+        , texco_scale_{ 1, 0 }
         , amplitude_(AMP_BASE)
         , jacobian_scale_(1)
         , cutoff_high_(0)
         , cutoff_low_(0)
-        , lod_scale_(1)
+        , lod_scale_(INIT_L)
         , L_(INIT_L)
         , active_(true) {}
 
@@ -54,17 +54,22 @@ namespace mirinae::cpnt {
         , tile_count_y_(10)
         , play_(true) {
         const auto max_wl = (float)this->max_wavelen(20);
-        cascades_[0].cutoff_low_ = 0 * max_wl;
-        cascades_[0].cutoff_high_ = 0.015f * max_wl;
-        cascades_[0].lod_scale_ = 2;
+
+        cascades_[0].L_ = 80;
+        cascades_[0].lod_scale_ = 80;
+        cascades_[0].cutoff_low_ = 0;
+        cascades_[0].cutoff_high_ = 1;
         cascades_[0].jacobian_scale_ = 0.5;
 
-        cascades_[1].cutoff_low_ = 0.008f * max_wl;
-        cascades_[1].cutoff_high_ = 0.103f * max_wl;
-        cascades_[1].lod_scale_ = 1.5;
+        cascades_[1].L_ = 20;
+        cascades_[1].lod_scale_ = 20;
+        cascades_[1].cutoff_low_ = 1;
+        cascades_[1].cutoff_high_ = 5;
 
-        cascades_[2].cutoff_low_ = 0.098f * max_wl;
-        cascades_[2].cutoff_high_ = 1 * max_wl;
+        cascades_[2].L_ = 5;
+        cascades_[2].lod_scale_ = 5;
+        cascades_[2].cutoff_low_ = 5;
+        cascades_[2].cutoff_high_ = 100;
     }
 
     void Ocean::do_frame(const sung::SimClock& clock) {
@@ -83,10 +88,6 @@ namespace mirinae::cpnt {
         );
 
         ImGui::DragScalar("Height", ImGuiDataType_Double, &height_, 0.1f);
-
-        float amp = cascades_[0].amplitude_ / AMP_BASE;
-        ImGui::SliderFloat("Amplitude", &amp, 0.0001f, 100, 0, flog);
-        for (auto& cascade : cascades_) cascade.amplitude_ = amp * AMP_BASE;
 
         ImGui::SliderFloat("Wind speed", &wind_speed_, 0.1f, 10000, 0, flog);
         ImGui::SliderFloat("Fetch", &fetch_, 0, 5000, 0, flog);
@@ -119,10 +120,15 @@ namespace mirinae::cpnt {
             auto& c = cascades_[cascade_imgui_idx_];
 
             ImGui::Checkbox("Active", &c.active_);
+
+            float amp = c.amplitude_ / AMP_BASE;
+            ImGui::SliderFloat("Amplitude", &amp, 0.0001f, 100, 0, flog);
+            c.amplitude_ = amp * AMP_BASE;
+
             ImGui::SliderFloat(
                 "Jacobian scale", &c.jacobian_scale_, 0, 10, 0, flog
             );
-            ImGui::SliderFloat("LOD scale", &c.lod_scale_, 0, 10, 0, flog);
+            ImGui::DragFloat("LOD scale", &c.lod_scale_);
             ImGui::DragFloat("L", &c.L_);
             c.L_ = std::max(1.f, c.L_);
 

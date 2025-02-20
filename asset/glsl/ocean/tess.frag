@@ -76,7 +76,10 @@ void main() {
     vec4 derivatives = vec4(0);
     for (int i = 0; i < 3; i++) {
         const vec2 t_uv = transform_uv(i_uv, i) / u_params.len_scales_lod_scale[i];
-        derivatives += texture(u_deri_map[i], t_uv) * i_lod_scales[i];
+        if (i == 0)
+            derivatives += texture(u_deri_map[i], t_uv);
+        else
+            derivatives += texture(u_deri_map[i], t_uv) * i_lod_scales[i];
         jacobian += texture(u_turb_map[i], t_uv).x * u_params.jacobian_scale[i];
     }
 
