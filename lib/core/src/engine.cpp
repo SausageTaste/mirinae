@@ -171,7 +171,7 @@ namespace {
 
             {
                 double vertical = 0;
-                if (keys_.is_pressed(mirinae::key::KeyCode::lctrl))
+                if (keys_.is_pressed(mirinae::key::KeyCode::lshfit))
                     vertical -= 1;
                 if (keys_.is_pressed(mirinae::key::KeyCode::space))
                     vertical += 1;
