@@ -23,11 +23,11 @@ namespace mirinae::cpnt {
             glm::vec2 texco_offset_;
             glm::vec2 texco_scale_;
             float amplitude_;
-            float jacobian_scale_;
             float cutoff_high_;
             float cutoff_low_;
-            float lod_scale_;
+            float jacobian_scale_;
             float L_;
+            float lod_scale_;
             bool active_;
         };
 
