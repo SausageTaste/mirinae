@@ -1113,7 +1113,7 @@ namespace {
 
             rpm_.record_computes(ren_ctxt);
 
-            rpm_.envmap().record(ren_ctxt, desclayout_, rp_, device_);
+            rpm_.envmap().record(ren_ctxt);
 
             rpm_.gbuf_basic().record(
                 ren_ctxt.cmdbuf_,

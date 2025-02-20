@@ -22,7 +22,7 @@ namespace mirinae::rp::envmap {
     );
 
 
-    class IRpMaster {
+    class IRpMaster : public mirinae::IRpStates {
 
     public:
         virtual ~IRpMaster() = default;
@@ -44,13 +44,6 @@ namespace mirinae::rp::envmap {
         ) = 0;
 
         virtual void destroy_ren_units(CosmosSimulator& cosmos) = 0;
-
-        virtual void record(
-            RpContext& ctxt,
-            DesclayoutManager& desclayouts,
-            IRenderPassRegistry& rp_pkg,
-            VulkanDevice& device
-        ) = 0;
 
         virtual VkImageView brdf_lut_view() const = 0;
         virtual VkImageView sky_tex_view() const = 0;

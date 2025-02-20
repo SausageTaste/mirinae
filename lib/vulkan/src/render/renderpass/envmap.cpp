@@ -989,12 +989,19 @@ namespace {
     class RpMaster : public mirinae::rp::envmap::IRpMaster {
 
     public:
+        const std::string& name() const override {
+            static const std::string out = "envmap";
+            return out;
+        }
+
         void init(
             mirinae::IRenderPassRegistry& rp_pkg,
             mirinae::ITextureManager& tex_man,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         ) override {
+            rp_pkg_ = &rp_pkg;
+
             desc_pool_.init(
                 5,
                 desclayouts.get("envdiffuse:main").size_info() +
@@ -1071,12 +1078,9 @@ namespace {
             }
         }
 
-        void record(
-            mirinae::RpContext& ctxt,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::IRenderPassRegistry& rp_pkg,
-            mirinae::VulkanDevice& device
-        ) override {
+        void record(const mirinae::RpContext& ctxt) override {
+            if (!rp_pkg_)
+                return;
             if (!timer_.check_if_elapsed(3))
                 return;
 
@@ -1100,10 +1104,10 @@ namespace {
             auto& env_cpnt = reg.get<cpnt::Envmap>(e_selected);
             env_cpnt.last_updated_.check();
 
-            this->record_sky(e_selected, env_cpnt, ctxt, desc_set_, rp_pkg);
-            this->record_base(e_selected, env_cpnt, ctxt, rp_pkg);
-            this->record_diffuse(e_selected, env_cpnt, ctxt, rp_pkg);
-            this->record_specular(e_selected, env_cpnt, ctxt, rp_pkg);
+            this->record_sky(e_selected, env_cpnt, ctxt, desc_set_, *rp_pkg_);
+            this->record_base(e_selected, env_cpnt, ctxt, *rp_pkg_);
+            this->record_diffuse(e_selected, env_cpnt, ctxt, *rp_pkg_);
+            this->record_specular(e_selected, env_cpnt, ctxt, *rp_pkg_);
         }
 
         VkImageView brdf_lut_view() const override { return brdf_lut_.view(); }
@@ -1200,7 +1204,7 @@ namespace {
         void record_base(
             entt::entity e_env,
             mirinae::cpnt::Envmap& env_cpnt,
-            mirinae::RpContext& ctxt,
+            const mirinae::RpContext& ctxt,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
             namespace cpnt = mirinae::cpnt;
@@ -1367,7 +1371,7 @@ namespace {
         void record_sky(
             entt::entity e_env,
             mirinae::cpnt::Envmap& env_cpnt,
-            mirinae::RpContext& ctxt,
+            const mirinae::RpContext& ctxt,
             const VkDescriptorSet desc_set,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
@@ -1432,7 +1436,7 @@ namespace {
         void record_diffuse(
             entt::entity e_env,
             mirinae::cpnt::Envmap& env_cpnt,
-            mirinae::RpContext& ctxt,
+            const mirinae::RpContext& ctxt,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
             namespace cpnt = mirinae::cpnt;
@@ -1493,7 +1497,7 @@ namespace {
         void record_specular(
             entt::entity e_env,
             mirinae::cpnt::Envmap& env_cpnt,
-            mirinae::RpContext& ctxt,
+            const mirinae::RpContext& ctxt,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
             namespace cpnt = mirinae::cpnt;
@@ -1557,6 +1561,7 @@ namespace {
             }
         }
 
+        mirinae::IRenderPassRegistry* rp_pkg_ = nullptr;
         mirinae::DescPool desc_pool_;
         sung::MonotonicRealtimeTimer timer_;
         BrdfLut brdf_lut_;
