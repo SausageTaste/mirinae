@@ -711,19 +711,16 @@ namespace {
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = {
-                    1.9518,
-                    0.6559,
-                    0.0913,
+                    -59.616885,
+                    8.968683,
+                    -51.811862,
                 };
-                tform.rot_ = glm::normalize(
-                    glm::dquat{
-                        -0.921,
-                        -0.051,
-                        0.3848,
-                        -0.021,
-                    } *
-                    5.0
-                );
+                tform.rot_ = glm::normalize(glm::dquat{
+                    0.423674,
+                    -0.057546,
+                    -0.895760,
+                    -0.121667,
+                });
             }
 
             // Envmap
