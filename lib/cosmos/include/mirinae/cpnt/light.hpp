@@ -115,6 +115,7 @@ namespace mirinae::cpnt {
 
 
     class SLight {
+
     public:
         using Tform = TransformQuat<double>;
 
@@ -154,12 +155,13 @@ namespace mirinae::cpnt {
     struct AtmosphereSimple {
 
     public:
+        AtmosphereSimple();
         void render_imgui();
 
     public:
         std::filesystem::path sky_tex_path_;
-        glm::vec3 fog_color_{ 0.5, 0.5, 0.5 };
-        float fog_density_ = 0.0001f;
+        glm::vec3 fog_color_;
+        float fog_density_;
     };
 
 }  // namespace mirinae::cpnt
