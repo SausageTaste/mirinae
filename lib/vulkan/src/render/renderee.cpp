@@ -592,25 +592,27 @@ namespace {
 
             auto task = std::make_shared<ModelLoadTask>(path, *filesys_);
             task_sche_->add_task(task);
-            tasks_.emplace(path, task);
+            tasks_.emplace(path.u8string(), task);
             return true;
         }
 
         bool has_task(const dal::path& path) {
-            return tasks_.find(path) != tasks_.end();
+            return tasks_.find(path.u8string()) != tasks_.end();
         }
 
-        void remove_task(const dal::path& path) { tasks_.erase(path); }
+        void remove_task(const dal::path& path) {
+            tasks_.erase(path.u8string());
+        }
 
         std::shared_ptr<ModelLoadTask> try_get_task(const dal::path& path) {
-            const auto it = tasks_.find(path);
+            const auto it = tasks_.find(path.u8string());
             if (it == tasks_.end())
                 return nullptr;
             return it->second;
         }
 
     private:
-        std::unordered_map<dal::path, std::shared_ptr<ModelLoadTask>> tasks_;
+        std::unordered_map<std::string, std::shared_ptr<ModelLoadTask>> tasks_;
         sung::HTaskSche task_sche_;
         dal::Filesystem* filesys_;
     };
