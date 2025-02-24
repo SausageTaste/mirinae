@@ -270,9 +270,19 @@ namespace mirinae::cpnt {
 }  // namespace mirinae::cpnt
 
 
+// VPLight
 namespace mirinae::cpnt {
 
     void VPLight::render_imgui() { ::render_color_intensity(color_); }
+
+}  // namespace mirinae::cpnt
+
+
+// AtmosphereSimple
+namespace mirinae::cpnt {
+
+    AtmosphereSimple::AtmosphereSimple()
+        : fog_color_(0.5, 0.5, 0.5), fog_density_(0.0001f) {}
 
     void AtmosphereSimple::render_imgui() {
         ImGui::ColorEdit3("Fog color", &fog_color_[0]);
