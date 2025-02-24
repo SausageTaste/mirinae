@@ -60,6 +60,9 @@ namespace mirinae {
     class Buffer {
 
     public:
+        Buffer() = default;
+        ~Buffer();
+
         void init_staging(VkDeviceSize size, VulkanMemoryAllocator allocator);
         void init_ubuf(VkDeviceSize size, VulkanMemoryAllocator allocator);
         void init_vertices(VkDeviceSize size, VulkanMemoryAllocator allocator);
@@ -129,6 +132,9 @@ namespace mirinae {
     class Image {
 
     public:
+        Image() = default;
+        ~Image();
+
         void init(
             const VkImageCreateInfo& create_info,
             VulkanMemoryAllocator allocator
