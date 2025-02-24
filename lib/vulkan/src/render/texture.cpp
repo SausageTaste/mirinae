@@ -747,6 +747,8 @@ namespace {
         }
 
         void destroy_all() {
+            missing_tex_.reset();
+
             for (auto& tex : textures_) {
                 if (tex.use_count() > 1)
                     SPDLOG_WARN(
