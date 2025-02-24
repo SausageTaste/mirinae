@@ -1,6 +1,7 @@
 #include "mirinae/render/renderpass/compo.hpp"
 
 #include "mirinae/cpnt/light.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 
@@ -255,6 +256,309 @@ namespace mirinae::rp::compo {
 }  // namespace mirinae::rp::compo
 
 
+// Compo Dlight
+namespace {
+
+    struct U_CompoDlightMain {
+        glm::mat4 view_;
+        glm::mat4 view_inv_;
+        glm::mat4 proj_;
+        glm::mat4 proj_inv_;
+        glm::vec4 fog_color_density_;
+    };
+
+
+    struct U_CompoDlightPushConst {
+
+    public:
+        U_CompoDlightPushConst& set_dlight_dir(const glm::dvec3& v) {
+            dlight_dir_.x = static_cast<float>(v.x);
+            dlight_dir_.y = static_cast<float>(v.y);
+            dlight_dir_.z = static_cast<float>(v.z);
+            return *this;
+        }
+
+        U_CompoDlightPushConst& set_dlight_color(const glm::vec3& v) {
+            dlight_color_.x = v.r;
+            dlight_color_.y = v.g;
+            dlight_color_.z = v.b;
+            return *this;
+        }
+
+        glm::vec4 dlight_dir_;
+        glm::vec4 dlight_color_;
+    };
+
+
+    class RpStatesCompoDlight : public mirinae::IRpStates {
+
+    public:
+        RpStatesCompoDlight(
+            mirinae::CosmosSimulator& cosmos,
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device), rp_res_(rp_res), render_pass_(device) {
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = cosmos.reg();
+
+            // Ubuf
+            for (auto& fd : frame_data_) {
+                fd.ubuf_.init_ubuf<U_CompoDlightMain>(device.mem_alloc());
+            }
+
+            // Descriptor layout
+            {
+                mirinae::DescLayoutBuilder builder{ name() + ":main" };
+                builder
+                    .add_img_frag(1)    // depth
+                    .add_img_frag(1)    // albedo
+                    .add_img_frag(1)    // normal
+                    .add_img_frag(1)    // material
+                    .add_ubuf_frag(1);  // U_CompoDlight
+                desclayouts.add(builder, device.logi_device());
+            }
+
+            // Desciptor Sets
+            {
+                auto& desc_layout = desclayouts.get(name() + ":main");
+
+                desc_pool_.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    desc_layout.size_info(),
+                    device.logi_device()
+                );
+
+                auto desc_sets = desc_pool_.alloc(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    desc_layout.layout(),
+                    device.logi_device()
+                );
+
+                mirinae::DescWriter writer;
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    auto& fd = frame_data_[i];
+                    fd.desc_set_ = desc_sets[i];
+
+                    // Depth
+                    writer.add_img_info()
+                        .set_img_view(rp_res.gbuf_.depth().image_view())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 0);
+                    // Albedo
+                    writer.add_img_info()
+                        .set_img_view(rp_res.gbuf_.albedo().image_view())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 1);
+                    // Normal
+                    writer.add_img_info()
+                        .set_img_view(rp_res.gbuf_.normal().image_view())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 2);
+                    // Material
+                    writer.add_img_info()
+                        .set_img_view(rp_res.gbuf_.material().image_view())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 3);
+                    // U_CompoDlight
+                    writer.add_buf_info(fd.ubuf_);
+                    writer.add_buf_write(fd.desc_set_, 4);
+                }
+                writer.apply_all(device.logi_device());
+            }
+
+            // Render pass
+            {
+                mirinae::RenderPassBuilder builder;
+
+                builder.attach_desc()
+                    .add(rp_res.gbuf_.compo().format())
+                    .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .op_pair_clear_store();
+
+                builder.color_attach_ref().add_color_attach(0);
+
+                builder.subpass_dep().add().preset_single();
+
+                render_pass_ = builder.build(device.logi_device());
+            }
+
+            // Pipeline layout
+            {
+                auto& desc_layout = desclayouts.get(name() + ":main");
+
+                mirinae::PipelineLayoutBuilder{}
+                    .desc(desc_layout.layout())
+                    .add_frag_flag()
+                    .pc<U_CompoDlightPushConst>()
+                    .build(pipe_layout_, device);
+            }
+
+            // Pipeline
+            {
+                mirinae::PipelineBuilder builder{ device };
+
+                builder.shader_stages()
+                    .add_vert(":asset/spv/compo_dlight_vert.spv")
+                    .add_frag(":asset/spv/compo_dlight_frag.spv");
+
+                builder.rasterization_state().cull_mode_back();
+
+                builder.color_blend_state().add(false, 1);
+
+                builder.dynamic_state().add_viewport().add_scissor();
+
+                pipeline_ = builder.build(render_pass_, pipe_layout_);
+            }
+
+            // Framebuffers
+            {
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(render_pass_)
+                    .set_dim(rp_res.gbuf_.width(), rp_res.gbuf_.height())
+                    .add_attach(rp_res.gbuf_.compo().image_view());
+                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
+                    frame_data_[i].fbuf_ = fbuf_cinfo.build(device);
+
+                fbuf_width_ = rp_res.gbuf_.width();
+                fbuf_height_ = rp_res.gbuf_.height();
+            }
+
+            // Misc
+            {
+                clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            }
+
+            return;
+        }
+
+        ~RpStatesCompoDlight() override {
+            for (auto& fd : frame_data_) {
+                if (VK_NULL_HANDLE != fd.fbuf_) {
+                    vkDestroyFramebuffer(
+                        device_.logi_device(), fd.fbuf_, nullptr
+                    );
+                    fd.fbuf_ = VK_NULL_HANDLE;
+                }
+            }
+
+            desc_pool_.destroy(device_.logi_device());
+
+            if (VK_NULL_HANDLE != pipeline_) {
+                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
+                pipeline_ = VK_NULL_HANDLE;
+            }
+
+            if (VK_NULL_HANDLE != pipe_layout_) {
+                vkDestroyPipelineLayout(
+                    device_.logi_device(), pipe_layout_, nullptr
+                );
+                pipe_layout_ = VK_NULL_HANDLE;
+            }
+        }
+
+        const std::string& name() const override {
+            static const std::string name = "compo_dlight";
+            return name;
+        }
+
+        void record(const mirinae::RpContext& ctxt) override {
+            auto cmdbuf = ctxt.cmdbuf_;
+            auto& reg = ctxt.cosmos_->reg();
+            auto& fd = frame_data_[ctxt.f_index_.get()];
+            const VkExtent2D fbuf_ext{ fbuf_width_, fbuf_height_ };
+
+            U_CompoDlightMain ubuf;
+            ubuf.view_ = ctxt.view_mat_;
+            ubuf.view_inv_ = glm::inverse(ubuf.view_);
+            ubuf.proj_ = ctxt.proj_mat_;
+            ubuf.proj_inv_ = glm::inverse(ubuf.proj_);
+            for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
+                auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
+                ubuf.fog_color_density_ = glm::vec4(
+                    atmos.fog_color_, atmos.fog_density_
+                );
+                break;
+            }
+            fd.ubuf_.set_data(ubuf, device_.mem_alloc());
+
+            mirinae::RenderPassBeginInfo{}
+                .rp(render_pass_)
+                .fbuf(fd.fbuf_)
+                .wh(fbuf_ext)
+                .clear_value_count(clear_values_.size())
+                .clear_values(clear_values_.data())
+                .record_begin(cmdbuf);
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
+            );
+
+            mirinae::Viewport{ fbuf_ext }.record_single(cmdbuf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cmdbuf);
+
+            mirinae::DescSetBindInfo{}
+                .layout(pipe_layout_)
+                .set(fd.desc_set_)
+                .record(cmdbuf);
+
+            for (auto e : reg.view<mirinae::cpnt::DLight>()) {
+                auto& dlight = reg.get<mirinae::cpnt::DLight>(e);
+                auto& tform = reg.get<mirinae::cpnt::Transform>(e);
+
+                U_CompoDlightPushConst pc;
+                pc.set_dlight_dir(dlight.calc_to_light_dir(ubuf.view_, tform))
+                    .set_dlight_color(dlight.color_.scaled_color());
+
+                mirinae::PushConstInfo pc_info;
+                pc_info.layout(pipe_layout_)
+                    .add_stage_frag()
+                    .record(cmdbuf, pc);
+
+                vkCmdDraw(cmdbuf, 3, 1, 0, 0);
+            }
+
+            vkCmdEndRenderPass(cmdbuf);
+        }
+
+    private:
+        struct FrameData {
+            mirinae::Buffer ubuf_;
+            VkDescriptorSet desc_set_;
+            VkFramebuffer fbuf_;
+        };
+
+        static entt::entity select_atmos_simple(entt::registry& reg) {
+            for (auto entity : reg.view<mirinae::cpnt::AtmosphereSimple>())
+                return entity;
+
+            return entt::null;
+        }
+
+        mirinae::VulkanDevice& device_;
+        mirinae::RpResources& rp_res_;
+
+        std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
+        std::shared_ptr<mirinae::ITexture> sky_tex_;
+        mirinae::DescPool desc_pool_;
+        mirinae::RenderPassRaii render_pass_;
+        VkPipeline pipeline_ = VK_NULL_HANDLE;
+        VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
+
+        std::array<VkClearValue, 1> clear_values_;
+        uint32_t fbuf_width_ = 0;
+        uint32_t fbuf_height_ = 0;
+    };
+
+}  // namespace
+
+
 // Compo Sky
 namespace {
 
@@ -503,6 +807,17 @@ namespace {
 
 
 namespace mirinae::rp::compo {
+
+    URpStates create_rps_dlight(
+        mirinae::CosmosSimulator& cosmos,
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<RpStatesCompoDlight>(
+            cosmos, rp_res, desclayouts, device
+        );
+    }
 
     URpStates create_rps_sky(
         mirinae::CosmosSimulator& cosmos,
