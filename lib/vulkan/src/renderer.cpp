@@ -873,15 +873,6 @@ namespace {
                     device_
                 );
                 mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
-                mirinae::rp::compo::create_rp(
-                    rp_,
-                    rp_res_.gbuf_.width(),
-                    rp_res_.gbuf_.height(),
-                    rp_res_.gbuf_,
-                    desclayout_,
-                    swapchain_,
-                    device_
-                );
                 rp_.init_render_passes(
                     rp_res_.gbuf_.width(),
                     rp_res_.gbuf_.height(),
@@ -1333,15 +1324,6 @@ namespace {
                     device_
                 );
                 mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
-                mirinae::rp::compo::create_rp(
-                    rp_,
-                    rp_res_.gbuf_.width(),
-                    rp_res_.gbuf_.height(),
-                    rp_res_.gbuf_,
-                    desclayout_,
-                    swapchain_,
-                    device_
-                );
                 rp_.init_render_passes(
                     rp_res_.gbuf_.width(),
                     rp_res_.gbuf_.height(),
