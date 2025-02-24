@@ -136,6 +136,10 @@ namespace mirinae {
         return this->add_img(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, cnt);
     }
 
+    DescLayoutBuilder& DescLayoutBuilder::add_img_frag(uint32_t cnt) {
+        return this->add_img(VK_SHADER_STAGE_FRAGMENT_BIT, cnt);
+    }
+
     DescLayoutBuilder& DescLayoutBuilder::add_input_att(
         VkShaderStageFlags stage_flags, uint32_t count
     ) {

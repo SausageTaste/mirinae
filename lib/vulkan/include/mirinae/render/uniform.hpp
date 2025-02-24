@@ -342,11 +342,15 @@ namespace mirinae {
 
         // Uniform buffer
         DescLayoutBuilder& add_ubuf(VkShaderStageFlags, uint32_t cnt);
+        DescLayoutBuilder& add_ubuf_frag(uint32_t cnt) {
+            return this->add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, cnt);
+        }
 
         // Combined image sampler
         DescLayoutBuilder& add_img(VkShaderStageFlags, uint32_t cnt);
         DescLayoutBuilder& add_img_tesc(uint32_t cnt);
         DescLayoutBuilder& add_img_tese(uint32_t cnt);
+        DescLayoutBuilder& add_img_frag(uint32_t cnt);
 
         // Input attachment
         DescLayoutBuilder& add_input_att(VkShaderStageFlags, uint32_t cnt);
