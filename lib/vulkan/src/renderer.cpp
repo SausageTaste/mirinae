@@ -127,11 +127,6 @@ namespace {
         ) {
             this->destroy_std_rp();
 
-            rp_states_.push_back(mirinae::rp::compo::create_rps_sky(
-                cosmos, rp_res, desclayouts, device
-            ));
-            compo_sky_ = rp_states_.back().get();
-
             rp_states_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
                     rp_res, desclayouts, device
@@ -170,6 +165,16 @@ namespace {
                 )
             );
 
+            rp_states_.push_back(mirinae::rp::compo::create_rps_dlight(
+                cosmos, rp_res, desclayouts, device
+            ));
+            compo_dlight_ = rp_states_.back().get();
+
+            rp_states_.push_back(mirinae::rp::compo::create_rps_sky(
+                cosmos, rp_res, desclayouts, device
+            ));
+            compo_sky_ = rp_states_.back().get();
+
             rp_states_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tess(
                     swapchain.views_count(), cosmos, rp_res, desclayouts, device
@@ -188,16 +193,16 @@ namespace {
             return *gbuf_terrain_;
         }
         mirinae::rp::envmap::IRpMaster& envmap() { return *envmap_; }
-        mirinae::rp::compo::RpMasterBasic& compo_basic() {
-            return compo_basic_;
-        }
 
+        mirinae::IRpStates& compo_dlight() { return *compo_dlight_; }
         mirinae::IRpStates& compo_sky() { return *compo_sky_; }
         mirinae::IRpStates& ocean_tess() { return *ocean_tess_; }
 
         void record_computes(mirinae::RpContext& ctxt) {
             for (auto& rp : rp_states_) {
                 if (rp.get() == ocean_tess_)
+                    continue;
+                if (rp.get() == compo_dlight_)
                     continue;
                 if (rp.get() == compo_sky_)
                     continue;
@@ -209,9 +214,9 @@ namespace {
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterBasic> gbuf_basic_;
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterTerrain> gbuf_terrain_;
         std::unique_ptr<mirinae::rp::envmap::IRpMaster> envmap_;
-        mirinae::rp::compo::RpMasterBasic compo_basic_;
 
         std::vector<mirinae::URpStates> rp_states_;
+        mirinae::IRpStates* compo_dlight_ = nullptr;
         mirinae::IRpStates* compo_sky_ = nullptr;
         mirinae::IRpStates* ocean_tess_ = nullptr;
     };
@@ -910,16 +915,6 @@ namespace {
                 rpm_.gbuf_terrain().init(
                     *rp_res_.tex_man_, desclayout_, device_
                 );
-                rpm_.compo_basic().init(
-                    desclayout_,
-                    rp_res_.gbuf_,
-                    rp_res_.shadow_maps_->dlight_view_at(0),
-                    rp_res_.shadow_maps_->slight_view_at(0),
-                    envmap->diffuse_view(),
-                    envmap->specular_view(),
-                    rpm_.envmap().brdf_lut_view(),
-                    device_
-                );
                 rp_states_transp_.init(
                     desclayout_,
                     rp_res_.shadow_maps_->dlight_view_at(0),
@@ -1015,7 +1010,6 @@ namespace {
                 rp_states_fillscreen_.destroy(device_);
                 rp_states_debug_mesh_.destroy(device_);
                 rp_states_transp_.destroy(device_);
-                rpm_.compo_basic().destroy(device_);
                 rpm_.gbuf_terrain().destroy(device_);
                 rpm_.gbuf_basic().destroy(device_);
                 rpm_.envmap().destroy(device_);
@@ -1134,14 +1128,7 @@ namespace {
 
             rpm_.gbuf_terrain().record(ren_ctxt, rp_res_.gbuf_.extent(), rp_);
 
-            rpm_.compo_basic().record(
-                ren_ctxt.cmdbuf_,
-                rp_res_.gbuf_.extent(),
-                framesync_.get_frame_index(),
-                image_index,
-                rp_
-            );
-
+            rpm_.compo_dlight().record(ren_ctxt);
             rpm_.compo_sky().record(ren_ctxt);
 
             const auto forward = cam_view.make_forward_dir();
@@ -1308,7 +1295,6 @@ namespace {
                 rp_states_fillscreen_.destroy(device_);
                 rp_states_debug_mesh_.destroy(device_);
                 rp_states_transp_.destroy(device_);
-                rpm_.compo_basic().destroy(device_);
                 rpm_.gbuf_terrain().destroy(device_);
                 rpm_.gbuf_basic().destroy(device_);
                 rpm_.envmap().destroy_ren_units(*cosmos_);
@@ -1377,16 +1363,6 @@ namespace {
                 rpm_.gbuf_basic().init();
                 rpm_.gbuf_terrain().init(
                     *rp_res_.tex_man_, desclayout_, device_
-                );
-                rpm_.compo_basic().init(
-                    desclayout_,
-                    rp_res_.gbuf_,
-                    rp_res_.shadow_maps_->dlight_view_at(0),
-                    rp_res_.shadow_maps_->slight_view_at(0),
-                    envmap->diffuse_view(),
-                    envmap->specular_view(),
-                    rpm_.envmap().brdf_lut_view(),
-                    device_
                 );
                 rp_states_transp_.init(
                     desclayout_,
@@ -1639,9 +1615,6 @@ namespace {
                     break;
                 }
 
-                rpm_.compo_basic()
-                    .ubufs_.at(framesync_.get_frame_index().get())
-                    .set_data(ubuf_data, device_.mem_alloc());
                 rp_states_transp_.ubufs_.at(framesync_.get_frame_index().get())
                     .set_data(ubuf_data, device_.mem_alloc());
             }
