@@ -5,6 +5,7 @@
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/camera.hpp"
+#include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/script.hpp"
@@ -1001,12 +1002,20 @@ namespace {
                 mactor.model_.reset();
                 mactor.actor_.reset();
             }
+            for (auto& e : reg.view<mirinae::cpnt::Envmap>()) {
+                auto& c = reg.get<mirinae::cpnt::Envmap>(e);
+                c.ren_unit_.reset();
+            }
+            for (auto& e : reg.view<mirinae::cpnt::Terrain>()) {
+                auto& c = reg.get<mirinae::cpnt::Terrain>(e);
+                c.ren_unit_.reset();
+            }
             rpm_.envmap().destroy_ren_units(*cosmos_);
 
             // Destroy swapchain's relatives
             {
                 rpm_.destroy_std_rp();
-                // rp_states_imgui_.destroy();
+                rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
                 rp_states_debug_mesh_.destroy(device_);
                 rp_states_transp_.destroy(device_);
