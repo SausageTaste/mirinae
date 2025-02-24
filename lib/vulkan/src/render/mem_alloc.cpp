@@ -165,6 +165,11 @@ namespace mirinae {
 // Buffer
 namespace mirinae {
 
+    Buffer::~Buffer() {
+        if (buffer_ != VK_NULL_HANDLE)
+            SPDLOG_WARN("VMA Buffer object leaking");
+    }
+
     void Buffer::init_staging(
         VkDeviceSize size, VulkanMemoryAllocator allocator
     ) {
@@ -362,6 +367,11 @@ namespace mirinae {
 
 // Image
 namespace mirinae {
+
+    Image::~Image() {
+        if (image_ != VK_NULL_HANDLE)
+            SPDLOG_WARN("VMA Image object leaking");
+    }
 
     void Image::init(
         const VkImageCreateInfo& create_info, VulkanMemoryAllocator allocator
