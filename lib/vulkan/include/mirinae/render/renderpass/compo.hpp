@@ -47,7 +47,7 @@ namespace mirinae::rp::compo {
 
 
     URpStates create_rps_sky(
-        VkImageView sky_tex,
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device

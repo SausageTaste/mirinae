@@ -119,6 +119,7 @@ namespace {
         }
 
         void create_std_rp(
+            mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -127,7 +128,7 @@ namespace {
             this->destroy_std_rp();
 
             rp_states_.push_back(mirinae::rp::compo::create_rps_sky(
-                this->envmap().sky_tex_view(), rp_res, desclayouts, device
+                cosmos, rp_res, desclayouts, device
             ));
             compo_sky_ = rp_states_.back().get();
 
@@ -171,11 +172,7 @@ namespace {
 
             rp_states_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tess(
-                    swapchain.views_count(),
-                    envmap_->sky_tex_view(),
-                    rp_res,
-                    desclayouts,
-                    device
+                    swapchain.views_count(), cosmos, rp_res, desclayouts, device
                 )
             );
             ocean_tess_ = rp_states_.back().get();
@@ -828,14 +825,17 @@ namespace {
             : device_(cinfo)
             , script_(script)
             , cosmos_(cosmos)
-            , rp_res_(device_)
+            , rp_res_(task_sche, device_)
             , desclayout_(device_)
-            , tex_man_(mirinae::create_tex_mgr(task_sche, device_))
             , model_man_(mirinae::create_model_mgr(
-                  task_sche, tex_man_, desclayout_, device_
+                  task_sche, rp_res_.tex_man_, desclayout_, device_
               ))
             , overlay_man_(
-                  init_width, init_height, desclayout_, *tex_man_, device_
+                  init_width,
+                  init_height,
+                  desclayout_,
+                  *rp_res_.tex_man_,
+                  device_
               )
             , rp_states_imgui_(device_)
             , imgui_new_frame_(cinfo.imgui_new_frame_)
@@ -853,7 +853,9 @@ namespace {
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                     swapchain_.width(), swapchain_.height(), 0.9
                 );
-                rp_res_.gbuf_.init(gbuf_width, gbuf_height, *tex_man_, device_);
+                rp_res_.gbuf_.init(
+                    gbuf_width, gbuf_height, *rp_res_.tex_man_, device_
+                );
 
                 mirinae::rp::gbuf::create_rp(
                     rp_,
@@ -883,7 +885,9 @@ namespace {
                     device_
                 );
 
-                rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
+                rpm_.envmap().init(
+                    *cosmos_, rp_, *rp_res_.tex_man_, desclayout_, device_
+                );
                 rpm_.envmap().init_ren_units(
                     *cosmos_, desclayout_, rp_, device_
                 );
@@ -899,9 +903,13 @@ namespace {
                 }
                 MIRINAE_ASSERT(nullptr != envmap);
 
-                rpm_.create_std_rp(rp_res_, desclayout_, swapchain_, device_);
+                rpm_.create_std_rp(
+                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
+                );
                 rpm_.gbuf_basic().init();
-                rpm_.gbuf_terrain().init(*tex_man_, desclayout_, device_);
+                rpm_.gbuf_terrain().init(
+                    *rp_res_.tex_man_, desclayout_, device_
+                );
                 rpm_.compo_basic().init(
                     desclayout_,
                     rp_res_.gbuf_,
@@ -1316,7 +1324,9 @@ namespace {
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                     swapchain_.width(), swapchain_.height(), 0.9
                 );
-                rp_res_.gbuf_.init(gbuf_width, gbuf_height, *tex_man_, device_);
+                rp_res_.gbuf_.init(
+                    gbuf_width, gbuf_height, *rp_res_.tex_man_, device_
+                );
 
                 mirinae::rp::gbuf::create_rp(
                     rp_,
@@ -1346,7 +1356,9 @@ namespace {
                     device_
                 );
 
-                rpm_.envmap().init(rp_, *tex_man_, desclayout_, device_);
+                rpm_.envmap().init(
+                    *cosmos_, rp_, *rp_res_.tex_man_, desclayout_, device_
+                );
                 rpm_.envmap().init_ren_units(
                     *cosmos_, desclayout_, rp_, device_
                 );
@@ -1363,7 +1375,9 @@ namespace {
 
                 MIRINAE_ASSERT(nullptr != envmap);
                 rpm_.gbuf_basic().init();
-                rpm_.gbuf_terrain().init(*tex_man_, desclayout_, device_);
+                rpm_.gbuf_terrain().init(
+                    *rp_res_.tex_man_, desclayout_, device_
+                );
                 rpm_.compo_basic().init(
                     desclayout_,
                     rp_res_.gbuf_,
@@ -1386,7 +1400,9 @@ namespace {
                 rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(desclayout_, rp_res_.gbuf_, device_);
 
-                rpm_.create_std_rp(rp_res_, desclayout_, swapchain_, device_);
+                rpm_.create_std_rp(
+                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
+                );
             }
 
             // Optimized resize
@@ -1500,7 +1516,7 @@ namespace {
             }
 
             rpm_.gbuf_terrain().init_ren_units(
-                *cosmos_, *tex_man_, desclayout_, device_
+                *cosmos_, *rp_res_.tex_man_, desclayout_, device_
             );
             scene.entt_without_model_.clear();
         }
@@ -1638,7 +1654,6 @@ namespace {
 
         mirinae::RpResources rp_res_;
         mirinae::DesclayoutManager desclayout_;
-        mirinae::HTexMgr tex_man_;
         mirinae::HMdlMgr model_man_;
         mirinae::OverlayManager overlay_man_;
         mirinae::RenderPassPackage rp_;

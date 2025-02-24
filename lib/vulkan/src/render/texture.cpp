@@ -548,6 +548,8 @@ namespace {
             return img_;
         }
 
+        const fs::path& file_path() const { return path_; }
+
     private:
         fs::path path_;
         dal::Filesystem* filesys_;
@@ -627,6 +629,32 @@ namespace {
                 SPDLOG_CRITICAL("Failed to construct KTX device info");
                 MIRINAE_ABORT("Failed to construct KTX device info");
             }
+
+            // Missing tex
+            {
+                ::ImageLoadTask task(
+                    ":asset/textures/missing_texture.ktx",
+                    device.filesys(),
+                    device.phys_device_features()
+                );
+                while (task.tick() == sung::TaskStatus::running) {
+                }
+
+                if (task.has_succeeded()) {
+                    auto img = task.try_get_img();
+                    if (auto kts_img = img->as<dal::KtxImage>()) {
+                        auto out = std::make_shared<KtxTextureData>(device_);
+                        if (out->init(
+                                "missing_texture", *kts_img, ktx_device_
+                            )) {
+                            missing_tex_ = out;
+                        }
+                        textures_.push_back(out);
+                    }
+                } else {
+                    MIRINAE_ABORT("Failed to load missing texture");
+                }
+            }
         }
 
         ~TextureManager() {
@@ -690,6 +718,10 @@ namespace {
             return nullptr;
         }
 
+        std::shared_ptr<mirinae::ITexture> missing_tex() override {
+            return missing_tex_;
+        }
+
         std::unique_ptr<mirinae::ITexture> create_image(
             const std::string& id, const dal::IImage2D& image, bool srgb
         ) override {
@@ -730,6 +762,7 @@ namespace {
         mirinae::CommandPool cmd_pool_;
         ktxVulkanDeviceInfo ktx_device_;
         std::vector<std::shared_ptr<ITextureData>> textures_;
+        std::shared_ptr<mirinae::ITexture> missing_tex_;
     };
 
 

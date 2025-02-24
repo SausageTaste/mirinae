@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/compo.hpp"
 
+#include "mirinae/cpnt/light.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 
@@ -261,12 +262,27 @@ namespace {
 
     public:
         RpStatesCompoSky(
-            VkImageView sky_tex,
+            mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
             : device_(device), rp_res_(rp_res), render_pass_(device) {
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = cosmos.reg();
+
+            // Sky texture
+            {
+                auto e = this->select_atmos_simple(cosmos.reg());
+                auto& atmos = cosmos.reg().get<cpnt::AtmosphereSimple>(e);
+                auto& tex = *rp_res.tex_man_;
+                if (tex.request_blck(atmos.sky_tex_path_, false)) {
+                    sky_tex_ = tex.get(atmos.sky_tex_path_);
+                } else {
+                    sky_tex_ = tex.missing_tex();
+                }
+            }
+
             // Descriptor layout
             {
                 mirinae::DescLayoutBuilder builder{ this->name() + ":main" };
@@ -296,7 +312,7 @@ namespace {
                     fd.desc_set_ = desc_sets[i];
 
                     writer.add_img_info()
-                        .set_img_view(sky_tex)
+                        .set_img_view(sky_tex_->image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 0);
@@ -461,10 +477,18 @@ namespace {
             VkFramebuffer fbuf_;
         };
 
+        static entt::entity select_atmos_simple(entt::registry& reg) {
+            for (auto entity : reg.view<mirinae::cpnt::AtmosphereSimple>())
+                return entity;
+
+            return entt::null;
+        }
+
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
+        std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
         mirinae::RenderPassRaii render_pass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
@@ -481,13 +505,13 @@ namespace {
 namespace mirinae::rp::compo {
 
     URpStates create_rps_sky(
-        VkImageView sky_tex,
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<RpStatesCompoSky>(
-            sky_tex, rp_res, desclayouts, device
+            cosmos, rp_res, desclayouts, device
         );
     }
 

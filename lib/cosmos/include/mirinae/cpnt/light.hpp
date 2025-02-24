@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <filesystem>
 
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
@@ -156,6 +157,7 @@ namespace mirinae::cpnt {
         void render_imgui();
 
     public:
+        std::filesystem::path sky_tex_path_;
         glm::vec3 fog_color_{ 0.5, 0.5, 0.5 };
         float fog_density_ = 0.0001f;
     };
