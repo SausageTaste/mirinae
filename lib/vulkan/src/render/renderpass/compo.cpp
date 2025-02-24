@@ -190,6 +190,8 @@ namespace {
 
         ~RpStatesCompoDlight() override {
             for (auto& fd : frame_data_) {
+                fd.ubuf_.destroy(device_.mem_alloc());
+
                 if (VK_NULL_HANDLE != fd.fbuf_) {
                     vkDestroyFramebuffer(
                         device_.logi_device(), fd.fbuf_, nullptr
