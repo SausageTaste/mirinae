@@ -2004,12 +2004,27 @@ namespace {
     public:
         RpStatesOceanTess(
             size_t swapchain_count,
-            VkImageView sky_tex,
+            mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
             : device_(device), rp_res_(rp_res), render_pass_(device) {
+            // Sky texture
+            {
+                auto& reg = cosmos.reg();
+                auto& tex = *rp_res.tex_man_;
+                for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
+                    auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
+                    if (tex.block_for_tex(atmos.sky_tex_path_, false)) {
+                        sky_tex_ = tex.get(atmos.sky_tex_path_);
+                        break;
+                    }
+                }
+                if (!sky_tex_)
+                    sky_tex_ = tex.missing_tex();
+            }
+
             // Images
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& fd = frame_data_[i];
@@ -2153,7 +2168,7 @@ namespace {
                     writer.add_sampled_img_write(fd.desc_set_, 3);
 
                     writer.add_img_info()
-                        .set_img_view(sky_tex)
+                        .set_img_view(sky_tex_->image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 4);
@@ -2585,6 +2600,7 @@ namespace {
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
         std::array<mirinae::HRpImage, CASCADE_COUNT> turb_map_;
+        std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
         mirinae::RenderPassRaii render_pass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
@@ -2653,13 +2669,13 @@ namespace mirinae::rp::ocean {
 
     URpStates create_rp_states_ocean_tess(
         size_t swapchain_count,
-        VkImageView sky_tex,
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<RpStatesOceanTess>(
-            swapchain_count, sky_tex, rp_res, desclayouts, device
+            swapchain_count, cosmos, rp_res, desclayouts, device
         );
     }
 

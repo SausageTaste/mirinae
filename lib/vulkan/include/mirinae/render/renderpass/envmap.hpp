@@ -28,6 +28,7 @@ namespace mirinae::rp::envmap {
         virtual ~IRpMaster() = default;
 
         virtual void init(
+            mirinae::CosmosSimulator& cosmos,
             IRenderPassRegistry& rp_pkg,
             ITextureManager& tex_man,
             DesclayoutManager& desclayouts,
@@ -46,7 +47,6 @@ namespace mirinae::rp::envmap {
         virtual void destroy_ren_units(CosmosSimulator& cosmos) = 0;
 
         virtual VkImageView brdf_lut_view() const = 0;
-        virtual VkImageView sky_tex_view() const = 0;
     };
 
     std::unique_ptr<IRpMaster> create_rp_master();

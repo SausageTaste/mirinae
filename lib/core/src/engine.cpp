@@ -755,6 +755,9 @@ namespace {
 
                 auto& atm = reg.emplace<mirinae::cpnt::AtmosphereSimple>(entt);
                 atm.fog_color_ = { 0.556, 0.707, 0.846 };
+                atm.sky_tex_path_ =
+                    ":asset/textures/"
+                    "kloofendal_48d_partly_cloudy_puresky_1k.hdr";
             }
 
             // Terrain

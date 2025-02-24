@@ -65,6 +65,7 @@ namespace mirinae {
         virtual dal::ReqResult request(const dal::path& res_id, bool srgb) = 0;
 
         virtual std::shared_ptr<ITexture> get(const dal::path& res_id) = 0;
+        virtual std::shared_ptr<ITexture> missing_tex() = 0;
 
         virtual std::unique_ptr<ITexture> create_image(
             const std::string& id, const dal::IImage2D& image, bool srgb

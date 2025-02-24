@@ -6,6 +6,7 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/render/renderee.hpp"
+#include "mirinae/render/texture.hpp"
 #include "mirinae/render/vkdevice.hpp"
 
 
@@ -257,7 +258,7 @@ namespace mirinae {
         using HImage = std::shared_ptr<Image>;
 
     public:
-        RpResources(VulkanDevice& device);
+        RpResources(sung::HTaskSche task_sche, VulkanDevice& device);
         ~RpResources();
 
         // Remove the user from user list of the image.
@@ -272,6 +273,7 @@ namespace mirinae {
         // Returns nullptr if the image does not exist.
         HImage get_img_reader(const str& id, const str& user_id);
 
+        HTexMgr tex_man_;
         HShadowMaps shadow_maps_;
         FbufImageBundle gbuf_;
 

@@ -995,6 +995,7 @@ namespace {
         }
 
         void init(
+            mirinae::CosmosSimulator& cosmos,
             mirinae::IRenderPassRegistry& rp_pkg,
             mirinae::ITextureManager& tex_man,
             mirinae::DesclayoutManager& desclayouts,
@@ -1010,6 +1011,19 @@ namespace {
             );
 
             brdf_lut_.init(512, 512, rp_pkg, device);
+
+            // Sky texture
+            {
+                auto e = this->select_atmos_simple(cosmos.reg());
+                auto& atmos = cosmos.reg().get<mirinae::cpnt::AtmosphereSimple>(
+                    e
+                );
+                if (tex_man.request_blck(atmos.sky_tex_path_, false)) {
+                    sky_tex_ = tex_man.get(atmos.sky_tex_path_);
+                } else {
+                    sky_tex_ = tex_man.missing_tex();
+                }
+            }
 
             sky_tex_ = tex_man.block_for_tex("Sung/satara_night_4k.hdr", false);
             if (!sky_tex_) {
@@ -1112,10 +1126,6 @@ namespace {
 
         VkImageView brdf_lut_view() const override { return brdf_lut_.view(); }
 
-        VkImageView sky_tex_view() const override {
-            return sky_tex_->image_view();
-        }
-
     private:
         class BrdfLut {
 
@@ -1200,6 +1210,13 @@ namespace {
             mirinae::ImageView view_;
             mirinae::Fbuf fbuf_;
         };
+
+        static entt::entity select_atmos_simple(entt::registry& reg) {
+            for (auto entity : reg.view<mirinae::cpnt::AtmosphereSimple>())
+                return entity;
+
+            return entt::null;
+        }
 
         void record_base(
             entt::entity e_env,

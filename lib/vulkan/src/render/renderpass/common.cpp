@@ -35,7 +35,8 @@ namespace mirinae {
     };
 
 
-    RpResources::RpResources(VulkanDevice& device) : device_(device) {}
+    RpResources::RpResources(sung::HTaskSche task_sche, VulkanDevice& device)
+        : tex_man_(create_tex_mgr(task_sche, device)), device_(device) {}
 
     RpResources::~RpResources() {
         for (auto& [id, img] : imgs_) {
