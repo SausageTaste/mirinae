@@ -160,7 +160,7 @@ namespace {
 
                 builder.rasterization_state().cull_mode_back();
 
-                builder.color_blend_state().add(false, 1);
+                builder.color_blend_state().add().set_additive_blend();
 
                 builder.dynamic_state().add_viewport().add_scissor();
 

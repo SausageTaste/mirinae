@@ -341,6 +341,13 @@ namespace mirinae {
         class ColorBlendStateBuilder {
 
         public:
+            ColorBlendStateBuilder& add();
+            ColorBlendStateBuilder& duplicate();
+            ColorBlendStateBuilder& duplicate(size_t count);
+
+            ColorBlendStateBuilder& set_alpha_blend();
+            ColorBlendStateBuilder& set_additive_blend();
+
             ColorBlendStateBuilder& add(bool blend_enabled);
             ColorBlendStateBuilder& add(bool blend_enabled, size_t count);
 

@@ -534,27 +534,66 @@ namespace mirinae {
 
 #define CLS PipelineBuilder::ColorBlendStateBuilder
 
-    CLS& CLS::add(bool blend_enabled) {
+    CLS& CLS::add() {
         auto& added = data_.emplace_back();
         added.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
                                VK_COLOR_COMPONENT_G_BIT |
                                VK_COLOR_COMPONENT_B_BIT |
                                VK_COLOR_COMPONENT_A_BIT;
+
+        added.blendEnable = VK_FALSE;
         added.colorBlendOp = VK_BLEND_OP_ADD;
+        added.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        added.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        added.alphaBlendOp = VK_BLEND_OP_ADD;
         added.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
         added.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+
+        return *this;
+    }
+
+    CLS& CLS::duplicate() {
+        data_.push_back(data_.back());
+        return *this;
+    }
+
+    CLS& CLS::duplicate(size_t count) {
+        if (count < 1)
+            return *this;
+
+        this->duplicate();
+        for (size_t i = 1; i < count; ++i) data_.push_back(data_.back());
+        return *this;
+    }
+
+    CLS& CLS::set_alpha_blend() {
+        auto& added = data_.back();
+        added.blendEnable = VK_TRUE;
+        added.colorBlendOp = VK_BLEND_OP_ADD;
+        added.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        added.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         added.alphaBlendOp = VK_BLEND_OP_ADD;
+        added.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        added.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        return *this;
+    }
 
-        if (blend_enabled) {
-            added.blendEnable = VK_TRUE;
-            added.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-            added.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        } else {
-            added.blendEnable = VK_FALSE;
-            added.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-            added.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-        }
+    CLS& CLS::set_additive_blend() {
+        auto& added = data_.back();
+        added.blendEnable = VK_TRUE;
+        added.colorBlendOp = VK_BLEND_OP_ADD;
+        added.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        added.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        added.alphaBlendOp = VK_BLEND_OP_ADD;
+        added.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        added.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        return *this;
+    }
 
+    CLS& CLS::add(bool blend_enabled) {
+        this->add();
+        if (blend_enabled)
+            this->set_alpha_blend();
         return *this;
     }
 
@@ -562,8 +601,10 @@ namespace mirinae {
         if (count < 1)
             return *this;
 
-        this->add(blend_enabled);
-        for (size_t i = 1; i < count; ++i) data_.push_back(data_.back());
+        this->add();
+        if (blend_enabled)
+            this->set_alpha_blend();
+        this->duplicate(count - 1);
         return *this;
     }
 
