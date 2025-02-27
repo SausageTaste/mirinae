@@ -170,6 +170,19 @@ namespace mirinae {
             SPDLOG_WARN("VMA Buffer object leaking");
     }
 
+    Buffer::Buffer(Buffer&& rhs) noexcept {
+        std::swap(cinfo_, rhs.cinfo_);
+        std::swap(buffer_, rhs.buffer_);
+        std::swap(allocation_, rhs.allocation_);
+    }
+
+    Buffer& Buffer::operator=(Buffer&& rhs) noexcept {
+        std::swap(cinfo_, rhs.cinfo_);
+        std::swap(buffer_, rhs.buffer_);
+        std::swap(allocation_, rhs.allocation_);
+        return *this;
+    }
+
     void Buffer::init_staging(
         VkDeviceSize size, VulkanMemoryAllocator allocator
     ) {
