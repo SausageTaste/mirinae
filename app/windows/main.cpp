@@ -5,12 +5,20 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <sung/basic/aabb.hpp>
+#include <sung/basic/os_detect.hpp>
 
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
-#include "dump.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
+
+#ifdef SUNG_OS_WINDOWS
+    #include "dump.hpp"
+#elif defined(SUNG_OS_LINUX)
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <pwd.h>
+#endif
 
 
 namespace {
@@ -31,8 +39,10 @@ namespace {
         }
 
         MIRINAE_ABORT("Failed to find asset path");
+        return "";
     }
 
+#ifdef SUNG_OS_WINDOWS
     std::filesystem::path get_documents_path(const char* app_name) {
         if (auto pPath = getenv("USERPROFILE")) {
             auto path = std::filesystem::path(pPath) / "Documents" / app_name;
@@ -48,6 +58,19 @@ namespace {
 
         MIRINAE_ABORT("Failed to get user profile path");
     }
+#elif defined(SUNG_OS_LINUX)
+    std::filesystem::path get_home_path() {
+        const char *homedir;
+        if ((homedir = getenv("HOME")) == NULL) {
+            homedir = getpwuid(getuid())->pw_dir;
+        }
+        return std::filesystem::path(homedir);
+    }
+
+    std::filesystem::path get_documents_path(const char* app_name) {
+        return ::get_home_path() / "Documents" / app_name;
+    }
+#endif
 
     auto get_glfw_extensions() {
         uint32_t glfwExtensionCount = 0;
@@ -528,6 +551,10 @@ namespace {
 
 
 int main() {
+#ifdef SUNG_OS_WINDOWS
     MIRINAE_WIN_TRY { return ::start(); }
     MIRINAE_WIN_CATCH { std::abort(); }
+#else
+    return ::start();
+#endif
 }

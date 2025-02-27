@@ -1,12 +1,11 @@
-import os
-import time
 import multiprocessing as mp
+import os
+import shutil
+import time
 
 import utils
 
 
-VULKAN_SDK_DIR = utils.find_vulkan_sdk();
-COMPILER_PATH = os.path.join(VULKAN_SDK_DIR, "Bin", "glslc.exe")
 ROOT_DIR = utils.find_root_dir()
 ASSET_DIR = os.path.join(ROOT_DIR, "asset")
 GLSL_DIR = os.path.join(ROOT_DIR, "asset", "glsl")
@@ -20,6 +19,19 @@ INPUT_EXTENSIONS = {
     ".tesc",
     ".tese",
 }
+
+
+def __find_glslc():
+    if shutil.which("glslc"):
+        return "glslc"
+
+    path = os.path.join(utils.find_vulkan_sdk(), "Bin", "glslc.exe")
+    if shutil.which(path):
+        return path
+
+    raise FileNotFoundError("GLSL compiler not found.")
+
+COMPILER_PATH = __find_glslc()
 
 
 def __make_output_path(file_path: str):
@@ -65,9 +77,6 @@ def __compile_one(file_path):
 
 def main():
     st = time.time()
-
-    if not os.path.isfile(COMPILER_PATH):
-        raise FileNotFoundError("GLSL compiler not found at '{}'".format(COMPILER_PATH))
 
     work_count = 0
     success_count = 0

@@ -1,8 +1,10 @@
 #pragma once
 
-#include <Windows.h>
+#include <sung/basic/os_detect.hpp>
 
-#if false
+#if defined(SUNG_OS_WINDOWS)
+
+#include <Windows.h>
 
 #include <Windows.h>
 

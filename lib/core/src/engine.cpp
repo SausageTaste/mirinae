@@ -489,7 +489,10 @@ namespace {
             }
         };
 
-        void render_cvar() { sung::gcvars().visit(CvarVisitor{}); }
+        void render_cvar() {
+            CvarVisitor v{};
+            sung::gcvars().visit(v);
+        }
     };
 
 
