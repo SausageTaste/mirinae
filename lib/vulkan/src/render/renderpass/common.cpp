@@ -52,12 +52,12 @@ namespace mirinae {
         auto& r = it->second;
         r.writers_.erase(user_id);
         r.readers_.erase(user_id);
-        SPDLOG_INFO("RpImage '{}' is no longer used by '{}'", id, user_id);
+        // SPDLOG_INFO("RpImage '{}' is no longer used by '{}'", id, user_id);
 
         if (r.writers_.empty() && r.readers_.empty()) {
             r.destroy(device_);
             imgs_.erase(it);
-            SPDLOG_INFO("RpImage '{}' is obsolete", id);
+            // SPDLOG_INFO("RpImage '{}' is obsolete", id);
         }
     }
 
@@ -79,7 +79,7 @@ namespace mirinae {
         r.writers_.insert(user_id);
         r.data_ = std::make_shared<Image>(id);
 
-        SPDLOG_INFO("RpImage created: {}", id);
+        // SPDLOG_INFO("RpImage created: {}", id);
         return r.data_;
     }
 
@@ -91,7 +91,7 @@ namespace mirinae {
         auto& r = it->second;
         r.readers_.insert(user_id);
 
-        SPDLOG_INFO("RpImage reader: {} <- {}", id, user_id);
+        // SPDLOG_INFO("RpImage reader: {} <- {}", id, user_id);
         return r.data_;
     }
 
