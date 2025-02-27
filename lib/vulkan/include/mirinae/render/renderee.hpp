@@ -81,6 +81,9 @@ namespace mirinae {
         OverlayRenderUnit(VulkanDevice& device);
         ~OverlayRenderUnit();
 
+        OverlayRenderUnit(OverlayRenderUnit&&) noexcept;
+        OverlayRenderUnit& operator=(OverlayRenderUnit&&) noexcept;
+
         void init(
             uint32_t max_flight_count,
             VkImageView color_view,

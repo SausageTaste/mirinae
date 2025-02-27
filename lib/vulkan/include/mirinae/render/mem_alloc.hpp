@@ -63,6 +63,9 @@ namespace mirinae {
         Buffer() = default;
         ~Buffer();
 
+        Buffer(Buffer&& rhs) noexcept;
+        Buffer& operator=(Buffer&& rhs) noexcept;
+
         void init_staging(VkDeviceSize size, VulkanMemoryAllocator allocator);
         void init_ubuf(VkDeviceSize size, VulkanMemoryAllocator allocator);
         void init_vertices(VkDeviceSize size, VulkanMemoryAllocator allocator);

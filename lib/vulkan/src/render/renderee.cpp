@@ -306,6 +306,21 @@ namespace mirinae {
 
     OverlayRenderUnit::~OverlayRenderUnit() { this->destroy(); }
 
+    OverlayRenderUnit::OverlayRenderUnit(OverlayRenderUnit&& rhs) noexcept
+        : device_(rhs.device_) {
+        std::swap(desc_pool_, rhs.desc_pool_);
+        std::swap(uniform_buf_, rhs.uniform_buf_);
+        std::swap(desc_sets_, rhs.desc_sets_);
+    }
+
+    OverlayRenderUnit& OverlayRenderUnit::operator=(OverlayRenderUnit&& rhs
+    ) noexcept {
+        std::swap(desc_pool_, rhs.desc_pool_);
+        std::swap(uniform_buf_, rhs.uniform_buf_);
+        std::swap(desc_sets_, rhs.desc_sets_);
+        return *this;
+    }
+
     void OverlayRenderUnit::init(
         uint32_t max_flight_count,
         VkImageView color_view,
