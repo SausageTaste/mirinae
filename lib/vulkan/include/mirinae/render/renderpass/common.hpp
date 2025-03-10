@@ -109,6 +109,49 @@ namespace mirinae {
     };
 
 
+    class RpPipeline {
+
+    public:
+        RpPipeline();
+        ~RpPipeline();
+
+        bool create(const VkComputePipelineCreateInfo&, VulkanDevice&);
+
+        RpPipeline& operator=(VkPipeline handle);
+
+        operator VkPipeline() const;
+        VkPipeline operator*() const;
+        VkPipeline get() const;
+
+        void reset(VkPipeline handle, VulkanDevice& device);
+        void destroy(VulkanDevice& device);
+
+    public:
+        VkPipeline handle_ = VK_NULL_HANDLE;
+    };
+
+
+    class RpPipeLayout {
+
+    public:
+        RpPipeLayout();
+        ~RpPipeLayout();
+
+        RpPipeLayout& operator=(VkPipelineLayout handle);
+
+        operator VkPipelineLayout&();
+        operator VkPipelineLayout() const;
+        VkPipelineLayout operator*() const;
+        VkPipelineLayout get() const;
+
+        void reset(VkPipelineLayout handle, VulkanDevice& device);
+        void destroy(VulkanDevice& device);
+
+    public:
+        VkPipelineLayout handle_ = VK_NULL_HANDLE;
+    };
+
+
     class FbufImageBundle {
 
     public:
