@@ -89,6 +89,26 @@ namespace mirinae {
     };
 
 
+    class RenderPass {
+
+    public:
+        RenderPass();
+        ~RenderPass();
+
+        RenderPass& operator=(VkRenderPass rp);
+
+        operator VkRenderPass() const;
+        VkRenderPass operator*() const;
+        VkRenderPass get() const;
+
+        void reset(VkRenderPass rp, mirinae::VulkanDevice& device);
+        void destroy(mirinae::VulkanDevice& device);
+
+    public:
+        VkRenderPass rp_ = VK_NULL_HANDLE;
+    };
+
+
     class FbufImageBundle {
 
     public:
@@ -170,7 +190,7 @@ namespace mirinae {
 
     protected:
         mirinae::VulkanDevice& device_;
-        VkRenderPass renderpass_ = VK_NULL_HANDLE;
+        mirinae::RenderPass renderpass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout layout_ = VK_NULL_HANDLE;
     };
@@ -191,41 +211,6 @@ namespace mirinae {
         void add(const std::string& name, Args&&... args) {
             this->add(name, std::make_unique<T>(std::forward<Args>(args)...));
         }
-    };
-
-
-    class RenderPassRaii {
-
-    public:
-        RenderPassRaii(VulkanDevice& device) : device_(device) {}
-
-        ~RenderPassRaii() { this->clear(); }
-
-        RenderPassRaii& operator=(VkRenderPass rp) {
-            this->reset(rp);
-            return *this;
-        }
-
-        operator VkRenderPass() const { return rp_; }
-
-        VkRenderPass operator*() const { return rp_; }
-
-        VkRenderPass get() const { return rp_; }
-
-        void reset(VkRenderPass rp) {
-            this->clear();
-            rp_ = rp;
-        }
-
-        void clear() {
-            if (rp_ != VK_NULL_HANDLE)
-                vkDestroyRenderPass(device_.logi_device(), rp_, nullptr);
-            rp_ = VK_NULL_HANDLE;
-        }
-
-    public:
-        VulkanDevice& device_;
-        VkRenderPass rp_ = VK_NULL_HANDLE;
     };
 
 
