@@ -14,17 +14,21 @@ layout (set = 0, binding = 2) uniform sampler2D u_normal_map;
 layout (set = 0, binding = 3) uniform sampler2D u_material_map;
 
 layout (set = 0, binding = 4) uniform U_CompoDlightMain {
-    mat4 view;
-    mat4 view_inv;
     mat4 proj;
     mat4 proj_inv;
+    mat4 view;
+    mat4 view_inv;
     vec4 fog_color_density;
 } u_main;
 
-layout (push_constant) uniform U_CompoDlightPushConst {
-    vec4 dlight_dir;
+layout (set = 1, binding = 0) uniform sampler2D u_shadow_map;
+
+layout (set = 1, binding = 1) uniform U_CompoDlightShadowMap {
+    mat4 light_mats[4];
+    vec4 cascade_depths;
     vec4 dlight_color;
-} u_pc;
+    vec4 dlight_dir;
+} ubuf_sh;
 
 
 vec3 calc_frag_pos(float depth) {
@@ -60,15 +64,30 @@ void main() {
 
     // Directional light
     {
-        light += calc_pbr_illumination(
+        uint selected_dlight = 3;
+        for (uint i = 0; i < 3; ++i) {
+            if (ubuf_sh.cascade_depths[i] > depth_texel) {
+                selected_dlight = i;
+                break;
+            }
+        }
+
+        const float lit = how_much_not_in_cascade_shadow(
+            world_pos,
+            CASCADE_OFFSETS[selected_dlight],
+            ubuf_sh.light_mats[selected_dlight],
+            u_shadow_map
+        );
+
+        light += lit * calc_pbr_illumination(
             roughness,
             metallic,
             albedo,
             normal,
             F0,
             -view_direc,
-            u_pc.dlight_dir.xyz,
-            u_pc.dlight_color.rgb
+            ubuf_sh.dlight_dir.xyz,
+            ubuf_sh.dlight_color.rgb
         );
     }
 

@@ -10,33 +10,35 @@
 namespace {
 
     struct U_CompoDlightMain {
-        glm::mat4 view_;
-        glm::mat4 view_inv_;
         glm::mat4 proj_;
         glm::mat4 proj_inv_;
+        glm::mat4 view_;
+        glm::mat4 view_inv_;
         glm::vec4 fog_color_density_;
     };
 
 
-    struct U_CompoDlightPushConst {
+    struct U_CompoDlightShadowMap {
 
     public:
-        U_CompoDlightPushConst& set_dlight_dir(const glm::dvec3& v) {
+        U_CompoDlightShadowMap& set_dlight_dir(const glm::dvec3& v) {
             dlight_dir_.x = static_cast<float>(v.x);
             dlight_dir_.y = static_cast<float>(v.y);
             dlight_dir_.z = static_cast<float>(v.z);
             return *this;
         }
 
-        U_CompoDlightPushConst& set_dlight_color(const glm::vec3& v) {
+        U_CompoDlightShadowMap& set_dlight_color(const glm::vec3& v) {
             dlight_color_.x = v.r;
             dlight_color_.y = v.g;
             dlight_color_.z = v.b;
             return *this;
         }
 
-        glm::vec4 dlight_dir_;
+        glm::mat4 light_mats_[4];
+        glm::vec4 cascade_depths_;
         glm::vec4 dlight_color_;
+        glm::vec4 dlight_dir_;
     };
 
 
@@ -53,12 +55,7 @@ namespace {
             namespace cpnt = mirinae::cpnt;
             auto& reg = cosmos.reg();
 
-            // Ubuf
-            for (auto& fd : frame_data_) {
-                fd.ubuf_.init_ubuf<U_CompoDlightMain>(device.mem_alloc());
-            }
-
-            // Descriptor layout
+            // Desc layout: main
             {
                 mirinae::DescLayoutBuilder builder{ name() + ":main" };
                 builder
@@ -70,7 +67,16 @@ namespace {
                 desclayouts.add(builder, device.logi_device());
             }
 
-            // Desciptor Sets
+            // Desc layout: shadow map
+            {
+                mirinae::DescLayoutBuilder builder{ name() + ":shadow_map" };
+                builder
+                    .add_img_frag(1)    // shadow map
+                    .add_ubuf_frag(1);  // U_CompoDlightShadowMap
+                desclayouts.add(builder, device.logi_device());
+            }
+
+            // Desc sets: main
             {
                 auto& desc_layout = desclayouts.get(name() + ":main");
 
@@ -90,6 +96,7 @@ namespace {
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
+                    fd.ubuf_.init_ubuf<U_CompoDlightMain>(device.mem_alloc());
 
                     // Depth
                     writer.add_img_info()
@@ -122,6 +129,39 @@ namespace {
                 writer.apply_all(device.logi_device());
             }
 
+            // Desc sets: shadow map
+            {
+                const auto sh_count = rp_res.shadow_maps_->dlight_count();
+                auto& desc_layout = desclayouts.get(name() + ":shadow_map");
+
+                desc_pool_sh_.init(
+                    sh_count, desc_layout.size_info(), device.logi_device()
+                );
+
+                auto desc_sets = desc_pool_sh_.alloc(
+                    sh_count, desc_layout.layout(), device.logi_device()
+                );
+
+                mirinae::DescWriter writer;
+                for (size_t i = 0; i < sh_count; i++) {
+                    auto& fd = shmap_data_.emplace_back();
+                    fd.desc_set_ = desc_sets[i];
+                    fd.ubuf_.init_ubuf<U_CompoDlightShadowMap>(device.mem_alloc(
+                    ));
+
+                    // Shadow map
+                    writer.add_img_info()
+                        .set_img_view(rp_res.shadow_maps_->dlight_view_at(i))
+                        .set_sampler(device.samplers().get_nearest())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 0);
+                    // U_CompoDlightShadowMap
+                    writer.add_buf_info(fd.ubuf_);
+                    writer.add_buf_write(fd.desc_set_, 1);
+                }
+                writer.apply_all(device.logi_device());
+            }
+
             // Render pass
             {
                 mirinae::RenderPassBuilder builder;
@@ -141,12 +181,9 @@ namespace {
 
             // Pipeline layout
             {
-                auto& desc_layout = desclayouts.get(name() + ":main");
-
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(desc_layout.layout())
-                    .add_frag_flag()
-                    .pc<U_CompoDlightPushConst>()
+                    .desc(desclayouts.get(name() + ":main").layout())
+                    .desc(desclayouts.get(name() + ":shadow_map").layout())
                     .build(pipe_layout_, device);
             }
 
@@ -181,9 +218,7 @@ namespace {
             }
 
             // Misc
-            {
-                clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
-            }
+            { clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f }; }
 
             return;
         }
@@ -200,7 +235,12 @@ namespace {
                 }
             }
 
+            for (auto& sh_data : shmap_data_){
+                sh_data.ubuf_.destroy(device_.mem_alloc());
+            }
+
             desc_pool_.destroy(device_.logi_device());
+            desc_pool_sh_.destroy(device_.logi_device());
 
             if (VK_NULL_HANDLE != pipeline_) {
                 vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
@@ -260,18 +300,39 @@ namespace {
                 .set(fd.desc_set_)
                 .record(cmdbuf);
 
-            for (auto e : reg.view<mirinae::cpnt::DLight>()) {
+            for (size_t i = 0; i < rp_res_.shadow_maps_->dlight_count(); ++i) {
+                const auto e = rp_res_.shadow_maps_->dlight_entt_at(i);
+                if (entt::null == e)
+                    continue;
+
+                auto& sh_data = shmap_data_.at(i);
+                auto shadow_view = rp_res_.shadow_maps_->dlight_view_at(i);
                 auto& dlight = reg.get<mirinae::cpnt::DLight>(e);
                 auto& tform = reg.get<mirinae::cpnt::Transform>(e);
 
-                U_CompoDlightPushConst pc;
-                pc.set_dlight_dir(dlight.calc_to_light_dir(ubuf.view_, tform))
+                U_CompoDlightShadowMap ubuf_sh;
+                ubuf_sh
+                    .set_dlight_dir(dlight.calc_to_light_dir(ubuf.view_, tform))
                     .set_dlight_color(dlight.color_.scaled_color());
+                ubuf_sh.light_mats_[0] =
+                    dlight.cascades_.cascades_[0].light_mat_;
+                ubuf_sh.light_mats_[1] =
+                    dlight.cascades_.cascades_[1].light_mat_;
+                ubuf_sh.light_mats_[2] =
+                    dlight.cascades_.cascades_[2].light_mat_;
+                ubuf_sh.light_mats_[3] =
+                    dlight.cascades_.cascades_[3].light_mat_;
+                ubuf_sh.cascade_depths_[0] = dlight.cascades_.far_depths_[0];
+                ubuf_sh.cascade_depths_[1] = dlight.cascades_.far_depths_[1];
+                ubuf_sh.cascade_depths_[2] = dlight.cascades_.far_depths_[2];
+                ubuf_sh.cascade_depths_[3] = dlight.cascades_.far_depths_[3];
+                sh_data.ubuf_.set_data(ubuf_sh, device_.mem_alloc());
 
-                mirinae::PushConstInfo pc_info;
-                pc_info.layout(pipe_layout_)
-                    .add_stage_frag()
-                    .record(cmdbuf, pc);
+                mirinae::DescSetBindInfo{}
+                    .layout(pipe_layout_)
+                    .first_set(1)
+                    .set(sh_data.desc_set_)
+                    .record(cmdbuf);
 
                 vkCmdDraw(cmdbuf, 3, 1, 0, 0);
             }
@@ -286,6 +347,11 @@ namespace {
             VkFramebuffer fbuf_;
         };
 
+        struct ShadowMapData {
+            mirinae::Buffer ubuf_;
+            VkDescriptorSet desc_set_;
+        };
+
         static entt::entity select_atmos_simple(entt::registry& reg) {
             for (auto entity : reg.view<mirinae::cpnt::AtmosphereSimple>())
                 return entity;
@@ -297,8 +363,10 @@ namespace {
         mirinae::RpResources& rp_res_;
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
+        std::vector<ShadowMapData> shmap_data_;
+
         std::shared_ptr<mirinae::ITexture> sky_tex_;
-        mirinae::DescPool desc_pool_;
+        mirinae::DescPool desc_pool_, desc_pool_sh_;
         mirinae::RenderPassRaii render_pass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;

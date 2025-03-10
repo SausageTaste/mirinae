@@ -232,7 +232,11 @@ namespace mirinae {
     struct IShadowMapBundle {
         virtual ~IShadowMapBundle() = default;
 
+        virtual uint32_t dlight_count() const = 0;
+        virtual entt::entity dlight_entt_at(size_t idx) = 0;
         virtual VkImageView dlight_view_at(size_t idx) = 0;
+
+        virtual uint32_t slight_count() const = 0;
         virtual VkImageView slight_view_at(size_t idx) = 0;
     };
     using HShadowMaps = std::shared_ptr<IShadowMapBundle>;

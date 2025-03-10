@@ -651,6 +651,20 @@ namespace {
                 d.set_light_dir(-0.5613, -0.7396, -0.3713, t);
             }
 
+            // DLight
+            {
+                const auto entt = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("Sun Light 2");
+
+                auto& d = reg.emplace<mirinae::cpnt::DLight>(entt);
+                d.color_.set_scaled_color(0, 0, 5);
+
+                auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
+                d.set_light_dir(0.5613, -0.7396, -0.3713, t);
+            }
+
             // SLight
             {
                 flashlight_ = reg.create();
