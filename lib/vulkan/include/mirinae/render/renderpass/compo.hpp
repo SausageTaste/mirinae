@@ -12,6 +12,13 @@ namespace mirinae::rp::compo {
         mirinae::VulkanDevice& device
     );
 
+    URpStates create_rps_slight(
+        mirinae::CosmosSimulator& cosmos,
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    );
+
     URpStates create_rps_sky(
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,

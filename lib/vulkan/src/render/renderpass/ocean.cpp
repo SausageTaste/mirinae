@@ -2009,7 +2009,7 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), rp_res_(rp_res), render_pass_(device) {
+            : device_(device), rp_res_(rp_res) {
             // Sky texture
             {
                 auto& reg = cosmos.reg();
@@ -2281,6 +2281,7 @@ namespace {
                 rp_res_.free_img(turb_map_[i]->id(), this->name());
 
             desc_pool_.destroy(device_.logi_device());
+            render_pass_.destroy(device_);
 
             if (VK_NULL_HANDLE != pipeline_) {
                 vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
@@ -2602,7 +2603,7 @@ namespace {
         std::array<mirinae::HRpImage, CASCADE_COUNT> turb_map_;
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
-        mirinae::RenderPassRaii render_pass_;
+        mirinae::RenderPass render_pass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
 

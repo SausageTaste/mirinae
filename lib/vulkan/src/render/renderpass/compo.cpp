@@ -51,7 +51,7 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), rp_res_(rp_res), render_pass_(device) {
+            : device_(device), rp_res_(rp_res) {
             namespace cpnt = mirinae::cpnt;
             auto& reg = cosmos.reg();
 
@@ -235,12 +235,13 @@ namespace {
                 }
             }
 
-            for (auto& sh_data : shmap_data_){
+            for (auto& sh_data : shmap_data_) {
                 sh_data.ubuf_.destroy(device_.mem_alloc());
             }
 
             desc_pool_.destroy(device_.logi_device());
             desc_pool_sh_.destroy(device_.logi_device());
+            render_pass_.destroy(device_);
 
             if (VK_NULL_HANDLE != pipeline_) {
                 vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
@@ -367,7 +368,7 @@ namespace {
 
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_, desc_pool_sh_;
-        mirinae::RenderPassRaii render_pass_;
+        mirinae::RenderPass render_pass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
 
@@ -391,7 +392,7 @@ namespace {
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), rp_res_(rp_res), render_pass_(device) {
+            : device_(device), rp_res_(rp_res) {
             namespace cpnt = mirinae::cpnt;
             auto& reg = cosmos.reg();
 
@@ -534,6 +535,7 @@ namespace {
 
             sky_tex_.reset();
             desc_pool_.destroy(device_.logi_device());
+            render_pass_.destroy(device_);
 
             if (VK_NULL_HANDLE != pipeline_) {
                 vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
@@ -615,7 +617,7 @@ namespace {
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
-        mirinae::RenderPassRaii render_pass_;
+        mirinae::RenderPass render_pass_;
         VkPipeline pipeline_ = VK_NULL_HANDLE;
         VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
 

@@ -16,6 +16,44 @@ namespace {
 }  // namespace
 
 
+// RenderPass
+namespace mirinae {
+
+    RenderPass::RenderPass() {}
+
+    RenderPass::~RenderPass() {
+        if (VK_NULL_HANDLE != rp_)
+            MIRINAE_ABORT("RenderPass is not destroyed");
+    }
+
+    RenderPass& RenderPass::operator=(VkRenderPass rp) {
+        if (VK_NULL_HANDLE != rp_)
+            MIRINAE_ABORT("RenderPass is not destroyed");
+
+        rp_ = rp;
+    }
+
+    RenderPass::operator VkRenderPass() const { return rp_; }
+
+    VkRenderPass RenderPass::operator*() const { return rp_; }
+
+    VkRenderPass RenderPass::get() const { return rp_; }
+
+    void RenderPass::reset(VkRenderPass rp, mirinae::VulkanDevice& device) {
+        this->destroy(device);
+        rp_ = rp;
+    }
+
+    void RenderPass::destroy(mirinae::VulkanDevice& device) {
+        if (rp_ != VK_NULL_HANDLE) {
+            vkDestroyRenderPass(device.logi_device(), rp_, nullptr);
+            rp_ = VK_NULL_HANDLE;
+        }
+    }
+
+}  // namespace mirinae
+
+
 // RpResources
 namespace mirinae {
 

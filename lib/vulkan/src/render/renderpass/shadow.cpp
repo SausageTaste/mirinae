@@ -912,7 +912,7 @@ public:
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     )
-        : device_(device), rp_res_(rp_res), render_pass_(device) {
+        : device_(device), rp_res_(rp_res) {
         auto shadow_maps = dynamic_cast<::ShadowMapBundle*>(
             rp_res_.shadow_maps_.get()
         );
@@ -993,6 +993,8 @@ public:
     }
 
     ~RpStatesShadowStatic() override {
+        render_pass_.destroy(device_);
+
         if (VK_NULL_HANDLE != pipeline_) {
             vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
             pipeline_ = VK_NULL_HANDLE;
@@ -1159,7 +1161,7 @@ private:
     mirinae::VulkanDevice& device_;
     mirinae::RpResources& rp_res_;
 
-    mirinae::RenderPassRaii render_pass_;
+    mirinae::RenderPass render_pass_;
     VkPipeline pipeline_ = VK_NULL_HANDLE;
     VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
     std::array<VkClearValue, 2> clear_values_;
