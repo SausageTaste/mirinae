@@ -54,6 +54,97 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// RpPipeline
+namespace mirinae {
+
+    RpPipeline::RpPipeline() {}
+
+    RpPipeline::~RpPipeline() {
+        if (VK_NULL_HANDLE != handle_)
+            MIRINAE_ABORT("Pipeline is not destroyed");
+    }
+
+    bool RpPipeline::create(
+        const VkComputePipelineCreateInfo& cinfo, VulkanDevice& device
+    ) {
+        return vkCreateComputePipelines(
+                   device.logi_device(),
+                   VK_NULL_HANDLE,
+                   1,
+                   &cinfo,
+                   nullptr,
+                   &handle_
+               ) == VK_SUCCESS;
+    }
+
+    RpPipeline& RpPipeline::operator=(VkPipeline handle) {
+        if (VK_NULL_HANDLE != handle_)
+            MIRINAE_ABORT("Pipeline is not destroyed");
+
+        handle_ = handle;
+    }
+
+    RpPipeline::operator VkPipeline() const { return handle_; }
+
+    VkPipeline RpPipeline::operator*() const { return handle_; }
+
+    VkPipeline RpPipeline::get() const { return handle_; }
+
+    void RpPipeline::reset(VkPipeline handle, VulkanDevice& device) {
+        this->destroy(device);
+        handle_ = handle;
+    }
+
+    void RpPipeline::destroy(VulkanDevice& device) {
+        if (handle_ != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device.logi_device(), handle_, nullptr);
+            handle_ = VK_NULL_HANDLE;
+        }
+    }
+
+}  // namespace mirinae
+
+
+// RpPipeLayout
+namespace mirinae {
+
+    RpPipeLayout::RpPipeLayout() {}
+
+    RpPipeLayout::~RpPipeLayout() {
+        if (VK_NULL_HANDLE != handle_)
+            MIRINAE_ABORT("PipelineLayout is not destroyed");
+    }
+
+    RpPipeLayout& RpPipeLayout::operator=(VkPipelineLayout handle) {
+        if (VK_NULL_HANDLE != handle_)
+            MIRINAE_ABORT("PipelineLayout is not destroyed");
+
+        handle_ = handle;
+    }
+
+    RpPipeLayout::operator VkPipelineLayout() const { return handle_; }
+
+    RpPipeLayout::operator VkPipelineLayout&() { return handle_; }
+
+    VkPipelineLayout RpPipeLayout::operator*() const { return handle_; }
+
+    VkPipelineLayout RpPipeLayout::get() const { return handle_; }
+
+    void RpPipeLayout::reset(VkPipelineLayout handle, VulkanDevice& device) {
+        this->destroy(device);
+        handle_ = handle;
+    }
+
+    void RpPipeLayout::destroy(VulkanDevice& device) {
+        if (handle_ != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device.logi_device(), handle_, nullptr);
+            handle_ = VK_NULL_HANDLE;
+        }
+    }
+
+}  // namespace mirinae
+
+
 // RpResources
 namespace mirinae {
 
