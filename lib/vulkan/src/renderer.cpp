@@ -1214,16 +1214,15 @@ namespace {
                 );
 
                 mirinae::rp::gbuf::create_desc_layouts(desclayout_, device_);
+                rpm_.create_std_rp(
+                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
+                );
                 rp_.init_render_passes(
                     rp_res_.gbuf_, desclayout_, swapchain_, device_
                 );
                 rp_states_transp_.init(rp_res_, desclayout_, device_);
                 rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(desclayout_, rp_res_.gbuf_, device_);
-
-                rpm_.create_std_rp(
-                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
-                );
             }
 
             // Optimized resize
