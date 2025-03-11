@@ -833,6 +833,10 @@ namespace {
 
         uint32_t slight_count() const override { return slights_.size(); }
 
+        entt::entity slight_entt_at(size_t idx) override {
+            return slights_.at(idx).entt_;
+        }
+
         VkImageView slight_view_at(size_t idx) override {
             return slights_.at(idx).tex_->image_view();
         }
@@ -1123,6 +1127,8 @@ namespace {
 
                 vkCmdEndRenderPass(cmdbuf);
             }
+
+            return;
         }
 
     private:
@@ -1306,6 +1312,65 @@ namespace {
 
                 vkCmdEndRenderPass(cmdbuf);
             }
+
+            for (size_t i = 0; i < shadow_maps->slight_count(); ++i) {
+                auto& shadow = shadow_maps->slights_[i];
+                if (shadow.entt_ == entt::null)
+                    continue;
+                auto& slight = reg.get<cpnt::SLight>(shadow.entt_);
+                auto& tform = reg.get<cpnt::Transform>(shadow.entt_);
+
+                const auto light_mat = slight.make_light_mat(tform);
+
+                mirinae::RenderPassBeginInfo{}
+                    .rp(render_pass_.get())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(clear_values_.size())
+                    .clear_values(clear_values_.data())
+                    .record_begin(cmdbuf);
+
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
+                );
+
+                mirinae::Viewport{}
+                    .set_wh(shadow.width(), shadow.height())
+                    .record_single(cmdbuf);
+                mirinae::Rect2D{}
+                    .set_wh(shadow.width(), shadow.height())
+                    .record_scissor(cmdbuf);
+
+                mirinae::DescSetBindInfo descset_info{ pipe_layout_ };
+
+                for (auto& pair : ctxt.draw_sheet_->skinned_) {
+                    auto& unit = *pair.unit_;
+                    auto unit_desc = unit.get_desc_set(ctxt.f_index_.get());
+                    unit.record_bind_vert_buf(cmdbuf);
+
+                    for (auto& a : pair.actors_) {
+                        descset_info
+                            .set(a.actor_->get_desc_set(ctxt.f_index_.get()))
+                            .record(cmdbuf);
+
+                        mirinae::U_ShadowPushConst push_const;
+                        push_const.pvm_ = light_mat * a.model_mat_;
+
+                        mirinae::PushConstInfo{}
+                            .layout(pipe_layout_)
+                            .add_stage_vert()
+                            .record(cmdbuf, push_const);
+
+                        vkCmdDrawIndexed(
+                            cmdbuf, unit.vertex_count(), 1, 0, 0, 0
+                        );
+                    }
+                }
+
+                vkCmdEndRenderPass(cmdbuf);
+            }
+
+            return;
         }
 
     private:
