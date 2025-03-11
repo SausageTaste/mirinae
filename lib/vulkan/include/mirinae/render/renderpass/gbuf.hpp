@@ -5,65 +5,6 @@
 
 namespace mirinae::rp::gbuf {
 
-    class U_GbufTerrainPushConst {
-
-    public:
-        U_GbufTerrainPushConst& pvm(
-            const glm::dmat4& proj,
-            const glm::dmat4& view,
-            const glm::dmat4& model
-        ) {
-            pvm_ = proj * view * model;
-            view_ = view;
-            model_ = model;
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& tile_index(int x, int y) {
-            tile_index_count_.x = static_cast<float>(x);
-            tile_index_count_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& tile_count(int x, int y) {
-            tile_index_count_.z = static_cast<float>(x);
-            tile_index_count_.w = static_cast<float>(y);
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& height_map_size(uint32_t x, uint32_t y) {
-            height_map_size_fbuf_size_.x = static_cast<float>(x);
-            height_map_size_fbuf_size_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& height_map_size(const VkExtent2D& e) {
-            height_map_size_fbuf_size_.x = static_cast<float>(e.width);
-            height_map_size_fbuf_size_.y = static_cast<float>(e.height);
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& fbuf_size(const VkExtent2D& x) {
-            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
-            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& height_scale(float x) {
-            height_scale_ = x;
-            return *this;
-        }
-
-    private:
-        glm::mat4 pvm_;
-        glm::mat4 view_;
-        glm::mat4 model_;
-        glm::vec4 tile_index_count_;
-        glm::vec4 height_map_size_fbuf_size_;
-        float height_scale_;
-    };
-
-
     void create_rp(
         IRenderPassRegistry& reg,
         FbufImageBundle& fbuf_bundle,
@@ -73,22 +14,12 @@ namespace mirinae::rp::gbuf {
     );
 
 
-    class IRpMasterBasic {
-
-    public:
-        virtual ~IRpMasterBasic() = default;
-
-        virtual void init() = 0;
-        virtual void destroy(VulkanDevice& device) = 0;
-
-        virtual void record(
-            const RpContext& ctxt,
-            const VkExtent2D& fbuf_exd,
-            const IRenderPassRegistry& rp_pkg
-        ) = 0;
-    };
-
-    std::unique_ptr<IRpMasterBasic> create_rpm_basic();
+    URpStates create_rp_states_gbuf(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::Swapchain& swapchain,
+        mirinae::VulkanDevice& device
+    );
 
 
     class IRpMasterTerrain {
