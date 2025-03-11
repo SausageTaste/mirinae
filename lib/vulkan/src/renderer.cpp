@@ -881,21 +881,10 @@ namespace {
                 );
 
                 mirinae::rp::gbuf::create_rp(
-                    rp_,
-                    rp_res_.gbuf_.width(),
-                    rp_res_.gbuf_.height(),
-                    rp_res_.gbuf_,
-                    desclayout_,
-                    swapchain_,
-                    device_
+                    rp_, rp_res_.gbuf_, desclayout_, swapchain_, device_
                 );
                 rp_.init_render_passes(
-                    rp_res_.gbuf_.width(),
-                    rp_res_.gbuf_.height(),
-                    rp_res_.gbuf_,
-                    desclayout_,
-                    swapchain_,
-                    device_
+                    rp_res_.gbuf_, desclayout_, swapchain_, device_
                 );
                 rpm_.create_std_rp(
                     *cosmos_, rp_res_, desclayout_, swapchain_, device_
@@ -1094,15 +1083,7 @@ namespace {
 
             rpm_.record_computes(ren_ctxt);
 
-            rpm_.gbuf_basic().record(
-                ren_ctxt.cmdbuf_,
-                rp_res_.gbuf_.extent(),
-                *ren_ctxt.draw_sheet_,
-                framesync_.get_frame_index(),
-                image_index,
-                rp_
-            );
-
+            rpm_.gbuf_basic().record(ren_ctxt, rp_res_.gbuf_.extent(), rp_);
             rpm_.gbuf_terrain().record(ren_ctxt, rp_res_.gbuf_.extent(), rp_);
 
             rpm_.compo_dlight().record(ren_ctxt);
@@ -1291,21 +1272,10 @@ namespace {
                 );
 
                 mirinae::rp::gbuf::create_rp(
-                    rp_,
-                    rp_res_.gbuf_.width(),
-                    rp_res_.gbuf_.height(),
-                    rp_res_.gbuf_,
-                    desclayout_,
-                    swapchain_,
-                    device_
+                    rp_, rp_res_.gbuf_, desclayout_, swapchain_, device_
                 );
                 rp_.init_render_passes(
-                    rp_res_.gbuf_.width(),
-                    rp_res_.gbuf_.height(),
-                    rp_res_.gbuf_,
-                    desclayout_,
-                    swapchain_,
-                    device_
+                    rp_res_.gbuf_, desclayout_, swapchain_, device_
                 );
 
                 rpm_.gbuf_basic().init();

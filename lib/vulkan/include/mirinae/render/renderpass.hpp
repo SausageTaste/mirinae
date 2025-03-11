@@ -13,8 +13,6 @@ namespace mirinae {
         ) override;
 
         void init_render_passes(
-            uint32_t width,
-            uint32_t height,
             FbufImageBundle& fbuf_bundle,
             DesclayoutManager& desclayouts,
             Swapchain& swapchain,

@@ -733,8 +733,6 @@ namespace { namespace transp {
 
     public:
         RPBundle(
-            uint32_t width,
-            uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -760,8 +758,8 @@ namespace { namespace transp {
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
-                    width,
-                    height,
+                    fbuf_bundle.width(),
+                    fbuf_bundle.height(),
                     renderpass_,
                     device.logi_device(),
                     {
@@ -944,8 +942,6 @@ namespace { namespace transp_skin {
 
     public:
         RPBundle(
-            uint32_t width,
-            uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -971,8 +967,8 @@ namespace { namespace transp_skin {
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
-                    width,
-                    height,
+                    fbuf_bundle.width(),
+                    fbuf_bundle.height(),
                     renderpass_,
                     device.logi_device(),
                     {
@@ -1135,8 +1131,6 @@ namespace { namespace debug_mesh {
 
     public:
         RPBundle(
-            uint32_t width,
-            uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -1162,8 +1156,8 @@ namespace { namespace debug_mesh {
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
                 fbufs_.push_back(::create_framebuffer(
-                    width,
-                    height,
+                    fbuf_bundle.width(),
+                    fbuf_bundle.height(),
                     renderpass_,
                     device.logi_device(),
                     {
@@ -1306,8 +1300,6 @@ namespace { namespace fillscreen {
 
     public:
         RPBundle(
-            uint32_t width,
-            uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -1478,8 +1470,6 @@ namespace { namespace overlay {
 
     public:
         RPBundle(
-            uint32_t width,
-            uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -1566,27 +1556,25 @@ namespace mirinae {
     }
 
     void RenderPassPackage::init_render_passes(
-        uint32_t width,
-        uint32_t height,
         FbufImageBundle& fbuf_bundle,
         DesclayoutManager& desclayouts,
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
         data_["transp"] = std::make_unique<::transp::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+            fbuf_bundle, desclayouts, swapchain, device
         );
         data_["transp_skin"] = std::make_unique<::transp_skin::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+            fbuf_bundle, desclayouts, swapchain, device
         );
         data_["debug_mesh"] = std::make_unique<::debug_mesh::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+            fbuf_bundle, desclayouts, swapchain, device
         );
         data_["fillscreen"] = std::make_unique<::fillscreen::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+            fbuf_bundle, desclayouts, swapchain, device
         );
         data_["overlay"] = std::make_unique<::overlay::RPBundle>(
-            width, height, fbuf_bundle, desclayouts, swapchain, device
+            fbuf_bundle, desclayouts, swapchain, device
         );
     }
 

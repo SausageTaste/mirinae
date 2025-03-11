@@ -66,8 +66,6 @@ namespace mirinae::rp::gbuf {
 
     void create_rp(
         IRenderPassRegistry& reg,
-        uint32_t width,
-        uint32_t height,
         FbufImageBundle& fbuf_bundle,
         DesclayoutManager& desclayouts,
         Swapchain& swapchain,
@@ -84,11 +82,8 @@ namespace mirinae::rp::gbuf {
         virtual void destroy(VulkanDevice& device) = 0;
 
         virtual void record(
-            const VkCommandBuffer cur_cmd_buf,
+            const RpContext& ctxt,
             const VkExtent2D& fbuf_exd,
-            const DrawSheet& draw_sheet,
-            const FrameIndex frame_index,
-            const ShainImageIndex image_index,
             const IRenderPassRegistry& rp_pkg
         ) = 0;
     };
