@@ -653,6 +653,7 @@ namespace {
             }
 
             // DLight
+            /*
             {
                 const auto entt = reg.create();
 
@@ -665,6 +666,7 @@ namespace {
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
                 d.set_light_dir(0.5613, -0.7396, -0.3713, t);
             }
+            */
 
             // SLight
             {
