@@ -271,6 +271,15 @@ namespace mirinae {
     using HShadowMaps = std::shared_ptr<IShadowMapBundle>;
 
 
+    struct IEnvmapBundle {
+        virtual ~IEnvmapBundle() = default;
+        virtual uint32_t count() const = 0;
+        virtual VkImageView diffuse_at(uint32_t index) const = 0;
+        virtual VkImageView specular_at(uint32_t index) const = 0;
+    };
+    using HEnvmapBundle = std::shared_ptr<IEnvmapBundle>;
+
+
     class RpResources {
 
     public:
@@ -308,6 +317,7 @@ namespace mirinae {
 
         HTexMgr tex_man_;
         HShadowMaps shadow_maps_;
+        HEnvmapBundle envmaps_;
         FbufImageBundle gbuf_;
 
     private:

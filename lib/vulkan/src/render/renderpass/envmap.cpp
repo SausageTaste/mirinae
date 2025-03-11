@@ -898,6 +898,86 @@ namespace mirinae::rp::envmap {
 
 namespace {
 
+    class EnvmapBundle : public mirinae::IEnvmapBundle {
+
+    public:
+        struct Item {
+            ::CubeMap cube_map_;
+            sung::MonotonicRealtimeTimer timer_;
+            entt::entity entity_ = entt::null;
+        };
+
+        EnvmapBundle(mirinae::VulkanDevice& device) : device_(device) {}
+
+        ~EnvmapBundle() override { this->destroy(); }
+
+        uint32_t count() const override {
+            return static_cast<uint32_t>(items_.size());
+        }
+
+        VkImageView diffuse_at(uint32_t index) const override {
+            return items_.at(index).cube_map_.diffuse().cube_view();
+        }
+
+        VkImageView specular_at(uint32_t index) const override {
+            return items_.at(index).cube_map_.specular().cube_view();
+        }
+
+        void add(
+            mirinae::IRenderPassRegistry& rp_pkg,
+            mirinae::DescPool& desc_pool,
+            mirinae::DesclayoutManager& desclayouts
+        ) {
+            items_.emplace_back();
+            items_.back().cube_map_.init(
+                rp_pkg, desc_pool, desclayouts, device_
+            );
+        }
+
+        void destroy() {
+            for (auto& item : items_) item.cube_map_.destroy(device_);
+            items_.clear();
+        }
+
+        auto begin() { return items_.begin(); }
+        auto end() { return items_.end(); }
+
+        bool has_entt(entt::entity e) const {
+            for (const auto& x : items_) {
+                if (x.entity_ == e)
+                    return true;
+            }
+
+            return false;
+        }
+
+        Item* choose_to_update() {
+            double min_elapsed = std::numeric_limits<double>::max();
+            Item* chosen = nullptr;
+
+            for (auto& item : items_) {
+                if (entt::null == item.entity_)
+                    continue;
+
+                if (item.timer_.elapsed() < min_elapsed) {
+                    min_elapsed = item.timer_.elapsed();
+                    chosen = &item;
+                }
+            }
+
+            return chosen;
+        }
+
+    private:
+        mirinae::VulkanDevice& device_;
+        std::vector<Item> items_;
+    };
+
+}  // namespace
+
+
+namespace {
+
     const glm::dvec3 DVEC_ZERO{ 0, 0, 0 };
     const glm::dvec3 DVEC_DOWN{ 0, -1, 0 };
 
@@ -908,6 +988,32 @@ namespace {
         glm::lookAt(DVEC_ZERO, DVEC_DOWN, glm::dvec3(0, 0, -1)),
         glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, 1), DVEC_DOWN),
         glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, -1), DVEC_DOWN)
+    };
+
+
+    class EnvmapSelector {
+
+    public:
+        void notify(entt::entity e, double distance) {
+            entities_.insert({ distance, e });
+        }
+
+        bool empty() const { return entities_.empty(); }
+
+        bool has_entt(entt::entity e) const {
+            for (const auto& x : entities_) {
+                if (x.second == e)
+                    return true;
+            }
+
+            return false;
+        }
+
+        auto begin() const { return entities_.begin(); }
+        auto end() const { return entities_.end(); }
+
+    private:
+        std::set<std::pair<double, entt::entity>> entities_;
     };
 
 
@@ -922,11 +1028,12 @@ namespace {
         void init(
             mirinae::CosmosSimulator& cosmos,
             mirinae::IRenderPassRegistry& rp_pkg,
-            mirinae::ITextureManager& tex_man,
+            mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         ) override {
             rp_pkg_ = &rp_pkg;
+            auto& tex_man = *rp_res.tex_man_;
 
             desc_pool_.init(
                 5,
@@ -972,6 +1079,10 @@ namespace {
                 )
                 .apply_all(device.logi_device());
 
+            envmaps_ = std::make_unique<::EnvmapBundle>(device);
+            envmaps_->add(rp_pkg, desc_pool_, desclayouts);
+            rp_res.envmaps_ = envmaps_;
+
             timer_.set_min();
         }
 
@@ -980,73 +1091,52 @@ namespace {
             brdf_lut_.destroy(device);
         }
 
-        size_t init_ren_units(
-            mirinae::CosmosSimulator& cosmos,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::IRenderPassRegistry& rp_pkg,
-            mirinae::VulkanDevice& device
-        ) override {
-            namespace cpnt = mirinae::cpnt;
-
-            size_t out = 0;
-            auto& reg = cosmos.reg();
-
-            for (auto e_env : reg.view<cpnt::Envmap>()) {
-                auto& cube_cpnt = reg.get<cpnt::Envmap>(e_env);
-                auto cube_renunit = cube_cpnt.ren_unit<::EnvmapRenUnit>();
-                if (cube_renunit)
-                    continue;
-
-                cube_cpnt.ren_unit_ = std::make_unique<::EnvmapRenUnit>(
-                    rp_pkg, desc_pool_, desclayouts, device
-                );
-                cube_cpnt.last_updated_.set_min();
-                ++out;
-            }
-
-            return out;
-        }
-
-        void destroy_ren_units(mirinae::CosmosSimulator& cosmos) override {
-            namespace cpnt = mirinae::cpnt;
-            auto& reg = cosmos.reg();
-
-            for (auto e_env : reg.view<cpnt::Envmap>()) {
-                auto& cube_cpnt = reg.get<cpnt::Envmap>(e_env);
-                cube_cpnt.ren_unit_.reset();
-            }
-        }
-
         void record(const mirinae::RpContext& ctxt) override {
             if (!rp_pkg_)
                 return;
             if (!timer_.check_if_elapsed(3))
                 return;
 
-            namespace cpnt = mirinae::cpnt;
             auto& reg = ctxt.cosmos_->reg();
-            entt::entity e_selected = entt::null;
-            double waiting_time = 0;
-            for (auto e_env : reg.view<cpnt::Envmap>()) {
-                auto& cube_cpnt = reg.get<cpnt::Envmap>(e_env);
-                auto cube_renunit = cube_cpnt.ren_unit<::EnvmapRenUnit>();
-                if (!cube_renunit)
+            ::EnvmapSelector entities;
+            for (auto e : reg.view<mirinae::cpnt::Envmap>()) {
+                if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e)) {
+                    const auto d = glm::length(tform->pos_ - ctxt.view_pos_);
+                    entities.notify(e, d);
+                } else {
+                    entities.notify(e, glm::length(ctxt.view_pos_));
+                }
+            }
+            if (entities.empty())
+                return;
+
+            for (auto& x : *envmaps_) {
+                if (x.entity_ != entt::null && entities.has_entt(x.entity_))
                     continue;
 
-                const auto wait = cube_cpnt.last_updated_.elapsed();
-                if (wait > waiting_time) {
-                    e_selected = e_env;
-                    waiting_time = wait;
+                x.entity_ = entt::null;
+                for (auto& [_, candidate] : entities) {
+                    if (!envmaps_->has_entt(candidate)) {
+                        x.entity_ = candidate;
+                        x.timer_.set_min();
+                        break;
+                    }
                 }
             }
 
-            auto& env_cpnt = reg.get<cpnt::Envmap>(e_selected);
+            auto chosen = envmaps_->choose_to_update();
+            if (!chosen)
+                return;
+            const auto e_selected = chosen->entity_;
+            auto& env_cpnt = reg.get<mirinae::cpnt::Envmap>(e_selected);
             env_cpnt.last_updated_.check();
+            chosen->timer_.check();
 
-            this->record_sky(e_selected, env_cpnt, ctxt, desc_set_, *rp_pkg_);
-            this->record_base(e_selected, env_cpnt, ctxt, *rp_pkg_);
-            this->record_diffuse(e_selected, env_cpnt, ctxt, *rp_pkg_);
-            this->record_specular(e_selected, env_cpnt, ctxt, *rp_pkg_);
+            SPDLOG_DEBUG("Updating envmap: entt={}", (int)chosen->entity_);
+            this->record_sky(e_selected, *chosen, ctxt, desc_set_, *rp_pkg_);
+            this->record_base(e_selected, *chosen, ctxt, *rp_pkg_);
+            this->record_diffuse(e_selected, *chosen, ctxt, *rp_pkg_);
+            this->record_specular(e_selected, *chosen, ctxt, *rp_pkg_);
         }
 
         VkImageView brdf_lut_view() const override { return brdf_lut_.view(); }
@@ -1145,7 +1235,7 @@ namespace {
 
         void record_base(
             entt::entity e_env,
-            mirinae::cpnt::Envmap& env_cpnt,
+            ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
@@ -1165,9 +1255,7 @@ namespace {
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            auto cube_renunit = env_cpnt.ren_unit<::EnvmapRenUnit>();
-            MIRINAE_ASSERT(cube_renunit != nullptr);
-            auto& cube_map = cube_renunit->cube_map_;
+            auto& cube_map = env_item.cube_map_;
             auto& base_cube = cube_map.base();
 
             glm::dmat4 world_mat(1);
@@ -1312,7 +1400,7 @@ namespace {
 
         void record_sky(
             entt::entity e_env,
-            mirinae::cpnt::Envmap& env_cpnt,
+            ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt,
             const VkDescriptorSet desc_set,
             const mirinae::IRenderPassRegistry& rp_pkg
@@ -1331,9 +1419,7 @@ namespace {
                 mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
             );
 
-            auto cube_renunit = env_cpnt.ren_unit<::EnvmapRenUnit>();
-            MIRINAE_ASSERT(cube_renunit != nullptr);
-            auto& cube_map = cube_renunit->cube_map_;
+            auto& cube_map = env_item.cube_map_;
             auto& base_cube = cube_map.base();
 
             glm::dmat4 world_mat(1);
@@ -1350,7 +1436,7 @@ namespace {
             rp_info.wh(base_cube.width(), base_cube.height());
 
             for (int i = 0; i < 6; ++i) {
-                rp_info.fbuf(cube_map.base().face_fbuf(i)).record_begin(cmdbuf);
+                rp_info.fbuf(base_cube.face_fbuf(i)).record_begin(cmdbuf);
 
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
@@ -1377,7 +1463,7 @@ namespace {
 
         void record_diffuse(
             entt::entity e_env,
-            mirinae::cpnt::Envmap& env_cpnt,
+            ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
@@ -1397,9 +1483,7 @@ namespace {
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            auto cube_renunit = env_cpnt.ren_unit<::EnvmapRenUnit>();
-            MIRINAE_ASSERT(cube_renunit != nullptr);
-            auto& cube_map = cube_renunit->cube_map_;
+            auto& cube_map = env_item.cube_map_;
             auto& diffuse = cube_map.diffuse();
 
             glm::dmat4 world_mat(1);
@@ -1438,7 +1522,7 @@ namespace {
 
         void record_specular(
             entt::entity e_env,
-            mirinae::cpnt::Envmap& env_cpnt,
+            ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) {
@@ -1458,9 +1542,7 @@ namespace {
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            auto cube_renunit = env_cpnt.ren_unit<::EnvmapRenUnit>();
-            MIRINAE_ASSERT(cube_renunit != nullptr);
-            auto& cube_map = cube_renunit->cube_map_;
+            auto& cube_map = env_item.cube_map_;
             auto& specular = cube_map.specular();
 
             glm::dmat4 world_mat(1);
@@ -1507,11 +1589,14 @@ namespace {
         mirinae::DescPool desc_pool_;
         sung::MonotonicRealtimeTimer timer_;
         BrdfLut brdf_lut_;
+        std::shared_ptr<::EnvmapBundle> envmaps_;
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         VkDescriptorSet desc_set_ = VK_NULL_HANDLE;  // For env sky
     };
 
 }  // namespace
+
+
 namespace mirinae::rp::envmap {
 
     std::unique_ptr<IRpMaster> create_rp_master() {
