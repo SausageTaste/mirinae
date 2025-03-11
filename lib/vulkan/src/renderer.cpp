@@ -116,11 +116,11 @@ namespace {
         RpMasters() {
             gbuf_basic_ = mirinae::rp::gbuf::create_rpm_basic();
             gbuf_terrain_ = mirinae::rp::gbuf::create_rpm_terrain();
-            envmap_ = mirinae::rp::envmap::create_rp_master();
         }
 
         void create_std_rp(
             mirinae::CosmosSimulator& cosmos,
+            mirinae::IRenderPassRegistry& rp_pkg,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -172,6 +172,10 @@ namespace {
                 )
             );
 
+            rp_states_.push_back(mirinae::rp::envmap::create_rp_states_envmap(
+                cosmos, rp_pkg, rp_res, desclayouts, device
+            ));
+
             rp_states_.push_back(mirinae::rp::compo::create_rps_dlight(
                 cosmos, rp_res, desclayouts, device
             ));
@@ -204,7 +208,6 @@ namespace {
         mirinae::rp::gbuf::IRpMasterTerrain& gbuf_terrain() {
             return *gbuf_terrain_;
         }
-        mirinae::rp::envmap::IRpMaster& envmap() { return *envmap_; }
 
         mirinae::IRpStates& compo_dlight() { return *compo_dlight_; }
         mirinae::IRpStates& compo_slight() { return *compo_slight_; }
@@ -228,7 +231,6 @@ namespace {
     private:
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterBasic> gbuf_basic_;
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterTerrain> gbuf_terrain_;
-        std::unique_ptr<mirinae::rp::envmap::IRpMaster> envmap_;
 
         std::vector<mirinae::URpStates> rp_states_;
         mirinae::IRpStates* compo_dlight_ = nullptr;
@@ -896,11 +898,8 @@ namespace {
                     swapchain_,
                     device_
                 );
-                rpm_.envmap().init(
-                    *cosmos_, rp_, rp_res_, desclayout_, device_
-                );
                 rpm_.create_std_rp(
-                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
+                    *cosmos_, rp_, rp_res_, desclayout_, swapchain_, device_
                 );
                 rpm_.gbuf_basic().init();
                 rpm_.gbuf_terrain().init(
@@ -912,7 +911,7 @@ namespace {
                     rp_res_.shadow_maps_->slight_view_at(0),
                     rp_res_.envmaps_->diffuse_at(0),
                     rp_res_.envmaps_->specular_at(0),
-                    rpm_.envmap().brdf_lut_view(),
+                    rp_res_.envmaps_->brdf_lut(),
                     device_
                 );
                 rp_states_debug_mesh_.init(device_);
@@ -1006,7 +1005,6 @@ namespace {
                 rp_states_transp_.destroy(device_);
                 rpm_.gbuf_terrain().destroy(device_);
                 rpm_.gbuf_basic().destroy(device_);
-                rpm_.envmap().destroy(device_);
 
                 rp_.destroy();
             }
@@ -1096,8 +1094,6 @@ namespace {
             }
 
             rpm_.record_computes(ren_ctxt);
-
-            rpm_.envmap().record(ren_ctxt);
 
             rpm_.gbuf_basic().record(
                 ren_ctxt.cmdbuf_,
@@ -1280,7 +1276,6 @@ namespace {
                 rp_states_transp_.destroy(device_);
                 rpm_.gbuf_terrain().destroy(device_);
                 rpm_.gbuf_basic().destroy(device_);
-                rpm_.envmap().destroy(device_);
 
                 rp_.destroy();
             }
@@ -1315,9 +1310,6 @@ namespace {
                     device_
                 );
 
-                rpm_.envmap().init(
-                    *cosmos_, rp_, rp_res_, desclayout_, device_
-                );
                 rpm_.gbuf_basic().init();
                 rpm_.gbuf_terrain().init(
                     *rp_res_.tex_man_, desclayout_, device_
@@ -1328,14 +1320,14 @@ namespace {
                     rp_res_.shadow_maps_->slight_view_at(0),
                     rp_res_.envmaps_->diffuse_at(0),
                     rp_res_.envmaps_->specular_at(0),
-                    rpm_.envmap().brdf_lut_view(),
+                    rp_res_.envmaps_->brdf_lut(),
                     device_
                 );
                 rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(desclayout_, rp_res_.gbuf_, device_);
 
                 rpm_.create_std_rp(
-                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
+                    *cosmos_, rp_, rp_res_, desclayout_, swapchain_, device_
                 );
             }
 
