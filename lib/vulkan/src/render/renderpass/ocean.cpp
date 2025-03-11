@@ -244,38 +244,17 @@ namespace {
                 writer.apply_all(device.logi_device());
             }
 
-            // Pipeline Layout
-            {
-                pipeline_layout_ =
-                    mirinae::PipelineLayoutBuilder{}
-                        .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .pc<U_OceanTildeHPushConst>()
-                        .desc(desclayouts.get(name() + ":main").layout())
-                        .build(device);
-                MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
-            }
-
             // Pipeline
             {
-                mirinae::PipelineBuilder::ShaderStagesBuilder shader_builder{
-                    device
-                };
-                shader_builder.add_comp(":asset/spv/ocean_tilde_h_comp.spv");
+                mirinae::PipelineLayoutBuilder{}
+                    .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .pc<U_OceanTildeHPushConst>()
+                    .desc(desclayouts.get(name() + ":main").layout())
+                    .build(pipe_layout_, device);
 
-                VkComputePipelineCreateInfo cinfo{};
-                cinfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-                cinfo.layout = pipeline_layout_;
-                cinfo.stage = *shader_builder.data();
-
-                const auto res = vkCreateComputePipelines(
-                    device.logi_device(),
-                    VK_NULL_HANDLE,
-                    1,
-                    &cinfo,
-                    nullptr,
-                    &pipeline_
+                pipeline_ = ::create_compute_pipeline(
+                    ":asset/spv/ocean_tilde_h_comp.spv", pipe_layout_, device
                 );
-                MIRINAE_ASSERT(res == VK_SUCCESS);
             }
 
             cmd_pool.destroy(device.logi_device());
@@ -292,18 +271,8 @@ namespace {
 
             rp_res_.free_img(noise_textures_->id(), this->name());
             desc_pool_.destroy(device_.logi_device());
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipeline_layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), pipeline_layout_, nullptr
-                );
-                pipeline_layout_ = VK_NULL_HANDLE;
-            }
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
         }
 
         const std::string& name() const override {
@@ -321,7 +290,7 @@ namespace {
 
             mirinae::DescSetBindInfo{}
                 .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
-                .layout(pipeline_layout_)
+                .layout(pipe_layout_)
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
@@ -343,7 +312,7 @@ namespace {
                 pc.cascade_ = i;
 
                 mirinae::PushConstInfo pc_info;
-                pc_info.layout(pipeline_layout_)
+                pc_info.layout(pipe_layout_)
                     .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .record(cmdbuf, pc);
 
@@ -365,8 +334,8 @@ namespace {
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
         mirinae::HRpImage noise_textures_;
         mirinae::DescPool desc_pool_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
 
         sung::MonotonicRealtimeTimer timer_;
     };
@@ -542,38 +511,17 @@ namespace {
                 writer.apply_all(device.logi_device());
             }
 
-            // Pipeline Layout
-            {
-                pipeline_layout_ =
-                    mirinae::PipelineLayoutBuilder{}
-                        .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .pc<U_OceanTildeHktPushConst>()
-                        .desc(desclayouts.get(name() + ":main").layout())
-                        .build(device);
-                MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
-            }
-
             // Pipeline
             {
-                mirinae::PipelineBuilder::ShaderStagesBuilder shader_builder{
-                    device
-                };
-                shader_builder.add_comp(":asset/spv/ocean_tilde_hkt_comp.spv");
+                mirinae::PipelineLayoutBuilder{}
+                    .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .pc<U_OceanTildeHktPushConst>()
+                    .desc(desclayouts.get(name() + ":main").layout())
+                    .build(pipe_layout_, device);
 
-                VkComputePipelineCreateInfo cinfo{};
-                cinfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-                cinfo.layout = pipeline_layout_;
-                cinfo.stage = *shader_builder.data();
-
-                const auto res = vkCreateComputePipelines(
-                    device.logi_device(),
-                    VK_NULL_HANDLE,
-                    1,
-                    &cinfo,
-                    nullptr,
-                    &pipeline_
+                pipeline_ = ::create_compute_pipeline(
+                    ":asset/spv/ocean_tilde_hkt_comp.spv", pipe_layout_, device
                 );
-                MIRINAE_ASSERT(res == VK_SUCCESS);
             }
 
             cmd_pool.destroy(device.logi_device());
@@ -590,18 +538,8 @@ namespace {
             }
 
             desc_pool_.destroy(device_.logi_device());
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipeline_layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), pipeline_layout_, nullptr
-                );
-                pipeline_layout_ = VK_NULL_HANDLE;
-            }
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
         }
 
         const std::string& name() const override {
@@ -637,7 +575,7 @@ namespace {
 
             mirinae::DescSetBindInfo{}
                 .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
-                .layout(pipeline_layout_)
+                .layout(pipe_layout_)
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
@@ -651,7 +589,7 @@ namespace {
             pc.N_ = ::OCEAN_TEX_DIM;
 
             mirinae::PushConstInfo pc_info;
-            pc_info.layout(pipeline_layout_)
+            pc_info.layout(pipe_layout_)
                 .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .record(cmdbuf, pc);
 
@@ -678,8 +616,8 @@ namespace {
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
         mirinae::DescPool desc_pool_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
 
         sung::MonotonicRealtimeTimer timer_;
     };
@@ -939,18 +877,16 @@ namespace {
 
             // Pipeline
             {
-                pipeline_layout_ =
+                pipe_layout_ =
                     mirinae::PipelineLayoutBuilder{}
                         .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
                         .pc<U_OceanButterflyPushConst>()
                         .desc(desclayouts.get(name() + ":main").layout())
                         .build(device);
-                MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
+                MIRINAE_ASSERT(VK_NULL_HANDLE != pipe_layout_);
 
                 pipeline_ = ::create_compute_pipeline(
-                    ":asset/spv/ocean_butterfly_comp.spv",
-                    pipeline_layout_,
-                    device
+                    ":asset/spv/ocean_butterfly_comp.spv", pipe_layout_, device
                 );
             }
 
@@ -970,18 +906,8 @@ namespace {
 
             rp_res_.free_img(butterfly_cache_->id(), this->name());
             desc_pool_.destroy(device_.logi_device());
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipeline_layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), pipeline_layout_, nullptr
-                );
-                pipeline_layout_ = VK_NULL_HANDLE;
-            }
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
         }
 
         const std::string& name() const override {
@@ -999,13 +925,12 @@ namespace {
 
             mirinae::DescSetBindInfo{}
                 .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
-                .layout(pipeline_layout_)
+                .layout(pipe_layout_)
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
             mirinae::PushConstInfo pc_info;
-            pc_info.layout(pipeline_layout_)
-                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT);
+            pc_info.layout(pipe_layout_).add_stage(VK_SHADER_STAGE_COMPUTE_BIT);
 
             VkMemoryBarrier mem_bar = {};
             mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
@@ -1173,8 +1098,8 @@ namespace {
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
         mirinae::HRpImage butterfly_cache_;
         mirinae::DescPool desc_pool_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
     };
 
 }  // namespace
@@ -1276,18 +1201,14 @@ namespace {
 
             // Pipeline
             {
-                pipeline_layout_ =
-                    mirinae::PipelineLayoutBuilder{}
-                        .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .pc<U_OceanNaiveIftPushConst>()
-                        .desc(desclayouts.get(name() + ":main").layout())
-                        .build(device);
-                MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
+                mirinae::PipelineLayoutBuilder{}
+                    .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .pc<U_OceanNaiveIftPushConst>()
+                    .desc(desclayouts.get(name() + ":main").layout())
+                    .build(pipe_layout_, device);
 
                 pipeline_ = ::create_compute_pipeline(
-                    ":asset/spv/ocean_naive_ift_comp.spv",
-                    pipeline_layout_,
-                    device
+                    ":asset/spv/ocean_naive_ift_comp.spv", pipe_layout_, device
                 );
             }
 
@@ -1306,18 +1227,8 @@ namespace {
             }
 
             desc_pool_.destroy(device_.logi_device());
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipeline_layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), pipeline_layout_, nullptr
-                );
-                pipeline_layout_ = VK_NULL_HANDLE;
-            }
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
         }
 
         const std::string& name() const override {
@@ -1353,7 +1264,7 @@ namespace {
 
             mirinae::DescSetBindInfo{}
                 .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
-                .layout(pipeline_layout_)
+                .layout(pipe_layout_)
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
@@ -1362,7 +1273,7 @@ namespace {
             pc.stage_ = 0;
 
             mirinae::PushConstInfo pc_info;
-            pc_info.layout(pipeline_layout_)
+            pc_info.layout(pipe_layout_)
                 .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .record(cmdbuf, pc);
 
@@ -1422,8 +1333,8 @@ namespace {
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
         mirinae::DescPool desc_pool_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
     };
 
 }  // namespace
@@ -1661,18 +1572,14 @@ namespace {
 
             // Pipeline
             {
-                pipeline_layout_ =
-                    mirinae::PipelineLayoutBuilder{}
-                        .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .pc<U_OceanFinalizePushConst>()
-                        .desc(desclayouts.get(name() + ":main").layout())
-                        .build(device);
-                MIRINAE_ASSERT(VK_NULL_HANDLE != pipeline_layout_);
+                mirinae::PipelineLayoutBuilder{}
+                    .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .pc<U_OceanFinalizePushConst>()
+                    .desc(desclayouts.get(name() + ":main").layout())
+                    .build(pipe_layout_, device);
 
                 pipeline_ = ::create_compute_pipeline(
-                    ":asset/spv/ocean_finalize_comp.spv",
-                    pipeline_layout_,
-                    device
+                    ":asset/spv/ocean_finalize_comp.spv", pipe_layout_, device
                 );
             }
 
@@ -1696,18 +1603,8 @@ namespace {
                 rp_res_.free_img(turb_[i]->id(), this->name());
 
             desc_pool_.destroy(device_.logi_device());
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipeline_layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), pipeline_layout_, nullptr
-                );
-                pipeline_layout_ = VK_NULL_HANDLE;
-            }
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
         }
 
         const std::string& name() const override {
@@ -1725,7 +1622,7 @@ namespace {
 
             mirinae::DescSetBindInfo{}
                 .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
-                .layout(pipeline_layout_)
+                .layout(pipe_layout_)
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
@@ -1755,7 +1652,7 @@ namespace {
             pc.N_ = ::OCEAN_TEX_DIM;
 
             mirinae::PushConstInfo{}
-                .layout(pipeline_layout_)
+                .layout(pipe_layout_)
                 .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .record(cmdbuf, pc);
 
@@ -1779,8 +1676,8 @@ namespace {
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
         std::array<mirinae::HRpImage, CASCADE_COUNT> turb_;
         mirinae::DescPool desc_pool_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
     };
 
 }  // namespace
@@ -2201,15 +2098,14 @@ namespace {
 
             // Pipeline layout
             {
-                pipe_layout_ =
-                    mirinae::PipelineLayoutBuilder{}
-                        .desc(desclayouts.get(name() + ":main").layout())
-                        .add_vertex_flag()
-                        .add_tesc_flag()
-                        .add_tese_flag()
-                        .add_frag_flag()
-                        .pc<U_OceanTessPushConst>(0)
-                        .build(device);
+                mirinae::PipelineLayoutBuilder{}
+                    .desc(desclayouts.get(name() + ":main").layout())
+                    .add_vertex_flag()
+                    .add_tesc_flag()
+                    .add_tese_flag()
+                    .add_frag_flag()
+                    .pc<U_OceanTessPushConst>(0)
+                    .build(pipe_layout_, device);
             }
 
             // Pipeline
@@ -2282,18 +2178,8 @@ namespace {
 
             desc_pool_.destroy(device_.logi_device());
             render_pass_.destroy(device_);
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipe_layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), pipe_layout_, nullptr
-                );
-                pipe_layout_ = VK_NULL_HANDLE;
-            }
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
 
             for (auto& handle : fbufs_) {
                 vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
@@ -2604,8 +2490,8 @@ namespace {
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
         mirinae::RenderPass render_pass_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
 
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
         std::array<VkClearValue, 2> clear_values_;

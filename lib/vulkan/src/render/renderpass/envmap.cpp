@@ -453,24 +453,9 @@ namespace { namespace env_sky {
         ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), layout_, nullptr
-                );
-                layout_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), renderpass_, nullptr
-                );
-                renderpass_ = VK_NULL_HANDLE;
-            }
+            renderpass_.destroy(device_);
+            pipeline_.destroy(device_);
+            layout_.destroy(device_);
         }
 
         VkFramebuffer fbuf_at(uint32_t index) const override {
@@ -591,24 +576,9 @@ namespace { namespace env_base {
         ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), layout_, nullptr
-                );
-                layout_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), renderpass_, nullptr
-                );
-                renderpass_ = VK_NULL_HANDLE;
-            }
+            renderpass_.destroy(device_);
+            pipeline_.destroy(device_);
+            layout_.destroy(device_);
         }
 
         VkFramebuffer fbuf_at(uint32_t index) const override {
@@ -703,24 +673,9 @@ namespace { namespace env_diffuse {
         ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), layout_, nullptr
-                );
-                layout_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), renderpass_, nullptr
-                );
-                renderpass_ = VK_NULL_HANDLE;
-            }
+            renderpass_.destroy(device_);
+            pipeline_.destroy(device_);
+            layout_.destroy(device_);
         }
 
         VkFramebuffer fbuf_at(uint32_t index) const override {
@@ -814,24 +769,9 @@ namespace { namespace env_specular {
         ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), layout_, nullptr
-                );
-                layout_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), renderpass_, nullptr
-                );
-                renderpass_ = VK_NULL_HANDLE;
-            }
+            renderpass_.destroy(device_);
+            pipeline_.destroy(device_);
+            layout_.destroy(device_);
         }
 
         VkFramebuffer fbuf_at(uint32_t index) const override {
@@ -914,24 +854,9 @@ namespace { namespace env_lut {
         ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), layout_, nullptr
-                );
-                layout_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), renderpass_, nullptr
-                );
-                renderpass_ = VK_NULL_HANDLE;
-            }
+            renderpass_.destroy(device_);
+            pipeline_.destroy(device_);
+            layout_.destroy(device_);
         }
 
         VkFramebuffer fbuf_at(uint32_t index) const override {
