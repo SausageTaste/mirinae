@@ -738,22 +738,6 @@ namespace {
 }  // namespace
 
 
-namespace mirinae::rp::gbuf {
-
-    URpStates create_rp_states_gbuf(
-        mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
-        mirinae::Swapchain& swapchain,
-        mirinae::VulkanDevice& device
-    ) {
-        return std::make_unique<::RpMasterBasic>(
-            rp_res, desclayouts, swapchain, device
-        );
-    }
-
-}  // namespace mirinae::rp::gbuf
-
-
 // RpMasterTerrain
 namespace {
 
@@ -794,54 +778,38 @@ namespace {
     };
 
 
-    class RpMasterTerrain : public mirinae::rp::gbuf::IRpMasterTerrain {
+    class RpMasterTerrain : public mirinae::IRpStates {
 
     public:
-        void init(
-            mirinae::ITextureManager& tex_man,
+        RpMasterTerrain(
+            mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
+            mirinae::Swapchain& swapchain,
             mirinae::VulkanDevice& device
-        ) override {
-            auto& layout = desclayouts.get("gbuf_terrain:main");
+        )
+            : device_(device), rp_res_(rp_res), desclayouts_(desclayouts) {
+            fbuf_exd_ = rp_res.gbuf_.extent();
+            rp_ = std::make_unique<::gbuf_terrain::RPBundle>(
+                rp_res.gbuf_, desclayouts, swapchain, device
+            );
         }
 
-        void init_ren_units(
-            mirinae::CosmosSimulator& cosmos,
-            mirinae::ITextureManager& tex_man,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::VulkanDevice& device
-        ) {
-            namespace cpnt = mirinae::cpnt;
-            auto& reg = cosmos.reg();
-
-            for (auto e : reg.view<cpnt::Terrain>()) {
-                auto& terr = reg.get<cpnt::Terrain>(e);
-                if (terr.ren_unit_)
-                    continue;
-
-                terr.ren_unit_ = std::make_unique<TerrainRenUnit>(
-                    terr, tex_man, desclayouts, device
-                );
-            }
+        const std::string& name() const override {
+            static const std::string name = "gbuf_terrain";
+            return name;
         }
 
-        void destroy(mirinae::VulkanDevice& device) override {}
-
-        void record(
-            mirinae::RpContext& ctxt,
-            const VkExtent2D& fbuf_exd,
-            const mirinae::IRenderPassRegistry& rp_pkg
-        ) override {
+        void record(mirinae::RpContext& ctxt) override {
             namespace cpnt = mirinae::cpnt;
 
             const auto cmdbuf = ctxt.cmdbuf_;
-            auto& rp = rp_pkg.get("gbuf_terrain");
+            auto& rp = *rp_;
             auto& reg = ctxt.cosmos_->reg();
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
                 .fbuf(rp.fbuf_at(ctxt.i_index_.get()))
-                .wh(fbuf_exd)
+                .wh(fbuf_exd_)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())
                 .record_begin(cmdbuf);
@@ -850,8 +818,8 @@ namespace {
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
-            mirinae::Viewport{ fbuf_exd }.record_single(cmdbuf);
-            mirinae::Rect2D{ fbuf_exd }.record_scissor(cmdbuf);
+            mirinae::Viewport{ fbuf_exd_ }.record_single(cmdbuf);
+            mirinae::Rect2D{ fbuf_exd_ }.record_scissor(cmdbuf);
 
             mirinae::PushConstInfo pc_info;
             pc_info.layout(rp.pipeline_layout())
@@ -863,9 +831,13 @@ namespace {
             for (auto e : reg.view<cpnt::Terrain>()) {
                 auto& terr = reg.get<cpnt::Terrain>(e);
 
-                const auto unit = terr.ren_unit<::TerrainRenUnit>();
-                if (!unit)
-                    continue;
+                auto unit = terr.ren_unit<::TerrainRenUnit>();
+                if (!unit) {
+                    terr.ren_unit_ = std::make_unique<TerrainRenUnit>(
+                        terr, *rp_res_.tex_man_, desclayouts_, device_
+                    );
+                    unit = terr.ren_unit<::TerrainRenUnit>();
+                }
 
                 mirinae::DescSetBindInfo{}
                     .layout(rp.pipeline_layout())
@@ -880,7 +852,7 @@ namespace {
                 pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
                     .tile_count(24, 24)
                     .height_map_size(unit->height_map_->extent())
-                    .fbuf_size(fbuf_exd)
+                    .fbuf_size(fbuf_exd_)
                     .height_scale(64);
 
                 for (int x = 0; x < 24; ++x) {
@@ -896,14 +868,39 @@ namespace {
         }
 
     private:
+        mirinae::VulkanDevice& device_;
+        mirinae::RpResources& rp_res_;
+        mirinae::DesclayoutManager& desclayouts_;
+        std::unique_ptr<::gbuf_terrain::RPBundle> rp_;
+        VkExtent2D fbuf_exd_;
         sung::MonotonicRealtimeTimer timer_;
     };
 
 }  // namespace
+
+
 namespace mirinae::rp::gbuf {
 
-    std::unique_ptr<IRpMasterTerrain> create_rpm_terrain() {
-        return std::make_unique<::RpMasterTerrain>();
+    URpStates create_rp_states_gbuf(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::Swapchain& swapchain,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<::RpMasterBasic>(
+            rp_res, desclayouts, swapchain, device
+        );
+    }
+
+    URpStates create_rp_states_gbuf_terrain(
+        RpResources& rp_res,
+        DesclayoutManager& desclayouts,
+        Swapchain& swapchain,
+        VulkanDevice& device
+    ) {
+        return std::make_unique<RpMasterTerrain>(
+            rp_res, desclayouts, swapchain, device
+        );
     }
 
 }  // namespace mirinae::rp::gbuf
