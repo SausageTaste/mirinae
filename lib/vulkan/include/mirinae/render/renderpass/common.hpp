@@ -234,8 +234,8 @@ namespace mirinae {
     protected:
         mirinae::VulkanDevice& device_;
         mirinae::RenderPass renderpass_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout layout_;
     };
 
 

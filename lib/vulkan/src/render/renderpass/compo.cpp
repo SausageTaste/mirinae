@@ -218,7 +218,9 @@ namespace {
             }
 
             // Misc
-            { clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f }; }
+            {
+                clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            }
 
             return;
         }
@@ -242,18 +244,8 @@ namespace {
             desc_pool_.destroy(device_.logi_device());
             desc_pool_sh_.destroy(device_.logi_device());
             render_pass_.destroy(device_);
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipe_layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), pipe_layout_, nullptr
-                );
-                pipe_layout_ = VK_NULL_HANDLE;
-            }
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
         }
 
         const std::string& name() const override {
@@ -369,8 +361,8 @@ namespace {
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_, desc_pool_sh_;
         mirinae::RenderPass render_pass_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
 
         std::array<VkClearValue, 1> clear_values_;
         uint32_t fbuf_width_ = 0;
@@ -536,18 +528,8 @@ namespace {
             sky_tex_.reset();
             desc_pool_.destroy(device_.logi_device());
             render_pass_.destroy(device_);
-
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != pipe_layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), pipe_layout_, nullptr
-                );
-                pipe_layout_ = VK_NULL_HANDLE;
-            }
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
         }
 
         const std::string& name() const override {
@@ -618,8 +600,8 @@ namespace {
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
         mirinae::RenderPass render_pass_;
-        VkPipeline pipeline_ = VK_NULL_HANDLE;
-        VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
 
         std::array<VkClearValue, 2> clear_values_;
         uint32_t fbuf_width_ = 0;

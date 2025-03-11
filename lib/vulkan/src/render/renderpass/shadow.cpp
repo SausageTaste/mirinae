@@ -88,24 +88,9 @@ namespace { namespace shadowmap {
         ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), layout_, nullptr
-                );
-                layout_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), renderpass_, nullptr
-                );
-                renderpass_ = VK_NULL_HANDLE;
-            }
+            renderpass_.destroy(device_);
+            pipeline_.destroy(device_);
+            layout_.destroy(device_);
         }
 
         VkFramebuffer fbuf_at(uint32_t index) const override {
@@ -209,24 +194,9 @@ namespace { namespace shadowmap_skin {
         ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), layout_, nullptr
-                );
-                layout_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), renderpass_, nullptr
-                );
-                renderpass_ = VK_NULL_HANDLE;
-            }
+            renderpass_.destroy(device_);
+            pipeline_.destroy(device_);
+            layout_.destroy(device_);
         }
 
         VkFramebuffer fbuf_at(uint32_t index) const override {
@@ -337,24 +307,9 @@ namespace { namespace shadowmap_skin_transp {
         ~RPBundle() override { this->destroy(); }
 
         void destroy() override {
-            if (VK_NULL_HANDLE != pipeline_) {
-                vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-                pipeline_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != layout_) {
-                vkDestroyPipelineLayout(
-                    device_.logi_device(), layout_, nullptr
-                );
-                layout_ = VK_NULL_HANDLE;
-            }
-
-            if (VK_NULL_HANDLE != renderpass_) {
-                vkDestroyRenderPass(
-                    device_.logi_device(), renderpass_, nullptr
-                );
-                renderpass_ = VK_NULL_HANDLE;
-            }
+            renderpass_.destroy(device_);
+            pipeline_.destroy(device_);
+            layout_.destroy(device_);
         }
 
         VkFramebuffer fbuf_at(uint32_t index) const override {
@@ -379,22 +334,22 @@ namespace { namespace shadowmap_skin_transp {
 
 namespace mirinae::rp::shadow {
 
-void create_rp(
-    IRenderPassRegistry& reg,
-    VkFormat depth_format,
-    DesclayoutManager& desclayouts,
-    VulkanDevice& device
-) {
-    reg.add<::shadowmap::RPBundle>(
-        "shadowmap", depth_format, desclayouts, device
-    );
-    reg.add<::shadowmap_skin::RPBundle>(
-        "shadowmap_skin", depth_format, desclayouts, device
-    );
-    reg.add<::shadowmap_skin_transp::RPBundle>(
-        "shadowmap_skin_transp", depth_format, desclayouts, device
-    );
-}
+    void create_rp(
+        IRenderPassRegistry& reg,
+        VkFormat depth_format,
+        DesclayoutManager& desclayouts,
+        VulkanDevice& device
+    ) {
+        reg.add<::shadowmap::RPBundle>(
+            "shadowmap", depth_format, desclayouts, device
+        );
+        reg.add<::shadowmap_skin::RPBundle>(
+            "shadowmap_skin", depth_format, desclayouts, device
+        );
+        reg.add<::shadowmap_skin_transp::RPBundle>(
+            "shadowmap_skin_transp", depth_format, desclayouts, device
+        );
+    }
 
 }  // namespace mirinae::rp::shadow
 
@@ -404,32 +359,34 @@ namespace mirinae::rp::shadow {
 
 #define CLS RpMaster::ShadowMapPool
 
-CLS::Item& CLS::at(size_t index) { return shadow_maps_.at(index); }
+    CLS::Item& CLS::at(size_t index) { return shadow_maps_.at(index); }
 
-VkImageView CLS::get_img_view_at(size_t index) const {
-    return shadow_maps_.at(index).tex_->image_view();
-}
-
-void CLS::add(uint32_t width, uint32_t height, VulkanDevice& device) {
-    auto& added = shadow_maps_.emplace_back();
-    added.tex_ = create_tex_depth(width, height, device);
-}
-
-void CLS::recreate_fbufs(const IRenderPassBundle& rp, VulkanDevice& device) {
-    for (auto& x : shadow_maps_) {
-        FbufCinfo fbuf_info;
-        fbuf_info.set_rp(rp.renderpass())
-            .add_attach(x.tex_->image_view())
-            .set_dim(x.width(), x.height());
-        x.fbuf_.init(fbuf_info.get(), device.logi_device());
+    VkImageView CLS::get_img_view_at(size_t index) const {
+        return shadow_maps_.at(index).tex_->image_view();
     }
-}
 
-void CLS::destroy_fbufs(VulkanDevice& device) {
-    for (auto& x : shadow_maps_) {
-        x.fbuf_.destroy(device.logi_device());
+    void CLS::add(uint32_t width, uint32_t height, VulkanDevice& device) {
+        auto& added = shadow_maps_.emplace_back();
+        added.tex_ = create_tex_depth(width, height, device);
     }
-}
+
+    void CLS::recreate_fbufs(
+        const IRenderPassBundle& rp, VulkanDevice& device
+    ) {
+        for (auto& x : shadow_maps_) {
+            FbufCinfo fbuf_info;
+            fbuf_info.set_rp(rp.renderpass())
+                .add_attach(x.tex_->image_view())
+                .set_dim(x.width(), x.height());
+            x.fbuf_.init(fbuf_info.get(), device.logi_device());
+        }
+    }
+
+    void CLS::destroy_fbufs(VulkanDevice& device) {
+        for (auto& x : shadow_maps_) {
+            x.fbuf_.destroy(device.logi_device());
+        }
+    }
 
 #undef CLS
 
@@ -439,68 +396,118 @@ void CLS::destroy_fbufs(VulkanDevice& device) {
 // RpMaster
 namespace mirinae::rp::shadow {
 
-void RpMaster::record(
-    const VkCommandBuffer cur_cmd_buf,
-    const DrawSheet& draw_sheet,
-    const FrameIndex frame_index,
-    const IRenderPassRegistry& rp_pkg
-) {
-    this->record_static(cur_cmd_buf, draw_sheet, frame_index, rp_pkg);
-    this->record_skinned(cur_cmd_buf, draw_sheet, frame_index, rp_pkg);
-    this->record_skin_transp(cur_cmd_buf, draw_sheet, frame_index, rp_pkg);
-}
+    void RpMaster::record(
+        const VkCommandBuffer cur_cmd_buf,
+        const DrawSheet& draw_sheet,
+        const FrameIndex frame_index,
+        const IRenderPassRegistry& rp_pkg
+    ) {
+        this->record_static(cur_cmd_buf, draw_sheet, frame_index, rp_pkg);
+        this->record_skinned(cur_cmd_buf, draw_sheet, frame_index, rp_pkg);
+        this->record_skin_transp(cur_cmd_buf, draw_sheet, frame_index, rp_pkg);
+    }
 
-void RpMaster::record_static(
-    const VkCommandBuffer cur_cmd_buf,
-    const DrawSheet& draw_sheet,
-    const FrameIndex frame_index,
-    const IRenderPassRegistry& rp_pkg
-) {
-    auto& rp = rp_pkg.get("shadowmap");
+    void RpMaster::record_static(
+        const VkCommandBuffer cur_cmd_buf,
+        const DrawSheet& draw_sheet,
+        const FrameIndex frame_index,
+        const IRenderPassRegistry& rp_pkg
+    ) {
+        auto& rp = rp_pkg.get("shadowmap");
 
-    assert(shadow_maps_.size() == 2);
+        assert(shadow_maps_.size() == 2);
 
-    {
-        auto& shadow = shadow_maps_.at(0);
+        {
+            auto& shadow = shadow_maps_.at(0);
 
-        RenderPassBeginInfo{}
-            .rp(rp.renderpass())
-            .fbuf(shadow.fbuf())
-            .wh(shadow.tex_->extent())
-            .clear_value_count(rp.clear_value_count())
-            .clear_values(rp.clear_values())
-            .record_begin(cur_cmd_buf);
+            RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(shadow.fbuf())
+                .wh(shadow.tex_->extent())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-        vkCmdBindPipeline(
-            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-        );
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
 
-        const auto half_width = shadow.width() / 2.0;
-        const auto half_height = shadow.height() / 2.0;
-        const std::array<glm::dvec2, 4> offsets{
-            glm::dvec2{ 0, 0 },
-            glm::dvec2{ half_width, 0 },
-            glm::dvec2{ 0, half_height },
-            glm::dvec2{ half_width, half_height },
-        };
+            const auto half_width = shadow.width() / 2.0;
+            const auto half_height = shadow.height() / 2.0;
+            const std::array<glm::dvec2, 4> offsets{
+                glm::dvec2{ 0, 0 },
+                glm::dvec2{ half_width, 0 },
+                glm::dvec2{ 0, half_height },
+                glm::dvec2{ half_width, half_height },
+            };
 
-        DescSetBindInfo descset_info{ rp.pipeline_layout() };
+            DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-        for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
-            const auto& cascade = cascade_info_.cascades_.at(cascade_i);
-            auto& offset = offsets.at(cascade_i);
+            for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
+                const auto& cascade = cascade_info_.cascades_.at(cascade_i);
+                auto& offset = offsets.at(cascade_i);
+
+                Viewport{}
+                    .set_xy(offset)
+                    .set_wh(half_width, half_height)
+                    .record_single(cur_cmd_buf);
+                Rect2D{}
+                    .set_xy(offset)
+                    .set_wh(half_width, half_height)
+                    .record_scissor(cur_cmd_buf);
+
+                for (auto& pair : draw_sheet.static_) {
+                    auto& unit = *pair.unit_;
+                    unit.record_bind_vert_buf(cur_cmd_buf);
+
+                    for (auto& actor : pair.actors_) {
+                        descset_info
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
+
+                        U_ShadowPushConst push_const;
+                        push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
+
+                        PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .record(cur_cmd_buf, push_const);
+
+                        vkCmdDrawIndexed(
+                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                        );
+                    }
+                }
+            }
+
+            vkCmdEndRenderPass(cur_cmd_buf);
+        }
+
+        {
+            auto& shadow = shadow_maps_.at(1);
+
+            RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(shadow.fbuf())
+                .wh(shadow.tex_->extent())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
+
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
 
             Viewport{}
-                .set_xy(offset)
-                .set_wh(half_width, half_height)
+                .set_wh(shadow.width(), shadow.height())
                 .record_single(cur_cmd_buf);
-            Rect2D{}
-                .set_xy(offset)
-                .set_wh(half_width, half_height)
-                .record_scissor(cur_cmd_buf);
+            Rect2D{}.set_wh(shadow.tex_->extent()).record_scissor(cur_cmd_buf);
+
+            DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
             for (auto& pair : draw_sheet.static_) {
                 auto& unit = *pair.unit_;
+                auto unit_desc = unit.get_desc_set(frame_index.get());
                 unit.record_bind_vert_buf(cur_cmd_buf);
 
                 for (auto& actor : pair.actors_) {
@@ -509,7 +516,7 @@ void RpMaster::record_static(
                         .record(cur_cmd_buf);
 
                     U_ShadowPushConst push_const;
-                    push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
+                    push_const.pvm_ = shadow.mat_ * actor.model_mat_;
 
                     PushConstInfo{}
                         .layout(rp.pipeline_layout())
@@ -521,103 +528,108 @@ void RpMaster::record_static(
                     );
                 }
             }
+            vkCmdEndRenderPass(cur_cmd_buf);
         }
-
-        vkCmdEndRenderPass(cur_cmd_buf);
     }
 
-    {
-        auto& shadow = shadow_maps_.at(1);
+    void RpMaster::record_skinned(
+        const VkCommandBuffer cur_cmd_buf,
+        const DrawSheet& draw_sheet,
+        const FrameIndex frame_index,
+        const IRenderPassRegistry& rp_pkg
+    ) {
+        auto& rp = rp_pkg.get("shadowmap_skin");
 
-        RenderPassBeginInfo{}
-            .rp(rp.renderpass())
-            .fbuf(shadow.fbuf())
-            .wh(shadow.tex_->extent())
-            .clear_value_count(rp.clear_value_count())
-            .clear_values(rp.clear_values())
-            .record_begin(cur_cmd_buf);
+        {
+            auto& shadow = shadow_maps_.at(0);
 
-        vkCmdBindPipeline(
-            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-        );
+            RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(shadow.fbuf())
+                .wh(shadow.tex_->extent())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-        Viewport{}
-            .set_wh(shadow.width(), shadow.height())
-            .record_single(cur_cmd_buf);
-        Rect2D{}.set_wh(shadow.tex_->extent()).record_scissor(cur_cmd_buf);
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
 
-        DescSetBindInfo descset_info{ rp.pipeline_layout() };
+            const auto half_width = shadow.width() / 2.0;
+            const auto half_height = shadow.height() / 2.0;
+            const std::array<glm::dvec2, 4> offsets{
+                glm::dvec2{ 0, 0 },
+                glm::dvec2{ half_width, 0 },
+                glm::dvec2{ 0, half_height },
+                glm::dvec2{ half_width, half_height },
+            };
 
-        for (auto& pair : draw_sheet.static_) {
-            auto& unit = *pair.unit_;
-            auto unit_desc = unit.get_desc_set(frame_index.get());
-            unit.record_bind_vert_buf(cur_cmd_buf);
+            DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            for (auto& actor : pair.actors_) {
-                descset_info.set(actor.actor_->get_desc_set(frame_index.get()))
-                    .record(cur_cmd_buf);
+            for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
+                const auto& cascade = cascade_info_.cascades_.at(cascade_i);
+                auto& offset = offsets.at(cascade_i);
 
-                U_ShadowPushConst push_const;
-                push_const.pvm_ = shadow.mat_ * actor.model_mat_;
+                Viewport{}
+                    .set_xy(offset)
+                    .set_wh(half_width, half_height)
+                    .record_single(cur_cmd_buf);
+                Rect2D{}
+                    .set_xy(offset)
+                    .set_wh(half_width, half_height)
+                    .record_scissor(cur_cmd_buf);
 
-                PushConstInfo{}
-                    .layout(rp.pipeline_layout())
-                    .add_stage_vert()
-                    .record(cur_cmd_buf, push_const);
+                for (auto& pair : draw_sheet.skinned_) {
+                    auto& unit = *pair.unit_;
+                    auto unit_desc = unit.get_desc_set(frame_index.get());
+                    unit.record_bind_vert_buf(cur_cmd_buf);
 
-                vkCmdDrawIndexed(cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0);
+                    for (auto& actor : pair.actors_) {
+                        descset_info
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
+
+                        U_ShadowPushConst push_const;
+                        push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
+
+                        mirinae::PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .record(cur_cmd_buf, push_const);
+
+                        vkCmdDrawIndexed(
+                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                        );
+                    }
+                }
             }
+
+            vkCmdEndRenderPass(cur_cmd_buf);
         }
-        vkCmdEndRenderPass(cur_cmd_buf);
-    }
-}
 
-void RpMaster::record_skinned(
-    const VkCommandBuffer cur_cmd_buf,
-    const DrawSheet& draw_sheet,
-    const FrameIndex frame_index,
-    const IRenderPassRegistry& rp_pkg
-) {
-    auto& rp = rp_pkg.get("shadowmap_skin");
+        {
+            auto& shadow = shadow_maps_.at(1);
 
-    {
-        auto& shadow = shadow_maps_.at(0);
+            RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(shadow.fbuf())
+                .wh(shadow.tex_->extent())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-        RenderPassBeginInfo{}
-            .rp(rp.renderpass())
-            .fbuf(shadow.fbuf())
-            .wh(shadow.tex_->extent())
-            .clear_value_count(rp.clear_value_count())
-            .clear_values(rp.clear_values())
-            .record_begin(cur_cmd_buf);
-
-        vkCmdBindPipeline(
-            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-        );
-
-        const auto half_width = shadow.width() / 2.0;
-        const auto half_height = shadow.height() / 2.0;
-        const std::array<glm::dvec2, 4> offsets{
-            glm::dvec2{ 0, 0 },
-            glm::dvec2{ half_width, 0 },
-            glm::dvec2{ 0, half_height },
-            glm::dvec2{ half_width, half_height },
-        };
-
-        DescSetBindInfo descset_info{ rp.pipeline_layout() };
-
-        for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
-            const auto& cascade = cascade_info_.cascades_.at(cascade_i);
-            auto& offset = offsets.at(cascade_i);
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
 
             Viewport{}
-                .set_xy(offset)
-                .set_wh(half_width, half_height)
+                .set_wh(shadow.width(), shadow.height())
                 .record_single(cur_cmd_buf);
             Rect2D{}
-                .set_xy(offset)
-                .set_wh(half_width, half_height)
+                .set_wh(shadow.width(), shadow.height())
                 .record_scissor(cur_cmd_buf);
+
+            DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
             for (auto& pair : draw_sheet.skinned_) {
                 auto& unit = *pair.unit_;
@@ -630,9 +642,9 @@ void RpMaster::record_skinned(
                         .record(cur_cmd_buf);
 
                     U_ShadowPushConst push_const;
-                    push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
+                    push_const.pvm_ = shadow.mat_ * actor.model_mat_;
 
-                    mirinae::PushConstInfo{}
+                    PushConstInfo{}
                         .layout(rp.pipeline_layout())
                         .add_stage_vert()
                         .record(cur_cmd_buf, push_const);
@@ -642,105 +654,111 @@ void RpMaster::record_skinned(
                     );
                 }
             }
+            vkCmdEndRenderPass(cur_cmd_buf);
         }
-
-        vkCmdEndRenderPass(cur_cmd_buf);
     }
 
-    {
-        auto& shadow = shadow_maps_.at(1);
+    void RpMaster::record_skin_transp(
+        const VkCommandBuffer cur_cmd_buf,
+        const DrawSheet& draw_sheet,
+        const FrameIndex frame_index,
+        const IRenderPassRegistry& rp_pkg
+    ) {
+        auto& rp = rp_pkg.get("shadowmap_skin_transp");
 
-        RenderPassBeginInfo{}
-            .rp(rp.renderpass())
-            .fbuf(shadow.fbuf())
-            .wh(shadow.tex_->extent())
-            .clear_value_count(rp.clear_value_count())
-            .clear_values(rp.clear_values())
-            .record_begin(cur_cmd_buf);
+        {
+            auto& shadow = shadow_maps_.at(0);
 
-        vkCmdBindPipeline(
-            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-        );
+            RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(shadow.fbuf())
+                .wh(shadow.tex_->extent())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-        Viewport{}
-            .set_wh(shadow.width(), shadow.height())
-            .record_single(cur_cmd_buf);
-        Rect2D{}
-            .set_wh(shadow.width(), shadow.height())
-            .record_scissor(cur_cmd_buf);
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
 
-        DescSetBindInfo descset_info{ rp.pipeline_layout() };
+            const auto half_width = shadow.width() / 2.0;
+            const auto half_height = shadow.height() / 2.0;
+            const std::array<glm::dvec2, 4> offsets{
+                glm::dvec2{ 0, 0 },
+                glm::dvec2{ half_width, 0 },
+                glm::dvec2{ 0, half_height },
+                glm::dvec2{ half_width, half_height },
+            };
 
-        for (auto& pair : draw_sheet.skinned_) {
-            auto& unit = *pair.unit_;
-            auto unit_desc = unit.get_desc_set(frame_index.get());
-            unit.record_bind_vert_buf(cur_cmd_buf);
+            DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
-            for (auto& actor : pair.actors_) {
-                descset_info.set(actor.actor_->get_desc_set(frame_index.get()))
-                    .record(cur_cmd_buf);
+            for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
+                const auto& cascade = cascade_info_.cascades_.at(cascade_i);
+                auto& offset = offsets.at(cascade_i);
 
-                U_ShadowPushConst push_const;
-                push_const.pvm_ = shadow.mat_ * actor.model_mat_;
+                Viewport{}
+                    .set_xy(offset)
+                    .set_wh(half_width, half_height)
+                    .record_single(cur_cmd_buf);
+                Rect2D{}
+                    .set_xy(offset)
+                    .set_wh(half_width, half_height)
+                    .record_scissor(cur_cmd_buf);
 
-                PushConstInfo{}
-                    .layout(rp.pipeline_layout())
-                    .add_stage_vert()
-                    .record(cur_cmd_buf, push_const);
+                for (auto& pair : draw_sheet.skinned_trs_) {
+                    auto& unit = *pair.unit_;
+                    unit.record_bind_vert_buf(cur_cmd_buf);
 
-                vkCmdDrawIndexed(cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0);
+                    descset_info.first_set(1)
+                        .set(unit.get_desc_set(frame_index.get()))
+                        .record(cur_cmd_buf);
+
+                    for (auto& actor : pair.actors_) {
+                        descset_info.first_set(0)
+                            .set(actor.actor_->get_desc_set(frame_index.get()))
+                            .record(cur_cmd_buf);
+
+                        U_ShadowPushConst push_const;
+                        push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
+
+                        mirinae::PushConstInfo{}
+                            .layout(rp.pipeline_layout())
+                            .add_stage_vert()
+                            .record(cur_cmd_buf, push_const);
+
+                        vkCmdDrawIndexed(
+                            cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
+                        );
+                    }
+                }
             }
+
+            vkCmdEndRenderPass(cur_cmd_buf);
         }
-        vkCmdEndRenderPass(cur_cmd_buf);
-    }
-}
 
-void RpMaster::record_skin_transp(
-    const VkCommandBuffer cur_cmd_buf,
-    const DrawSheet& draw_sheet,
-    const FrameIndex frame_index,
-    const IRenderPassRegistry& rp_pkg
-) {
-    auto& rp = rp_pkg.get("shadowmap_skin_transp");
+        {
+            auto& shadow = shadow_maps_.at(1);
 
-    {
-        auto& shadow = shadow_maps_.at(0);
+            RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(shadow.fbuf())
+                .wh(shadow.tex_->extent())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cur_cmd_buf);
 
-        RenderPassBeginInfo{}
-            .rp(rp.renderpass())
-            .fbuf(shadow.fbuf())
-            .wh(shadow.tex_->extent())
-            .clear_value_count(rp.clear_value_count())
-            .clear_values(rp.clear_values())
-            .record_begin(cur_cmd_buf);
-
-        vkCmdBindPipeline(
-            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-        );
-
-        const auto half_width = shadow.width() / 2.0;
-        const auto half_height = shadow.height() / 2.0;
-        const std::array<glm::dvec2, 4> offsets{
-            glm::dvec2{ 0, 0 },
-            glm::dvec2{ half_width, 0 },
-            glm::dvec2{ 0, half_height },
-            glm::dvec2{ half_width, half_height },
-        };
-
-        DescSetBindInfo descset_info{ rp.pipeline_layout() };
-
-        for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
-            const auto& cascade = cascade_info_.cascades_.at(cascade_i);
-            auto& offset = offsets.at(cascade_i);
+            vkCmdBindPipeline(
+                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
 
             Viewport{}
-                .set_xy(offset)
-                .set_wh(half_width, half_height)
+                .set_wh(shadow.width(), shadow.height())
                 .record_single(cur_cmd_buf);
             Rect2D{}
-                .set_xy(offset)
-                .set_wh(half_width, half_height)
+                .set_wh(shadow.width(), shadow.height())
                 .record_scissor(cur_cmd_buf);
+
+            DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
             for (auto& pair : draw_sheet.skinned_trs_) {
                 auto& unit = *pair.unit_;
@@ -756,9 +774,9 @@ void RpMaster::record_skin_transp(
                         .record(cur_cmd_buf);
 
                     U_ShadowPushConst push_const;
-                    push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
+                    push_const.pvm_ = shadow.mat_ * actor.model_mat_;
 
-                    mirinae::PushConstInfo{}
+                    PushConstInfo{}
                         .layout(rp.pipeline_layout())
                         .add_stage_vert()
                         .record(cur_cmd_buf, push_const);
@@ -768,308 +786,317 @@ void RpMaster::record_skin_transp(
                     );
                 }
             }
+            vkCmdEndRenderPass(cur_cmd_buf);
         }
-
-        vkCmdEndRenderPass(cur_cmd_buf);
     }
-
-    {
-        auto& shadow = shadow_maps_.at(1);
-
-        RenderPassBeginInfo{}
-            .rp(rp.renderpass())
-            .fbuf(shadow.fbuf())
-            .wh(shadow.tex_->extent())
-            .clear_value_count(rp.clear_value_count())
-            .clear_values(rp.clear_values())
-            .record_begin(cur_cmd_buf);
-
-        vkCmdBindPipeline(
-            cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-        );
-
-        Viewport{}
-            .set_wh(shadow.width(), shadow.height())
-            .record_single(cur_cmd_buf);
-        Rect2D{}
-            .set_wh(shadow.width(), shadow.height())
-            .record_scissor(cur_cmd_buf);
-
-        DescSetBindInfo descset_info{ rp.pipeline_layout() };
-
-        for (auto& pair : draw_sheet.skinned_trs_) {
-            auto& unit = *pair.unit_;
-            unit.record_bind_vert_buf(cur_cmd_buf);
-
-            descset_info.first_set(1)
-                .set(unit.get_desc_set(frame_index.get()))
-                .record(cur_cmd_buf);
-
-            for (auto& actor : pair.actors_) {
-                descset_info.first_set(0)
-                    .set(actor.actor_->get_desc_set(frame_index.get()))
-                    .record(cur_cmd_buf);
-
-                U_ShadowPushConst push_const;
-                push_const.pvm_ = shadow.mat_ * actor.model_mat_;
-
-                PushConstInfo{}
-                    .layout(rp.pipeline_layout())
-                    .add_stage_vert()
-                    .record(cur_cmd_buf, push_const);
-
-                vkCmdDrawIndexed(cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0);
-            }
-        }
-        vkCmdEndRenderPass(cur_cmd_buf);
-    }
-}
 
 }  // namespace mirinae::rp::shadow
 
 
 namespace {
 
-class ShadowMapBundle : public mirinae::IShadowMapBundle {
+    class ShadowMapBundle : public mirinae::IShadowMapBundle {
 
-public:
-    struct Item {
-        auto width() const { return tex_->width(); }
-        auto height() const { return tex_->height(); }
-        VkFramebuffer fbuf() { return fbuf_.get(); }
+    public:
+        struct Item {
+            auto width() const { return tex_->width(); }
+            auto height() const { return tex_->height(); }
+            VkFramebuffer fbuf() { return fbuf_.get(); }
 
-        std::unique_ptr<mirinae::ITexture> tex_;
-        mirinae::Fbuf fbuf_;
-        entt::entity entt_ = entt::null;
+            std::unique_ptr<mirinae::ITexture> tex_;
+            mirinae::Fbuf fbuf_;
+            entt::entity entt_ = entt::null;
+        };
+
+    public:
+        ShadowMapBundle(mirinae::VulkanDevice& device) : device_(device) {}
+
+        ~ShadowMapBundle() {
+            for (auto& x : dlights_) {
+                x.fbuf_.destroy(device_.logi_device());
+            }
+
+            for (auto& x : slights_) {
+                x.fbuf_.destroy(device_.logi_device());
+            }
+        }
+
+        uint32_t dlight_count() const override { return dlights_.size(); }
+
+        entt::entity dlight_entt_at(size_t idx) override {
+            return dlights_.at(idx).entt_;
+        }
+
+        VkImageView dlight_view_at(size_t idx) override {
+            return dlights_.at(idx).tex_->image_view();
+        }
+
+        uint32_t slight_count() const override { return slights_.size(); }
+
+        VkImageView slight_view_at(size_t idx) override {
+            return slights_.at(idx).tex_->image_view();
+        }
+
+        void recreate_fbufs(
+            const VkRenderPass rp, mirinae::VulkanDevice& device
+        ) {
+            mirinae::FbufCinfo fbuf_info;
+            fbuf_info.set_rp(rp);
+
+            for (auto& x : dlights_) {
+                fbuf_info.clear_attach()
+                    .add_attach(x.tex_->image_view())
+                    .set_dim(x.width(), x.height());
+                x.fbuf_.init(fbuf_info.get(), device.logi_device());
+            }
+
+            for (auto& x : slights_) {
+                fbuf_info.clear_attach()
+                    .add_attach(x.tex_->image_view())
+                    .set_dim(x.width(), x.height());
+                x.fbuf_.init(fbuf_info.get(), device.logi_device());
+            }
+        }
+
+    public:
+        mirinae::VulkanDevice& device_;
+
+        std::vector<Item> dlights_;
+        std::vector<Item> slights_;
+        VkFormat depth_format_ = VK_FORMAT_UNDEFINED;
     };
-
-public:
-    ShadowMapBundle(mirinae::VulkanDevice& device) : device_(device) {}
-
-    ~ShadowMapBundle() {
-        for (auto& x : dlights_) {
-            x.fbuf_.destroy(device_.logi_device());
-        }
-
-        for (auto& x : slights_) {
-            x.fbuf_.destroy(device_.logi_device());
-        }
-    }
-
-    uint32_t dlight_count() const override { return dlights_.size(); }
-
-    entt::entity dlight_entt_at(size_t idx) override {
-        return dlights_.at(idx).entt_;
-    }
-
-    VkImageView dlight_view_at(size_t idx) override {
-        return dlights_.at(idx).tex_->image_view();
-    }
-
-    uint32_t slight_count() const override { return slights_.size(); }
-
-    VkImageView slight_view_at(size_t idx) override {
-        return slights_.at(idx).tex_->image_view();
-    }
-
-    void recreate_fbufs(const VkRenderPass rp, mirinae::VulkanDevice& device) {
-        mirinae::FbufCinfo fbuf_info;
-        fbuf_info.set_rp(rp);
-
-        for (auto& x : dlights_) {
-            fbuf_info.clear_attach()
-                .add_attach(x.tex_->image_view())
-                .set_dim(x.width(), x.height());
-            x.fbuf_.init(fbuf_info.get(), device.logi_device());
-        }
-
-        for (auto& x : slights_) {
-            fbuf_info.clear_attach()
-                .add_attach(x.tex_->image_view())
-                .set_dim(x.width(), x.height());
-            x.fbuf_.init(fbuf_info.get(), device.logi_device());
-        }
-    }
-
-public:
-    mirinae::VulkanDevice& device_;
-
-    std::vector<Item> dlights_;
-    std::vector<Item> slights_;
-    VkFormat depth_format_ = VK_FORMAT_UNDEFINED;
-};
 
 }  // namespace
 
 
 namespace {
 
-class RpStatesShadowStatic : public mirinae::IRpStates {
+    class RpStatesShadowStatic : public mirinae::IRpStates {
 
-public:
-    RpStatesShadowStatic(
-        mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
-        mirinae::VulkanDevice& device
-    )
-        : device_(device), rp_res_(rp_res) {
-        auto shadow_maps = dynamic_cast<::ShadowMapBundle*>(
-            rp_res_.shadow_maps_.get()
-        );
-        MIRINAE_ASSERT(shadow_maps);
-
-        // Depth format
-        { shadow_maps->depth_format_ = device_.img_formats().depth_map(); }
-
-        // Render pass
-        {
-            mirinae::RenderPassBuilder builder;
-
-            builder.attach_desc()
-                .add(shadow_maps->depth_format_)
-                .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                .op_pair_clear_store();
-
-            builder.depth_attach_ref().set(0);
-
-            builder.subpass_dep().add().preset_single();
-
-            render_pass_ = builder.build(device.logi_device());
-        }
-
-        // Pipeline layout
-        {
-            auto& desclayout = desclayouts.get("gbuf:actor");
-
-            mirinae::PipelineLayoutBuilder{}
-                .desc(desclayout.layout())
-                .add_vertex_flag()
-                .pc<mirinae::U_ShadowPushConst>()
-                .build(pipe_layout_, device);
-        }
-
-        // Pipeline
-        {
-            mirinae::PipelineBuilder builder{ device };
-
-            builder.shader_stages()
-                .add_vert(":asset/spv/shadow_basic_vert.spv")
-                .add_frag(":asset/spv/shadow_basic_frag.spv");
-
-            builder.vertex_input_state().set_static();
-
-            builder.rasterization_state()
-                .depth_clamp_enable(device.has_supp_depth_clamp())
-                .depth_bias(80, 8);
-
-            builder.depth_stencil_state()
-                .depth_test_enable(true)
-                .depth_write_enable(true);
-
-            builder.dynamic_state().add_viewport().add_scissor();
-
-            pipeline_ = builder.build(render_pass_.get(), pipe_layout_);
-        }
-
-        // Misc
-        {
-            shadow_maps->dlights_.emplace_back().tex_ =
-                mirinae::create_tex_depth(4096, 4096, device);
-            shadow_maps->dlights_.emplace_back().tex_ =
-                mirinae::create_tex_depth(4096, 4096, device);
-            shadow_maps->slights_.emplace_back().tex_ =
-                mirinae::create_tex_depth(512, 512, device);
-            shadow_maps->slights_.emplace_back().tex_ =
-                mirinae::create_tex_depth(512, 512, device);
-            shadow_maps->slights_.emplace_back().tex_ =
-                mirinae::create_tex_depth(512, 512, device);
-            shadow_maps->recreate_fbufs(render_pass_.get(), device);
-
-            clear_values_.at(0).depthStencil = { 1, 0 };
-        }
-
-        return;
-    }
-
-    ~RpStatesShadowStatic() override {
-        render_pass_.destroy(device_);
-
-        if (VK_NULL_HANDLE != pipeline_) {
-            vkDestroyPipeline(device_.logi_device(), pipeline_, nullptr);
-            pipeline_ = VK_NULL_HANDLE;
-        }
-
-        if (VK_NULL_HANDLE != pipe_layout_) {
-            vkDestroyPipelineLayout(
-                device_.logi_device(), pipe_layout_, nullptr
+    public:
+        RpStatesShadowStatic(
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device), rp_res_(rp_res) {
+            auto shadow_maps = dynamic_cast<::ShadowMapBundle*>(
+                rp_res_.shadow_maps_.get()
             );
-            pipe_layout_ = VK_NULL_HANDLE;
+            MIRINAE_ASSERT(shadow_maps);
+
+            // Depth format
+            {
+                shadow_maps->depth_format_ = device_.img_formats().depth_map();
+            }
+
+            // Render pass
+            {
+                mirinae::RenderPassBuilder builder;
+
+                builder.attach_desc()
+                    .add(shadow_maps->depth_format_)
+                    .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .op_pair_clear_store();
+
+                builder.depth_attach_ref().set(0);
+
+                builder.subpass_dep().add().preset_single();
+
+                render_pass_ = builder.build(device.logi_device());
+            }
+
+            // Pipeline layout
+            {
+                auto& desclayout = desclayouts.get("gbuf:actor");
+
+                mirinae::PipelineLayoutBuilder{}
+                    .desc(desclayout.layout())
+                    .add_vertex_flag()
+                    .pc<mirinae::U_ShadowPushConst>()
+                    .build(pipe_layout_, device);
+            }
+
+            // Pipeline
+            {
+                mirinae::PipelineBuilder builder{ device };
+
+                builder.shader_stages()
+                    .add_vert(":asset/spv/shadow_basic_vert.spv")
+                    .add_frag(":asset/spv/shadow_basic_frag.spv");
+
+                builder.vertex_input_state().set_static();
+
+                builder.rasterization_state()
+                    .depth_clamp_enable(device.has_supp_depth_clamp())
+                    .depth_bias(80, 8);
+
+                builder.depth_stencil_state()
+                    .depth_test_enable(true)
+                    .depth_write_enable(true);
+
+                builder.dynamic_state().add_viewport().add_scissor();
+
+                pipeline_ = builder.build(render_pass_.get(), pipe_layout_);
+            }
+
+            // Misc
+            {
+                shadow_maps->dlights_.emplace_back().tex_ =
+                    mirinae::create_tex_depth(4096, 4096, device);
+                shadow_maps->dlights_.emplace_back().tex_ =
+                    mirinae::create_tex_depth(4096, 4096, device);
+                shadow_maps->slights_.emplace_back().tex_ =
+                    mirinae::create_tex_depth(512, 512, device);
+                shadow_maps->slights_.emplace_back().tex_ =
+                    mirinae::create_tex_depth(512, 512, device);
+                shadow_maps->slights_.emplace_back().tex_ =
+                    mirinae::create_tex_depth(512, 512, device);
+                shadow_maps->recreate_fbufs(render_pass_.get(), device);
+
+                clear_values_.at(0).depthStencil = { 1, 0 };
+            }
+
+            return;
         }
-    }
 
-    const std::string& name() const override {
-        static const std::string name = "shadow_static";
-        return name;
-    }
+        ~RpStatesShadowStatic() override {
+            render_pass_.destroy(device_);
+            pipeline_.destroy(device_);
+            pipe_layout_.destroy(device_);
+        }
 
-    void record(mirinae::RpContext& ctxt) override {
-        namespace cpnt = mirinae::cpnt;
-        auto& reg = ctxt.cosmos_->reg();
-        const auto cmdbuf = ctxt.cmdbuf_;
-        const auto shadow_maps = dynamic_cast<::ShadowMapBundle*>(
-            rp_res_.shadow_maps_.get()
-        );
-        MIRINAE_ASSERT(shadow_maps);
+        const std::string& name() const override {
+            static const std::string name = "shadow_static";
+            return name;
+        }
 
-        size_t i = 0;
-        for (const auto e : reg.view<cpnt::DLight>()) {
-            const auto light_idx = i++;
-            if (light_idx >= shadow_maps->dlights_.size())
-                break;
-
-            auto& dlight = reg.get<cpnt::DLight>(e);
-            auto& shadow = shadow_maps->dlights_.at(light_idx);
-            shadow.entt_ = e;
-
-            mirinae::RenderPassBeginInfo{}
-                .rp(render_pass_.get())
-                .fbuf(shadow.fbuf())
-                .wh(shadow.tex_->extent())
-                .clear_value_count(clear_values_.size())
-                .clear_values(clear_values_.data())
-                .record_begin(cmdbuf);
-
-            vkCmdBindPipeline(
-                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
+        void record(mirinae::RpContext& ctxt) override {
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = ctxt.cosmos_->reg();
+            const auto cmdbuf = ctxt.cmdbuf_;
+            const auto shadow_maps = dynamic_cast<::ShadowMapBundle*>(
+                rp_res_.shadow_maps_.get()
             );
+            MIRINAE_ASSERT(shadow_maps);
 
-            const auto half_width = shadow.width() / 2.0;
-            const auto half_height = shadow.height() / 2.0;
-            const std::array<glm::dvec2, 4> offsets{
-                glm::dvec2{ 0, 0 },
-                glm::dvec2{ half_width, 0 },
-                glm::dvec2{ 0, half_height },
-                glm::dvec2{ half_width, half_height },
-            };
+            size_t i = 0;
+            for (const auto e : reg.view<cpnt::DLight>()) {
+                const auto light_idx = i++;
+                if (light_idx >= shadow_maps->dlights_.size())
+                    break;
 
-            mirinae::DescSetBindInfo descset_info{ pipe_layout_ };
+                auto& dlight = reg.get<cpnt::DLight>(e);
+                auto& shadow = shadow_maps->dlights_.at(light_idx);
+                shadow.entt_ = e;
 
-            for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
-                const auto& cascade = dlight.cascades_.cascades_.at(cascade_i);
-                auto& offset = offsets.at(cascade_i);
+                mirinae::RenderPassBeginInfo{}
+                    .rp(render_pass_.get())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(clear_values_.size())
+                    .clear_values(clear_values_.data())
+                    .record_begin(cmdbuf);
+
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
+                );
+
+                const auto half_width = shadow.width() / 2.0;
+                const auto half_height = shadow.height() / 2.0;
+                const std::array<glm::dvec2, 4> offsets{
+                    glm::dvec2{ 0, 0 },
+                    glm::dvec2{ half_width, 0 },
+                    glm::dvec2{ 0, half_height },
+                    glm::dvec2{ half_width, half_height },
+                };
+
+                mirinae::DescSetBindInfo descset_info{ pipe_layout_ };
+
+                for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
+                    const auto& cascade = dlight.cascades_.cascades_.at(
+                        cascade_i
+                    );
+                    auto& offset = offsets.at(cascade_i);
+
+                    mirinae::Viewport{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_single(cmdbuf);
+                    mirinae::Rect2D{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_scissor(cmdbuf);
+
+                    for (auto& pair : ctxt.draw_sheet_->static_) {
+                        auto& unit = *pair.unit_;
+                        unit.record_bind_vert_buf(cmdbuf);
+
+                        for (auto& actor : pair.actors_) {
+                            descset_info
+                                .set(actor.actor_->get_desc_set(
+                                    ctxt.f_index_.get()
+                                ))
+                                .record(cmdbuf);
+
+                            mirinae::U_ShadowPushConst push_const;
+                            push_const.pvm_ = cascade.light_mat_ *
+                                              actor.model_mat_;
+
+                            mirinae::PushConstInfo{}
+                                .layout(pipe_layout_)
+                                .add_stage_vert()
+                                .record(cmdbuf, push_const);
+
+                            vkCmdDrawIndexed(
+                                cmdbuf, unit.vertex_count(), 1, 0, 0, 0
+                            );
+                        }
+                    }
+                }
+
+                vkCmdEndRenderPass(cmdbuf);
+            }
+
+            i = 0;
+            for (const auto e : reg.view<cpnt::SLight>()) {
+                const auto light_idx = i++;
+                if (light_idx >= shadow_maps->slights_.size())
+                    break;
+
+                auto& light = reg.get<cpnt::SLight>(e);
+                auto& shadow = shadow_maps->slights_.at(light_idx);
+                shadow.entt_ = e;
+
+                auto light_mat = light.make_proj_mat();
+                if (auto tform = reg.try_get<cpnt::Transform>(e))
+                    light_mat = light_mat * tform->make_view_mat();
+
+                mirinae::RenderPassBeginInfo{}
+                    .rp(render_pass_.get())
+                    .fbuf(shadow.fbuf())
+                    .wh(shadow.tex_->extent())
+                    .clear_value_count(clear_values_.size())
+                    .clear_values(clear_values_.data())
+                    .record_begin(cmdbuf);
+
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
+                );
 
                 mirinae::Viewport{}
-                    .set_xy(offset)
-                    .set_wh(half_width, half_height)
+                    .set_wh(shadow.width(), shadow.height())
                     .record_single(cmdbuf);
                 mirinae::Rect2D{}
-                    .set_xy(offset)
-                    .set_wh(half_width, half_height)
+                    .set_wh(shadow.width(), shadow.height())
                     .record_scissor(cmdbuf);
+
+                mirinae::DescSetBindInfo descset_info{ pipe_layout_ };
 
                 for (auto& pair : ctxt.draw_sheet_->static_) {
                     auto& unit = *pair.unit_;
+                    auto unit_desc = unit.get_desc_set(ctxt.f_index_.get());
                     unit.record_bind_vert_buf(cmdbuf);
 
                     for (auto& actor : pair.actors_) {
@@ -1079,7 +1106,7 @@ public:
                             .record(cmdbuf);
 
                         mirinae::U_ShadowPushConst push_const;
-                        push_const.pvm_ = cascade.light_mat_ * actor.model_mat_;
+                        push_const.pvm_ = light_mat * actor.model_mat_;
 
                         mirinae::PushConstInfo{}
                             .layout(pipe_layout_)
@@ -1091,99 +1118,38 @@ public:
                         );
                     }
                 }
-            }
 
-            vkCmdEndRenderPass(cmdbuf);
+                vkCmdEndRenderPass(cmdbuf);
+            }
         }
 
-        i = 0;
-        for (const auto e : reg.view<cpnt::SLight>()) {
-            const auto light_idx = i++;
-            if (light_idx >= shadow_maps->slights_.size())
-                break;
+    private:
+        mirinae::VulkanDevice& device_;
+        mirinae::RpResources& rp_res_;
 
-            auto& light = reg.get<cpnt::SLight>(e);
-            auto& shadow = shadow_maps->slights_.at(light_idx);
-            shadow.entt_ = e;
-
-            auto light_mat = light.make_proj_mat();
-            if (auto tform = reg.try_get<cpnt::Transform>(e))
-                light_mat = light_mat * tform->make_view_mat();
-
-            mirinae::RenderPassBeginInfo{}
-                .rp(render_pass_.get())
-                .fbuf(shadow.fbuf())
-                .wh(shadow.tex_->extent())
-                .clear_value_count(clear_values_.size())
-                .clear_values(clear_values_.data())
-                .record_begin(cmdbuf);
-
-            vkCmdBindPipeline(
-                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
-            );
-
-            mirinae::Viewport{}
-                .set_wh(shadow.width(), shadow.height())
-                .record_single(cmdbuf);
-            mirinae::Rect2D{}
-                .set_wh(shadow.width(), shadow.height())
-                .record_scissor(cmdbuf);
-
-            mirinae::DescSetBindInfo descset_info{ pipe_layout_ };
-
-            for (auto& pair : ctxt.draw_sheet_->static_) {
-                auto& unit = *pair.unit_;
-                auto unit_desc = unit.get_desc_set(ctxt.f_index_.get());
-                unit.record_bind_vert_buf(cmdbuf);
-
-                for (auto& actor : pair.actors_) {
-                    descset_info
-                        .set(actor.actor_->get_desc_set(ctxt.f_index_.get()))
-                        .record(cmdbuf);
-
-                    mirinae::U_ShadowPushConst push_const;
-                    push_const.pvm_ = light_mat * actor.model_mat_;
-
-                    mirinae::PushConstInfo{}
-                        .layout(pipe_layout_)
-                        .add_stage_vert()
-                        .record(cmdbuf, push_const);
-
-                    vkCmdDrawIndexed(cmdbuf, unit.vertex_count(), 1, 0, 0, 0);
-                }
-            }
-
-            vkCmdEndRenderPass(cmdbuf);
-        }
-    }
-
-private:
-    mirinae::VulkanDevice& device_;
-    mirinae::RpResources& rp_res_;
-
-    mirinae::RenderPass render_pass_;
-    VkPipeline pipeline_ = VK_NULL_HANDLE;
-    VkPipelineLayout pipe_layout_ = VK_NULL_HANDLE;
-    std::array<VkClearValue, 2> clear_values_;
-};
+        mirinae::RenderPass render_pass_;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
+        std::array<VkClearValue, 2> clear_values_;
+    };
 
 }  // namespace
 
 
 namespace mirinae::rp::shadow {
 
-HShadowMaps create_shadow_maps_bundle(mirinae::VulkanDevice& device) {
-    return std::make_shared<ShadowMapBundle>(device);
-}
+    HShadowMaps create_shadow_maps_bundle(mirinae::VulkanDevice& device) {
+        return std::make_shared<ShadowMapBundle>(device);
+    }
 
-URpStates create_rp_states_shadow_static(
-    mirinae::RpResources& rp_res,
-    mirinae::DesclayoutManager& desclayouts,
-    mirinae::VulkanDevice& device
-) {
-    return std::make_unique<::RpStatesShadowStatic>(
-        rp_res, desclayouts, device
-    );
-}
+    URpStates create_rp_states_shadow_static(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<::RpStatesShadowStatic>(
+            rp_res, desclayouts, device
+        );
+    }
 
 }  // namespace mirinae::rp::shadow
