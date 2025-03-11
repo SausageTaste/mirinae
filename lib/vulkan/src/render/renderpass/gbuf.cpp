@@ -97,8 +97,6 @@ namespace { namespace gbuf {
 
     public:
         RPBundle(
-            uint32_t width,
-            uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -137,7 +135,7 @@ namespace { namespace gbuf {
                     .add_attach(fbuf_bundle.albedo().image_view())
                     .add_attach(fbuf_bundle.normal().image_view())
                     .add_attach(fbuf_bundle.material().image_view())
-                    .set_dim(width, height);
+                    .set_dim(fbuf_bundle.extent());
 
                 for (int i = 0; i < swapchain.views_count(); ++i)
                     fbufs_.push_back(fbuf_cinfo.build(device));
@@ -260,8 +258,6 @@ namespace { namespace gbuf_skin {
 
     public:
         RPBundle(
-            uint32_t width,
-            uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -299,7 +295,7 @@ namespace { namespace gbuf_skin {
                 .add_attach(fbuf_bundle.albedo().image_view())
                 .add_attach(fbuf_bundle.normal().image_view())
                 .add_attach(fbuf_bundle.material().image_view())
-                .set_dim(width, height);
+                .set_dim(fbuf_bundle.extent());
             for (int i = 0; i < swapchain.views_count(); ++i)
                 fbufs_.push_back(fbuf_cinfo.build(device));
         }
@@ -427,8 +423,6 @@ namespace { namespace gbuf_terrain {
 
     public:
         RPBundle(
-            uint32_t width,
-            uint32_t height,
             mirinae::FbufImageBundle& fbuf_bundle,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -470,7 +464,7 @@ namespace { namespace gbuf_terrain {
                 .add_attach(fbuf_bundle.albedo().image_view())
                 .add_attach(fbuf_bundle.normal().image_view())
                 .add_attach(fbuf_bundle.material().image_view())
-                .set_dim(width, height);
+                .set_dim(fbuf_bundle.extent());
             for (int i = 0; i < swapchain.views_count(); ++i)
                 fbufs_.push_back(fbuf_cinfo.build(device));
         }
@@ -513,33 +507,19 @@ namespace mirinae::rp::gbuf {
 
     void create_rp(
         IRenderPassRegistry& reg,
-        uint32_t width,
-        uint32_t height,
         FbufImageBundle& fbuf_bundle,
         DesclayoutManager& desclayouts,
         Swapchain& swapchain,
         VulkanDevice& device
     ) {
         reg.add<::gbuf::RPBundle>(
-            "gbuf", width, height, fbuf_bundle, desclayouts, swapchain, device
+            "gbuf", fbuf_bundle, desclayouts, swapchain, device
         );
         reg.add<::gbuf_skin::RPBundle>(
-            "gbuf_skin",
-            width,
-            height,
-            fbuf_bundle,
-            desclayouts,
-            swapchain,
-            device
+            "gbuf_skin", fbuf_bundle, desclayouts, swapchain, device
         );
         reg.add<::gbuf_terrain::RPBundle>(
-            "gbuf_terrain",
-            width,
-            height,
-            fbuf_bundle,
-            desclayouts,
-            swapchain,
-            device
+            "gbuf_terrain", fbuf_bundle, desclayouts, swapchain, device
         );
     }
 
@@ -557,27 +537,24 @@ namespace {
         void destroy(mirinae::VulkanDevice& device) override {}
 
         void record(
-            const VkCommandBuffer cur_cmd_buf,
+            const mirinae::RpContext& ctxt,
             const VkExtent2D& fbuf_exd,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
             const mirinae::IRenderPassRegistry& rp_pkg
         ) override {
             this->record_static(
-                cur_cmd_buf,
+                ctxt.cmdbuf_,
                 fbuf_exd,
-                draw_sheet,
-                frame_index,
-                image_index,
+                *ctxt.draw_sheet_,
+                ctxt.f_index_,
+                ctxt.i_index_,
                 rp_pkg
             );
             this->record_skinned(
-                cur_cmd_buf,
+                ctxt.cmdbuf_,
                 fbuf_exd,
-                draw_sheet,
-                frame_index,
-                image_index,
+                *ctxt.draw_sheet_,
+                ctxt.f_index_,
+                ctxt.i_index_,
                 rp_pkg
             );
         }
