@@ -177,6 +177,11 @@ namespace {
             ));
             compo_dlight_ = rp_states_.back().get();
 
+            rp_states_.push_back(mirinae::rp::compo::create_rps_slight(
+                cosmos, rp_res, desclayouts, device
+            ));
+            compo_slight_ = rp_states_.back().get();
+
             rp_states_.push_back(mirinae::rp::compo::create_rps_sky(
                 cosmos, rp_res, desclayouts, device
             ));
@@ -202,6 +207,7 @@ namespace {
         mirinae::rp::envmap::IRpMaster& envmap() { return *envmap_; }
 
         mirinae::IRpStates& compo_dlight() { return *compo_dlight_; }
+        mirinae::IRpStates& compo_slight() { return *compo_slight_; }
         mirinae::IRpStates& compo_sky() { return *compo_sky_; }
         mirinae::IRpStates& ocean_tess() { return *ocean_tess_; }
 
@@ -210,6 +216,8 @@ namespace {
                 if (rp.get() == ocean_tess_)
                     continue;
                 if (rp.get() == compo_dlight_)
+                    continue;
+                if (rp.get() == compo_slight_)
                     continue;
                 if (rp.get() == compo_sky_)
                     continue;
@@ -224,6 +232,7 @@ namespace {
 
         std::vector<mirinae::URpStates> rp_states_;
         mirinae::IRpStates* compo_dlight_ = nullptr;
+        mirinae::IRpStates* compo_slight_ = nullptr;
         mirinae::IRpStates* compo_sky_ = nullptr;
         mirinae::IRpStates* ocean_tess_ = nullptr;
     };
@@ -1135,6 +1144,7 @@ namespace {
             rpm_.gbuf_terrain().record(ren_ctxt, rp_res_.gbuf_.extent(), rp_);
 
             rpm_.compo_dlight().record(ren_ctxt);
+            rpm_.compo_slight().record(ren_ctxt);
             rpm_.compo_sky().record(ren_ctxt);
 
             const auto forward = cam_view.make_forward_dir();
