@@ -276,6 +276,7 @@ namespace mirinae {
         virtual uint32_t count() const = 0;
         virtual VkImageView diffuse_at(uint32_t index) const = 0;
         virtual VkImageView specular_at(uint32_t index) const = 0;
+        virtual VkImageView brdf_lut() const = 0;
     };
     using HEnvmapBundle = std::shared_ptr<IEnvmapBundle>;
 

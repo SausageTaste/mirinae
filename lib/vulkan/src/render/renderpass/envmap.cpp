@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/envmap.hpp"
 
+#include "mirinae/cpnt/envmap.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
@@ -337,33 +338,89 @@ namespace {
     };
 
 
-    class EnvmapRenUnit : public mirinae::rp::envmap::IEnvmapRenUnitVk {
+    class BrdfLut {
 
     public:
-        EnvmapRenUnit(
+        bool init(
+            uint32_t width,
+            uint32_t height,
             mirinae::IRenderPassRegistry& rp_pkg,
-            mirinae::DescPool& desc_pool,
-            mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
-        )
-            : device_(device) {
-            cube_map_.init(rp_pkg, desc_pool, desclayouts, device);
+        ) {
+            mirinae::ImageCreateInfo cinfo;
+            cinfo.set_format(VK_FORMAT_R16G16_SFLOAT)
+                .set_dimensions(width, height)
+                .set_mip_levels(1)
+                .add_usage_sampled()
+                .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+            img_.init(cinfo.get(), device.mem_alloc());
+
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D)
+                .format(img_.format())
+                .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .image(img_.image());
+            view_.reset(iv_builder, device);
+
+            mirinae::Fbuf fbuf_;
+            mirinae::FbufCinfo fbuf_cinfo;
+            fbuf_cinfo.set_rp(rp_pkg.get("env_lut").renderpass())
+                .add_attach(view_.get())
+                .set_dim(width, height);
+            fbuf_.init(fbuf_cinfo.get(), device.logi_device());
+
+            mirinae::CommandPool pool;
+            pool.init(device);
+            const auto cmdbuf = pool.begin_single_time(device);
+            this->record_drawing(cmdbuf, fbuf_, rp_pkg);
+            pool.end_single_time(cmdbuf, device);
+            device.wait_idle();
+            pool.destroy(device.logi_device());
+            fbuf_.destroy(device.logi_device());
+
+            return true;
         }
 
-        ~EnvmapRenUnit() override { cube_map_.destroy(device_); }
-
-        VkImageView diffuse_view() override {
-            return cube_map_.diffuse().cube_view();
+        void destroy(mirinae::VulkanDevice& device) {
+            view_.destroy(device);
+            img_.destroy(device.mem_alloc());
         }
 
-        VkImageView specular_view() override {
-            return cube_map_.specular().cube_view();
-        }
-
-        CubeMap cube_map_;
+        VkImageView view() const { return view_.get(); }
 
     private:
-        mirinae::VulkanDevice& device_;
+        void record_drawing(
+            const VkCommandBuffer cmdbuf,
+            const mirinae::Fbuf& fbuf,
+            const mirinae::IRenderPassRegistry& rp_pkg
+        ) {
+            auto& rp = rp_pkg.get("env_lut");
+
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.renderpass())
+                .fbuf(fbuf.get())
+                .wh(img_.width(), img_.height())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cmdbuf);
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
+
+            mirinae::Viewport{}
+                .set_wh(img_.width(), img_.height())
+                .record_single(cmdbuf);
+            mirinae::Rect2D{}
+                .set_wh(img_.width(), img_.height())
+                .record_scissor(cmdbuf);
+
+            vkCmdDraw(cmdbuf, 6, 1, 0, 0);
+            vkCmdEndRenderPass(cmdbuf);
+        }
+
+        mirinae::Image img_;
+        mirinae::ImageView view_;
     };
 
 }  // namespace
@@ -907,7 +964,12 @@ namespace {
             entt::entity entity_ = entt::null;
         };
 
-        EnvmapBundle(mirinae::VulkanDevice& device) : device_(device) {}
+        EnvmapBundle(
+            mirinae::IRenderPassRegistry& rp_pkg, mirinae::VulkanDevice& device
+        )
+            : device_(device) {
+            brdf_lut_.init(512, 512, rp_pkg, device_);
+        }
 
         ~EnvmapBundle() override { this->destroy(); }
 
@@ -923,6 +985,8 @@ namespace {
             return items_.at(index).cube_map_.specular().cube_view();
         }
 
+        VkImageView brdf_lut() const override { return brdf_lut_.view(); }
+
         void add(
             mirinae::IRenderPassRegistry& rp_pkg,
             mirinae::DescPool& desc_pool,
@@ -937,6 +1001,7 @@ namespace {
         void destroy() {
             for (auto& item : items_) item.cube_map_.destroy(device_);
             items_.clear();
+            brdf_lut_.destroy(device_);
         }
 
         auto begin() { return items_.begin(); }
@@ -971,6 +1036,7 @@ namespace {
     private:
         mirinae::VulkanDevice& device_;
         std::vector<Item> items_;
+        ::BrdfLut brdf_lut_;
     };
 
 }  // namespace
@@ -1017,9 +1083,16 @@ namespace {
     };
 
 
-    class RpMaster : public mirinae::rp::envmap::IRpMaster {
+    class RpMaster : public mirinae::IRpStates {
 
     public:
+        RpMaster(
+            mirinae::IRenderPassRegistry& rp_pkg, mirinae::VulkanDevice& device
+        )
+            : device_(device), rp_pkg_(rp_pkg) {}
+
+        ~RpMaster() override { this->destroy(); }
+
         const std::string& name() const override {
             static const std::string out = "envmap";
             return out;
@@ -1027,22 +1100,17 @@ namespace {
 
         void init(
             mirinae::CosmosSimulator& cosmos,
-            mirinae::IRenderPassRegistry& rp_pkg,
             mirinae::RpResources& rp_res,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::VulkanDevice& device
-        ) override {
-            rp_pkg_ = &rp_pkg;
+            mirinae::DesclayoutManager& desclayouts
+        ) {
             auto& tex_man = *rp_res.tex_man_;
 
             desc_pool_.init(
                 5,
                 desclayouts.get("envdiffuse:main").size_info() +
                     desclayouts.get("env_sky:main").size_info(),
-                device.logi_device()
+                device_.logi_device()
             );
-
-            brdf_lut_.init(512, 512, rp_pkg, device);
 
             // Sky texture
             {
@@ -1069,31 +1137,29 @@ namespace {
             }
 
             desc_set_ = desc_pool_.alloc(
-                desclayouts.get("env_sky:main").layout(), device.logi_device()
+                desclayouts.get("env_sky:main").layout(), device_.logi_device()
             );
 
             mirinae::DescWriteInfoBuilder desc_info;
             desc_info.set_descset(desc_set_)
                 .add_img_sampler(
-                    sky_tex_->image_view(), device.samplers().get_linear()
+                    sky_tex_->image_view(), device_.samplers().get_linear()
                 )
-                .apply_all(device.logi_device());
+                .apply_all(device_.logi_device());
 
-            envmaps_ = std::make_unique<::EnvmapBundle>(device);
-            envmaps_->add(rp_pkg, desc_pool_, desclayouts);
+            envmaps_ = std::make_unique<::EnvmapBundle>(rp_pkg_, device_);
+            envmaps_->add(rp_pkg_, desc_pool_, desclayouts);
             rp_res.envmaps_ = envmaps_;
 
             timer_.set_min();
         }
 
-        void destroy(mirinae::VulkanDevice& device) override {
-            desc_pool_.destroy(device.logi_device());
-            brdf_lut_.destroy(device);
+        void destroy() {
+            envmaps_->destroy();
+            desc_pool_.destroy(device_.logi_device());
         }
 
         void record(const mirinae::RpContext& ctxt) override {
-            if (!rp_pkg_)
-                return;
             if (!timer_.check_if_elapsed(3))
                 return;
 
@@ -1133,99 +1199,13 @@ namespace {
             chosen->timer_.check();
 
             SPDLOG_DEBUG("Updating envmap: entt={}", (int)chosen->entity_);
-            this->record_sky(e_selected, *chosen, ctxt, desc_set_, *rp_pkg_);
-            this->record_base(e_selected, *chosen, ctxt, *rp_pkg_);
-            this->record_diffuse(e_selected, *chosen, ctxt, *rp_pkg_);
-            this->record_specular(e_selected, *chosen, ctxt, *rp_pkg_);
+            this->record_sky(e_selected, *chosen, ctxt, desc_set_, rp_pkg_);
+            this->record_base(e_selected, *chosen, ctxt, rp_pkg_);
+            this->record_diffuse(e_selected, *chosen, ctxt, rp_pkg_);
+            this->record_specular(e_selected, *chosen, ctxt, rp_pkg_);
         }
 
-        VkImageView brdf_lut_view() const override { return brdf_lut_.view(); }
-
     private:
-        class BrdfLut {
-
-        public:
-            bool init(
-                uint32_t width,
-                uint32_t height,
-                mirinae::IRenderPassRegistry& rp_pkg,
-                mirinae::VulkanDevice& device
-            ) {
-                mirinae::ImageCreateInfo cinfo;
-                cinfo.set_format(VK_FORMAT_R16G16_SFLOAT)
-                    .set_dimensions(width, height)
-                    .set_mip_levels(1)
-                    .add_usage_sampled()
-                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-                img_.init(cinfo.get(), device.mem_alloc());
-
-                mirinae::ImageViewBuilder iv_builder;
-                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D)
-                    .format(img_.format())
-                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .image(img_.image());
-                view_.reset(iv_builder, device);
-
-                mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(rp_pkg.get("env_lut").renderpass())
-                    .add_attach(view_.get())
-                    .set_dim(width, height);
-                fbuf_.init(fbuf_cinfo.get(), device.logi_device());
-
-                mirinae::CommandPool pool;
-                pool.init(device);
-                const auto cmdbuf = pool.begin_single_time(device);
-                this->record_drawing(cmdbuf, rp_pkg);
-                pool.end_single_time(cmdbuf, device);
-                device.wait_idle();
-                pool.destroy(device.logi_device());
-
-                return true;
-            }
-
-            void destroy(mirinae::VulkanDevice& device) {
-                fbuf_.destroy(device.logi_device());
-                view_.destroy(device);
-                img_.destroy(device.mem_alloc());
-            }
-
-            VkImageView view() const { return view_.get(); }
-
-        private:
-            void record_drawing(
-                const VkCommandBuffer cmdbuf,
-                const mirinae::IRenderPassRegistry& rp_pkg
-            ) {
-                auto& rp = rp_pkg.get("env_lut");
-
-                mirinae::RenderPassBeginInfo{}
-                    .rp(rp.renderpass())
-                    .fbuf(fbuf_.get())
-                    .wh(img_.width(), img_.height())
-                    .clear_value_count(rp.clear_value_count())
-                    .clear_values(rp.clear_values())
-                    .record_begin(cmdbuf);
-
-                vkCmdBindPipeline(
-                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-                );
-
-                mirinae::Viewport{}
-                    .set_wh(img_.width(), img_.height())
-                    .record_single(cmdbuf);
-                mirinae::Rect2D{}
-                    .set_wh(img_.width(), img_.height())
-                    .record_scissor(cmdbuf);
-
-                vkCmdDraw(cmdbuf, 6, 1, 0, 0);
-                vkCmdEndRenderPass(cmdbuf);
-            }
-
-            mirinae::Image img_;
-            mirinae::ImageView view_;
-            mirinae::Fbuf fbuf_;
-        };
-
         static entt::entity select_atmos_simple(entt::registry& reg) {
             for (auto entity : reg.view<mirinae::cpnt::AtmosphereSimple>())
                 return entity;
@@ -1585,10 +1565,10 @@ namespace {
             }
         }
 
-        mirinae::IRenderPassRegistry* rp_pkg_ = nullptr;
+        mirinae::VulkanDevice& device_;
+        mirinae::IRenderPassRegistry& rp_pkg_;
         mirinae::DescPool desc_pool_;
         sung::MonotonicRealtimeTimer timer_;
-        BrdfLut brdf_lut_;
         std::shared_ptr<::EnvmapBundle> envmaps_;
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         VkDescriptorSet desc_set_ = VK_NULL_HANDLE;  // For env sky
@@ -1599,8 +1579,16 @@ namespace {
 
 namespace mirinae::rp::envmap {
 
-    std::unique_ptr<IRpMaster> create_rp_master() {
-        return std::make_unique<RpMaster>();
+    URpStates create_rp_states_envmap(
+        CosmosSimulator& cosmos,
+        IRenderPassRegistry& rp_pkg,
+        RpResources& rp_res,
+        DesclayoutManager& desclayouts,
+        VulkanDevice& device
+    ) {
+        auto out = std::make_unique<RpMaster>(rp_pkg, device);
+        out->init(cosmos, rp_res, desclayouts);
+        return out;
     }
 
 }  // namespace mirinae::rp::envmap
