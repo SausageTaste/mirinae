@@ -120,7 +120,6 @@ namespace {
 
         void create_std_rp(
             mirinae::CosmosSimulator& cosmos,
-            mirinae::IRenderPassRegistry& rp_pkg,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -173,7 +172,7 @@ namespace {
             );
 
             rp_states_.push_back(mirinae::rp::envmap::create_rp_states_envmap(
-                cosmos, rp_pkg, rp_res, desclayouts, device
+                cosmos, rp_res, desclayouts, device
             ));
 
             rp_states_.push_back(mirinae::rp::compo::create_rps_dlight(
@@ -889,7 +888,6 @@ namespace {
                     swapchain_,
                     device_
                 );
-                mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
                 rp_.init_render_passes(
                     rp_res_.gbuf_.width(),
                     rp_res_.gbuf_.height(),
@@ -899,7 +897,7 @@ namespace {
                     device_
                 );
                 rpm_.create_std_rp(
-                    *cosmos_, rp_, rp_res_, desclayout_, swapchain_, device_
+                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
                 );
                 rpm_.gbuf_basic().init();
                 rpm_.gbuf_terrain().init(
@@ -1300,7 +1298,6 @@ namespace {
                     swapchain_,
                     device_
                 );
-                mirinae::rp::envmap::create_rp(rp_, desclayout_, device_);
                 rp_.init_render_passes(
                     rp_res_.gbuf_.width(),
                     rp_res_.gbuf_.height(),
@@ -1327,7 +1324,7 @@ namespace {
                 rp_states_fillscreen_.init(desclayout_, rp_res_.gbuf_, device_);
 
                 rpm_.create_std_rp(
-                    *cosmos_, rp_, rp_res_, desclayout_, swapchain_, device_
+                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
                 );
             }
 
