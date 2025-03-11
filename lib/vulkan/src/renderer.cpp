@@ -166,6 +166,12 @@ namespace {
                 )
             );
 
+            rp_states_.push_back(
+                mirinae::rp::shadow::create_rp_states_shadow_skinned(
+                    rp_res, desclayouts, device
+                )
+            );
+
             rp_states_.push_back(mirinae::rp::compo::create_rps_dlight(
                 cosmos, rp_res, desclayouts, device
             ));
