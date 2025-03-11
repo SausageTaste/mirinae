@@ -183,11 +183,17 @@ namespace mirinae {
     VkDescriptorSetLayout DesclayoutManager::add(
         const DescLayoutBuilder& builder, VkDevice logi_device
     ) {
-        return data_
-            .emplace_back(
-                builder.name(), builder.size_info(), builder.build(logi_device)
-            )
-            .layout();
+        for (const auto& item : data_) {
+            if (item.name() == builder.name()) {
+                SPDLOG_WARN("Desc layout already exists: {}", builder.name());
+                return item.layout();
+            }
+        }
+
+        auto& added = data_.emplace_back(
+            builder.name(), builder.size_info(), builder.build(logi_device)
+        );
+        return added.layout();
     }
 
     const DescLayout& DesclayoutManager::get(const std::string& name) const {

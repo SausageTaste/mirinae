@@ -564,22 +564,14 @@ namespace { namespace gbuf_terrain {
 
 namespace mirinae::rp::gbuf {
 
-    void create_rp(
-        IRenderPassRegistry& reg,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
+    void create_desc_layouts(
+        DesclayoutManager& desclayouts, VulkanDevice& device
     ) {
-        reg.add<::gbuf::RPBundle>(
-            "gbuf", fbuf_bundle, desclayouts, swapchain, device
-        );
-        reg.add<::gbuf_skin::RPBundle>(
-            "gbuf_skin", fbuf_bundle, desclayouts, swapchain, device
-        );
-        reg.add<::gbuf_terrain::RPBundle>(
-            "gbuf_terrain", fbuf_bundle, desclayouts, swapchain, device
-        );
+        ::gbuf::create_desclayout_actor(desclayouts, device);
+        ::gbuf::create_desclayout_model(desclayouts, device);
+        ::gbuf_skin::create_desclayout_actor(desclayouts, device);
+        ::gbuf_skin::create_desclayout_model(desclayouts, device);
+        ::gbuf_terrain::create_desclayout_main(desclayouts, device);
     }
 
 }  // namespace mirinae::rp::gbuf
