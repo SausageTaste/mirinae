@@ -200,9 +200,7 @@ namespace {
             );
         }
 
-        void destroy_std_rp() {
-            rp_states_.clear();
-        }
+        void destroy_std_rp() { rp_states_.clear(); }
 
         void record_computes(mirinae::RpContext& ctxt) {
             for (auto& rp : rp_states_) {
@@ -852,9 +850,7 @@ namespace {
                     gbuf_width, gbuf_height, *rp_res_.tex_man_, device_
                 );
 
-                mirinae::rp::gbuf::create_rp(
-                    rp_, rp_res_.gbuf_, desclayout_, swapchain_, device_
-                );
+                mirinae::rp::gbuf::create_desc_layouts(desclayout_, device_);
                 rpm_.create_std_rp(
                     *cosmos_, rp_res_, desclayout_, swapchain_, device_
                 );
@@ -1217,9 +1213,7 @@ namespace {
                     gbuf_width, gbuf_height, *rp_res_.tex_man_, device_
                 );
 
-                mirinae::rp::gbuf::create_rp(
-                    rp_, rp_res_.gbuf_, desclayout_, swapchain_, device_
-                );
+                mirinae::rp::gbuf::create_desc_layouts(desclayout_, device_);
                 rp_.init_render_passes(
                     rp_res_.gbuf_, desclayout_, swapchain_, device_
                 );

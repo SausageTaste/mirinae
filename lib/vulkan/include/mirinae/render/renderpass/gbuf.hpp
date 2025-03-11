@@ -5,12 +5,8 @@
 
 namespace mirinae::rp::gbuf {
 
-    void create_rp(
-        IRenderPassRegistry& reg,
-        FbufImageBundle& fbuf_bundle,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
+    void create_desc_layouts(
+        DesclayoutManager& desclayouts, VulkanDevice& device
     );
 
 
