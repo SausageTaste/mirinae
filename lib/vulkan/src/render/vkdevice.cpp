@@ -88,11 +88,13 @@ namespace {
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData
     ) {
-        spdlog::log(
+        SPDLOG_LOGGER_CALL(
+            spdlog::default_logger_raw(),
             convert_enum(messageSeverity),
             "validation layer: {}",
             pCallbackData->pMessage
         );
+
         return VK_FALSE;
     }
 
