@@ -352,12 +352,8 @@ namespace {
 
     public:
         void init(
+            mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
-            VkImageView dlight_shadowmap,
-            VkImageView slight_shadowmap,
-            VkImageView env_diffuse,
-            VkImageView env_specular,
-            VkImageView env_lut,
             mirinae::VulkanDevice& device
         ) {
             auto& desclayout = desclayouts.get("transp:frame");
@@ -375,6 +371,7 @@ namespace {
             const auto sam_nea = device.samplers().get_nearest();
             const auto sam_lin = device.samplers().get_linear();
             const auto sam_cube = device.samplers().get_cubemap();
+            auto& shadow_maps = *rp_res.shadow_maps_;
 
             mirinae::DescWriteInfoBuilder builder;
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
@@ -385,11 +382,11 @@ namespace {
 
                 builder.set_descset(desc_sets_.at(i))
                     .add_ubuf(ubuf)
-                    .add_img_sampler(dlight_shadowmap, sam_nea)
-                    .add_img_sampler(slight_shadowmap, sam_nea)
-                    .add_img_sampler(env_diffuse, sam_cube)
-                    .add_img_sampler(env_specular, sam_cube)
-                    .add_img_sampler(env_lut, sam_lin);
+                    .add_img_sampler(shadow_maps.dlight_view_at(0), sam_nea)
+                    .add_img_sampler(shadow_maps.slight_view_at(0), sam_nea)
+                    .add_img_sampler(rp_res.envmaps_->diffuse_at(0), sam_cube)
+                    .add_img_sampler(rp_res.envmaps_->specular_at(0), sam_cube)
+                    .add_img_sampler(rp_res.envmaps_->brdf_lut(), sam_lin);
             }
             builder.apply_all(device.logi_device());
         }
@@ -891,15 +888,7 @@ namespace {
                 rpm_.gbuf_terrain().init(
                     *rp_res_.tex_man_, desclayout_, device_
                 );
-                rp_states_transp_.init(
-                    desclayout_,
-                    rp_res_.shadow_maps_->dlight_view_at(0),
-                    rp_res_.shadow_maps_->slight_view_at(0),
-                    rp_res_.envmaps_->diffuse_at(0),
-                    rp_res_.envmaps_->specular_at(0),
-                    rp_res_.envmaps_->brdf_lut(),
-                    device_
-                );
+                rp_states_transp_.init(rp_res_, desclayout_, device_);
                 rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(desclayout_, rp_res_.gbuf_, device_);
                 rp_states_imgui_.init(swapchain_);
@@ -1275,15 +1264,7 @@ namespace {
                 rpm_.gbuf_terrain().init(
                     *rp_res_.tex_man_, desclayout_, device_
                 );
-                rp_states_transp_.init(
-                    desclayout_,
-                    rp_res_.shadow_maps_->dlight_view_at(0),
-                    rp_res_.shadow_maps_->slight_view_at(0),
-                    rp_res_.envmaps_->diffuse_at(0),
-                    rp_res_.envmaps_->specular_at(0),
-                    rp_res_.envmaps_->brdf_lut(),
-                    device_
-                );
+                rp_states_transp_.init(rp_res_, desclayout_, device_);
                 rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(desclayout_, rp_res_.gbuf_, device_);
 
