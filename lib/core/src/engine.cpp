@@ -6,6 +6,7 @@
 #include <imgui_stdlib.h>
 #include <spdlog/sinks/base_sink.h>
 #include <daltools/common/glm_tool.hpp>
+#include <entt/entity/registry.hpp>
 #include <sung/basic/cvar.hpp>
 
 #include "mirinae/cpnt/camera.hpp"

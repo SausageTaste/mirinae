@@ -21,7 +21,7 @@ namespace mirinae {
         void do_frame() { scene_.do_frame(); }
 
         auto& scene() { return scene_; }
-        auto& reg() { return scene_.reg_; }
+        auto& reg() { return *scene_.reg_; }
         auto& reg() const { return scene_.reg_; }
         auto& clock() const { return clock_; }
 

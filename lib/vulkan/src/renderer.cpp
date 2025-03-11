@@ -1,6 +1,7 @@
 #include "mirinae/renderer.hpp"
 
 #include <daltools/common/util.h>
+#include <entt/entity/registry.hpp>
 #include <sung/basic/time.hpp>
 
 #include "mirinae/cosmos.hpp"
@@ -243,7 +244,7 @@ namespace {
         namespace cpnt = mirinae::cpnt;
 
         mirinae::DrawSheet sheet;
-        auto& reg = scene.reg_;
+        auto& reg = *scene.reg_;
 
         for (const auto e : reg.view<cpnt::MdlActorStatic>()) {
             auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
@@ -326,16 +327,16 @@ namespace {
         }
 
         sheet.ocean_ = nullptr;
-        for (auto e : scene.reg_.view<cpnt::Ocean>()) {
+        for (auto e : scene.reg_->view<cpnt::Ocean>()) {
             // Only one ocean is allowed
-            sheet.ocean_ = &scene.reg_.get<cpnt::Ocean>(e);
+            sheet.ocean_ = &scene.reg_->get<cpnt::Ocean>(e);
             break;
         }
 
         sheet.atmosphere_ = nullptr;
         for (auto e : reg.view<cpnt::AtmosphereSimple>()) {
             // Only one atmosphere is allowed
-            sheet.atmosphere_ = &scene.reg_.get<cpnt::AtmosphereSimple>(e);
+            sheet.atmosphere_ = &scene.reg_->get<cpnt::AtmosphereSimple>(e);
             break;
         }
 
