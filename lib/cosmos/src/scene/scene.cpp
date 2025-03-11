@@ -1,5 +1,6 @@
 #include "mirinae/scene/scene.hpp"
 
+#include <entt/entity/registry.hpp>
 #include <sung/basic/aabb.hpp>
 
 #include "mirinae/cpnt/camera.hpp"
@@ -15,11 +16,12 @@
     if (!scene_ptr)                                      \
         return luaL_error(L, "Scene pointer not found"); \
     auto& scene = *scene_ptr;                            \
-    auto& reg = scene.reg_;
+    auto& reg = *scene.reg_;
 
 
 namespace {
 
+    constexpr uint64_t MAGIC_NUM = 46461236464165;
     const char* const SCENE_PTR_NAME = "__mirinae_cosmos_scene_ptr";
 
     mirinae::Scene* find_scene_ptr(lua_State* const L) {
@@ -27,7 +29,7 @@ namespace {
         const auto scene = static_cast<mirinae::Scene*>(usrptr);
         if (!scene)
             return nullptr;
-        if (scene->magic_num_ != mirinae::Scene::MAGIC_NUM)
+        if (scene->magic_num_ != MAGIC_NUM)
             return nullptr;
         return scene;
     }
@@ -511,7 +513,10 @@ namespace { namespace scene {
 namespace mirinae {
 
     Scene::Scene(const sung::SimClock& global_clock, ScriptEngine& script)
-        : script_(script) {
+        : reg_(std::make_shared<entt::registry>())
+        , magic_num_(MAGIC_NUM)
+        , main_camera_(entt::null)
+        , script_(script) {
         clock_.sync_rt(global_clock);
 
         script_.register_global_ptr(SCENE_PTR_NAME, this);
@@ -521,7 +526,7 @@ namespace mirinae {
     void Scene::do_frame() {
         clock_.tick();
 
-        reg_.view<cpnt::Ocean>().each([this](cpnt::Ocean& ocean) {
+        reg_->view<cpnt::Ocean>().each([this](cpnt::Ocean& ocean) {
             ocean.do_frame(clock_);
         });
 

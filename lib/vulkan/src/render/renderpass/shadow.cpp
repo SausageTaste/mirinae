@@ -1,5 +1,7 @@
 #include "mirinae/render/renderpass/shadow.hpp"
 
+#include <entt/entity/registry.hpp>
+
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"

@@ -1,5 +1,9 @@
 #include "mirinae/render/renderpass/envmap.hpp"
 
+#include <set>
+
+#include <entt/entity/registry.hpp>
+
 #include "mirinae/cpnt/envmap.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"

@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/ocean.hpp"
 
+#include <entt/entity/registry.hpp>
 #include <sung/basic/aabb.hpp>
 #include <sung/basic/cvar.hpp>
 #include <sung/basic/time.hpp>

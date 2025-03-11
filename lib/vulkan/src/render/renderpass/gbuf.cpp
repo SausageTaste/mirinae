@@ -1,5 +1,6 @@
 #include "mirinae/render/renderpass/gbuf.hpp"
 
+#include <entt/entity/registry.hpp>
 #include <sung/basic/time.hpp>
 
 #include "mirinae/cpnt/terrain.hpp"
