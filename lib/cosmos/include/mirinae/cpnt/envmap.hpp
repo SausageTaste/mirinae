@@ -16,7 +16,7 @@ namespace mirinae {
 
 namespace mirinae::cpnt {
 
-    class Envmap : public RenUnitHolder<IEnvmapRenUnit> {
+    class Envmap {
 
     public:
         void render_imgui();

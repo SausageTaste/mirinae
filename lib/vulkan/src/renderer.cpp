@@ -896,25 +896,9 @@ namespace {
                     swapchain_,
                     device_
                 );
-
                 rpm_.envmap().init(
-                    *cosmos_, rp_, *rp_res_.tex_man_, desclayout_, device_
+                    *cosmos_, rp_, rp_res_, desclayout_, device_
                 );
-                rpm_.envmap().init_ren_units(
-                    *cosmos_, desclayout_, rp_, device_
-                );
-                mirinae::rp::envmap::IEnvmapRenUnitVk* envmap = nullptr;
-                for (auto e : cosmos_->reg().view<mirinae::cpnt::Envmap>()) {
-                    auto& cpnt_env = cosmos_->reg().get<mirinae::cpnt::Envmap>(e
-                    );
-                    envmap =
-                        cpnt_env
-                            .ren_unit<mirinae::rp::envmap::IEnvmapRenUnitVk>();
-                    if (nullptr != envmap)
-                        break;
-                }
-                MIRINAE_ASSERT(nullptr != envmap);
-
                 rpm_.create_std_rp(
                     *cosmos_, rp_res_, desclayout_, swapchain_, device_
                 );
@@ -926,8 +910,8 @@ namespace {
                     desclayout_,
                     rp_res_.shadow_maps_->dlight_view_at(0),
                     rp_res_.shadow_maps_->slight_view_at(0),
-                    envmap->diffuse_view(),
-                    envmap->specular_view(),
+                    rp_res_.envmaps_->diffuse_at(0),
+                    rp_res_.envmaps_->specular_at(0),
                     rpm_.envmap().brdf_lut_view(),
                     device_
                 );
@@ -1008,15 +992,10 @@ namespace {
                 mactor.model_.reset();
                 mactor.actor_.reset();
             }
-            for (auto& e : reg.view<mirinae::cpnt::Envmap>()) {
-                auto& c = reg.get<mirinae::cpnt::Envmap>(e);
-                c.ren_unit_.reset();
-            }
             for (auto& e : reg.view<mirinae::cpnt::Terrain>()) {
                 auto& c = reg.get<mirinae::cpnt::Terrain>(e);
                 c.ren_unit_.reset();
             }
-            rpm_.envmap().destroy_ren_units(*cosmos_);
 
             // Destroy swapchain's relatives
             {
@@ -1301,7 +1280,6 @@ namespace {
                 rp_states_transp_.destroy(device_);
                 rpm_.gbuf_terrain().destroy(device_);
                 rpm_.gbuf_basic().destroy(device_);
-                rpm_.envmap().destroy_ren_units(*cosmos_);
                 rpm_.envmap().destroy(device_);
 
                 rp_.destroy();
@@ -1338,23 +1316,8 @@ namespace {
                 );
 
                 rpm_.envmap().init(
-                    *cosmos_, rp_, *rp_res_.tex_man_, desclayout_, device_
+                    *cosmos_, rp_, rp_res_, desclayout_, device_
                 );
-                rpm_.envmap().init_ren_units(
-                    *cosmos_, desclayout_, rp_, device_
-                );
-                mirinae::rp::envmap::IEnvmapRenUnitVk* envmap = nullptr;
-                for (auto e : cosmos_->reg().view<mirinae::cpnt::Envmap>()) {
-                    auto& cpnt_env = cosmos_->reg().get<mirinae::cpnt::Envmap>(e
-                    );
-                    envmap =
-                        cpnt_env
-                            .ren_unit<mirinae::rp::envmap::IEnvmapRenUnitVk>();
-                    if (nullptr != envmap)
-                        break;
-                }
-
-                MIRINAE_ASSERT(nullptr != envmap);
                 rpm_.gbuf_basic().init();
                 rpm_.gbuf_terrain().init(
                     *rp_res_.tex_man_, desclayout_, device_
@@ -1363,8 +1326,8 @@ namespace {
                     desclayout_,
                     rp_res_.shadow_maps_->dlight_view_at(0),
                     rp_res_.shadow_maps_->slight_view_at(0),
-                    envmap->diffuse_view(),
-                    envmap->specular_view(),
+                    rp_res_.envmaps_->diffuse_at(0),
+                    rp_res_.envmaps_->specular_at(0),
                     rpm_.envmap().brdf_lut_view(),
                     device_
                 );

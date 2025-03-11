@@ -28,23 +28,14 @@ namespace mirinae::rp::envmap {
         virtual ~IRpMaster() = default;
 
         virtual void init(
-            mirinae::CosmosSimulator& cosmos,
+            CosmosSimulator& cosmos,
             IRenderPassRegistry& rp_pkg,
-            ITextureManager& tex_man,
+            RpResources& rp_res,
             DesclayoutManager& desclayouts,
             VulkanDevice& device
         ) = 0;
 
         virtual void destroy(VulkanDevice& device) = 0;
-
-        virtual size_t init_ren_units(
-            CosmosSimulator& cosmos,
-            DesclayoutManager& desclayouts,
-            IRenderPassRegistry& rp_pkg,
-            VulkanDevice& device
-        ) = 0;
-
-        virtual void destroy_ren_units(CosmosSimulator& cosmos) = 0;
 
         virtual VkImageView brdf_lut_view() const = 0;
     };
