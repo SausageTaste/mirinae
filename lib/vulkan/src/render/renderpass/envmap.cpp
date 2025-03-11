@@ -10,13 +10,22 @@
 
 namespace {
 
+    struct LocalRpReg {
+        std::unique_ptr<mirinae::IRenderPassBundle> base_;
+        std::unique_ptr<mirinae::IRenderPassBundle> diffuse_;
+        std::unique_ptr<mirinae::IRenderPassBundle> specular_;
+        std::unique_ptr<mirinae::IRenderPassBundle> sky_;
+        std::unique_ptr<mirinae::IRenderPassBundle> brdf_lut_;
+    };
+
+
     class ColorCubeMap {
 
     public:
         bool init(
             uint32_t width,
             uint32_t height,
-            mirinae::IRenderPassRegistry& rp_pkg,
+            LocalRpReg& rp_pkg,
             mirinae::VulkanDevice& device
         ) {
             mirinae::ImageCreateInfo cinfo;
@@ -45,7 +54,7 @@ namespace {
 
             for (uint32_t i = 0; i < 6; i++) {
                 mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(rp_pkg.get("env_diffuse").renderpass())
+                fbuf_cinfo.set_rp(rp_pkg.diffuse_->renderpass())
                     .add_attach(face_views_[i].get())
                     .set_dim(width, height);
                 fbufs_[i].init(fbuf_cinfo.get(), device.logi_device());
@@ -89,7 +98,7 @@ namespace {
         bool init(
             uint32_t base_width,
             uint32_t base_height,
-            mirinae::IRenderPassRegistry& rp_pkg,
+            ::LocalRpReg& rp_pkg,
             mirinae::VulkanDevice& device
         ) {
             constexpr uint32_t MAX_MIP_LEVELS = 4;
@@ -136,7 +145,7 @@ namespace {
                     face.view_.reset(iv_builder, device);
 
                     mirinae::FbufCinfo fbuf_cinfo;
-                    fbuf_cinfo.set_rp(rp_pkg.get("env_diffuse").renderpass())
+                    fbuf_cinfo.set_rp(rp_pkg.diffuse_->renderpass())
                         .add_attach(face.view_.get())
                         .set_dim(mip.width_, mip.height_);
                     face.fbuf_.init(fbuf_cinfo.get(), device.logi_device());
@@ -201,7 +210,7 @@ namespace {
         bool init(
             uint32_t width,
             uint32_t height,
-            mirinae::IRenderPassRegistry& rp_pkg,
+            ::LocalRpReg& rp_pkg,
             mirinae::VulkanDevice& device
         ) {
             mirinae::ImageCreateInfo cinfo;
@@ -242,7 +251,7 @@ namespace {
 
             for (uint32_t i = 0; i < 6; i++) {
                 mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(rp_pkg.get("env_base").renderpass())
+                fbuf_cinfo.set_rp(rp_pkg.base_->renderpass())
                     .add_attach(depth_map_->image_view())
                     .add_attach(fbuf_face_views_[i].get())
                     .set_dim(img_.width(), img_.height());
@@ -292,7 +301,7 @@ namespace {
 
     public:
         bool init(
-            mirinae::IRenderPassRegistry& rp_pkg,
+            ::LocalRpReg& rp_pkg,
             mirinae::DescPool& desc_pool,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
@@ -344,7 +353,7 @@ namespace {
         bool init(
             uint32_t width,
             uint32_t height,
-            mirinae::IRenderPassRegistry& rp_pkg,
+            ::LocalRpReg& rp_pkg,
             mirinae::VulkanDevice& device
         ) {
             mirinae::ImageCreateInfo cinfo;
@@ -364,7 +373,7 @@ namespace {
 
             mirinae::Fbuf fbuf_;
             mirinae::FbufCinfo fbuf_cinfo;
-            fbuf_cinfo.set_rp(rp_pkg.get("env_lut").renderpass())
+            fbuf_cinfo.set_rp(rp_pkg.brdf_lut_->renderpass())
                 .add_attach(view_.get())
                 .set_dim(width, height);
             fbuf_.init(fbuf_cinfo.get(), device.logi_device());
@@ -392,9 +401,9 @@ namespace {
         void record_drawing(
             const VkCommandBuffer cmdbuf,
             const mirinae::Fbuf& fbuf,
-            const mirinae::IRenderPassRegistry& rp_pkg
+            const ::LocalRpReg& rp_pkg
         ) {
-            auto& rp = rp_pkg.get("env_lut");
+            auto& rp = *rp_pkg.brdf_lut_;
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
@@ -936,23 +945,6 @@ namespace { namespace env_lut {
 }}  // namespace ::env_lut
 
 
-namespace mirinae::rp::envmap {
-
-    void create_rp(
-        IRenderPassRegistry& reg,
-        DesclayoutManager& desclayouts,
-        VulkanDevice& device
-    ) {
-        reg.add<::env_sky::RPBundle>("env_sky", desclayouts, device);
-        reg.add<::env_base::RPBundle>("env_base", desclayouts, device);
-        reg.add<::env_diffuse::RPBundle>("env_diffuse", desclayouts, device);
-        reg.add<::env_specular::RPBundle>("env_specular", desclayouts, device);
-        reg.add<::env_lut::RPBundle>("env_lut", desclayouts, device);
-    }
-
-}  // namespace mirinae::rp::envmap
-
-
 namespace {
 
     class EnvmapBundle : public mirinae::IEnvmapBundle {
@@ -964,9 +956,7 @@ namespace {
             entt::entity entity_ = entt::null;
         };
 
-        EnvmapBundle(
-            mirinae::IRenderPassRegistry& rp_pkg, mirinae::VulkanDevice& device
-        )
+        EnvmapBundle(::LocalRpReg& rp_pkg, mirinae::VulkanDevice& device)
             : device_(device) {
             brdf_lut_.init(512, 512, rp_pkg, device_);
         }
@@ -988,7 +978,7 @@ namespace {
         VkImageView brdf_lut() const override { return brdf_lut_.view(); }
 
         void add(
-            mirinae::IRenderPassRegistry& rp_pkg,
+            ::LocalRpReg& rp_pkg,
             mirinae::DescPool& desc_pool,
             mirinae::DesclayoutManager& desclayouts
         ) {
@@ -1086,10 +1076,7 @@ namespace {
     class RpMaster : public mirinae::IRpStates {
 
     public:
-        RpMaster(
-            mirinae::IRenderPassRegistry& rp_pkg, mirinae::VulkanDevice& device
-        )
-            : device_(device), rp_pkg_(rp_pkg) {}
+        RpMaster(mirinae::VulkanDevice& device) : device_(device) {}
 
         ~RpMaster() override { this->destroy(); }
 
@@ -1104,6 +1091,25 @@ namespace {
             mirinae::DesclayoutManager& desclayouts
         ) {
             auto& tex_man = *rp_res.tex_man_;
+
+            // Render passes
+            {
+                rp_pkg_.base_ = std::make_unique<::env_base::RPBundle>(
+                    desclayouts, device_
+                );
+                rp_pkg_.diffuse_ = std::make_unique<::env_diffuse::RPBundle>(
+                    desclayouts, device_
+                );
+                rp_pkg_.specular_ = std::make_unique<::env_specular::RPBundle>(
+                    desclayouts, device_
+                );
+                rp_pkg_.sky_ = std::make_unique<::env_sky::RPBundle>(
+                    desclayouts, device_
+                );
+                rp_pkg_.brdf_lut_ = std::make_unique<::env_lut::RPBundle>(
+                    desclayouts, device_
+                );
+            }
 
             desc_pool_.init(
                 5,
@@ -1199,10 +1205,10 @@ namespace {
             chosen->timer_.check();
 
             SPDLOG_DEBUG("Updating envmap: entt={}", (int)chosen->entity_);
-            this->record_sky(e_selected, *chosen, ctxt, desc_set_, rp_pkg_);
-            this->record_base(e_selected, *chosen, ctxt, rp_pkg_);
-            this->record_diffuse(e_selected, *chosen, ctxt, rp_pkg_);
-            this->record_specular(e_selected, *chosen, ctxt, rp_pkg_);
+            this->record_sky(e_selected, *chosen, ctxt, desc_set_);
+            this->record_base(e_selected, *chosen, ctxt);
+            this->record_diffuse(e_selected, *chosen, ctxt);
+            this->record_specular(e_selected, *chosen, ctxt);
         }
 
     private:
@@ -1216,11 +1222,10 @@ namespace {
         void record_base(
             entt::entity e_env,
             ::EnvmapBundle::Item& env_item,
-            const mirinae::RpContext& ctxt,
-            const mirinae::IRenderPassRegistry& rp_pkg
+            const mirinae::RpContext& ctxt
         ) {
             namespace cpnt = mirinae::cpnt;
-            auto& rp = rp_pkg.get("env_base");
+            auto& rp = *rp_pkg_.base_;
             auto& reg = ctxt.cosmos_->reg();
             const auto cmdbuf = ctxt.cmdbuf_;
 
@@ -1382,11 +1387,10 @@ namespace {
             entt::entity e_env,
             ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt,
-            const VkDescriptorSet desc_set,
-            const mirinae::IRenderPassRegistry& rp_pkg
+            const VkDescriptorSet desc_set
         ) {
             namespace cpnt = mirinae::cpnt;
-            auto& rp = rp_pkg.get("env_sky");
+            auto& rp = *rp_pkg_.sky_;
             auto& reg = ctxt.cosmos_->reg();
             const auto cmdbuf = ctxt.cmdbuf_;
 
@@ -1444,11 +1448,10 @@ namespace {
         void record_diffuse(
             entt::entity e_env,
             ::EnvmapBundle::Item& env_item,
-            const mirinae::RpContext& ctxt,
-            const mirinae::IRenderPassRegistry& rp_pkg
+            const mirinae::RpContext& ctxt
         ) {
             namespace cpnt = mirinae::cpnt;
-            auto& rp = rp_pkg.get("env_diffuse");
+            auto& rp = *rp_pkg_.diffuse_;
             auto& reg = ctxt.cosmos_->reg();
             const auto cmdbuf = ctxt.cmdbuf_;
 
@@ -1503,11 +1506,10 @@ namespace {
         void record_specular(
             entt::entity e_env,
             ::EnvmapBundle::Item& env_item,
-            const mirinae::RpContext& ctxt,
-            const mirinae::IRenderPassRegistry& rp_pkg
+            const mirinae::RpContext& ctxt
         ) {
             namespace cpnt = mirinae::cpnt;
-            auto& rp = rp_pkg.get("env_specular");
+            auto& rp = *rp_pkg_.specular_;
             auto& reg = ctxt.cosmos_->reg();
             const auto cmdbuf = ctxt.cmdbuf_;
 
@@ -1566,7 +1568,7 @@ namespace {
         }
 
         mirinae::VulkanDevice& device_;
-        mirinae::IRenderPassRegistry& rp_pkg_;
+        ::LocalRpReg rp_pkg_;
         mirinae::DescPool desc_pool_;
         sung::MonotonicRealtimeTimer timer_;
         std::shared_ptr<::EnvmapBundle> envmaps_;
@@ -1581,12 +1583,11 @@ namespace mirinae::rp::envmap {
 
     URpStates create_rp_states_envmap(
         CosmosSimulator& cosmos,
-        IRenderPassRegistry& rp_pkg,
         RpResources& rp_res,
         DesclayoutManager& desclayouts,
         VulkanDevice& device
     ) {
-        auto out = std::make_unique<RpMaster>(rp_pkg, device);
+        auto out = std::make_unique<RpMaster>(device);
         out->init(cosmos, rp_res, desclayouts);
         return out;
     }
