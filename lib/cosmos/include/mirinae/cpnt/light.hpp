@@ -24,6 +24,7 @@ namespace mirinae {
 
         void set_scaled_color(const Vec3& color);
         void set_scaled_color(T r, T g, T b);
+        void set_scaled_color(T rgb);
 
         void normalize_color();
 
