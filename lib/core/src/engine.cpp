@@ -681,6 +681,28 @@ namespace {
                 t.pos_ = { 0, 2, 0 };
             }
 
+            // SLight
+            {
+                const auto e = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(e);
+                i.set_name("Spotlight 1");
+
+                auto& s = reg.emplace<mirinae::cpnt::SLight>(e);
+                s.color_.set_scaled_color(3);
+                s.inner_angle_.set_deg(10);
+                s.outer_angle_.set_deg(25);
+
+                auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
+                t.pos_ = { -56.59, 9.15, -50.67 };
+                t.rot_ = glm::normalize(glm::dquat{
+                    0.544218,
+                    -0.118744,
+                    0.811407,
+                    0.177043,
+                });
+            }
+
             // VPLight
             {
                 static const std::array<glm::dvec3, 8> positions{
@@ -829,6 +851,18 @@ namespace {
             );
             if (cam_view)
                 camera_controller_.apply(*cam_view, clock.dt());
+
+            auto flashlight_tform =
+                cosmos_->reg().try_get<mirinae::cpnt::Transform>(flashlight_);
+            if (flashlight_tform) {
+                flashlight_tform->pos_ = cam_view->pos_ +
+                                         glm::dvec3{ 0, -0.1, 0 };
+                flashlight_tform->rot_ = cam_view->rot_;
+                flashlight_tform->rotate(
+                    sung::TAngle<double>::from_deg(std::atan(0.1 / 5.0)),
+                    cam_view->make_right_dir()
+                );
+            }
 
             client_->do_frame();
             cosmos_->do_frame();

@@ -936,13 +936,16 @@ namespace {
 
                 builder.rasterization_state()
                     .depth_clamp_enable(device.has_supp_depth_clamp())
-                    .depth_bias(80, 8);
+                    .depth_bias(0, 1);
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
                     .depth_write_enable(true);
 
-                builder.dynamic_state().add_viewport().add_scissor();
+                builder.dynamic_state()
+                    .add(VK_DYNAMIC_STATE_DEPTH_BIAS)
+                    .add_viewport()
+                    .add_scissor();
 
                 pipeline_ = builder.build(render_pass_.get(), pipe_layout_);
             }
@@ -1008,6 +1011,7 @@ namespace {
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
                 );
+                vkCmdSetDepthBias(cmdbuf, 10, 0, 5);
 
                 const auto half_width = shadow.width() / 2.0;
                 const auto half_height = shadow.height() / 2.0;
@@ -1090,6 +1094,7 @@ namespace {
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
                 );
+                vkCmdSetDepthBias(cmdbuf, 0, 0, 3);
 
                 mirinae::Viewport{}
                     .set_wh(shadow.width(), shadow.height())
@@ -1200,13 +1205,16 @@ namespace {
 
                 builder.rasterization_state()
                     .depth_clamp_enable(device.has_supp_depth_clamp())
-                    .depth_bias(80, 8);
+                    .depth_bias(0, 1);
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
                     .depth_write_enable(true);
 
-                builder.dynamic_state().add_viewport().add_scissor();
+                builder.dynamic_state()
+                    .add(VK_DYNAMIC_STATE_DEPTH_BIAS)
+                    .add_viewport()
+                    .add_scissor();
 
                 pipeline_ = builder.build(render_pass_.get(), pipe_layout_);
             }
@@ -1256,6 +1264,7 @@ namespace {
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
                 );
+                vkCmdSetDepthBias(cmdbuf, 20, 0, 10);
 
                 const auto half_width = shadow.width() / 2.0;
                 const auto half_height = shadow.height() / 2.0;
@@ -1333,6 +1342,7 @@ namespace {
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
                 );
+                vkCmdSetDepthBias(cmdbuf, 0, 0, 6);
 
                 mirinae::Viewport{}
                     .set_wh(shadow.width(), shadow.height())

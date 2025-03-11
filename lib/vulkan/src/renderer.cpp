@@ -1098,18 +1098,6 @@ namespace {
                 );
             }
 
-            for (auto& l : reg.view<cpnt::SLight, cpnt::Transform>()) {
-                auto& light = reg.get<cpnt::SLight>(l);
-                auto& tfrom = reg.get<cpnt::Transform>(l);
-
-                tfrom.pos_ = cam_view.pos_ + glm::dvec3{ 0, -0.1, 0 };
-                tfrom.rot_ = cam_view.rot_;
-                tfrom.rotate(
-                    sung::TAngle<double>::from_deg(std::atan(0.1 / 5.0)),
-                    cam_view.make_right_dir()
-                );
-            }
-
             this->update_ubufs(proj_mat, view_mat);
 
             // Begin recording

@@ -52,6 +52,14 @@ namespace mirinae {
         this->normalize_color();
     }
 
+    void ColorIntensity::set_scaled_color(T rgb) {
+        color_.x = rgb;
+        color_.y = rgb;
+        color_.z = rgb;
+        intensity_ = 1;
+        this->normalize_color();
+    }
+
     void ColorIntensity::normalize_color() {
         constexpr T EPSILON = static_cast<T>(0.0001);
 
