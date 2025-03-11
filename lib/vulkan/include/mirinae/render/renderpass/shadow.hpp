@@ -99,4 +99,10 @@ namespace mirinae::rp::shadow {
         mirinae::VulkanDevice& device
     );
 
+    URpStates create_rp_states_shadow_skinned(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    );
+
 }  // namespace mirinae::rp::shadow
