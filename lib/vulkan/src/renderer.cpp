@@ -114,10 +114,7 @@ namespace {
     class RpMasters {
 
     public:
-        RpMasters() {
-            gbuf_basic_ = mirinae::rp::gbuf::create_rpm_basic();
-            gbuf_terrain_ = mirinae::rp::gbuf::create_rpm_terrain();
-        }
+        RpMasters() { gbuf_terrain_ = mirinae::rp::gbuf::create_rpm_terrain(); }
 
         void create_std_rp(
             mirinae::CosmosSimulator& cosmos,
@@ -176,6 +173,10 @@ namespace {
                 cosmos, rp_res, desclayouts, device
             ));
 
+            rp_states_.push_back(mirinae::rp::gbuf::create_rp_states_gbuf(
+                rp_res, desclayouts, swapchain, device
+            ));
+
             rp_states_.push_back(mirinae::rp::compo::create_rps_dlight(
                 cosmos, rp_res, desclayouts, device
             ));
@@ -204,7 +205,6 @@ namespace {
             ocean_tess_ = nullptr;
         }
 
-        mirinae::rp::gbuf::IRpMasterBasic& gbuf_basic() { return *gbuf_basic_; }
         mirinae::rp::gbuf::IRpMasterTerrain& gbuf_terrain() {
             return *gbuf_terrain_;
         }
@@ -229,7 +229,6 @@ namespace {
         }
 
     private:
-        std::unique_ptr<mirinae::rp::gbuf::IRpMasterBasic> gbuf_basic_;
         std::unique_ptr<mirinae::rp::gbuf::IRpMasterTerrain> gbuf_terrain_;
 
         std::vector<mirinae::URpStates> rp_states_;
@@ -883,13 +882,12 @@ namespace {
                 mirinae::rp::gbuf::create_rp(
                     rp_, rp_res_.gbuf_, desclayout_, swapchain_, device_
                 );
-                rp_.init_render_passes(
-                    rp_res_.gbuf_, desclayout_, swapchain_, device_
-                );
                 rpm_.create_std_rp(
                     *cosmos_, rp_res_, desclayout_, swapchain_, device_
                 );
-                rpm_.gbuf_basic().init();
+                rp_.init_render_passes(
+                    rp_res_.gbuf_, desclayout_, swapchain_, device_
+                );
                 rpm_.gbuf_terrain().init(
                     *rp_res_.tex_man_, desclayout_, device_
                 );
@@ -992,7 +990,6 @@ namespace {
                 rp_states_debug_mesh_.destroy(device_);
                 rp_states_transp_.destroy(device_);
                 rpm_.gbuf_terrain().destroy(device_);
-                rpm_.gbuf_basic().destroy(device_);
 
                 rp_.destroy();
             }
@@ -1083,7 +1080,6 @@ namespace {
 
             rpm_.record_computes(ren_ctxt);
 
-            rpm_.gbuf_basic().record(ren_ctxt, rp_res_.gbuf_.extent(), rp_);
             rpm_.gbuf_terrain().record(ren_ctxt, rp_res_.gbuf_.extent(), rp_);
 
             rpm_.compo_dlight().record(ren_ctxt);
@@ -1255,7 +1251,6 @@ namespace {
                 rp_states_debug_mesh_.destroy(device_);
                 rp_states_transp_.destroy(device_);
                 rpm_.gbuf_terrain().destroy(device_);
-                rpm_.gbuf_basic().destroy(device_);
 
                 rp_.destroy();
             }
@@ -1277,8 +1272,6 @@ namespace {
                 rp_.init_render_passes(
                     rp_res_.gbuf_, desclayout_, swapchain_, device_
                 );
-
-                rpm_.gbuf_basic().init();
                 rpm_.gbuf_terrain().init(
                     *rp_res_.tex_man_, desclayout_, device_
                 );

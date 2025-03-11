@@ -337,6 +337,65 @@ namespace { namespace gbuf_skin {
 // gbuf terrain
 namespace { namespace gbuf_terrain {
 
+    class U_GbufTerrainPushConst {
+
+    public:
+        U_GbufTerrainPushConst& pvm(
+            const glm::dmat4& proj,
+            const glm::dmat4& view,
+            const glm::dmat4& model
+        ) {
+            pvm_ = proj * view * model;
+            view_ = view;
+            model_ = model;
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& tile_index(int x, int y) {
+            tile_index_count_.x = static_cast<float>(x);
+            tile_index_count_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& tile_count(int x, int y) {
+            tile_index_count_.z = static_cast<float>(x);
+            tile_index_count_.w = static_cast<float>(y);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& height_map_size(uint32_t x, uint32_t y) {
+            height_map_size_fbuf_size_.x = static_cast<float>(x);
+            height_map_size_fbuf_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& height_map_size(const VkExtent2D& e) {
+            height_map_size_fbuf_size_.x = static_cast<float>(e.width);
+            height_map_size_fbuf_size_.y = static_cast<float>(e.height);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& fbuf_size(const VkExtent2D& x) {
+            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
+            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
+            return *this;
+        }
+
+        U_GbufTerrainPushConst& height_scale(float x) {
+            height_scale_ = x;
+            return *this;
+        }
+
+    private:
+        glm::mat4 pvm_;
+        glm::mat4 view_;
+        glm::mat4 model_;
+        glm::vec4 tile_index_count_;
+        glm::vec4 height_map_size_fbuf_size_;
+        float height_scale_;
+    };
+
+
     VkDescriptorSetLayout create_desclayout_main(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
@@ -454,7 +513,7 @@ namespace { namespace gbuf_terrain {
                           .add_tesc_flag()
                           .add_tese_flag()
                           .add_frag_flag()
-                          .pc<mirinae::rp::gbuf::U_GbufTerrainPushConst>(0)
+                          .pc<U_GbufTerrainPushConst>(0)
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
@@ -529,33 +588,47 @@ namespace mirinae::rp::gbuf {
 // RpMasterBasic
 namespace {
 
-    class RpMasterBasic : public mirinae::rp::gbuf::IRpMasterBasic {
+    class RpMasterBasic : public mirinae::IRpStates {
 
     public:
-        void init() override {}
+        RpMasterBasic(
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts,
+            mirinae::Swapchain& swapchain,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device) {
+            rp_gbuf_ = std::make_unique<::gbuf::RPBundle>(
+                rp_res.gbuf_, desclayouts, swapchain, device
+            );
 
-        void destroy(mirinae::VulkanDevice& device) override {}
+            rp_gbuf_skinned_ = std::make_unique<::gbuf_skin::RPBundle>(
+                rp_res.gbuf_, desclayouts, swapchain, device
+            );
 
-        void record(
-            const mirinae::RpContext& ctxt,
-            const VkExtent2D& fbuf_exd,
-            const mirinae::IRenderPassRegistry& rp_pkg
-        ) override {
+            fbuf_exd_ = rp_res.gbuf_.extent();
+        }
+
+        const std::string& name() const override {
+            static const std::string name = "gbuf";
+            return name;
+        }
+
+        void record(const mirinae::RpContext& ctxt) override {
             this->record_static(
                 ctxt.cmdbuf_,
-                fbuf_exd,
+                fbuf_exd_,
                 *ctxt.draw_sheet_,
                 ctxt.f_index_,
-                ctxt.i_index_,
-                rp_pkg
+                ctxt.i_index_
             );
+
             this->record_skinned(
                 ctxt.cmdbuf_,
-                fbuf_exd,
+                fbuf_exd_,
                 *ctxt.draw_sheet_,
                 ctxt.f_index_,
-                ctxt.i_index_,
-                rp_pkg
+                ctxt.i_index_
             );
         }
 
@@ -565,10 +638,9 @@ namespace {
             const VkExtent2D& fbuf_exd,
             const mirinae::DrawSheet& draw_sheet,
             const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::IRenderPassRegistry& rp_pkg
+            const mirinae::ShainImageIndex image_index
         ) {
-            auto& rp = rp_pkg.get("gbuf");
+            auto& rp = *rp_gbuf_;
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
@@ -614,10 +686,9 @@ namespace {
             const VkExtent2D& fbuf_exd,
             const mirinae::DrawSheet& draw_sheet,
             const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::IRenderPassRegistry& rp_pkg
+            const mirinae::ShainImageIndex image_index
         ) {
-            auto& rp = rp_pkg.get("gbuf_skin");
+            auto& rp = *rp_gbuf_skinned_;
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
@@ -657,13 +728,27 @@ namespace {
 
             vkCmdEndRenderPass(cur_cmd_buf);
         }
+
+        mirinae::VulkanDevice& device_;
+        std::unique_ptr<::gbuf::RPBundle> rp_gbuf_;
+        std::unique_ptr<::gbuf_skin::RPBundle> rp_gbuf_skinned_;
+        VkExtent2D fbuf_exd_;
     };
 
 }  // namespace
+
+
 namespace mirinae::rp::gbuf {
 
-    std::unique_ptr<IRpMasterBasic> create_rpm_basic() {
-        return std::make_unique<::RpMasterBasic>();
+    URpStates create_rp_states_gbuf(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::Swapchain& swapchain,
+        mirinae::VulkanDevice& device
+    ) {
+        return std::make_unique<::RpMasterBasic>(
+            rp_res, desclayouts, swapchain, device
+        );
     }
 
 }  // namespace mirinae::rp::gbuf
@@ -791,7 +876,7 @@ namespace {
                 if (auto tform = reg.try_get<cpnt::Transform>(e))
                     model_mat = tform->make_model_mat();
 
-                mirinae::rp::gbuf::U_GbufTerrainPushConst pc;
+                ::gbuf_terrain::U_GbufTerrainPushConst pc;
                 pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
                     .tile_count(24, 24)
                     .height_map_size(unit->height_map_->extent())
