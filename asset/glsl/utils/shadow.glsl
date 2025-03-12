@@ -24,13 +24,12 @@ float how_much_not_in_shadow_pcf_bilinear(const vec3 world_pos, const mat4 light
     const float current_depth = min(proj_coords.z, 0.99999);
 
     const vec2 texture_size = textureSize(depth_map, 0);
-    const vec2 texel_size = 1.0 / texture_size;
     const vec2 coord_frac = fract(sample_coord.xy * texture_size);
 
-    const bool lit00 = current_depth < texture(depth_map, sample_coord + vec2(           0,             0)).r;
-    const bool lit01 = current_depth < texture(depth_map, sample_coord + vec2(           0,  texel_size.y)).r;
-    const bool lit10 = current_depth < texture(depth_map, sample_coord + vec2(texel_size.x,             0)).r;
-    const bool lit11 = current_depth < texture(depth_map, sample_coord + vec2(texel_size.x,  texel_size.y)).r;
+    const bool lit00 = current_depth < textureOffset(depth_map, sample_coord, ivec2(0, 0)).r;
+    const bool lit01 = current_depth < textureOffset(depth_map, sample_coord, ivec2(0, 1)).r;
+    const bool lit10 = current_depth < textureOffset(depth_map, sample_coord, ivec2(1, 0)).r;
+    const bool lit11 = current_depth < textureOffset(depth_map, sample_coord, ivec2(1, 1)).r;
 
     const float lit_y0    = mix( lit00 ? 0.0 : 1.0,  lit10 ? 0.0 : 1.0, coord_frac.x);
     const float lit_y1    = mix( lit01 ? 0.0 : 1.0,  lit11 ? 0.0 : 1.0, coord_frac.x);
@@ -52,13 +51,12 @@ float how_much_not_in_cascade_shadow_bilinear(
     const float current_depth = min(proj_coords.z, 0.99999);
 
     const vec2 texture_size = textureSize(depth_map, 0);
-    const vec2 texel_size = 1.0 / texture_size;
     const vec2 coord_frac = fract(sample_coord.xy * texture_size);
 
-    const bool lit00 = current_depth > texture(depth_map, sample_coord + vec2(           0,             0)).r;
-    const bool lit01 = current_depth > texture(depth_map, sample_coord + vec2(           0,  texel_size.y)).r;
-    const bool lit10 = current_depth > texture(depth_map, sample_coord + vec2(texel_size.x,             0)).r;
-    const bool lit11 = current_depth > texture(depth_map, sample_coord + vec2(texel_size.x,  texel_size.y)).r;
+    const bool lit00 = current_depth > textureOffset(depth_map, sample_coord, ivec2(0, 0)).r;
+    const bool lit01 = current_depth > textureOffset(depth_map, sample_coord, ivec2(0, 1)).r;
+    const bool lit10 = current_depth > textureOffset(depth_map, sample_coord, ivec2(1, 0)).r;
+    const bool lit11 = current_depth > textureOffset(depth_map, sample_coord, ivec2(1, 1)).r;
 
     const float lit_y0    = mix( lit00 ? 0.0 : 1.0,  lit10 ? 0.0 : 1.0, coord_frac.x);
     const float lit_y1    = mix( lit01 ? 0.0 : 1.0,  lit11 ? 0.0 : 1.0, coord_frac.x);
