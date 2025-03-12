@@ -942,7 +942,8 @@ namespace {
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
-                    .depth_write_enable(true);
+                    .depth_write_enable(true)
+                    .depth_compare_op(VK_COMPARE_OP_GREATER);
 
                 builder.dynamic_state()
                     .add(VK_DYNAMIC_STATE_DEPTH_BIAS)
@@ -966,7 +967,7 @@ namespace {
                     mirinae::create_tex_depth(512, 512, device);
                 shadow_maps->recreate_fbufs(render_pass_.get(), device);
 
-                clear_values_.at(0).depthStencil = { 1, 0 };
+                clear_values_.at(0).depthStencil = { 0, 0 };
             }
 
             return;
@@ -1013,7 +1014,7 @@ namespace {
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
                 );
-                vkCmdSetDepthBias(cmdbuf, 10, 0, 5);
+                vkCmdSetDepthBias(cmdbuf, -10, 0, -5);
 
                 const auto half_width = shadow.width() / 2.0;
                 const auto half_height = shadow.height() / 2.0;
@@ -1145,7 +1146,7 @@ namespace {
         mirinae::RenderPass render_pass_;
         mirinae::RpPipeline pipeline_;
         mirinae::RpPipeLayout pipe_layout_;
-        std::array<VkClearValue, 2> clear_values_;
+        std::array<VkClearValue, 1> clear_values_;
     };
 
 }  // namespace
@@ -1211,7 +1212,8 @@ namespace {
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
-                    .depth_write_enable(true);
+                    .depth_write_enable(true)
+                    .depth_compare_op(VK_COMPARE_OP_GREATER);
 
                 builder.dynamic_state()
                     .add(VK_DYNAMIC_STATE_DEPTH_BIAS)
@@ -1223,7 +1225,7 @@ namespace {
 
             // Misc
             {
-                clear_values_.at(0).depthStencil = { 1, 0 };
+                clear_values_.at(0).depthStencil = { 0, 0 };
             }
 
             return;
@@ -1266,7 +1268,7 @@ namespace {
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
                 );
-                vkCmdSetDepthBias(cmdbuf, 20, 0, 10);
+                vkCmdSetDepthBias(cmdbuf, -20, 0, -10);
 
                 const auto half_width = shadow.width() / 2.0;
                 const auto half_height = shadow.height() / 2.0;

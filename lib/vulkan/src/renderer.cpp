@@ -1028,11 +1028,6 @@ namespace {
                 beginInfo.flags = 0;
                 beginInfo.pInheritanceInfo = nullptr;
                 VK_CHECK(vkBeginCommandBuffer(ren_ctxt.cmdbuf_, &beginInfo));
-
-                std::array<VkClearValue, 3> clear_values;
-                clear_values[0].depthStencil = { 1.f, 0 };
-                clear_values[1].color = { 0.f, 0.f, 0.f, 1.f };
-                clear_values[2].color = { 0.f, 0.f, 0.f, 1.f };
             }
 
             rpm_.record_computes(ren_ctxt);
