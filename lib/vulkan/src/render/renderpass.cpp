@@ -574,7 +574,7 @@ namespace {
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         output.depthTestEnable = depth_test ? VK_TRUE : VK_FALSE;
         output.depthWriteEnable = depth_write ? VK_TRUE : VK_FALSE;
-        output.depthCompareOp = VK_COMPARE_OP_LESS;
+        output.depthCompareOp = VK_COMPARE_OP_GREATER;
         output.depthBoundsTestEnable = VK_FALSE;
         output.minDepthBounds = 0;
         output.maxDepthBounds = 1;
