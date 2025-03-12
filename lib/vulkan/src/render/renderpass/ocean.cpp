@@ -2260,17 +2260,17 @@ namespace {
                 .pvm(ctxt.proj_mat_, ctxt.view_mat_, glm::dmat4(1))
                 .patch_height(ocean_entt.height_);
 
-            const auto f = ctxt.proj_mat_[3][2] / (ctxt.proj_mat_[2][2] + 1) *
-                           1.25;
+            const auto z_far = ctxt.proj_mat_[3][2] / ctxt.proj_mat_[2][2];
+            const auto scale = z_far * 1.25;
             const auto pv = ctxt.proj_mat_ * ctxt.view_mat_;
             const auto cam_x = std::round(ctxt.view_pos_.x * 0.1) * 10;
             const auto cam_z = std::round(ctxt.view_pos_.z * 0.1) * 10;
             this->traverse_quad_tree<double>(
                 0,
-                cam_x - f,
-                cam_x + f,
-                cam_z - f,
-                cam_z + f,
+                cam_x - scale,
+                cam_x + scale,
+                cam_z - scale,
+                cam_z + scale,
                 ocean_entt.height_,
                 ctxt,
                 pc,
