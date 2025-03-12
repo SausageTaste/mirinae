@@ -102,9 +102,13 @@ void main() {
     const vec3 reflect_direc = reflect(view_direc, normal);
     const vec3 world_reflect = (u_comp_main.view_inv * vec4(reflect_direc, 0)).xyz;
 
+    /*/
     vec3 light = ibl(
         world_normal, world_direc, albedo, F0, roughness, metallic
     );
+    /*/
+    vec3 light = vec3(0);
+    //*/
 
     // Directional light
     {
