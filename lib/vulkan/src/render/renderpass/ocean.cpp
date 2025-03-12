@@ -2157,7 +2157,7 @@ namespace {
             // Misc
             {
                 clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
-                clear_values_.at(1).depthStencil = { 1.0f, 0 };
+                clear_values_.at(1).depthStencil = { 0, 0 };
             }
 
             return;
