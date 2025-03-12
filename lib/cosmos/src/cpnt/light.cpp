@@ -188,7 +188,7 @@ namespace mirinae {
             c.light_mat_ = dlight.make_light_mat(c.frustum_verts_, tform);
 
             far_depths_[i] = this->calc_clip_depth(
-                -c.far_, pers.near_, pers.far_
+                -c.far_, pers.far_, pers.near_
             );
         }
 

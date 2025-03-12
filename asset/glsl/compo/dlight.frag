@@ -66,7 +66,7 @@ void main() {
     {
         uint selected_dlight = 3;
         for (uint i = 0; i < 3; ++i) {
-            if (ubuf_sh.cascade_depths[i] > depth_texel) {
+            if (ubuf_sh.cascade_depths[i] < depth_texel) {
                 selected_dlight = i;
                 break;
             }
