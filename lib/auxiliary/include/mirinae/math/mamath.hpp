@@ -26,7 +26,7 @@ namespace mirinae {
     glm::tmat4x4<T> make_perspective(
         sung::TAngle<T> fovy, T aspect, T zNear, T zFar
     ) {
-        auto m = glm::perspectiveRH_ZO(fovy.rad(), aspect, zNear, zFar);
+        auto m = glm::perspectiveRH_ZO(fovy.rad(), aspect, zFar, zNear);
         m[1][1] *= -1;
         return m;
     }
@@ -36,7 +36,7 @@ namespace mirinae {
         sung::TAngle<T> fovy, T width, T height, T zNear, T zFar
     ) {
         auto m = glm::perspectiveFovRH_ZO(
-            fovy.rad(), width, height, zNear, zFar
+            fovy.rad(), width, height, zFar, zNear
         );
         m[1][1] *= -1;
         return m;

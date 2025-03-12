@@ -508,7 +508,7 @@ namespace mirinae {
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         info_.depthTestEnable = VK_FALSE;
         info_.depthWriteEnable = VK_FALSE;
-        info_.depthCompareOp = VK_COMPARE_OP_LESS;
+        info_.depthCompareOp = VK_COMPARE_OP_GREATER;
         info_.depthBoundsTestEnable = VK_FALSE;
         info_.stencilTestEnable = VK_FALSE;
         info_.front = {};

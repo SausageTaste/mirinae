@@ -110,7 +110,7 @@ namespace { namespace gbuf {
                 fbuf_bundle.material().format(),
             };
 
-            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(0).depthStencil = { 0, 0 };
             clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             clear_values_.at(2).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             clear_values_.at(3).color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -271,7 +271,7 @@ namespace { namespace gbuf_skin {
                 fbuf_bundle.material().format(),
             };
 
-            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(0).depthStencil = { 0, 0 };
             clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             clear_values_.at(2).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             clear_values_.at(3).color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -495,7 +495,7 @@ namespace { namespace gbuf_terrain {
                 fbuf_bundle.material().format(),
             };
 
-            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(0).depthStencil = { 0, 0 };
             clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             clear_values_.at(2).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             clear_values_.at(3).color = { 0.0f, 0.0f, 0.0f, 1.0f };

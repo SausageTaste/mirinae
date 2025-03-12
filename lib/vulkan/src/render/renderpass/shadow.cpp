@@ -74,7 +74,7 @@ namespace { namespace shadowmap {
                 depth_format,
             };
 
-            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(0).depthStencil = { 0, 0 };
 
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
@@ -180,7 +180,7 @@ namespace { namespace shadowmap_skin {
                 depth_format,
             };
 
-            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(0).depthStencil = { 0, 0 };
 
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
@@ -292,7 +292,7 @@ namespace { namespace shadowmap_skin_transp {
                 depth_format,
             };
 
-            clear_values_.at(0).depthStencil = { 1.0f, 0 };
+            clear_values_.at(0).depthStencil = { 0, 0 };
 
             renderpass_ = create_renderpass(
                 formats_.at(0), device.logi_device()
@@ -942,8 +942,7 @@ namespace {
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
-                    .depth_write_enable(true)
-                    .depth_compare_op(VK_COMPARE_OP_GREATER);
+                    .depth_write_enable(true);
 
                 builder.dynamic_state()
                     .add(VK_DYNAMIC_STATE_DEPTH_BIAS)
@@ -1097,7 +1096,7 @@ namespace {
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
                 );
-                vkCmdSetDepthBias(cmdbuf, 0, 0, 3);
+                vkCmdSetDepthBias(cmdbuf, 0, 0, -3);
 
                 mirinae::Viewport{}
                     .set_wh(shadow.width(), shadow.height())
@@ -1212,8 +1211,7 @@ namespace {
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
-                    .depth_write_enable(true)
-                    .depth_compare_op(VK_COMPARE_OP_GREATER);
+                    .depth_write_enable(true);
 
                 builder.dynamic_state()
                     .add(VK_DYNAMIC_STATE_DEPTH_BIAS)
@@ -1346,7 +1344,7 @@ namespace {
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
                 );
-                vkCmdSetDepthBias(cmdbuf, 0, 0, 6);
+                vkCmdSetDepthBias(cmdbuf, 0, 0, -6);
 
                 mirinae::Viewport{}
                     .set_wh(shadow.width(), shadow.height())
