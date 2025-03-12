@@ -90,7 +90,7 @@ float how_much_not_in_cascade_shadow_pcf(
             const vec2 c = sample_coord + vec2(i, j) * texel_size;
             const float depth = texture(depth_map, c).r;
             total_iterations += 1;
-            if (current_depth < depth)
+            if (current_depth > depth)
                 total_lit += 1;
         }
     }

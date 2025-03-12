@@ -103,30 +103,47 @@ namespace mirinae {
         return make_proj_mat() * make_view_mat();
     }*/
 
+    template <typename T>
+    glm::tmat4x4<T> ortho(T left, T right, T bottom, T top, T zNear, T zFar) {
+        auto out = glm::orthoRH_ZO(left, right, bottom, top, zNear, zFar);
+        /*/
+        out[2][2] = -static_cast<T>(1) / (zFar - zNear);
+        out[3][2] = zFar / (zFar - zNear);
+        /*/
+        out[2][2] = static_cast<T>(1) / (zFar - zNear);
+        out[3][2] = -zNear / (zFar - zNear);
+        //*/
+        return out;
+    }
+
+    template <typename T>
+    glm::tmat4x4<T> ortho(const sung::AABB3<T>& aabb) {
+        return ortho<double>(
+            aabb.x_min(),
+            aabb.x_max(),
+            aabb.y_min(),
+            aabb.y_max(),
+            aabb.z_min(),
+            aabb.z_max()
+        );
+    }
+
     glm::dmat4 DirectionalLight::make_light_mat(
         const std::array<glm::dvec3, 8>& p, const Tform& tform
     ) const {
         const auto view_mat = tform.make_view_mat();
 
         sung::AABB3<double> aabb;
-        aabb.set(p[0].x, p[0].y, p[0].z);
-
+        {
+            const auto v4 = view_mat * glm::dvec4(p[0], 1);
+            aabb.set(v4.x, v4.y, v4.z);
+        }
         for (auto& v : p) {
             const auto v4 = view_mat * glm::dvec4(v, 1);
             aabb.expand_to_span(v4.x, v4.y, v4.z);
         }
 
-        // Why the hell???
-        auto proj_mat = glm::orthoRH_ZO<double>(
-            aabb.x_min(),
-            aabb.x_max(),
-            -aabb.y_max(),
-            -aabb.y_min(),
-            -2 * aabb.z_max() + aabb.z_min(),
-            -aabb.z_min()
-        );
-        proj_mat[1][1] *= -1;
-
+        auto proj_mat = ortho<double>(aabb);
         return proj_mat * view_mat;
     }
 
