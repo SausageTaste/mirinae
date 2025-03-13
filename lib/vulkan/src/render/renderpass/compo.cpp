@@ -861,7 +861,7 @@ namespace {
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
-                    .depth_compare_op(VK_COMPARE_OP_LESS_OR_EQUAL);
+                    .depth_compare_op(VK_COMPARE_OP_GREATER_OR_EQUAL);
 
                 builder.color_blend_state().add(false, 1);
 
