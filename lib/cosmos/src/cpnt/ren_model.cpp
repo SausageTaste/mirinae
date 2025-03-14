@@ -19,6 +19,13 @@ namespace mirinae::cpnt {
             return;
         }
 
+        if (ImGui::Button("Hide all units")) {
+            const auto ren_unit_count = model_->ren_unit_count();
+            for (size_t i = 0; i < ren_unit_count; i++) {
+                visibility_.set(i, false);
+            }
+        }
+
         if (ImGui::CollapsingHeader("Render units")) {
             const auto ren_unit_count = model_->ren_unit_count();
 
@@ -95,6 +102,13 @@ namespace mirinae::cpnt {
                 }
             }
             ImGui::EndCombo();
+        }
+
+        if (ImGui::Button("Hide all units")) {
+            const auto ren_unit_count = model_->ren_unit_count();
+            for (size_t i = 0; i < ren_unit_count; i++) {
+                visibility_.set(i, false);
+            }
         }
 
         if (ImGui::CollapsingHeader("Render units")) {
