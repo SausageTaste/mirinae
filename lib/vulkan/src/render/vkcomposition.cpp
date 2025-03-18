@@ -57,7 +57,7 @@ namespace mirinae {
         );
 
         // Indices data size
-        const auto i_s = sizeof(uint16_t) * vertices.indices_.size();
+        const auto i_s = sizeof(VertIndexType_t) * vertices.indices_.size();
         index_buf_.init_indices(i_s, allocator);
         ::set_buffer_data(
             index_buf_,
@@ -93,7 +93,7 @@ namespace mirinae {
         );
 
         // Indices data size
-        const auto i_s = sizeof(uint16_t) * vertices.indices_.size();
+        const auto i_s = sizeof(VertIndexType_t) * vertices.indices_.size();
         index_buf_.init_indices(i_s, allocator);
         ::set_buffer_data(
             index_buf_,
@@ -115,11 +115,13 @@ namespace mirinae {
     }
 
     void VertexIndexPair::record_bind(VkCommandBuffer cmdbuf) {
+        static_assert(sizeof(VertIndexType_t) == 4);
+
         VkBuffer vertex_buffers[] = { vertex_buf_.buffer() };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(cmdbuf, 0, 1, vertex_buffers, offsets);
         vkCmdBindIndexBuffer(
-            cmdbuf, index_buf_.buffer(), 0, VK_INDEX_TYPE_UINT16
+            cmdbuf, index_buf_.buffer(), 0, VK_INDEX_TYPE_UINT32
         );
     }
 

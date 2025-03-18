@@ -13,7 +13,7 @@ namespace mirinae {
         if ((std::numeric_limits<VertIndexType_t>::max)() < cur_index)
             SPDLOG_WARN("Index overflow: {}", cur_index);
 
-        indices_.push_back(static_cast<uint16_t>(vertices_.size()));
+        indices_.push_back(static_cast<VertIndexType_t>(vertices_.size()));
         vertices_.push_back(vertex);
     }
 
@@ -22,7 +22,7 @@ namespace mirinae {
         if ((std::numeric_limits<VertIndexType_t>::max)() < cur_index)
             SPDLOG_WARN("Index overflow: {}", cur_index);
 
-        indices_.push_back(static_cast<uint16_t>(vertices_.size()));
+        indices_.push_back(static_cast<VertIndexType_t>(vertices_.size()));
         vertices_.push_back(vertex);
     }
 

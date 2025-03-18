@@ -8,7 +8,7 @@
 
 namespace mirinae {
 
-    using VertIndexType_t = uint16_t;
+    using VertIndexType_t = uint32_t;
 
 
     struct VertexStatic {
