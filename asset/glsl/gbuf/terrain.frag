@@ -24,7 +24,7 @@ layout(set = 0, binding = 1) uniform sampler2D u_albedo_map;
 void main() {
     vec4 albedo_texel = texture(u_albedo_map, i_uv);
     out_albedo = vec4(albedo_texel.xyz, 1);
-    out_material = vec4(0.9, 0, 0, 0);
+    out_material = vec4(0, 0.9, 0, 0);
 
     {
         const vec2 tile_size = vec2(60, 60);

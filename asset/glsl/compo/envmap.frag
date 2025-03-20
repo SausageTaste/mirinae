@@ -73,8 +73,8 @@ void main() {
     const vec3 frag_pos = calc_frag_pos(depth_texel);
     const vec3 albedo = albedo_texel.rgb;
     const vec3 normal = normalize(normal_texel.xyz * 2 - 1);
-    const float roughness = material_texel.x;
-    const float metallic = material_texel.y;
+    const float roughness = material_texel.y;
+    const float metallic = material_texel.z;
 
     const vec3 world_normal = (u_pc.view_inv * vec4(normal, 0)).xyz;
     const vec3 view_direc = normalize(frag_pos);
