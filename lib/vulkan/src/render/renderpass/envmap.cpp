@@ -955,8 +955,11 @@ namespace {
 
     public:
         struct Item {
+            glm::dvec3 world_pos() const { return -world_mat_[3]; }
+
             ::CubeMap cube_map_;
             sung::MonotonicRealtimeTimer timer_;
+            glm::dmat4 world_mat_;
             entt::entity entity_ = entt::null;
         };
 
@@ -969,6 +972,10 @@ namespace {
 
         uint32_t count() const override {
             return static_cast<uint32_t>(items_.size());
+        }
+
+        glm::dvec3 pos_at(uint32_t index) const override {
+            return items_.at(index).world_pos();
         }
 
         VkImageView diffuse_at(uint32_t index) const override {
@@ -1203,16 +1210,23 @@ namespace {
             auto chosen = envmaps_->choose_to_update();
             if (!chosen)
                 return;
-            const auto e_selected = chosen->entity_;
-            auto& env_cpnt = reg.get<mirinae::cpnt::Envmap>(e_selected);
+            const auto entity = chosen->entity_;
+            auto& env_cpnt = reg.get<mirinae::cpnt::Envmap>(entity);
             env_cpnt.last_updated_.check();
             chosen->timer_.check();
 
+            if (auto tform = reg.try_get<mirinae::cpnt::Transform>(entity)) {
+                constexpr static auto IDENTITY = glm::dmat4(1);
+                chosen->world_mat_ = glm::translate(IDENTITY, -tform->pos_);
+            } else {
+                chosen->world_mat_ = glm::dmat4(1);
+            }
+
             SPDLOG_DEBUG("Updating envmap: entt={}", (int)chosen->entity_);
-            this->record_sky(e_selected, *chosen, ctxt, desc_set_);
-            this->record_base(e_selected, *chosen, ctxt);
-            this->record_diffuse(e_selected, *chosen, ctxt);
-            this->record_specular(e_selected, *chosen, ctxt);
+            this->record_sky(entity, *chosen, ctxt, desc_set_);
+            this->record_base(entity, *chosen, ctxt);
+            this->record_diffuse(entity, *chosen, ctxt);
+            this->record_specular(entity, *chosen, ctxt);
         }
 
     private:
@@ -1246,11 +1260,6 @@ namespace {
 
             auto& cube_map = env_item.cube_map_;
             auto& base_cube = cube_map.base();
-
-            glm::dmat4 world_mat(1);
-            if (auto tform = reg.try_get<cpnt::Transform>(e_env)) {
-                world_mat = glm::translate<double>(world_mat, -tform->pos_);
-            }
 
             mirinae::Viewport{}
                 .set_wh(base_cube.extent2d())
@@ -1294,8 +1303,8 @@ namespace {
                             )
                             .record(cmdbuf);
 
-                        push_const.proj_view_ =
-                            (proj_mat * CUBE_VIEW_MATS[i] * world_mat);
+                        push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i] *
+                                                env_item.world_mat_;
 
                         mirinae::PushConstInfo{}
                             .layout(rp.pipeline_layout())
@@ -1473,11 +1482,6 @@ namespace {
             auto& cube_map = env_item.cube_map_;
             auto& diffuse = cube_map.diffuse();
 
-            glm::dmat4 world_mat(1);
-            if (auto tform = reg.try_get<cpnt::Transform>(e_env)) {
-                world_mat = glm::translate<double>(world_mat, -tform->pos_);
-            }
-
             const mirinae::Viewport viewport{ diffuse.extent2d() };
             const mirinae::Rect2D scissor{ diffuse.extent2d() };
             rp_info.wh(diffuse.extent2d());
@@ -1530,11 +1534,6 @@ namespace {
 
             auto& cube_map = env_item.cube_map_;
             auto& specular = cube_map.specular();
-
-            glm::dmat4 world_mat(1);
-            if (auto tform = reg.try_get<cpnt::Transform>(e_env)) {
-                world_mat = glm::translate<double>(world_mat, -tform->pos_);
-            }
 
             for (auto& mip : specular.mips()) {
                 const mirinae::Rect2D scissor{ mip.extent2d() };
