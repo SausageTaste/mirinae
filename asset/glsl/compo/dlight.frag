@@ -57,6 +57,20 @@ uint select_cascade(float depth) {
 }
 
 
+float get_dither_value() {
+    const float dither_pattern[16] = float[](
+        0.0   , 0.5   , 0.125 , 0.625 ,
+        0.75  , 0.22  , 0.875 , 0.375 ,
+        0.1875, 0.6875, 0.0625, 0.5625,
+        0.9375, 0.4375, 0.8125, 0.3125
+    );
+
+    const int i = int(gl_FragCoord.x) % 4;
+    const int j = int(gl_FragCoord.y) % 4;
+    return dither_pattern[4 * i + j];
+}
+
+
 void main() {
     const float depth_texel = texture(u_depth_map, v_uv_coord).r;
     const vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
@@ -80,10 +94,12 @@ void main() {
 
     vec3 light = vec3(0);
 
-    const vec3 vec_step = (u_main.view_inv * vec4(-frag_pos, 0)).xyz / 20.0;
+    const vec3 vec_step = (u_main.view_inv * vec4(-frag_pos, 0)).xyz / 21.0;
+    const float dither_value = get_dither_value();
 
     for (int i = 0; i < 20; ++i) {
-        const vec3 sample_pos = world_pos + vec_step * float(i);
+        const float dither_factor = float(i + 1.5) + dither_value;
+        const vec3 sample_pos = world_pos + vec_step * dither_factor;
         const float sample_depth = calc_depth(sample_pos);
         const uint selected_dlight = select_cascade(sample_depth);
 
