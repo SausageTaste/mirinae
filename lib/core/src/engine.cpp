@@ -485,7 +485,8 @@ namespace {
             static bool need_tooltip(sung::ICVarValue& cvar) {
                 if (cvar.help().empty())
                     return false;
-                return ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled
+                return ImGui::IsItemHovered(
+                    ImGuiHoveredFlags_AllowWhenDisabled
                 );
             }
         };
@@ -649,8 +650,12 @@ namespace {
                 d.color_.set_scaled_color(5);
 
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
-                t.rot_ = glm::normalize(glm::dquat{
-                    0.848632, -0.371725, 0.373827, -0.043576 });
+                d.set_light_dir(
+                    -0.582960250876931,
+                    -0.7173565198848785,
+                    -0.381519290830964,
+                    t
+                );
             }
 
             // DLight
@@ -699,12 +704,14 @@ namespace {
 
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
                 t.pos_ = { -106.85, 7.77, -51.13 };
-                t.rot_ = glm::normalize(glm::dquat{
-                    0.202623,
-                    -0.444979,
-                    0.855584,
-                    0.170041,
-                });
+                t.rot_ = glm::normalize(
+                    glm::dquat{
+                        0.202623,
+                        -0.444979,
+                        0.855584,
+                        0.170041,
+                    }
+                );
             }
 
             // VPLight
@@ -758,12 +765,14 @@ namespace {
                     6.89,
                     -45.62,
                 };
-                tform.rot_ = glm::normalize(glm::dquat{
-                    -0.376569,
-                    0.056528,
-                    0.914417,
-                    0.137265,
-                });
+                tform.rot_ = glm::normalize(
+                    glm::dquat{
+                        -0.376569,
+                        0.056528,
+                        0.914417,
+                        0.137265,
+                    }
+                );
             }
 
             // Envmap
