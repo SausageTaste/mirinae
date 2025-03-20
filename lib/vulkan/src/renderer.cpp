@@ -155,17 +155,13 @@ namespace {
                 )
             );
 
-            rp_states_.push_back(
-                mirinae::rp::shadow::create_rp_states_shadow_static(
-                    rp_res, desclayouts, device
-                )
-            );
+            rp_states_.push_back(mirinae::rp::create_rp_states_shadow_static(
+                rp_res, desclayouts, device
+            ));
 
-            rp_states_.push_back(
-                mirinae::rp::shadow::create_rp_states_shadow_skinned(
-                    rp_res, desclayouts, device
-                )
-            );
+            rp_states_.push_back(mirinae::rp::create_rp_states_shadow_skinned(
+                rp_res, desclayouts, device
+            ));
 
             rp_states_.push_back(mirinae::rp::envmap::create_rp_states_envmap(
                 cosmos, rp_res, desclayouts, device
@@ -840,8 +836,9 @@ namespace {
             , fbuf_height_(init_height) {
             framesync_.init(device_.logi_device());
 
-            rp_res_.shadow_maps_ =
-                mirinae::rp::shadow::create_shadow_maps_bundle(device_);
+            rp_res_.shadow_maps_ = mirinae::rp::create_shadow_maps_bundle(
+                device_
+            );
 
             // Create swapchain and its relatives
             {
