@@ -39,6 +39,24 @@ vec3 calc_frag_pos(float depth) {
 }
 
 
+float calc_depth(vec3 world_pos) {
+    vec4 clip_pos = u_main.proj * u_main.view * vec4(world_pos, 1);
+    clip_pos /= clip_pos.w;
+    return clip_pos.z;
+}
+
+
+uint select_cascade(float depth) {
+    for (uint i = 0; i < 3; ++i) {
+        if (ubuf_sh.cascade_depths[i] < depth) {
+            return i;
+        }
+    }
+
+    return 3;
+}
+
+
 void main() {
     const float depth_texel = texture(u_depth_map, v_uv_coord).r;
     const vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
@@ -62,15 +80,24 @@ void main() {
 
     vec3 light = vec3(0);
 
+    const vec3 vec_step = (u_main.view_inv * vec4(-frag_pos, 0)).xyz / 20.0;
+
+    for (int i = 0; i < 20; ++i) {
+        const vec3 sample_pos = world_pos + vec_step * float(i);
+        const float sample_depth = calc_depth(sample_pos);
+        const uint selected_dlight = select_cascade(sample_depth);
+
+        const vec4 frag_pos_in_dlight = ubuf_sh.light_mats[selected_dlight] * vec4(sample_pos, 1);
+        const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
+        const vec2 sample_coord = (proj_coords.xy * 0.25 + 0.25) + CASCADE_OFFSETS[selected_dlight];
+        const float current_depth = min(proj_coords.z, 0.99999);
+        if (current_depth > texture(u_shadow_map, sample_coord).r)
+            light += vec3(0.1);
+    }
+
     // Directional light
     {
-        uint selected_dlight = 3;
-        for (uint i = 0; i < 3; ++i) {
-            if (ubuf_sh.cascade_depths[i] < depth_texel) {
-                selected_dlight = i;
-                break;
-            }
-        }
+        const uint selected_dlight = select_cascade(depth_texel);
 
         const float lit = how_much_not_in_cascade_shadow(
             world_pos,
