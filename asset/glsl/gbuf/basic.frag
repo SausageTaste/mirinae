@@ -27,9 +27,9 @@ void main() {
     out_albedo = vec4(albedo.xyz, 1);
     out_normal = vec4(normalize(normal) * 0.5 + 0.5, 0);
     out_material = vec4(
+        0,
         u_model.roughness * orm_texel.y,
         u_model.metallic * orm_texel.z,
-        0,
         0
     );
 }
