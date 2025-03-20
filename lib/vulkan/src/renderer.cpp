@@ -189,6 +189,10 @@ namespace {
                 cosmos, rp_res, desclayouts, device
             ));
 
+            rp_states_.push_back(mirinae::rp::compo::create_rps_envmap(
+                cosmos, rp_res, desclayouts, device
+            ));
+
             rp_states_.push_back(mirinae::rp::compo::create_rps_sky(
                 cosmos, rp_res, desclayouts, device
             ));

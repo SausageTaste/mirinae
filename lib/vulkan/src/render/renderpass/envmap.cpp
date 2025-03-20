@@ -1237,6 +1237,11 @@ namespace {
             return entt::null;
         }
 
+        static glm::dmat4 make_proj(double znear, double zfar) {
+            constexpr static auto ANGLE_90 = mirinae::Angle::from_deg(90.0);
+            return glm::perspectiveRH_ZO(ANGLE_90.rad(), 1.0, zfar, znear);
+        }
+
         void record_base(
             entt::entity e_env,
             ::EnvmapBundle::Item& env_item,
@@ -1252,9 +1257,7 @@ namespace {
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values());
 
-            const auto proj_mat = glm::perspectiveRH_ZO(
-                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
-            );
+            const auto proj_mat = this->make_proj(0.1, 1000);
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
@@ -1412,9 +1415,7 @@ namespace {
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values());
 
-            const auto proj_mat = glm::perspectiveRH_ZO(
-                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.1, 1000.0
-            );
+            const auto proj_mat = this->make_proj(0.1, 1000.0);
 
             auto& cube_map = env_item.cube_map_;
             auto& base_cube = cube_map.base();
@@ -1473,9 +1474,7 @@ namespace {
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values());
 
-            const auto proj_mat = glm::perspectiveRH_ZO(
-                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
-            );
+            const auto proj_mat = this->make_proj(0.01, 10.0);
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
@@ -1526,9 +1525,7 @@ namespace {
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values());
 
-            const auto proj_mat = glm::perspectiveRH_ZO(
-                mirinae::Angle::from_deg(90.0).rad(), 1.0, 0.01, 10.0
-            );
+            const auto proj_mat = this->make_proj(0.01, 10.0);
 
             mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
 
