@@ -646,10 +646,11 @@ namespace {
                 i.set_name("Sun Light");
 
                 auto& d = reg.emplace<mirinae::cpnt::DLight>(entt);
-                d.color_.set_scaled_color(2, 2, 2);
+                d.color_.set_scaled_color(5);
 
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
-                d.set_light_dir(-0.5613, -0.7396, -0.3713, t);
+                t.rot_ = glm::normalize(glm::dquat{
+                    0.848632, -0.371725, 0.373827, -0.043576 });
             }
 
             // DLight
@@ -692,17 +693,17 @@ namespace {
                 i.set_name("Spotlight 1");
 
                 auto& s = reg.emplace<mirinae::cpnt::SLight>(e);
-                s.color_.set_scaled_color(3);
+                s.color_.set_scaled_color(10);
                 s.inner_angle_.set_deg(10);
                 s.outer_angle_.set_deg(25);
 
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
-                t.pos_ = { -56.59, 9.15, -50.67 };
+                t.pos_ = { -106.85, 7.77, -51.13 };
                 t.rot_ = glm::normalize(glm::dquat{
-                    0.544218,
-                    -0.118744,
-                    0.811407,
-                    0.177043,
+                    0.202623,
+                    -0.444979,
+                    0.855584,
+                    0.170041,
                 });
             }
 
@@ -769,14 +770,13 @@ namespace {
             {
                 const auto e = reg.create();
 
+                auto& i = reg.emplace<mirinae::cpnt::Id>(e);
+                i.set_name("Main envmap");
+
                 auto& envmap = reg.emplace<mirinae::cpnt::Envmap>(e);
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(e);
-                tform.pos_ = {
-                    -114.50,
-                    6.89,
-                    -45.62,
-                };
+                tform.pos_ = { -99.15, 4.98, -25.26 };
             }
 
             // Ocean
@@ -868,6 +868,13 @@ namespace {
                     cam_view->make_right_dir()
                 );
             }
+
+            /*
+            for (auto e : cosmos_->reg().view<mirinae::cpnt::Envmap>()) {
+                auto& tform = cosmos_->reg().get<mirinae::cpnt::Transform>(e);
+                tform.pos_ = cam_view->pos_;
+            }
+            */
 
             client_->do_frame();
             cosmos_->do_frame();
