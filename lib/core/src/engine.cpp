@@ -772,9 +772,11 @@ namespace {
                 auto& envmap = reg.emplace<mirinae::cpnt::Envmap>(e);
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(e);
-                tform.pos_ = { 0.14983922321477,
-                               0.66663010560478,
-                               -1.1615585516897 };
+                tform.pos_ = {
+                    -114.50,
+                    6.89,
+                    -45.62,
+                };
             }
 
             // Ocean
