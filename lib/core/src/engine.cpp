@@ -753,15 +753,15 @@ namespace {
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = {
-                    -59.616885,
-                    8.968683,
-                    -51.811862,
+                    -114.50,
+                    6.89,
+                    -45.62,
                 };
                 tform.rot_ = glm::normalize(glm::dquat{
-                    0.423674,
-                    -0.057546,
-                    -0.895760,
-                    -0.121667,
+                    -0.376569,
+                    0.056528,
+                    0.914417,
+                    0.137265,
                 });
             }
 
@@ -785,7 +785,7 @@ namespace {
                 i.set_name("Ocean");
 
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.height_ = 2;
+                ocean.height_ = 0;
             }
 
             // Atmosphere
