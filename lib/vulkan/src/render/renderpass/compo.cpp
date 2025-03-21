@@ -59,6 +59,20 @@ namespace {
     struct U_CompoDlightShadowMap {
 
     public:
+        U_CompoDlightShadowMap& set_light_mat(size_t idx, const glm::mat4& m) {
+            light_mats_[idx] = m;
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoDlightShadowMap& set_cascade_depths(const T* arr) {
+            cascade_depths_.x = static_cast<float>(arr[0]);
+            cascade_depths_.y = static_cast<float>(arr[1]);
+            cascade_depths_.z = static_cast<float>(arr[2]);
+            cascade_depths_.w = static_cast<float>(arr[3]);
+            return *this;
+        }
+
         U_CompoDlightShadowMap& set_dlight_dir(const glm::dvec3& v) {
             dlight_dir_.x = static_cast<float>(v.x);
             dlight_dir_.y = static_cast<float>(v.y);
@@ -73,6 +87,7 @@ namespace {
             return *this;
         }
 
+    private:
         glm::mat4 light_mats_[4];
         glm::vec4 cascade_depths_;
         glm::vec4 dlight_color_;
@@ -337,25 +352,18 @@ namespace {
 
                 auto& sh_data = shmap_data_.at(i);
                 auto shadow_view = rp_res_.shadow_maps_->dlight_view_at(i);
-                auto& dlight = reg.get<mirinae::cpnt::DLight>(e);
-                auto& tform = reg.get<mirinae::cpnt::Transform>(e);
+                const auto& dlight = reg.get<mirinae::cpnt::DLight>(e);
+                const auto& tform = reg.get<mirinae::cpnt::Transform>(e);
+                const auto& cascaades = dlight.cascades_;
 
                 U_CompoDlightShadowMap ubuf_sh;
-                ubuf_sh
+                ubuf_sh.set_light_mat(0, cascaades.cascades_[0].light_mat_)
+                    .set_light_mat(1, cascaades.cascades_[1].light_mat_)
+                    .set_light_mat(2, cascaades.cascades_[2].light_mat_)
+                    .set_light_mat(3, cascaades.cascades_[3].light_mat_)
+                    .set_cascade_depths(cascaades.far_depths_.data())
                     .set_dlight_dir(dlight.calc_to_light_dir(view_mat, tform))
                     .set_dlight_color(dlight.color_.scaled_color());
-                ubuf_sh.light_mats_[0] =
-                    dlight.cascades_.cascades_[0].light_mat_ * view_inv;
-                ubuf_sh.light_mats_[1] =
-                    dlight.cascades_.cascades_[1].light_mat_ * view_inv;
-                ubuf_sh.light_mats_[2] =
-                    dlight.cascades_.cascades_[2].light_mat_ * view_inv;
-                ubuf_sh.light_mats_[3] =
-                    dlight.cascades_.cascades_[3].light_mat_ * view_inv;
-                ubuf_sh.cascade_depths_[0] = dlight.cascades_.far_depths_[0];
-                ubuf_sh.cascade_depths_[1] = dlight.cascades_.far_depths_[1];
-                ubuf_sh.cascade_depths_[2] = dlight.cascades_.far_depths_[2];
-                ubuf_sh.cascade_depths_[3] = dlight.cascades_.far_depths_[3];
                 sh_data.ubuf_.set_data(ubuf_sh, device_.mem_alloc());
 
                 mirinae::DescSetBindInfo{}
