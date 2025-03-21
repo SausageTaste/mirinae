@@ -18,6 +18,7 @@ layout(set = 0, binding = 4) uniform U_CompoSlightMain {
     mat4 view;
     mat4 view_inv;
     vec4 fog_color_density;
+    float mie_anisotropy;
 } u_main;
 
 layout (set = 1, binding = 0) uniform sampler2DShadow u_shadow_map;
@@ -35,6 +36,12 @@ vec3 calc_frag_pos(float depth) {
     vec4 frag_pos = u_main.proj_inv * clip_pos;
     frag_pos /= frag_pos.w;
     return frag_pos.xyz;
+}
+
+
+float calc_depth(vec3 frag_pos_v) {
+    const vec4 clip_pos = u_main.proj * vec4(frag_pos_v, 1);
+    return clip_pos.z / clip_pos.w;
 }
 
 
@@ -69,7 +76,37 @@ void main() {
 
     vec3 light = vec3(0);
 
-    // Flashlight
+    // Volumetric scattering
+    {
+        const int SAMPLE_COUNT = 20;
+        const float INTENSITY = 0.6;
+
+        const float light_factor = INTENSITY * phase_mie(dot(view_direc, u_pc.dir_n_outer_angle.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);
+        const vec3 vec_step = frag_pos / float(-SAMPLE_COUNT - 1);
+        const float dither_value = get_dither_value();
+
+        for (int i = 0; i < SAMPLE_COUNT; ++i) {
+            const float sample_factor = float(i + 0.5) * dither_value;
+            const vec3 sample_pos = frag_pos + vec_step * sample_factor;
+            const float sample_dist = length(sample_pos);
+            const vec3 texco = make_shadow_texco(sample_pos);
+            const float lit = texture(u_shadow_map, texco);
+
+            const float attenuation = calc_slight_attenuation(
+                sample_pos,
+                u_pc.pos_n_inner_angle.xyz,
+                -u_pc.dir_n_outer_angle.xyz,
+                u_pc.pos_n_inner_angle.w,
+                u_pc.dir_n_outer_angle.w
+            ) * calc_attenuation(
+                sample_dist, u_pc.color_n_max_dist.w
+            );
+
+            light += u_pc.color_n_max_dist.xyz * (light_factor * lit * attenuation);
+        }
+    }
+
+    // Spotlight
     {
         const vec3 light_pos = u_pc.pos_n_inner_angle.xyz;
         const vec3 to_light = normalize(light_pos - frag_pos);

@@ -69,28 +69,6 @@ vec3 make_shadow_texco(const vec3 frag_pos_v, const uint selected_cascade) {
 }
 
 
-float get_dither_value() {
-    const float dither_pattern[16] = float[](
-        0.0   , 0.5   , 0.125 , 0.625 ,
-        0.75  , 0.22  , 0.875 , 0.375 ,
-        0.1875, 0.6875, 0.0625, 0.5625,
-        0.9375, 0.4375, 0.8125, 0.3125
-    );
-
-    const int i = int(gl_FragCoord.x) % 4;
-    const int j = int(gl_FragCoord.y) % 4;
-    return dither_pattern[4 * i + j];
-}
-
-
-float phase_mie(const float cos_theta, const float anisotropy) {
-    const float aa = anisotropy * anisotropy;
-    const float numer = 3.0 * (1.0 - aa) * (1.0 + cos_theta * cos_theta);
-    const float denom = 8.0*PI * (2.0 + aa) * (1.0 + aa - 2.0*anisotropy*cos_theta);
-    return numer / denom;
-}
-
-
 void main() {
     const float depth_texel = texture(u_depth_map, v_uv_coord).r;
     const vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
@@ -114,21 +92,24 @@ void main() {
 
     vec3 light = vec3(0);
 
-    const int SAMPLE_COUNT = 20;
-    const float INTENSITY_DLIGHT = 0.6;
+    // Volumetric scattering
+    {
+        const int SAMPLE_COUNT = 20;
+        const float INTENSITY_DLIGHT = 0.6;
 
-    const float dlight_factor = INTENSITY_DLIGHT * phase_mie(dot(view_direc, ubuf_sh.dlight_dir.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);
-    const vec3 vec_step = frag_pos / float(-SAMPLE_COUNT - 1);
-    const float dither_value = get_dither_value();
+        const float dlight_factor = INTENSITY_DLIGHT * phase_mie(dot(view_direc, ubuf_sh.dlight_dir.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);
+        const vec3 vec_step = frag_pos / float(-SAMPLE_COUNT - 1);
+        const float dither_value = get_dither_value();
 
-    for (int i = 0; i < SAMPLE_COUNT; ++i) {
-        const float dither_factor = float(i + 0.5) + dither_value;
-        const vec3 sample_pos = frag_pos + vec_step * dither_factor;
-        const float sample_depth = calc_depth(sample_pos);
-        const uint selected_dlight = select_cascade(sample_depth);
-        const vec3 texco = make_shadow_texco(sample_pos, selected_dlight);
-        const float lit = texture(u_shadow_map, texco);
-        light += ubuf_sh.dlight_color.rgb * (dlight_factor * lit);
+        for (int i = 0; i < SAMPLE_COUNT; ++i) {
+            const float sample_factor = float(i + 0.5) * dither_value;
+            const vec3 sample_pos = frag_pos + vec_step * sample_factor;
+            const float sample_depth = calc_depth(sample_pos);
+            const uint selected_dlight = select_cascade(sample_depth);
+            const vec3 texco = make_shadow_texco(sample_pos, selected_dlight);
+            const float lit = texture(u_shadow_map, texco);
+            light += ubuf_sh.dlight_color.rgb * (dlight_factor * lit);
+        }
     }
 
     // Directional light

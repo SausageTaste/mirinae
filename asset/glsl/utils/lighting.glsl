@@ -138,3 +138,25 @@ vec3 calc_pbr_illumination(
 
     return (kD * albedo / PI + specular) * radiance * NdotL;
 }
+
+
+float phase_mie(const float cos_theta, const float anisotropy) {
+    const float aa = anisotropy * anisotropy;
+    const float numer = 3.0 * (1.0 - aa) * (1.0 + cos_theta * cos_theta);
+    const float denom = 8.0*PI * (2.0 + aa) * (1.0 + aa - 2.0*anisotropy*cos_theta);
+    return numer / denom;
+}
+
+
+float get_dither_value() {
+    const float dither_pattern[16] = float[](
+        0.0   , 0.5   , 0.125 , 0.625 ,
+        0.75  , 0.22  , 0.875 , 0.375 ,
+        0.1875, 0.6875, 0.0625, 0.5625,
+        0.9375, 0.4375, 0.8125, 0.3125
+    );
+
+    const int i = int(gl_FragCoord.x) % 4;
+    const int j = int(gl_FragCoord.y) % 4;
+    return dither_pattern[4 * i + j];
+}
