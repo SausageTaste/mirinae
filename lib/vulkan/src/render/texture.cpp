@@ -353,6 +353,7 @@ namespace {
 
         VkFormat format() const override { return texture_.format(); }
 
+        VkImage image() override { return texture_.image(); }
         VkImageView image_view() override { return texture_view_.get(); }
 
         uint32_t width() const override { return texture_.width(); }
@@ -439,6 +440,7 @@ namespace {
         }
 
         VkFormat format() const override { return data_->imageFormat; }
+        VkImage image() override { return data_->image; }
         VkImageView image_view() override { return texture_view_.get(); }
         uint32_t width() const override { return data_->width; }
         uint32_t height() const override { return data_->height; }
@@ -712,7 +714,8 @@ namespace {
             return dal::ReqResult::unknown_error;
         }
 
-        std::shared_ptr<mirinae::ITexture> get(const dal::path& res_id
+        std::shared_ptr<mirinae::ITexture> get(
+            const dal::path& res_id
         ) override {
             if (auto index = this->find_index(res_id))
                 return textures_.at(index.value());

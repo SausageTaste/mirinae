@@ -158,6 +158,10 @@ namespace {
             return dlights_.at(idx).entt_;
         }
 
+        VkImage dlight_img_at(size_t idx) override {
+            return dlights_.at(idx).tex_->image();
+        }
+
         VkImageView dlight_view_at(size_t idx) override {
             return dlights_.at(idx).tex_->image_view();
         }
@@ -166,6 +170,10 @@ namespace {
 
         entt::entity slight_entt_at(size_t idx) override {
             return slights_.at(idx).entt_;
+        }
+
+        VkImage slight_img_at(size_t idx) override {
+            return slights_.at(idx).tex_->image();
         }
 
         VkImageView slight_view_at(size_t idx) override {
