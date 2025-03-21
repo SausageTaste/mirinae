@@ -34,6 +34,7 @@ namespace mirinae {
     public:
         virtual ~ITexture() = default;
         virtual VkFormat format() const = 0;
+        virtual VkImage image() = 0;
         virtual VkImageView image_view() = 0;
 
         virtual uint32_t width() const = 0;
