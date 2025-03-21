@@ -6,9 +6,12 @@ import time
 import utils
 
 
+START_TIME = time.time()
+
 ROOT_DIR = utils.find_root_dir()
 ASSET_DIR = os.path.join(ROOT_DIR, "asset")
 GLSL_DIR = os.path.join(ROOT_DIR, "asset", "glsl")
+INCLUDE_DIRECTIVE = "#include"
 PROC_COUNT = 8
 
 INPUT_EXTENSIONS = {
@@ -51,53 +54,68 @@ def __gen_glsl_file():
     for loc, folders, files in os.walk(GLSL_DIR):
         for file_name_ext in files:
             file_path = os.path.join(loc, file_name_ext)
-            if not os.path.isfile(file_path):
-                continue
 
             file_ext = os.path.splitext(file_name_ext)[-1]
             if file_ext not in INPUT_EXTENSIONS:
                 continue
 
-            output_path = __make_output_path(file_path)
-            if os.path.isfile(output_path):
-                src_mtime = os.path.getmtime(file_path)
-                out_mtime = os.path.getmtime(output_path)
-                if src_mtime <= out_mtime:
-                    continue
-
             yield file_path
 
 
+def __is_glsl_up_to_date(glsl_file_path, output_path):
+    if not os.path.isfile(output_path):
+        return False
+
+    out_mtime = os.path.getmtime(output_path)
+    if os.path.getmtime(glsl_file_path) > out_mtime:
+        return False
+
+    with open(glsl_file_path, "r") as f:
+        for line in f:
+            if line.count(INCLUDE_DIRECTIVE):
+                loc = line.find(INCLUDE_DIRECTIVE)
+                line = line[loc + len(INCLUDE_DIRECTIVE):]
+                line = line.strip().strip("\"").strip("<").strip(">")
+                line = os.path.join(os.path.dirname(glsl_file_path), line)
+                dep_mtime = os.path.getmtime(line)
+                if dep_mtime > out_mtime:
+                    return False
+
+    return True
+
+
 def __compile_one(file_path):
-    st = time.time()
+    if not os.path.isfile(file_path):
+        return None
+
     output_path = __make_output_path(file_path)
+    if __is_glsl_up_to_date(file_path, output_path):
+        return None
+
     cmd = f'{COMPILER_PATH} "{file_path}" -o "{output_path}"'
-    return file_path, 0 == os.system(cmd), time.time() - st
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    return 0 == os.system(cmd)
 
 
 def main():
-    st = time.time()
-
     work_count = 0
     success_count = 0
-    utils.try_mkdir(ASSET_DIR)
-    utils.try_mkdir(os.path.join(ASSET_DIR, "spv"))
 
     with mp.Pool(PROC_COUNT) as pool:
         for result in pool.imap_unordered(__compile_one, __gen_glsl_file()):
-            file_path, success, time_taken = result
+            if result is None:
+                continue
             work_count += 1
-            success_count += 1 if success else 0
+            success_count += 1 if result else 0
 
     if (work_count == 0):
         print("Nothing to compile.")
     else:
-        success_rate = success_count / work_count
         if (success_count == work_count):
-            print(f"\nCompiled {success_count}/{work_count} (\033[96m{success_rate:.0%}\033[0m) shaders")
+            print(f"Compiled {success_count}/{work_count} (\033[96m{success_count / work_count:.0%}\033[0m) shaders")
         else:
-            print(f"\nCompiled {success_count}/{work_count} (\033[91m{success_rate:.0%}\033[0m) shaders")
-    print(f"Time taken: {time.time() - st:.2f} seconds.")
+            print(f"\nCompiled {success_count}/{work_count} (\033[91m{success_count / work_count:.0%}\033[0m) shaders")
+    print(f"Time taken: {time.time() - START_TIME:.2f} seconds")
 
 
 if "__main__" == __name__:
