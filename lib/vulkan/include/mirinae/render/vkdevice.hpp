@@ -27,6 +27,7 @@ namespace mirinae {
         virtual VkSampler get_nearest() = 0;
         virtual VkSampler get_cubemap() = 0;
         virtual VkSampler get_heightmap() = 0;
+        virtual VkSampler get_shadow() = 0;
     };
 
 
