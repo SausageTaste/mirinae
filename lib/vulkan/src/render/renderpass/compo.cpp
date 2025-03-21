@@ -429,6 +429,7 @@ namespace {
             return *this;
         }
 
+    private:
         glm::mat4 light_mat;
         glm::vec4 pos_n_inner_angle;
         glm::vec4 dir_n_outer_angle;
@@ -657,6 +658,7 @@ namespace {
                 ubuf.fog_color_density_ = glm::vec4(
                     atmos.fog_color_, atmos.fog_density_
                 );
+                ubuf.mie_anisotropy_ = atmos.mie_anisotropy_;
                 break;
             }
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());
