@@ -105,6 +105,19 @@ void main() {
 
         const vec4 frag_pos_in_dlight = ubuf_sh.light_mats[selected_dlight] * vec4(sample_pos, 1);
         const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
+        if (proj_coords.z > 1.0)
+            continue;
+        if (proj_coords.z < 0.0)
+            continue;
+        if (proj_coords.x > 1.0)
+            continue;
+        if (proj_coords.x < -1.0)
+            continue;
+        if (proj_coords.y > 1.0)
+            continue;
+        if (proj_coords.y < -1.0)
+            continue;
+
         const vec2 sample_coord = (proj_coords.xy * 0.25 + 0.25) + CASCADE_OFFSETS[selected_dlight];
         const float current_depth = min(proj_coords.z, 0.99999);
         if (current_depth > texture(u_shadow_map, sample_coord).r)
