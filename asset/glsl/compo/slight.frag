@@ -1,7 +1,6 @@
 #version 450
 
 #include "../utils/lighting.glsl"
-#include "../utils/shadow.glsl"
 
 layout(location = 0) in vec2 v_uv_coord;
 
@@ -21,7 +20,7 @@ layout(set = 0, binding = 4) uniform U_CompoSlightMain {
     vec4 fog_color_density;
 } u_main;
 
-layout (set = 1, binding = 0) uniform sampler2D u_shadow_map;
+layout (set = 1, binding = 0) uniform sampler2DShadow u_shadow_map;
 
 layout (push_constant) uniform U_CompoSlightPushConst {
     mat4 light_mat;
@@ -36,6 +35,14 @@ vec3 calc_frag_pos(float depth) {
     vec4 frag_pos = u_main.proj_inv * clip_pos;
     frag_pos /= frag_pos.w;
     return frag_pos.xyz;
+}
+
+
+vec3 make_shadow_texco(const vec3 frag_pos_v) {
+    const vec4 frag_pos_in_dlight = u_pc.light_mat * vec4(frag_pos_v, 1);
+    const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
+    const vec2 sample_coord = proj_coords.xy * 0.5 + 0.5;
+    return vec3(sample_coord, proj_coords.z);
 }
 
 
@@ -78,9 +85,8 @@ void main() {
             frag_distance, u_pc.color_n_max_dist.w
         );
 
-        const float not_shadow = how_much_not_in_shadow_pcf_bilinear(
-            world_pos, u_pc.light_mat, u_shadow_map
-        );
+        const vec3 texco = make_shadow_texco(frag_pos);
+        const float lit = texture(u_shadow_map, texco);
 
         light += calc_pbr_illumination(
             roughness,
@@ -91,7 +97,7 @@ void main() {
             -view_direc,
             to_light,
             u_pc.color_n_max_dist.xyz
-        ) * attenuation * not_shadow;
+        ) * attenuation * lit;
     }
 
     // Fog

@@ -155,7 +155,7 @@ namespace {
                     // Shadow map
                     writer.add_img_info()
                         .set_img_view(rp_res.shadow_maps_->dlight_view_at(i))
-                        .set_sampler(device.samplers().get_nearest())
+                        .set_sampler(device.samplers().get_shadow())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 0);
                     // U_CompoDlightShadowMap
@@ -544,7 +544,7 @@ namespace {
                     // Shadow map
                     writer.add_img_info()
                         .set_img_view(rp_res.shadow_maps_->slight_view_at(i))
-                        .set_sampler(device.samplers().get_nearest())
+                        .set_sampler(device.samplers().get_shadow())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 0);
                 }
@@ -645,6 +645,7 @@ namespace {
             auto& reg = ctxt.cosmos_->reg();
             auto& fd = frame_data_[ctxt.f_index_.get()];
             const VkExtent2D fbuf_ext{ fbuf_width_, fbuf_height_ };
+            const auto view_inv = glm::inverse(ctxt.view_mat_);
 
             U_CompoSlightMain ubuf;
             ubuf.view_ = ctxt.view_mat_;
@@ -696,7 +697,7 @@ namespace {
                     .record(cmdbuf);
 
                 U_CompoSlightPushConst pc;
-                pc.set_light_mat(slight.make_light_mat(tform))
+                pc.set_light_mat(slight.make_light_mat(tform) * view_inv)
                     .set_pos(ctxt.view_mat_ * glm::dvec4(tform.pos_, 1))
                     .set_direc(slight.calc_to_light_dir(ctxt.view_mat_, tform))
                     .set_color(slight.color_.scaled_color())

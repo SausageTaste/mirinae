@@ -1039,6 +1039,16 @@ namespace {
                 );
                 data_.push_back(sampler_builder.build(pd, ld));
             }
+
+            {
+                ::SamplerBuilder sampler_builder;
+                sampler_builder
+                    .address_mode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
+                    .border_color(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
+                    .compare_enable(true)
+                    .compare_op(VK_COMPARE_OP_GREATER);
+                data_.push_back(sampler_builder.build(pd, ld));
+            }
         }
 
         void destroy(::LogiDevice& ld) {
@@ -1054,6 +1064,7 @@ namespace {
         VkSampler get_nearest() override { return data_[1]; }
         VkSampler get_cubemap() override { return data_[2]; }
         VkSampler get_heightmap() override { return data_[3]; }
+        VkSampler get_shadow() override { return data_[4]; }
 
     private:
         std::vector<VkSampler> data_;
@@ -1635,7 +1646,8 @@ namespace mirinae {
             CASE_ENUM_STR(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
             CASE_ENUM_STR(VK_ERROR_VALIDATION_FAILED_EXT);
             CASE_ENUM_STR(VK_ERROR_INVALID_SHADER_NV);
-            CASE_ENUM_STR(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT
+            CASE_ENUM_STR(
+                VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT
             );
             CASE_ENUM_STR(VK_ERROR_NOT_PERMITTED_EXT);
             CASE_ENUM_STR(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT);

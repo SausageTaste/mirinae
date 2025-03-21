@@ -21,7 +21,7 @@ layout (set = 0, binding = 4) uniform U_CompoDlightMain {
     float mie_anisotropy;
 } u_main;
 
-layout (set = 1, binding = 0) uniform sampler2D u_shadow_map;
+layout (set = 1, binding = 0) uniform sampler2DShadow u_shadow_map;
 
 layout (set = 1, binding = 1) uniform U_CompoDlightShadowMap {
     mat4 light_mats[4];
@@ -61,40 +61,11 @@ uint select_cascade(float depth) {
 }
 
 
-float how_much_not_in_cascade_shadow_pcf(
-    const vec3 frag_pos_v,
-    const vec2 offset,
-    const mat4 light_mat,
-    sampler2D depth_map
-) {
-    const vec4 frag_pos_in_dlight = light_mat * vec4(frag_pos_v, 1);
+vec3 make_shadow_texco(const vec3 frag_pos_v, const uint selected_cascade) {
+    const vec4 frag_pos_in_dlight = ubuf_sh.light_mats[selected_cascade] * vec4(frag_pos_v, 1);
     const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
-    if (proj_coords.z > 1.0)
-        return 1.0;
-    if (proj_coords.z < 0.0)
-        return 1.0;
-    if (proj_coords.x > 1.0)
-        return 1.0;
-    if (proj_coords.x < -1.0)
-        return 1.0;
-    if (proj_coords.y > 1.0)
-        return 1.0;
-    if (proj_coords.y < -1.0)
-        return 1.0;
-
-    const vec2 texco = (proj_coords.xy * 0.25 + 0.25) + offset;
-    uint total_lit = 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2(-1, -1)).r ? 1 : 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 0, -1)).r ? 1 : 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 1, -1)).r ? 1 : 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2(-1,  0)).r ? 1 : 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 0,  0)).r ? 1 : 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 1,  0)).r ? 1 : 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2(-1,  1)).r ? 1 : 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 0,  1)).r ? 1 : 0;
-    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 1,  1)).r ? 1 : 0;
-
-    return float(total_lit) / 9.0;
+    const vec2 texco = (proj_coords.xy * 0.25 + 0.25) + CASCADE_OFFSETS[selected_cascade];
+    return vec3(texco, proj_coords.z);
 }
 
 
@@ -155,24 +126,16 @@ void main() {
         const vec3 sample_pos = frag_pos + vec_step * dither_factor;
         const float sample_depth = calc_depth(sample_pos);
         const uint selected_dlight = select_cascade(sample_depth);
-
-        const vec4 frag_pos_in_dlight = ubuf_sh.light_mats[selected_dlight] * vec4(sample_pos, 1);
-        const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
-        const vec2 sample_coord = (proj_coords.xy * 0.25 + 0.25) + CASCADE_OFFSETS[selected_dlight];
-        if (proj_coords.z > texture(u_shadow_map, sample_coord).r)
-            light += ubuf_sh.dlight_color.rgb * dlight_factor;
+        const vec3 texco = make_shadow_texco(sample_pos, selected_dlight);
+        const float lit = texture(u_shadow_map, texco);
+        light += ubuf_sh.dlight_color.rgb * (dlight_factor * lit);
     }
 
     // Directional light
     {
         const uint selected_dlight = select_cascade(depth_texel);
-
-        const float lit = how_much_not_in_cascade_shadow_pcf(
-            frag_pos,
-            CASCADE_OFFSETS[selected_dlight],
-            ubuf_sh.light_mats[selected_dlight],
-            u_shadow_map
-        );
+        const vec3 texco = make_shadow_texco(frag_pos, selected_dlight);
+        const float lit = texture(u_shadow_map, texco);
 
         light += lit * calc_pbr_illumination(
             roughness,
