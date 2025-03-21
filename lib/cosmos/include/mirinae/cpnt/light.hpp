@@ -163,6 +163,7 @@ namespace mirinae::cpnt {
         std::filesystem::path sky_tex_path_;
         glm::vec3 fog_color_;
         float fog_density_;
+        float mie_anisotropy_;
     };
 
 }  // namespace mirinae::cpnt

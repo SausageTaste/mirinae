@@ -307,18 +307,21 @@ namespace mirinae::cpnt {
 namespace mirinae::cpnt {
 
     AtmosphereSimple::AtmosphereSimple()
-        : fog_color_(0.5, 0.5, 0.5), fog_density_(0.0001f) {}
+        : fog_color_(0.5, 0.5, 0.5)
+        , fog_density_(0.0001f)
+        , mie_anisotropy_(0.5) {}
 
     void AtmosphereSimple::render_imgui() {
         ImGui::ColorEdit3("Fog color", &fog_color_[0]);
         ImGui::SliderFloat(
             "Fog density",
             &fog_density_,
-            0.0,
-            0.01,
+            0.0f,
+            0.01f,
             "%.6f",
             ImGuiSliderFlags_Logarithmic
         );
+        ImGui::SliderFloat("Mie anisotropy", &mie_anisotropy_, 0, 1);
     }
 
 }  // namespace mirinae::cpnt
