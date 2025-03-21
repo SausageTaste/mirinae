@@ -11,7 +11,42 @@
 // Compo Dlight
 namespace {
 
-    struct U_CompoDlightMain {
+    class U_CompoDlightMain {
+
+    public:
+        U_CompoDlightMain& set_proj(const glm::dmat4& v) {
+            proj_ = v;
+            proj_inv_ = glm::inverse(v);
+            return *this;
+        }
+
+        U_CompoDlightMain& set_view(const glm::dmat4& v) {
+            view_ = v;
+            view_inv_ = glm::inverse(v);
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoDlightMain& set_fog_color(const glm::tvec3<T>& v) {
+            fog_color_density_.x = static_cast<float>(v.x);
+            fog_color_density_.y = static_cast<float>(v.y);
+            fog_color_density_.z = static_cast<float>(v.z);
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoDlightMain& set_fog_density(T v) {
+            fog_color_density_.w = static_cast<float>(v);
+            return *this;
+        }
+
+        template <typename T>
+        U_CompoDlightMain& set_mie_anisotropy(T v) {
+            mie_anisotropy_ = static_cast<float>(v);
+            return *this;
+        }
+
+    private:
         glm::mat4 proj_;
         glm::mat4 proj_inv_;
         glm::mat4 view_;
@@ -261,19 +296,16 @@ namespace {
             auto& reg = ctxt.cosmos_->reg();
             auto& fd = frame_data_[ctxt.f_index_.get()];
             const VkExtent2D fbuf_ext{ fbuf_width_, fbuf_height_ };
-            const auto view_inv = glm::inverse(ctxt.view_mat_);
+            const auto& view_mat = ctxt.view_mat_;
+            const auto view_inv = glm::inverse(view_mat);
 
             U_CompoDlightMain ubuf;
-            ubuf.view_ = ctxt.view_mat_;
-            ubuf.view_inv_ = glm::inverse(ubuf.view_);
-            ubuf.proj_ = ctxt.proj_mat_;
-            ubuf.proj_inv_ = glm::inverse(ubuf.proj_);
+            ubuf.set_proj(ctxt.proj_mat_).set_view(view_mat);
             for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
                 auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
-                ubuf.fog_color_density_ = glm::vec4(
-                    atmos.fog_color_, atmos.fog_density_
-                );
-                ubuf.mie_anisotropy_ = atmos.mie_anisotropy_;
+                ubuf.set_fog_color(atmos.fog_color_)
+                    .set_fog_density(atmos.fog_density_)
+                    .set_mie_anisotropy(atmos.mie_anisotropy_);
                 break;
             }
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());
@@ -310,7 +342,7 @@ namespace {
 
                 U_CompoDlightShadowMap ubuf_sh;
                 ubuf_sh
-                    .set_dlight_dir(dlight.calc_to_light_dir(ubuf.view_, tform))
+                    .set_dlight_dir(dlight.calc_to_light_dir(view_mat, tform))
                     .set_dlight_color(dlight.color_.scaled_color());
                 ubuf_sh.light_mats_[0] =
                     dlight.cascades_.cascades_[0].light_mat_ * view_inv;
@@ -649,16 +681,12 @@ namespace {
             const auto view_inv = glm::inverse(ctxt.view_mat_);
 
             U_CompoSlightMain ubuf;
-            ubuf.view_ = ctxt.view_mat_;
-            ubuf.view_inv_ = glm::inverse(ubuf.view_);
-            ubuf.proj_ = ctxt.proj_mat_;
-            ubuf.proj_inv_ = glm::inverse(ubuf.proj_);
+            ubuf.set_proj(ctxt.proj_mat_).set_view(ctxt.view_mat_);
             for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
                 auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
-                ubuf.fog_color_density_ = glm::vec4(
-                    atmos.fog_color_, atmos.fog_density_
-                );
-                ubuf.mie_anisotropy_ = atmos.mie_anisotropy_;
+                ubuf.set_fog_color(atmos.fog_color_)
+                    .set_fog_density(atmos.fog_density_)
+                    .set_mie_anisotropy(atmos.mie_anisotropy_);
                 break;
             }
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());
