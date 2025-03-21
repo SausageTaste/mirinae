@@ -244,6 +244,9 @@ namespace mirinae {
         ImageMemoryBarrier& mip_count(uint32_t count);
         ImageMemoryBarrier& layer_base(uint32_t layer);
         ImageMemoryBarrier& layer_count(uint32_t count);
+        ImageMemoryBarrier& set_signle_mip_layer() {
+            return this->mip_base(0).mip_count(1).layer_base(0).layer_count(1);
+        }
 
         const VkImageMemoryBarrier& get() const;
 
@@ -320,8 +323,9 @@ namespace mirinae {
         ) const;
 
         template <typename T>
-        void record(VkCommandBuffer cmdbuf, const T& data, uint32_t offset = 0)
-            const {
+        void record(
+            VkCommandBuffer cmdbuf, const T& data, uint32_t offset = 0
+        ) const {
             this->record(cmdbuf, &data, sizeof(data), offset);
         }
 
