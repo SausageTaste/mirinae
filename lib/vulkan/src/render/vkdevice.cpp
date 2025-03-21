@@ -587,10 +587,16 @@ namespace {
 
             if (validation_layer_enabled_) {
                 ::populate_create_info(debug_create_info);
-                cinfo_.pNext =
-                    reinterpret_cast<VkDebugUtilsMessengerCreateInfoEXT*>(
-                        &debug_create_info
-                    );
+                cinfo_.pNext = &debug_create_info;
+
+                validation_features_.sType =
+                    VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+                enable_validation_features_[0] =
+                    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT;
+                validation_features_.enabledValidationFeatureCount = 1;
+                validation_features_.pEnabledValidationFeatures =
+                    enable_validation_features_;
+                debug_create_info.pNext = &validation_features_;
             } else
                 cinfo_.pNext = nullptr;
 
@@ -607,6 +613,8 @@ namespace {
         VkApplicationInfo app_info{};
         VkInstanceCreateInfo cinfo_{};
         VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
+        VkValidationFeaturesEXT validation_features_{};
+        VkValidationFeatureEnableEXT enable_validation_features_[1];
         bool validation_layer_enabled_ = false;
     };
 
