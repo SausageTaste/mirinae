@@ -1,7 +1,6 @@
 #version 450
 
 #include "../utils/lighting.glsl"
-#include "../utils/shadow.glsl"
 
 layout (location = 0) in vec2 v_uv_coord;
 
@@ -32,6 +31,11 @@ layout (set = 1, binding = 1) uniform U_CompoDlightShadowMap {
 } ubuf_sh;
 
 
+const vec2 CASCADE_OFFSETS[4] = vec2[](
+    vec2(0, 0), vec2(0.5, 0), vec2(0, 0.5), vec2(0.5, 0.5)
+);
+
+
 vec3 calc_frag_pos(float depth) {
     vec4 clip_pos = vec4(v_uv_coord * 2 - 1, depth, 1);
     vec4 frag_pos = u_main.proj_inv * clip_pos;
@@ -40,8 +44,8 @@ vec3 calc_frag_pos(float depth) {
 }
 
 
-float calc_depth(vec3 world_pos) {
-    const vec4 clip_pos = u_main.proj * u_main.view * vec4(world_pos, 1);
+float calc_depth(vec3 frag_pos_v) {
+    const vec4 clip_pos = u_main.proj * vec4(frag_pos_v, 1);
     return clip_pos.z / clip_pos.w;
 }
 
@@ -54,6 +58,43 @@ uint select_cascade(float depth) {
     }
 
     return 3;
+}
+
+
+float how_much_not_in_cascade_shadow_pcf(
+    const vec3 frag_pos_v,
+    const vec2 offset,
+    const mat4 light_mat,
+    sampler2D depth_map
+) {
+    const vec4 frag_pos_in_dlight = light_mat * vec4(frag_pos_v, 1);
+    const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
+    if (proj_coords.z > 1.0)
+        return 1.0;
+    if (proj_coords.z < 0.0)
+        return 1.0;
+    if (proj_coords.x > 1.0)
+        return 1.0;
+    if (proj_coords.x < -1.0)
+        return 1.0;
+    if (proj_coords.y > 1.0)
+        return 1.0;
+    if (proj_coords.y < -1.0)
+        return 1.0;
+
+    const vec2 texco = (proj_coords.xy * 0.25 + 0.25) + offset;
+    uint total_lit = 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2(-1, -1)).r ? 1 : 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 0, -1)).r ? 1 : 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 1, -1)).r ? 1 : 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2(-1,  0)).r ? 1 : 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 0,  0)).r ? 1 : 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 1,  0)).r ? 1 : 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2(-1,  1)).r ? 1 : 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 0,  1)).r ? 1 : 0;
+    total_lit += proj_coords.z > textureOffset(depth_map, texco, ivec2( 1,  1)).r ? 1 : 0;
+
+    return float(total_lit) / 9.0;
 }
 
 
@@ -105,14 +146,13 @@ void main() {
     const int SAMPLE_COUNT = 20;
     const float INTENSITY_DLIGHT = 0.6;
 
-    const vec3 sample_direc = (u_main.view_inv * vec4(-frag_pos, 0)).xyz;
     const float dlight_factor = INTENSITY_DLIGHT * phase_mie(dot(view_direc, ubuf_sh.dlight_dir.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);
-    const vec3 vec_step = sample_direc / float(SAMPLE_COUNT + 1);
+    const vec3 vec_step = frag_pos / float(-SAMPLE_COUNT - 1);
     const float dither_value = get_dither_value();
 
     for (int i = 0; i < SAMPLE_COUNT; ++i) {
         const float dither_factor = float(i + 0.5) + dither_value;
-        const vec3 sample_pos = world_pos + vec_step * dither_factor;
+        const vec3 sample_pos = frag_pos + vec_step * dither_factor;
         const float sample_depth = calc_depth(sample_pos);
         const uint selected_dlight = select_cascade(sample_depth);
 
@@ -127,8 +167,8 @@ void main() {
     {
         const uint selected_dlight = select_cascade(depth_texel);
 
-        const float lit = how_much_not_in_cascade_shadow(
-            world_pos,
+        const float lit = how_much_not_in_cascade_shadow_pcf(
+            frag_pos,
             CASCADE_OFFSETS[selected_dlight],
             ubuf_sh.light_mats[selected_dlight],
             u_shadow_map

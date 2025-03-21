@@ -261,6 +261,7 @@ namespace {
             auto& reg = ctxt.cosmos_->reg();
             auto& fd = frame_data_[ctxt.f_index_.get()];
             const VkExtent2D fbuf_ext{ fbuf_width_, fbuf_height_ };
+            const auto view_inv = glm::inverse(ctxt.view_mat_);
 
             U_CompoDlightMain ubuf;
             ubuf.view_ = ctxt.view_mat_;
@@ -312,13 +313,13 @@ namespace {
                     .set_dlight_dir(dlight.calc_to_light_dir(ubuf.view_, tform))
                     .set_dlight_color(dlight.color_.scaled_color());
                 ubuf_sh.light_mats_[0] =
-                    dlight.cascades_.cascades_[0].light_mat_;
+                    dlight.cascades_.cascades_[0].light_mat_ * view_inv;
                 ubuf_sh.light_mats_[1] =
-                    dlight.cascades_.cascades_[1].light_mat_;
+                    dlight.cascades_.cascades_[1].light_mat_ * view_inv;
                 ubuf_sh.light_mats_[2] =
-                    dlight.cascades_.cascades_[2].light_mat_;
+                    dlight.cascades_.cascades_[2].light_mat_ * view_inv;
                 ubuf_sh.light_mats_[3] =
-                    dlight.cascades_.cascades_[3].light_mat_;
+                    dlight.cascades_.cascades_[3].light_mat_ * view_inv;
                 ubuf_sh.cascade_depths_[0] = dlight.cascades_.far_depths_[0];
                 ubuf_sh.cascade_depths_[1] = dlight.cascades_.far_depths_[1];
                 ubuf_sh.cascade_depths_[2] = dlight.cascades_.far_depths_[2];
