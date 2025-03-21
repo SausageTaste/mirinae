@@ -17,6 +17,7 @@ namespace {
         glm::mat4 view_;
         glm::mat4 view_inv_;
         glm::vec4 fog_color_density_;
+        float mie_anisotropy_ = 0.5f;
     };
 
 
@@ -271,6 +272,7 @@ namespace {
                 ubuf.fog_color_density_ = glm::vec4(
                     atmos.fog_color_, atmos.fog_density_
                 );
+                ubuf.mie_anisotropy_ = atmos.mie_anisotropy_;
                 break;
             }
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());

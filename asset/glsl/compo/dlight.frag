@@ -19,6 +19,7 @@ layout (set = 0, binding = 4) uniform U_CompoDlightMain {
     mat4 view;
     mat4 view_inv;
     vec4 fog_color_density;
+    float mie_anisotropy;
 } u_main;
 
 layout (set = 1, binding = 0) uniform sampler2D u_shadow_map;
@@ -40,9 +41,8 @@ vec3 calc_frag_pos(float depth) {
 
 
 float calc_depth(vec3 world_pos) {
-    vec4 clip_pos = u_main.proj * u_main.view * vec4(world_pos, 1);
-    clip_pos /= clip_pos.w;
-    return clip_pos.z;
+    const vec4 clip_pos = u_main.proj * u_main.view * vec4(world_pos, 1);
+    return clip_pos.z / clip_pos.w;
 }
 
 
@@ -71,6 +71,14 @@ float get_dither_value() {
 }
 
 
+float phase_mie(const float cos_theta, const float anisotropy) {
+    const float aa = anisotropy * anisotropy;
+    const float numer = 3.0 * (1.0 - aa) * (1.0 + cos_theta * cos_theta);
+    const float denom = 8.0*PI * (2.0 + aa) * (1.0 + aa - 2.0*anisotropy*cos_theta);
+    return numer / denom;
+}
+
+
 void main() {
     const float depth_texel = texture(u_depth_map, v_uv_coord).r;
     const vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
@@ -94,34 +102,25 @@ void main() {
 
     vec3 light = vec3(0);
 
-    const vec3 vec_step = (u_main.view_inv * vec4(-frag_pos, 0)).xyz / 21.0;
+    const int SAMPLE_COUNT = 20;
+    const float INTENSITY_DLIGHT = 0.6;
+
+    const vec3 sample_direc = (u_main.view_inv * vec4(-frag_pos, 0)).xyz;
+    const float dlight_factor = INTENSITY_DLIGHT * phase_mie(dot(view_direc, ubuf_sh.dlight_dir.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);
+    const vec3 vec_step = sample_direc / float(SAMPLE_COUNT + 1);
     const float dither_value = get_dither_value();
 
-    for (int i = 0; i < 20; ++i) {
-        const float dither_factor = float(i + 1.5) + dither_value;
+    for (int i = 0; i < SAMPLE_COUNT; ++i) {
+        const float dither_factor = float(i + 0.5) + dither_value;
         const vec3 sample_pos = world_pos + vec_step * dither_factor;
         const float sample_depth = calc_depth(sample_pos);
         const uint selected_dlight = select_cascade(sample_depth);
 
         const vec4 frag_pos_in_dlight = ubuf_sh.light_mats[selected_dlight] * vec4(sample_pos, 1);
         const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
-        if (proj_coords.z > 1.0)
-            continue;
-        if (proj_coords.z < 0.0)
-            continue;
-        if (proj_coords.x > 1.0)
-            continue;
-        if (proj_coords.x < -1.0)
-            continue;
-        if (proj_coords.y > 1.0)
-            continue;
-        if (proj_coords.y < -1.0)
-            continue;
-
         const vec2 sample_coord = (proj_coords.xy * 0.25 + 0.25) + CASCADE_OFFSETS[selected_dlight];
-        const float current_depth = min(proj_coords.z, 0.99999);
-        if (current_depth > texture(u_shadow_map, sample_coord).r)
-            light += vec3(0.1);
+        if (proj_coords.z > texture(u_shadow_map, sample_coord).r)
+            light += ubuf_sh.dlight_color.rgb * dlight_factor;
     }
 
     // Directional light
