@@ -354,14 +354,15 @@ namespace {
                 auto shadow_view = rp_res_.shadow_maps_->dlight_view_at(i);
                 const auto& dlight = reg.get<mirinae::cpnt::DLight>(e);
                 const auto& tform = reg.get<mirinae::cpnt::Transform>(e);
-                const auto& cascaades = dlight.cascades_;
+                const auto& cascades = dlight.cascades_;
+                const auto& casc_arr = cascades.cascades_;
 
                 U_CompoDlightShadowMap ubuf_sh;
-                ubuf_sh.set_light_mat(0, cascaades.cascades_[0].light_mat_)
-                    .set_light_mat(1, cascaades.cascades_[1].light_mat_)
-                    .set_light_mat(2, cascaades.cascades_[2].light_mat_)
-                    .set_light_mat(3, cascaades.cascades_[3].light_mat_)
-                    .set_cascade_depths(cascaades.far_depths_.data())
+                ubuf_sh.set_light_mat(0, casc_arr[0].light_mat_ * view_inv)
+                    .set_light_mat(1, casc_arr[1].light_mat_ * view_inv)
+                    .set_light_mat(2, casc_arr[2].light_mat_ * view_inv)
+                    .set_light_mat(3, casc_arr[3].light_mat_ * view_inv)
+                    .set_cascade_depths(cascades.far_depths_.data())
                     .set_dlight_dir(dlight.calc_to_light_dir(view_mat, tform))
                     .set_dlight_color(dlight.color_.scaled_color());
                 sh_data.ubuf_.set_data(ubuf_sh, device_.mem_alloc());
