@@ -13,6 +13,7 @@
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/render_graph.hpp"
 #include "mirinae/render/renderpass.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 #include "mirinae/render/renderpass/compo.hpp"
@@ -155,21 +156,29 @@ namespace {
                 )
             );
 
-            rp_states_.push_back(mirinae::rp::create_rp_states_shadow_static(
-                rp_res, desclayouts, device
-            ));
+            rp_states_.push_back(
+                mirinae::rp::create_rp_states_shadow_static(
+                    rp_res, desclayouts, device
+                )
+            );
 
-            rp_states_.push_back(mirinae::rp::create_rp_states_shadow_skinned(
-                rp_res, desclayouts, device
-            ));
+            rp_states_.push_back(
+                mirinae::rp::create_rp_states_shadow_skinned(
+                    rp_res, desclayouts, device
+                )
+            );
 
-            rp_states_.push_back(mirinae::rp::envmap::create_rp_states_envmap(
-                cosmos, rp_res, desclayouts, device
-            ));
+            rp_states_.push_back(
+                mirinae::rp::envmap::create_rp_states_envmap(
+                    cosmos, rp_res, desclayouts, device
+                )
+            );
 
-            rp_states_.push_back(mirinae::rp::gbuf::create_rp_states_gbuf(
-                rp_res, desclayouts, swapchain, device
-            ));
+            rp_states_.push_back(
+                mirinae::rp::gbuf::create_rp_states_gbuf(
+                    rp_res, desclayouts, swapchain, device
+                )
+            );
 
             rp_states_.push_back(
                 mirinae::rp::gbuf::create_rp_states_gbuf_terrain(
@@ -177,21 +186,29 @@ namespace {
                 )
             );
 
-            rp_states_.push_back(mirinae::rp::compo::create_rps_dlight(
-                cosmos, rp_res, desclayouts, device
-            ));
+            rp_states_.push_back(
+                mirinae::rp::compo::create_rps_dlight(
+                    cosmos, rp_res, desclayouts, device
+                )
+            );
 
-            rp_states_.push_back(mirinae::rp::compo::create_rps_slight(
-                cosmos, rp_res, desclayouts, device
-            ));
+            rp_states_.push_back(
+                mirinae::rp::compo::create_rps_slight(
+                    cosmos, rp_res, desclayouts, device
+                )
+            );
 
-            rp_states_.push_back(mirinae::rp::compo::create_rps_envmap(
-                cosmos, rp_res, desclayouts, device
-            ));
+            rp_states_.push_back(
+                mirinae::rp::compo::create_rps_envmap(
+                    cosmos, rp_res, desclayouts, device
+                )
+            );
 
-            rp_states_.push_back(mirinae::rp::compo::create_rps_sky(
-                cosmos, rp_res, desclayouts, device
-            ));
+            rp_states_.push_back(
+                mirinae::rp::compo::create_rps_sky(
+                    cosmos, rp_res, desclayouts, device
+                )
+            );
 
             rp_states_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tess(
@@ -820,9 +837,11 @@ namespace {
             , cosmos_(cosmos)
             , rp_res_(task_sche, device_)
             , desclayout_(device_)
-            , model_man_(mirinae::create_model_mgr(
-                  task_sche, rp_res_.tex_man_, desclayout_, device_
-              ))
+            , model_man_(
+                  mirinae::create_model_mgr(
+                      task_sche, rp_res_.tex_man_, desclayout_, device_
+                  )
+              )
             , overlay_man_(
                   init_width,
                   init_height,
@@ -839,6 +858,23 @@ namespace {
             rp_res_.shadow_maps_ = mirinae::rp::create_shadow_maps_bundle(
                 device_
             );
+
+            // Render graph
+            {
+                auto& rg = render_graph_;
+
+                auto& gbuf_albedo = rg.new_img("gbuf_albedo")
+                                        .set_format(VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK);
+                auto& gbuf_normal = rg.new_img("gbuf_normal");
+                auto& gbuf_material = rg.new_img("gbuf_material");
+                auto& gbuf_depth = rg.new_img("gbuf_depth");
+
+                rg.new_pass("gbuf static")
+                    ->add_depth_output(gbuf_depth)
+                    .add_color_output(gbuf_albedo)
+                    .add_color_output(gbuf_normal)
+                    .add_color_output(gbuf_material);
+            }
 
             // Create swapchain and its relatives
             {
@@ -1462,6 +1498,7 @@ namespace {
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
+        mirinae::RenderGraphDef render_graph_;
         mirinae::RpResources rp_res_;
         mirinae::DesclayoutManager desclayout_;
         mirinae::HMdlMgr model_man_;
