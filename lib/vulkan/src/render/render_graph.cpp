@@ -52,6 +52,8 @@ namespace {
             return true;
         }
 
+        auto begin() { return data_.begin(); }
+        auto end() { return data_.end(); }
         auto begin() const { return data_.begin(); }
         auto end() const { return data_.end(); }
 
@@ -320,6 +322,7 @@ namespace {
         }
 
         void destroy(mirinae::VulkanDevice& device) {
+            for (auto& x : fbuf_) x.destroy(device.logi_device());
             render_pass_.destroy(device);
         }
 
@@ -376,8 +379,12 @@ namespace {
         ~RenderGraph() override { this->destroy(); }
 
         void destroy() {
-            for (auto& pass : passes_) {
-                pass.destroy(device_);
+            for (auto& x : images_) {
+                x.destroy(device_);
+            }
+
+            for (auto& x : passes_) {
+                x.destroy(device_);
             }
         }
 
