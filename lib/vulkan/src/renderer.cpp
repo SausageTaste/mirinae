@@ -117,6 +117,7 @@ namespace {
     public:
         void create_std_rp(
             mirinae::CosmosSimulator& cosmos,
+            mirinae::rg::RenderGraphDef& rg_def,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::Swapchain& swapchain,
@@ -124,109 +125,118 @@ namespace {
         ) {
             this->destroy_std_rp();
 
-            rp_states_.push_back(
+            rp_pre_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
                     rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_pre_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tilde_hkt(
                     rp_res, desclayouts, device
                 )
             );
 
             /*/
-            rp_states_.push_back(
+            rp_pre_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_naive_ift(
                     rp_res, desclayouts, device
                 )
             );
             /*/
-            rp_states_.push_back(
+            rp_pre_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_butterfly(
                     rp_res, desclayouts, device
                 )
             );
             //*/
 
-            rp_states_.push_back(
+            rp_pre_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_finalize(
                     rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_pre_.push_back(
                 mirinae::rp::create_rp_states_shadow_static(
                     rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_pre_.push_back(
                 mirinae::rp::create_rp_states_shadow_skinned(
                     rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_pre_.push_back(
                 mirinae::rp::envmap::create_rp_states_envmap(
                     cosmos, rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rg_ = rg_def.build(swapchain, device);
+
+            rp_post_.push_back(
                 mirinae::rp::gbuf::create_rp_states_gbuf(
                     rp_res, desclayouts, swapchain, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_post_.push_back(
                 mirinae::rp::gbuf::create_rp_states_gbuf_terrain(
                     rp_res, desclayouts, swapchain, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_post_.push_back(
                 mirinae::rp::compo::create_rps_dlight(
                     cosmos, rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_post_.push_back(
                 mirinae::rp::compo::create_rps_slight(
                     cosmos, rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_post_.push_back(
                 mirinae::rp::compo::create_rps_envmap(
                     cosmos, rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_post_.push_back(
                 mirinae::rp::compo::create_rps_sky(
                     cosmos, rp_res, desclayouts, device
                 )
             );
 
-            rp_states_.push_back(
+            rp_post_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tess(
                     swapchain.views_count(), cosmos, rp_res, desclayouts, device
                 )
             );
         }
 
-        void destroy_std_rp() { rp_states_.clear(); }
+        void destroy_std_rp() {
+            rp_pre_.clear();
+            rp_post_.clear();
+        }
 
         void record_computes(mirinae::RpContext& ctxt) {
-            for (auto& rp : rp_states_) {
+            for (auto& rp : rp_pre_) {
+                rp->record(ctxt);
+            }
+            for (auto& rp : rp_post_) {
                 rp->record(ctxt);
             }
         }
 
     private:
-        std::vector<mirinae::URpStates> rp_states_;
+        std::vector<mirinae::URpStates> rp_pre_, rp_post_;
+        std::unique_ptr<mirinae::rg::IRenderGraph> rg_;
     };
 
 
@@ -924,7 +934,12 @@ namespace {
 
                 mirinae::rp::gbuf::create_desc_layouts(desclayout_, device_);
                 rpm_.create_std_rp(
-                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
+                    *cosmos_,
+                    render_graph_,
+                    rp_res_,
+                    desclayout_,
+                    swapchain_,
+                    device_
                 );
                 rp_.init_render_passes(
                     rp_res_.gbuf_, desclayout_, swapchain_, device_
@@ -1284,7 +1299,12 @@ namespace {
 
                 mirinae::rp::gbuf::create_desc_layouts(desclayout_, device_);
                 rpm_.create_std_rp(
-                    *cosmos_, rp_res_, desclayout_, swapchain_, device_
+                    *cosmos_,
+                    render_graph_,
+                    rp_res_,
+                    desclayout_,
+                    swapchain_,
+                    device_
                 );
                 rp_.init_render_passes(
                     rp_res_.gbuf_, desclayout_, swapchain_, device_
