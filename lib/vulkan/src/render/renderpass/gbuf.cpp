@@ -871,6 +871,17 @@ namespace {
 }  // namespace
 
 
+namespace {
+
+    class RpImplGbufStatic : public mirinae::rg::IRenderPassImpl {
+
+    public:
+        bool init(mirinae::rg::IRenderGraph& rg) override { return false; }
+    };
+
+}  // namespace
+
+
 namespace mirinae::rp::gbuf {
 
     URpStates create_rp_states_gbuf(
@@ -896,3 +907,16 @@ namespace mirinae::rp::gbuf {
     }
 
 }  // namespace mirinae::rp::gbuf
+
+
+namespace mirinae::rp {
+
+    rg::URpImpl create_rpimpl_gbuf_static() {
+        return std::make_unique<RpImplGbufStatic>();
+    }
+
+    rg::URpImpl create_rpimpl_gbuf_skinned() { return nullptr; }
+
+    rg::URpImpl create_rpimpl_gbuf_terrain() { return nullptr; }
+
+}  // namespace mirinae::rp

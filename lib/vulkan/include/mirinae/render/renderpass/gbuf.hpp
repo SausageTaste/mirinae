@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mirinae/render/render_graph.hpp"
 #include "mirinae/render/renderpass/common.hpp"
 
 
@@ -25,3 +26,14 @@ namespace mirinae::rp::gbuf {
     );
 
 }  // namespace mirinae::rp::gbuf
+
+
+namespace mirinae::rp {
+
+    rg::URpImpl create_rpimpl_gbuf_static();
+
+    rg::URpImpl create_rpimpl_gbuf_skinned();
+
+    rg::URpImpl create_rpimpl_gbuf_terrain();
+
+}
