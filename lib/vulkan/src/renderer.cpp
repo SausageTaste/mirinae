@@ -861,19 +861,49 @@ namespace {
 
             // Render graph
             {
+                const auto depth_format = device_.img_formats().depth_map();
+                const auto compo_format = device_.img_formats().rgb_hdr();
+
                 auto& rg = render_graph_;
 
-                auto& gbuf_albedo = rg.new_img("gbuf_albedo")
-                                        .set_format(VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK);
-                auto& gbuf_normal = rg.new_img("gbuf_normal");
-                auto& gbuf_material = rg.new_img("gbuf_material");
-                auto& gbuf_depth = rg.new_img("gbuf_depth");
+                rg.new_img("gbuf depth")
+                    .set_format(depth_format)
+                    .set_type(mirinae::rg::ImageType::depth)
+                    .set_size_rel_swhain(0.9);
+                rg.new_img("gbuf albedo")
+                    .set_format(VK_FORMAT_R8G8B8A8_UNORM)
+                    .set_type(mirinae::rg::ImageType::color)
+                    .set_size_rel_swhain(0.9);
+                rg.new_img("gbuf normal")
+                    .set_format(VK_FORMAT_R8G8B8A8_UNORM)
+                    .set_type(mirinae::rg::ImageType::color)
+                    .set_size_rel_swhain(0.9);
+                rg.new_img("gbuf material")
+                    .set_format(VK_FORMAT_R8G8B8A8_UNORM)
+                    .set_type(mirinae::rg::ImageType::color)
+                    .set_size_rel_swhain(0.9);
+                rg.new_img("compo")
+                    .set_format(compo_format)
+                    .set_type(mirinae::rg::ImageType::color)
+                    .set_size_rel_swhain(0.9);
 
                 rg.new_pass("gbuf static")
-                    ->add_depth_output(gbuf_depth)
-                    .add_color_output(gbuf_albedo)
-                    .add_color_output(gbuf_normal)
-                    .add_color_output(gbuf_material);
+                    .add_output_atta(rg.get_img("gbuf depth"))
+                    .add_output_atta(rg.get_img("gbuf albedo"))
+                    .add_output_atta(rg.get_img("gbuf normal"))
+                    .add_output_atta(rg.get_img("gbuf material"));
+
+                rg.new_pass("gbuf skinned")
+                    .add_output_atta(rg.get_img("gbuf depth"))
+                    .add_output_atta(rg.get_img("gbuf albedo"))
+                    .add_output_atta(rg.get_img("gbuf normal"))
+                    .add_output_atta(rg.get_img("gbuf material"));
+
+                rg.new_pass("gbuf terrain")
+                    .add_output_atta(rg.get_img("gbuf depth"))
+                    .add_output_atta(rg.get_img("gbuf albedo"))
+                    .add_output_atta(rg.get_img("gbuf normal"))
+                    .add_output_atta(rg.get_img("gbuf material"));
             }
 
             // Create swapchain and its relatives
@@ -1498,7 +1528,7 @@ namespace {
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
-        mirinae::RenderGraphDef render_graph_;
+        mirinae::rg::RenderGraphDef render_graph_;
         mirinae::RpResources rp_res_;
         mirinae::DesclayoutManager desclayout_;
         mirinae::HMdlMgr model_man_;
