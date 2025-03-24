@@ -869,41 +869,46 @@ namespace {
                 rg.new_img("gbuf depth")
                     .set_format(depth_format)
                     .set_type(mirinae::rg::ImageType::depth)
+                    .set_count_type(mirinae::rg::ImageCountType::per_frame)
                     .set_size_rel_swhain(0.9);
                 rg.new_img("gbuf albedo")
                     .set_format(VK_FORMAT_R8G8B8A8_UNORM)
                     .set_type(mirinae::rg::ImageType::color)
+                    .set_count_type(mirinae::rg::ImageCountType::per_frame)
                     .set_size_rel_swhain(0.9);
                 rg.new_img("gbuf normal")
                     .set_format(VK_FORMAT_R8G8B8A8_UNORM)
                     .set_type(mirinae::rg::ImageType::color)
+                    .set_count_type(mirinae::rg::ImageCountType::per_frame)
                     .set_size_rel_swhain(0.9);
                 rg.new_img("gbuf material")
                     .set_format(VK_FORMAT_R8G8B8A8_UNORM)
                     .set_type(mirinae::rg::ImageType::color)
+                    .set_count_type(mirinae::rg::ImageCountType::per_frame)
                     .set_size_rel_swhain(0.9);
                 rg.new_img("compo")
                     .set_format(compo_format)
                     .set_type(mirinae::rg::ImageType::color)
+                    .set_count_type(mirinae::rg::ImageCountType::per_frame)
                     .set_size_rel_swhain(0.9);
 
                 rg.new_pass("gbuf static")
-                    .add_output_atta(rg.get_img("gbuf depth"))
-                    .add_output_atta(rg.get_img("gbuf albedo"))
-                    .add_output_atta(rg.get_img("gbuf normal"))
-                    .add_output_atta(rg.get_img("gbuf material"));
+                    .add_out_atta(rg.get_img("gbuf depth"))
+                    .add_out_atta(rg.get_img("gbuf albedo"))
+                    .add_out_atta(rg.get_img("gbuf normal"))
+                    .add_out_atta(rg.get_img("gbuf material"));
 
                 rg.new_pass("gbuf skinned")
-                    .add_output_atta(rg.get_img("gbuf depth"))
-                    .add_output_atta(rg.get_img("gbuf albedo"))
-                    .add_output_atta(rg.get_img("gbuf normal"))
-                    .add_output_atta(rg.get_img("gbuf material"));
+                    .add_inout_atta(rg.get_img("gbuf depth"))
+                    .add_inout_atta(rg.get_img("gbuf albedo"))
+                    .add_inout_atta(rg.get_img("gbuf normal"))
+                    .add_inout_atta(rg.get_img("gbuf material"));
 
                 rg.new_pass("gbuf terrain")
-                    .add_output_atta(rg.get_img("gbuf depth"))
-                    .add_output_atta(rg.get_img("gbuf albedo"))
-                    .add_output_atta(rg.get_img("gbuf normal"))
-                    .add_output_atta(rg.get_img("gbuf material"));
+                    .add_inout_atta(rg.get_img("gbuf depth"))
+                    .add_inout_atta(rg.get_img("gbuf albedo"))
+                    .add_inout_atta(rg.get_img("gbuf normal"))
+                    .add_inout_atta(rg.get_img("gbuf material"));
             }
 
             // Create swapchain and its relatives
@@ -929,6 +934,8 @@ namespace {
                 rp_states_fillscreen_.init(desclayout_, rp_res_.gbuf_, device_);
                 rp_states_imgui_.init(swapchain_);
             }
+
+            const auto render_graph = render_graph_.build(swapchain_, device_);
 
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
