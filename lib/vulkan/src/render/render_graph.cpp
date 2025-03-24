@@ -129,6 +129,11 @@ namespace {
 
         const std::string& name() const override { return name_; }
 
+        IRenderGraphPass& set_impl_f(impl_factory_t factory) override {
+            impl_factory_ = std::move(factory);
+            return *this;
+        }
+
         IRenderGraphPass& add_in_tex(ImageDef& img) override {
             input_tex_.push_back(&img);
             return *this;
@@ -167,6 +172,7 @@ namespace {
             return false;
         }
 
+        impl_factory_t impl_factory_;
         std::vector<ImageDef*> input_tex_;
         std::vector<ImageDef*> input_atta_;
         std::vector<ImageDef*> output_atta_;
@@ -181,7 +187,7 @@ namespace {
 // RenderGraph
 namespace {
 
-    class RgImage {
+    class RgImage : public mirinae::rg::IRenderGraph::IImage {
 
     public:
         RgImage(
@@ -267,7 +273,7 @@ namespace {
 
         const VkExtent2D extent2d() const { return img_.at(0).extent2d(); }
 
-        VkImageView img_view_at(uint32_t idx) const {
+        VkImageView img_view_at(uint32_t idx) const override {
             return img_view_.at(idx).get();
         }
 
@@ -278,7 +284,7 @@ namespace {
     };
 
 
-    class RgPass {
+    class RgPass : public mirinae::rg::IRenderGraph::IRenderPass {
 
     public:
         RgPass(
@@ -325,6 +331,8 @@ namespace {
             for (auto& x : fbuf_) x.destroy(device.logi_device());
             render_pass_.destroy(device);
         }
+
+        const std::string& name() const { return def_.name(); }
 
     private:
         static VkRenderPass create_rp(
@@ -377,6 +385,30 @@ namespace {
         RenderGraph(mirinae::VulkanDevice& device) : device_(device) {}
 
         ~RenderGraph() override { this->destroy(); }
+
+        mirinae::rg::IRenderGraph::IImage* get_img(
+            std::string_view name
+        ) override {
+            if (auto img = images_.find(name)) {
+                return img;
+            }
+
+            MIRINAE_ABORT("Render graph image '{}' not found", name);
+            return nullptr;
+        }
+
+        mirinae::rg::IRenderGraph::IRenderPass* get_pass(
+            std::string_view name
+        ) override {
+            for (auto& pass : passes_) {
+                if (pass.name() == name) {
+                    return &pass;
+                }
+            }
+
+            MIRINAE_ABORT("Render graph pass '{}' not found", name);
+            return nullptr;
+        }
 
         void destroy() {
             for (auto& x : images_) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -30,6 +31,18 @@ namespace mirinae::rg {
         single,
         per_frame,
     };
+
+
+    class IRenderGraph;
+
+    class IRenderPassImpl {
+
+    public:
+        virtual ~IRenderPassImpl() = default;
+        virtual bool init(IRenderGraph& rg) = 0;
+    };
+
+    using URpImpl = std::unique_ptr<IRenderPassImpl>;
 
 
     class RenderGraphImage {
@@ -75,9 +88,13 @@ namespace mirinae::rg {
 
 
     struct IRenderGraphPass {
+        using impl_factory_t = std::function<URpImpl()>;
+
         virtual ~IRenderGraphPass() = default;
 
         virtual const std::string& name() const = 0;
+
+        virtual IRenderGraphPass& set_impl_f(impl_factory_t factory) = 0;
 
         virtual IRenderGraphPass& add_in_tex(RenderGraphImage& img) = 0;
         virtual IRenderGraphPass& add_in_atta(RenderGraphImage& img) = 0;
@@ -89,8 +106,23 @@ namespace mirinae::rg {
     };
 
 
-    struct IRenderGraph {
+    class IRenderGraph {
+
+    public:
+        struct IImage {
+            virtual ~IImage() = default;
+            virtual VkImageView img_view_at(uint32_t idx) const = 0;
+        };
+
+        struct IRenderPass {
+            virtual ~IRenderPass() = default;
+        };
+
+    public:
         virtual ~IRenderGraph() = default;
+
+        virtual IImage* get_img(std::string_view name) = 0;
+        virtual IRenderPass* get_pass(std::string_view name) = 0;
     };
 
 
