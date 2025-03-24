@@ -1,6 +1,9 @@
 #include "mirinae/render/render_graph.hpp"
 
 #include "mirinae/lightweight/include_spdlog.hpp"
+#include "mirinae/render/renderpass/builder.hpp"
+#include "mirinae/render/renderpass/common.hpp"
+
 
 #define MIRINAE_GET_IMPL()                                        \
     if (!pimpl_)                                                  \
@@ -29,6 +32,33 @@ namespace {
         }
     }
 
+
+    template <typename T>
+    class NamedItemRegistry {
+
+    public:
+        T* find(const std::string_view name) {
+            for (auto& x : data_) {
+                if (x.name() == name) {
+                    return &x;
+                }
+            }
+            return nullptr;
+        }
+
+        template <typename... Args>
+        bool append(Args&&... args) {
+            data_.emplace_back(std::forward<Args>(args)...);
+            return true;
+        }
+
+        auto begin() const { return data_.begin(); }
+        auto end() const { return data_.end(); }
+
+    private:
+        std::deque<T> data_;
+    };
+
 }  // namespace
 
 
@@ -37,10 +67,6 @@ namespace mirinae::rg {
 
     const std::string& RenderGraphImage::name() const { return name_; }
 
-    ImageType RenderGraphImage::deduce_type() const {
-        return ::classify_img_format(format_);
-    }
-
     RenderGraphImage& RenderGraphImage::set_format(VkFormat x) {
         format_ = x;
         return *this;
@@ -48,6 +74,11 @@ namespace mirinae::rg {
 
     RenderGraphImage& RenderGraphImage::set_type(ImageType x) {
         type_ = x;
+        return *this;
+    }
+
+    RenderGraphImage& RenderGraphImage::set_count_type(ImageCountType x) {
+        count_type_ = x;
         return *this;
     }
 
@@ -83,6 +114,299 @@ namespace mirinae::rg {
 }  // namespace mirinae::rg
 
 
+// RenderGraphPass
+namespace {
+
+    class RenderGraphPass : public mirinae::rg::IRenderGraphPass {
+
+    public:
+        using ImageDef = mirinae::rg::RenderGraphImage;
+
+    public:
+        RenderGraphPass(const std::string_view name) : name_(name) {}
+
+        const std::string& name() const override { return name_; }
+
+        IRenderGraphPass& add_in_tex(ImageDef& img) override {
+            input_tex_.push_back(&img);
+            return *this;
+        }
+
+        IRenderGraphPass& add_in_atta(ImageDef& img) override {
+            input_atta_.push_back(&img);
+            return *this;
+        }
+
+        IRenderGraphPass& add_out_atta(ImageDef& img) override {
+            output_atta_.push_back(&img);
+            return *this;
+        }
+
+        bool need_read(const ImageDef& img) const {
+            for (auto& x : input_tex_) {
+                if (x == &img) {
+                    return true;
+                }
+            }
+            for (auto& x : input_atta_) {
+                if (x == &img) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool need_write(const ImageDef& img) const {
+            for (auto& x : output_atta_) {
+                if (x == &img) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        std::vector<ImageDef*> input_tex_;
+        std::vector<ImageDef*> input_atta_;
+        std::vector<ImageDef*> output_atta_;
+
+    private:
+        std::string name_;
+    };
+
+}  // namespace
+
+
+// RenderGraph
+namespace {
+
+    class RgImage {
+
+    public:
+        RgImage(
+            const mirinae::rg::RenderGraphImage& src,
+            const uint32_t max_frames_in_flight,
+            const uint32_t swhain_width,
+            const uint32_t swhain_height,
+            mirinae::VulkanDevice& device
+        ) {
+            using ImageCountType = mirinae::rg::ImageCountType;
+            using ImageSizeType = mirinae::rg::ImageSizeType;
+
+            name_ = src.name();
+
+            auto img_count = 1;
+            if (src.count_type() == ImageCountType::per_frame)
+                img_count = max_frames_in_flight;
+
+            mirinae::ImageCreateInfo img_cinfo;
+            if (src.size_type() == ImageSizeType::relative_to_swapchain) {
+                const auto w = swhain_width * src.width() /
+                               REL_SIZE_VALUE_FACTOR;
+                const auto h = swhain_height * src.height() /
+                               REL_SIZE_VALUE_FACTOR;
+                img_cinfo.set_dimensions(w, h);
+            } else {
+                img_cinfo.set_dimensions(src.width(), src.height());
+            }
+
+            img_cinfo.set_format(src.format())
+                .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
+                .add_usage(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+
+            if (src.img_type() == mirinae::rg::ImageType::depth) {
+                img_cinfo.add_usage(
+                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+                );
+            } else {
+                img_cinfo.add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+            }
+
+            mirinae::ImageViewBuilder view_cinfo;
+            view_cinfo.format(src.format());
+
+            if (src.img_type() == mirinae::rg::ImageType::depth) {
+                view_cinfo.aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT);
+            } else {
+                view_cinfo.aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
+            }
+
+            for (auto i = 0; i < img_count; i++) {
+                auto& img = img_.emplace_back();
+                img.init(img_cinfo.get(), device.mem_alloc());
+
+                view_cinfo.image(img.image());
+                auto& view = img_view_.emplace_back();
+                view.reset(view_cinfo, device);
+            }
+        }
+
+        RgImage(const RgImage&) = delete;
+        RgImage& operator=(const RgImage&) = delete;
+
+        RgImage(RgImage&& src) noexcept {
+            name_ = std::move(src.name_);
+            img_ = std::move(src.img_);
+            img_view_ = std::move(src.img_view_);
+        }
+
+        RgImage& operator=(RgImage&& src) noexcept {
+            name_ = std::move(src.name_);
+            img_ = std::move(src.img_);
+            img_view_ = std::move(src.img_view_);
+            return *this;
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            for (auto& x : img_view_) x.destroy(device);
+            for (auto& x : img_) x.destroy(device.mem_alloc());
+        }
+
+        const std::string& name() const { return name_; }
+
+        const VkExtent2D extent2d() const { return img_.at(0).extent2d(); }
+
+        VkImageView img_view_at(uint32_t idx) const {
+            return img_view_.at(idx).get();
+        }
+
+    private:
+        std::string name_;
+        std::vector<mirinae::Image> img_;
+        std::vector<mirinae::ImageView> img_view_;
+    };
+
+
+    class RgPass {
+
+    public:
+        RgPass(
+            const ::RenderGraphPass& src,
+            const uint32_t max_frames_in_flight,
+            ::NamedItemRegistry<RgImage>& images,
+            mirinae::VulkanDevice& device
+        )
+            : def_(src) {
+            using ImageCountType = mirinae::rg::ImageCountType;
+            render_pass_.reset(this->create_rp(src, device), device);
+
+            for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(render_pass_.get());
+
+                for (auto& img : src.output_atta_) {
+                    uint32_t img_idx = 0;
+                    if (img->count_type() == ImageCountType::per_frame)
+                        img_idx = i;
+
+                    auto src_img = images.find(img->name());
+                    MIRINAE_ASSERT(nullptr != src_img);
+
+                    fbuf_cinfo.set_dim(src_img->extent2d())
+                        .add_attach(src_img->img_view_at(img_idx));
+                }
+
+                fbuf_.emplace_back();
+                fbuf_.back().init(fbuf_cinfo.get(), device.logi_device());
+            }
+
+            for (auto& img : src.output_atta_) {
+                clear_values_.emplace_back();
+                if (img->img_type() == mirinae::rg::ImageType::depth) {
+                    clear_values_.back().depthStencil = { 0, 0 };
+                } else {
+                    clear_values_.back().color = { 0, 0, 0, 1 };
+                }
+            }
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            render_pass_.destroy(device);
+        }
+
+    private:
+        static VkRenderPass create_rp(
+            const ::RenderGraphPass& src, mirinae::VulkanDevice& device
+        ) {
+            mirinae::RenderPassBuilder builder;
+
+            for (auto& img : src.input_tex_) {
+                const auto idx = builder.attach_desc().size();
+
+                auto img_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                if (img->img_type() == mirinae::rg::ImageType::depth)
+                    img_layout =
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+                auto& atta = builder.attach_desc().add(img->format());
+                atta.ini_layout(img_layout).fin_layout(img_layout);
+
+                if (src.need_read(*img))
+                    atta.load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
+                else
+                    atta.load_op(VK_ATTACHMENT_LOAD_OP_CLEAR);
+
+                if (src.need_write(*img))
+                    atta.stor_op(VK_ATTACHMENT_STORE_OP_STORE);
+                else
+                    atta.stor_op(VK_ATTACHMENT_STORE_OP_DONT_CARE);
+
+                if (img->img_type() == mirinae::rg::ImageType::depth)
+                    builder.depth_attach_ref().set(idx);
+                else
+                    builder.color_attach_ref().add_color_attach(idx);
+            }
+
+            builder.subpass_dep().add().preset_single();
+
+            return builder.build(device.logi_device());
+        }
+
+        ::RenderGraphPass def_;
+        mirinae::RenderPass render_pass_;
+        std::vector<mirinae::Fbuf> fbuf_;
+        std::vector<VkClearValue> clear_values_;
+    };
+
+
+    class RenderGraph : public mirinae::rg::IRenderGraph {
+
+    public:
+        RenderGraph(mirinae::VulkanDevice& device) : device_(device) {}
+
+        ~RenderGraph() override { this->destroy(); }
+
+        void destroy() {
+            for (auto& pass : passes_) {
+                pass.destroy(device_);
+            }
+        }
+
+        void add_img(
+            const mirinae::rg::RenderGraphImage& src,
+            const uint32_t max_frames_in_flight,
+            const uint32_t swhain_width,
+            const uint32_t swhain_height
+        ) {
+            images_.append(
+                src, max_frames_in_flight, swhain_width, swhain_height, device_
+            );
+        }
+
+        void add_pass(
+            const ::RenderGraphPass& src, const uint32_t max_frames_in_flight
+        ) {
+            passes_.emplace_back(src, max_frames_in_flight, images_, device_);
+        }
+
+    private:
+        mirinae::VulkanDevice& device_;
+        std::deque<RgPass> passes_;
+        ::NamedItemRegistry<RgImage> images_;
+    };
+
+}  // namespace
+
+
 // Aux for RenderGraphDef
 namespace {
 
@@ -107,6 +431,9 @@ namespace {
             return images_.back();
         }
 
+        auto begin() const { return images_.begin(); }
+        auto end() const { return images_.end(); }
+
     private:
         std::deque<mirinae::rg::RenderGraphImage> images_;
     };
@@ -115,7 +442,7 @@ namespace {
     class RgPassReg {
 
     public:
-        mirinae::rg::RenderGraphPass* find(const std::string_view name) {
+        ::RenderGraphPass* find(const std::string_view name) {
             for (auto& pass : passes_) {
                 if (pass.name() == name) {
                     return &pass;
@@ -124,7 +451,16 @@ namespace {
             return nullptr;
         }
 
-        mirinae::rg::RenderGraphPass& create(const std::string_view name) {
+        ::RenderGraphPass* find(const void* ptr) {
+            for (auto& pass : passes_) {
+                if (&pass == ptr) {
+                    return &pass;
+                }
+            }
+            return nullptr;
+        }
+
+        ::RenderGraphPass& create(const std::string_view name) {
             if (auto pass = this->find(name)) {
                 MIRINAE_ABORT("Render graph pass '{}' already exists", name);
             }
@@ -133,8 +469,11 @@ namespace {
             return passes_.back();
         }
 
+        auto begin() const { return passes_.begin(); }
+        auto end() const { return passes_.end(); }
+
     private:
-        std::deque<mirinae::rg::RenderGraphPass> passes_;
+        std::deque<::RenderGraphPass> passes_;
     };
 
 }  // namespace
@@ -148,6 +487,27 @@ namespace mirinae::rg {
     public:
         auto& images() { return images_; }
         auto& passes() { return passes_; }
+
+        std::unique_ptr<IRenderGraph> build(
+            Swapchain& swhain, VulkanDevice& device
+        ) {
+            auto out = std::make_unique<RenderGraph>(device);
+
+            for (auto& img : images_) {
+                out->add_img(
+                    img,
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    swhain.width(),
+                    swhain.height()
+                );
+            }
+
+            for (auto& pass : passes_) {
+                out->add_pass(pass, mirinae::MAX_FRAMES_IN_FLIGHT);
+            }
+
+            return out;
+        }
 
     private:
         ::RgImageReg images_;
@@ -172,9 +532,16 @@ namespace mirinae::rg {
             MIRINAE_ABORT("Render graph image '{}' not found", name);
     }
 
-    RenderGraphPass& RenderGraphDef::new_pass(const std::string_view name) {
+    IRenderGraphPass& RenderGraphDef::new_pass(const std::string_view name) {
         MIRINAE_GET_IMPL();
         return pimpl.passes().create(name);
+    }
+
+    std::unique_ptr<IRenderGraph> RenderGraphDef::build(
+        Swapchain& swhain, VulkanDevice& device
+    ) {
+        MIRINAE_GET_IMPL();
+        return pimpl.build(swhain, device);
     }
 
 }  // namespace mirinae::rg
