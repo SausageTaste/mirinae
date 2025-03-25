@@ -309,6 +309,7 @@ namespace {
 
         void record(const mirinae::RpContext& ctxt) override {
             auto cmdbuf = ctxt.cmdbuf_;
+            auto& gbufs = rp_res_.gbuf_;
             auto& reg = ctxt.cosmos_->reg();
             auto& fd = frame_data_[ctxt.f_index_.get()];
             const VkExtent2D fbuf_ext{ fbuf_width_, fbuf_height_ };
@@ -325,6 +326,73 @@ namespace {
                 break;
             }
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());
+
+            mirinae::ImageMemoryBarrier{}
+                .image(gbufs.depth(ctxt.f_index_.get()).image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .set_src_access(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                );
+
+            mirinae::ImageMemoryBarrier color_barrier{};
+            color_barrier.set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .set_signle_mip_layer();
+
+            color_barrier.image(gbufs.albedo(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                );
+
+            color_barrier.image(gbufs.normal(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                );
+
+            color_barrier.image(gbufs.material(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                );
+
+            for (size_t i = 0; i < rp_res_.shadow_maps_->dlight_count(); ++i) {
+                const auto e = rp_res_.shadow_maps_->dlight_entt_at(i);
+                if (entt::null == e)
+                    continue;
+
+                auto shadow_img = rp_res_.shadow_maps_->dlight_img_at(i);
+                mirinae::ImageMemoryBarrier{}
+                    .image(shadow_img)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .new_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_dst_acc(VK_ACCESS_SHADER_READ_BIT)
+                    .set_signle_mip_layer()
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                    );
+            }
 
             mirinae::RenderPassBeginInfo{}
                 .rp(render_pass_)
@@ -702,6 +770,28 @@ namespace {
             }
             fd.ubuf_.set_data(ubuf, device_.mem_alloc());
 
+            for (size_t i = 0; i < rp_res_.shadow_maps_->slight_count(); ++i) {
+                const auto e = rp_res_.shadow_maps_->slight_entt_at(i);
+                if (entt::null == e)
+                    continue;
+
+                auto shadow_img = rp_res_.shadow_maps_->slight_img_at(i);
+                mirinae::ImageMemoryBarrier{}
+                    .image(shadow_img)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .new_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_dst_acc(VK_ACCESS_SHADER_READ_BIT)
+                    .set_signle_mip_layer()
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                    );
+            }
+
             mirinae::RenderPassBeginInfo{}
                 .rp(render_pass_)
                 .fbuf(fd.fbuf_)
@@ -888,7 +978,7 @@ namespace {
                 writer.apply_all(device.logi_device());
             }
 
-            // Desc sets: shadow map
+            // Desc sets: envmaps
             {
                 auto& desc_layout = desclayouts.get(name() + ":envmaps");
 

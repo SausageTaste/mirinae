@@ -228,12 +228,30 @@ namespace mirinae {
 
         ImageMemoryBarrier& set_src_access(VkAccessFlags flags);
         ImageMemoryBarrier& add_src_access(VkAccessFlags flags);
+        ImageMemoryBarrier& set_src_acc(VkAccessFlags flags) {
+            return this->set_src_access(flags);
+        }
+        ImageMemoryBarrier& add_src_acc(VkAccessFlags flags) {
+            return this->add_src_access(flags);
+        }
 
         ImageMemoryBarrier& set_dst_access(VkAccessFlags flags);
         ImageMemoryBarrier& add_dst_access(VkAccessFlags flags);
+        ImageMemoryBarrier& set_dst_acc(VkAccessFlags flags) {
+            return this->set_dst_access(flags);
+        }
+        ImageMemoryBarrier& add_dst_acc(VkAccessFlags flags) {
+            return this->add_dst_access(flags);
+        }
 
         ImageMemoryBarrier& old_layout(VkImageLayout layout);
         ImageMemoryBarrier& new_layout(VkImageLayout layout);
+        ImageMemoryBarrier& old_lay(VkImageLayout layout) {
+            return this->old_layout(layout);
+        }
+        ImageMemoryBarrier& new_lay(VkImageLayout layout) {
+            return this->new_layout(layout);
+        }
 
         ImageMemoryBarrier& image(VkImage img);
 

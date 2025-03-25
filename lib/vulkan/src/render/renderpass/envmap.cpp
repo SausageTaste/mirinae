@@ -87,6 +87,7 @@ namespace {
             return face_views_.at(index).get();
         }
         VkImageView cube_view() const { return cubemap_view_.get(); }
+        VkImage cube_img() const { return img_.image(); }
 
     private:
         mirinae::Image img_;
@@ -166,12 +167,14 @@ namespace {
             img_.destroy(device.mem_alloc());
         }
 
+        VkImage cube_img() const { return img_.image(); }
         VkImageView cube_view() const { return cubemap_view_.get(); }
 
         auto base_width() const { return img_.width(); }
         auto base_height() const { return img_.height(); }
 
         auto& mips() const { return mips_; }
+        uint32_t mip_levels() const { return mips_.size(); }
 
     private:
         struct FaceData {
@@ -576,7 +579,7 @@ namespace { namespace env_base {
         builder.attach_desc()
             .add(color)
             .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-            .fin_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+            .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .op_pair_load_store();
 
         builder.color_attach_ref().add_color_attach(1);
@@ -688,7 +691,7 @@ namespace { namespace env_diffuse {
         builder.attach_desc()
             .add(color)
             .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-            .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .op_pair_clear_store();
 
         builder.color_attach_ref().add_color_attach(0);
@@ -783,7 +786,7 @@ namespace { namespace env_specular {
         builder.attach_desc()
             .add(color)
             .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-            .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .op_pair_clear_store();
 
         builder.color_attach_ref().add_color_attach(0);
@@ -1324,6 +1327,23 @@ namespace {
             }
 
             auto& img = cube_map.base().img_;
+            mirinae::ImageMemoryBarrier{}
+                .image(img.image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
+                .mip_base(0)
+                .mip_count(1)
+                .layer_base(0)
+                .layer_count(6)
+                .record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT
+                );
+
             for (uint32_t i = 1; i < img.mip_levels(); ++i) {
                 mirinae::ImageMemoryBarrier barrier;
                 barrier.image(img.image())
@@ -1508,6 +1528,23 @@ namespace {
                 vkCmdDraw(cmdbuf, 36, 1, 0, 0);
                 vkCmdEndRenderPass(cmdbuf);
             }
+
+            mirinae::ImageMemoryBarrier barrier;
+            barrier.image(diffuse.cube_img())
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .mip_base(0)
+                .mip_count(1)
+                .layer_base(0)
+                .layer_count(6);
+            barrier.record_single(
+                cmdbuf,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            );
         }
 
         void record_specular(
@@ -1565,6 +1602,23 @@ namespace {
                     vkCmdEndRenderPass(cmdbuf);
                 }
             }
+
+            mirinae::ImageMemoryBarrier barrier;
+            barrier.image(specular.cube_img())
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .mip_base(0)
+                .mip_count(specular.mip_levels())
+                .layer_base(0)
+                .layer_count(6);
+            barrier.record_single(
+                cmdbuf,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            );
         }
 
         mirinae::VulkanDevice& device_;
