@@ -353,6 +353,7 @@ namespace mirinae {
     struct RpContext {
         std::shared_ptr<CosmosSimulator> cosmos_;
         std::shared_ptr<DrawSheet> draw_sheet_;
+        RpResources* rp_res_;
         DebugRender debug_ren_;
         ViewFrustum view_frustum_;
         FrameIndex f_index_;

@@ -552,17 +552,32 @@ namespace {
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
             mirinae::ImageMemoryBarrier barrier;
-            barrier.set_src_access(0)
+            barrier.set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .set_src_access(VK_ACCESS_SHADER_WRITE_BIT)
                 .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
                 .old_layout(VK_IMAGE_LAYOUT_GENERAL)
                 .new_layout(VK_IMAGE_LAYOUT_GENERAL)
-                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .mip_base(0)
-                .mip_count(1)
-                .layer_base(0)
-                .layer_count(1);
+                .set_signle_mip_layer();
             for (size_t i = 0; i < CASCADE_COUNT; ++i) {
                 barrier.image(fd.hk_[i]->img_.image());
+                barrier.record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                );
+            }
+
+            barrier.old_lay(VK_IMAGE_LAYOUT_UNDEFINED)
+                .set_src_acc(0)
+                .set_dst_acc(VK_ACCESS_SHADER_WRITE_BIT);
+            for (size_t i = 0; i < CASCADE_COUNT; ++i) {
+                barrier.image(fd.hkt_1_[i]->img_.image());
+                barrier.record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                );
+                barrier.image(fd.hkt_2_[i]->img_.image());
                 barrier.record_single(
                     cmdbuf,
                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,

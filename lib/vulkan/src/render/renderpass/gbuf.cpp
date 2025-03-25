@@ -422,12 +422,12 @@ namespace { namespace gbuf_terrain {
         builder.attach_desc()
             .add(depth)
             .ini_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-            .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .fin_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             .op_pair_load_store();
         builder.attach_desc()
             .add(albedo)
             .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-            .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .op_pair_load_store();
         builder.attach_desc().dup(normal);
         builder.attach_desc().dup(material);
@@ -608,9 +608,54 @@ namespace {
         }
 
         void record(const mirinae::RpContext& ctxt) override {
+            auto& gbufs = ctxt.rp_res_->gbuf_;
+
             this->record_static(
                 ctxt.cmdbuf_, fbuf_exd_, *ctxt.draw_sheet_, ctxt.f_index_
             );
+
+            mirinae::ImageMemoryBarrier{}
+                .image(gbufs.depth(ctxt.f_index_.get()).image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .set_src_access(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                );
+
+            mirinae::ImageMemoryBarrier color_barrier{};
+            color_barrier.set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_signle_mip_layer();
+
+            color_barrier.image(gbufs.albedo(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                );
+
+            color_barrier.image(gbufs.normal(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                );
+
+            color_barrier.image(gbufs.material(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                );
 
             this->record_skinned(
                 ctxt.cmdbuf_, fbuf_exd_, *ctxt.draw_sheet_, ctxt.f_index_
@@ -788,6 +833,50 @@ namespace {
             const auto cmdbuf = ctxt.cmdbuf_;
             auto& rp = *rp_;
             auto& reg = ctxt.cosmos_->reg();
+            auto& gbufs = ctxt.rp_res_->gbuf_;
+
+            mirinae::ImageMemoryBarrier{}
+                .image(gbufs.depth(ctxt.f_index_.get()).image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .set_src_access(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                );
+
+            mirinae::ImageMemoryBarrier color_barrier{};
+            color_barrier.set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_signle_mip_layer();
+
+            color_barrier.image(gbufs.albedo(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                );
+
+            color_barrier.image(gbufs.normal(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                );
+
+            color_barrier.image(gbufs.material(ctxt.f_index_.get()).image())
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                );
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())

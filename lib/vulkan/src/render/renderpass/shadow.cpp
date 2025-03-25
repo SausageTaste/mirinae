@@ -241,7 +241,8 @@ namespace {
                 builder.attach_desc()
                     .add(shadow_maps->depth_format_)
                     .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .fin_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                    .fin_layout(
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                     )
                     .op_pair_clear_store();
 
@@ -339,6 +340,20 @@ namespace {
                 auto& shadow = shadow_maps->dlights_.at(light_idx);
                 shadow.entt_ = e;
 
+                mirinae::ImageMemoryBarrier{}
+                    .image(shadow.tex_->image())
+                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                    .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .set_src_acc(VK_ACCESS_SHADER_READ_BIT)
+                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_signle_mip_layer()
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    );
+
                 mirinae::RenderPassBeginInfo{}
                     .rp(render_pass_.get())
                     .fbuf(shadow.fbuf())
@@ -417,6 +432,20 @@ namespace {
                 auto& light = reg.get<cpnt::SLight>(e);
                 auto& shadow = shadow_maps->slights_.at(light_idx);
                 shadow.entt_ = e;
+
+                mirinae::ImageMemoryBarrier{}
+                    .image(shadow.tex_->image())
+                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                    .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .set_src_acc(VK_ACCESS_SHADER_READ_BIT)
+                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_signle_mip_layer()
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    );
 
                 auto light_mat = light.make_proj_mat();
                 if (auto tform = reg.try_get<cpnt::Transform>(e))
@@ -511,9 +540,12 @@ namespace {
 
                 builder.attach_desc()
                     .add(shadow_maps->depth_format_)
-                    .ini_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                    .ini_layout(
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                     )
-                    .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .fin_layout(
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                    )
                     .op_pair_load_store();
 
                 builder.depth_attach_ref().set(0);
@@ -592,6 +624,20 @@ namespace {
                     continue;
                 auto& dlight = reg.get<cpnt::DLight>(shadow.entt_);
 
+                mirinae::ImageMemoryBarrier{}
+                    .image(shadow.tex_->image())
+                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_signle_mip_layer()
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    );
+
                 mirinae::RenderPassBeginInfo{}
                     .rp(render_pass_.get())
                     .fbuf(shadow.fbuf())
@@ -667,6 +713,20 @@ namespace {
                     continue;
                 auto& slight = reg.get<cpnt::SLight>(shadow.entt_);
                 auto& tform = reg.get<cpnt::Transform>(shadow.entt_);
+
+                mirinae::ImageMemoryBarrier{}
+                    .image(shadow.tex_->image())
+                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_signle_mip_layer()
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    );
 
                 const auto light_mat = slight.make_light_mat(tform);
 
