@@ -1260,8 +1260,8 @@ namespace {
 
                 builder.attach_desc()
                     .add(rp_res.gbuf_.depth_format())
-                    .ini_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
                     .stor_op(VK_ATTACHMENT_STORE_OP_STORE);
                 builder.attach_desc()
@@ -1300,6 +1300,7 @@ namespace {
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
+                    .depth_write_enable(false)
                     .depth_compare_op(VK_COMPARE_OP_GREATER_OR_EQUAL);
 
                 builder.color_blend_state().add(false, 1);
@@ -1360,6 +1361,20 @@ namespace {
             auto& fd = frame_data_[ctxt.f_index_.get()];
 
             const VkExtent2D fbuf_ext{ fbuf_width_, fbuf_height_ };
+
+            mirinae::ImageMemoryBarrier{}
+                .image(ctxt.rp_res_->gbuf_.depth(ctxt.f_index_.get()).image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .set_src_acc(VK_ACCESS_SHADER_READ_BIT)
+                .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    ctxt.cmdbuf_,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                );
 
             mirinae::RenderPassBeginInfo{}
                 .rp(render_pass_)
