@@ -27,6 +27,12 @@ namespace mirinae {
 
             AttachDescView& ini_layout(VkImageLayout x);
             AttachDescView& fin_layout(VkImageLayout x);
+            AttachDescView& ini_lay(VkImageLayout x) {
+                return this->ini_layout(x);
+            }
+            AttachDescView& fin_lay(VkImageLayout x) {
+                return this->fin_layout(x);
+            }
 
             AttachDescView& preset_default();
 

@@ -2100,8 +2100,8 @@ namespace {
                     .op_pair_load_store();
                 builder.attach_desc()
                     .add(rp_res.gbuf_.depth_format())
-                    .ini_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
 
                 builder.color_attach_ref().add_color_attach(0);
@@ -2208,6 +2208,38 @@ namespace {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
             const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
+
+            mirinae::ImageMemoryBarrier tex_barr;
+            tex_barr.set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .set_src_acc(VK_ACCESS_SHADER_WRITE_BIT)
+                .set_dst_acc(VK_ACCESS_SHADER_READ_BIT)
+                .set_signle_mip_layer();
+            for (auto& img : fd.disp_map_) {
+                tex_barr.image(img->img_.image())
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+                    );
+            }
+            for (auto& img : fd.deri_map_) {
+                tex_barr.image(img->img_.image())
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                    );
+            }
+            for (auto& img : turb_map_) {
+                tex_barr.image(img->img_.image())
+                    .record_single(
+                        ctxt.cmdbuf_,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                    );
+            }
 
             U_OceanTessParams ubuf;
             ubuf.foam_bias(ocean_entt.foam_bias_)

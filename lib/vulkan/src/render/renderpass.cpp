@@ -625,8 +625,8 @@ namespace { namespace transp {
             .final_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
         attachments.add(depth_format)
-            .initial_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-            .final_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .initial_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .final_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
 
         ::AttachmentRefBuilder color_attachment_refs;
@@ -836,8 +836,8 @@ namespace { namespace transp_skin {
             .final_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
         attach.add(depth_format)
-            .initial_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-            .final_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .initial_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .final_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
 
         ::AttachmentRefBuilder color_attachment_refs;
@@ -1026,11 +1026,11 @@ namespace { namespace debug_mesh {
         ::AttachmentDescBuilder attachments;
         attachments.add(compo_format)
             .initial_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-            .final_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .final_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
         attachments.add(depth_format)
-            .initial_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-            .final_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .initial_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .final_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             .load_op(VK_ATTACHMENT_LOAD_OP_LOAD);
 
         ::AttachmentRefBuilder color_attach;
