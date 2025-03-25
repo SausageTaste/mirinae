@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "mirinae/render/renderpass/common.hpp"
 #include "mirinae/render/vkdevice.hpp"
 
 
@@ -33,15 +34,7 @@ namespace mirinae::rg {
     };
 
 
-    class IRenderGraph;
-
-    class IRenderPassImpl {
-
-    public:
-        virtual ~IRenderPassImpl() = default;
-        virtual bool init(IRenderGraph& rg) = 0;
-    };
-
+    class IRenderPassImpl;
     using URpImpl = std::unique_ptr<IRenderPassImpl>;
 
 
@@ -116,11 +109,18 @@ namespace mirinae::rg {
 
         struct IRenderPass {
             virtual ~IRenderPass() = default;
+            virtual const std::string& name() const = 0;
+            virtual VkRenderPass rp() const = 0;
+            virtual VkFramebuffer fbuf_at(FrameIndex idx) const = 0;
+            virtual VkExtent2D fbuf_extent() const = 0;
+            virtual const VkClearValue* clear_values() const = 0;
+            virtual uint32_t clear_value_count() const = 0;
         };
 
     public:
         virtual ~IRenderGraph() = default;
 
+        virtual void record(const mirinae::RpContext& ctxt) = 0;
         virtual IImage* get_img(std::string_view name) = 0;
         virtual IRenderPass* get_pass(std::string_view name) = 0;
     };
@@ -138,12 +138,35 @@ namespace mirinae::rg {
         IRenderGraphPass& new_pass(const std::string_view name);
 
         std::unique_ptr<IRenderGraph> build(
-            Swapchain& swhain, VulkanDevice& device
+            RpResources& rp_res,
+            DesclayoutManager& desclayouts,
+            Swapchain& swhain,
+            VulkanDevice& device
         );
 
     private:
         class Impl;
         std::unique_ptr<Impl> pimpl_;
+    };
+
+
+    class IRenderPassImpl {
+
+    public:
+        virtual ~IRenderPassImpl() = default;
+
+        virtual bool init(
+            const std::string& pass_name,
+            IRenderGraph& rg,
+            DesclayoutManager& desclayouts,
+            VulkanDevice& device
+        ) = 0;
+
+        virtual void destroy(mirinae::VulkanDevice& device) = 0;
+
+        virtual void record(
+            IRenderGraph::IRenderPass& pass, const mirinae::RpContext& ctxt
+        ) = 0;
     };
 
 }  // namespace mirinae::rg

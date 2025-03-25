@@ -175,7 +175,7 @@ namespace {
                 )
             );
 
-            rg_ = rg_def.build(swapchain, device);
+            // rg_ = rg_def.build(rp_res, desclayouts, swapchain, device);
 
             rp_post_.push_back(
                 mirinae::rp::gbuf::create_rp_states_gbuf(
@@ -222,6 +222,7 @@ namespace {
 
         void destroy_std_rp() {
             rp_pre_.clear();
+            rg_.reset();
             rp_post_.clear();
         }
 
@@ -229,6 +230,9 @@ namespace {
             for (auto& rp : rp_pre_) {
                 rp->record(ctxt);
             }
+
+            // rg_->record(ctxt);
+
             for (auto& rp : rp_post_) {
                 rp->record(ctxt);
             }
@@ -952,8 +956,6 @@ namespace {
                 rp_states_fillscreen_.init(desclayout_, rp_res_.gbuf_, device_);
                 rp_states_imgui_.init(swapchain_);
             }
-
-            const auto render_graph = render_graph_.build(swapchain_, device_);
 
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),

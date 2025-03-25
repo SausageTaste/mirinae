@@ -1,8 +1,8 @@
 #include "mirinae/render/render_graph.hpp"
 
 #include "mirinae/lightweight/include_spdlog.hpp"
+#include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
-#include "mirinae/render/renderpass/common.hpp"
 
 
 #define MIRINAE_GET_IMPL()                                        \
@@ -295,11 +295,15 @@ namespace {
         )
             : def_(src) {
             using ImageCountType = mirinae::rg::ImageCountType;
+
             render_pass_.reset(this->create_rp(src, device), device);
+            frame_data_.resize(max_frames_in_flight);
+            fbuf_extent_ = this->find_extent2d(src, images);
 
             for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
+                auto& fd = frame_data_.at(i);
                 mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(render_pass_.get());
+                fbuf_cinfo.set_rp(render_pass_.get()).set_dim(fbuf_extent_);
 
                 for (auto& img : src.output_atta_) {
                     uint32_t img_idx = 0;
@@ -309,12 +313,10 @@ namespace {
                     auto src_img = images.find(img->name());
                     MIRINAE_ASSERT(nullptr != src_img);
 
-                    fbuf_cinfo.set_dim(src_img->extent2d())
-                        .add_attach(src_img->img_view_at(img_idx));
+                    fbuf_cinfo.add_attach(src_img->img_view_at(img_idx));
                 }
 
-                fbuf_.emplace_back();
-                fbuf_.back().init(fbuf_cinfo.get(), device.logi_device());
+                fd.fbuf_.init(fbuf_cinfo.get(), device.logi_device());
             }
 
             for (auto& img : src.output_atta_) {
@@ -325,14 +327,40 @@ namespace {
                     clear_values_.back().color = { 0, 0, 0, 1 };
                 }
             }
+
+            if (src.impl_factory_)
+                rpimpl_ = src.impl_factory_();
         }
 
         void destroy(mirinae::VulkanDevice& device) {
-            for (auto& x : fbuf_) x.destroy(device.logi_device());
+            if (rpimpl_)
+                rpimpl_->destroy(device);
+            rpimpl_.reset();
+
+            for (auto& fd : frame_data_) {
+                fd.fbuf_.destroy(device.logi_device());
+            }
+
             render_pass_.destroy(device);
         }
 
-        const std::string& name() const { return def_.name(); }
+        const std::string& name() const override { return def_.name(); }
+
+        VkRenderPass rp() const override { return render_pass_.get(); }
+
+        VkFramebuffer fbuf_at(mirinae::FrameIndex idx) const override {
+            return frame_data_.at(idx.get()).fbuf_.get();
+        }
+
+        VkExtent2D fbuf_extent() const override { return fbuf_extent_; }
+
+        const VkClearValue* clear_values() const override {
+            return clear_values_.data();
+        }
+
+        uint32_t clear_value_count() const override {
+            return static_cast<uint32_t>(clear_values_.size());
+        }
 
     private:
         static VkRenderPass create_rp(
@@ -340,7 +368,7 @@ namespace {
         ) {
             mirinae::RenderPassBuilder builder;
 
-            for (auto& img : src.input_tex_) {
+            for (auto& img : src.output_atta_) {
                 const auto idx = builder.attach_desc().size();
 
                 auto img_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -372,10 +400,46 @@ namespace {
             return builder.build(device.logi_device());
         }
 
+        static VkExtent2D find_extent2d(
+            const ::RenderGraphPass& src, ::NamedItemRegistry<RgImage>& images
+        ) {
+            std::optional<VkExtent2D> out;
+
+            for (auto& img : src.output_atta_) {
+                auto src_img = images.find(img->name());
+                const auto this_extent = src_img->extent2d();
+
+                if (out) {
+                    if (out->width != this_extent.width ||
+                        out->height != this_extent.height) {
+                        MIRINAE_ABORT(
+                            "Render graph pass '{}' has inconsistent image "
+                            "extent",
+                            src.name()
+                        );
+                    }
+                } else {
+                    out = this_extent;
+                }
+            }
+
+            MIRINAE_ASSERT(out.has_value());
+            return out.value();
+        }
+
+        struct FrameData {
+            mirinae::Fbuf fbuf_;
+            std::vector<mirinae::ImageMemoryBarrier> pre_barrier_;
+            std::vector<mirinae::ImageMemoryBarrier> post_barrier_;
+        };
+
+    public:
         ::RenderGraphPass def_;
         mirinae::RenderPass render_pass_;
-        std::vector<mirinae::Fbuf> fbuf_;
+        std::vector<FrameData> frame_data_;
         std::vector<VkClearValue> clear_values_;
+        std::unique_ptr<mirinae::rg::IRenderPassImpl> rpimpl_;
+        VkExtent2D fbuf_extent_;
     };
 
 
@@ -385,6 +449,14 @@ namespace {
         RenderGraph(mirinae::VulkanDevice& device) : device_(device) {}
 
         ~RenderGraph() override { this->destroy(); }
+
+        void record(const mirinae::RpContext& ctxt) override {
+            for (auto& pass : passes_) {
+                if (pass.rpimpl_) {
+                    pass.rpimpl_->record(pass, ctxt);
+                }
+            }
+        }
 
         mirinae::rg::IRenderGraph::IImage* get_img(
             std::string_view name
@@ -432,9 +504,17 @@ namespace {
         }
 
         void add_pass(
-            const ::RenderGraphPass& src, const uint32_t max_frames_in_flight
+            const ::RenderGraphPass& src,
+            const uint32_t max_frames_in_flight,
+            mirinae::RpResources& rp_res,
+            mirinae::DesclayoutManager& desclayouts
         ) {
             passes_.emplace_back(src, max_frames_in_flight, images_, device_);
+            auto& pass = passes_.back();
+
+            if (pass.rpimpl_) {
+                pass.rpimpl_->init(pass.name(), *this, desclayouts, device_);
+            }
         }
 
     private:
@@ -528,7 +608,10 @@ namespace mirinae::rg {
         auto& passes() { return passes_; }
 
         std::unique_ptr<IRenderGraph> build(
-            Swapchain& swhain, VulkanDevice& device
+            RpResources& rp_res,
+            DesclayoutManager& desclayouts,
+            Swapchain& swhain,
+            VulkanDevice& device
         ) {
             auto out = std::make_unique<RenderGraph>(device);
 
@@ -542,8 +625,34 @@ namespace mirinae::rg {
             }
 
             for (auto& pass : passes_) {
-                out->add_pass(pass, mirinae::MAX_FRAMES_IN_FLIGHT);
+                out->add_pass(
+                    pass, mirinae::MAX_FRAMES_IN_FLIGHT, rp_res, desclayouts
+                );
             }
+
+            for (auto& pass : passes_) {
+                for (auto& out_img : pass.output_atta_) {
+                    mirinae::ImageMemoryBarrier barrier;
+                    barrier.set_src_access(0)
+                        .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                        .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                        .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                        .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .set_signle_mip_layer();
+
+
+                }
+
+                break;
+            }
+
+            mirinae::ImageMemoryBarrier barrier;
+            barrier.set_src_access(0)
+                .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .set_signle_mip_layer();
 
             return out;
         }
@@ -577,10 +686,13 @@ namespace mirinae::rg {
     }
 
     std::unique_ptr<IRenderGraph> RenderGraphDef::build(
-        Swapchain& swhain, VulkanDevice& device
+        RpResources& rp_res,
+        DesclayoutManager& desclayouts,
+        Swapchain& swhain,
+        VulkanDevice& device
     ) {
         MIRINAE_GET_IMPL();
-        return pimpl.build(swhain, device);
+        return pimpl.build(rp_res, desclayouts, swhain, device);
     }
 
 }  // namespace mirinae::rg
