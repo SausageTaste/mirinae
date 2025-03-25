@@ -145,6 +145,86 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// FbufImageBundle
+namespace mirinae {
+
+    void FbufImageBundle::init(
+        uint32_t max_frames_in_flight,
+        uint32_t width,
+        uint32_t height,
+        mirinae::ITextureManager& tex_man,
+        mirinae::VulkanDevice& device
+    ) {
+        for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
+            depth_.push_back(create_tex_depth(width, height, device));
+            albedo_.push_back(create_tex_attach(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "albedo",
+                device
+            ));
+            normal_.push_back(create_tex_attach(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "normal",
+                device
+            ));
+            material_.push_back(create_tex_attach(
+                width,
+                height,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                mirinae::FbufUsage::color_attachment,
+                "material",
+                device
+            ));
+            compo_.push_back(create_tex_attach(
+                width,
+                height,
+                device.img_formats().rgb_hdr(),
+                mirinae::FbufUsage::color_attachment,
+                "compo",
+                device
+            ));
+        }
+    }
+
+    uint32_t FbufImageBundle::width() const { return depth_.front()->width(); }
+
+    uint32_t FbufImageBundle::height() const {
+        return depth_.front()->height();
+    }
+
+    VkExtent2D FbufImageBundle::extent() const {
+        return { this->width(), this->height() };
+    }
+
+    mirinae::ITexture& FbufImageBundle::depth(uint32_t f_index) {
+        return *depth_.at(f_index);
+    }
+
+    mirinae::ITexture& FbufImageBundle::albedo(uint32_t f_index) {
+        return *albedo_.at(f_index);
+    }
+
+    mirinae::ITexture& FbufImageBundle::normal(uint32_t f_index) {
+        return *normal_.at(f_index);
+    }
+
+    mirinae::ITexture& FbufImageBundle::material(uint32_t f_index) {
+        return *material_.at(f_index);
+    }
+
+    mirinae::ITexture& FbufImageBundle::compo(uint32_t f_index) {
+        return *compo_.at(f_index);
+    }
+
+}  // namespace mirinae
+
+
 // RpResources
 namespace mirinae {
 

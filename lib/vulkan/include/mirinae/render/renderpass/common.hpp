@@ -12,9 +12,6 @@
 
 namespace mirinae {
 
-    using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
-
-
     struct DrawSheet {
         struct StaticRenderPairs {
             struct Actor {
@@ -156,62 +153,35 @@ namespace mirinae {
 
     public:
         void init(
+            uint32_t max_frames_in_flight,
             uint32_t width,
             uint32_t height,
             mirinae::ITextureManager& tex_man,
             mirinae::VulkanDevice& device
-        ) {
-            depth_ = create_tex_depth(width, height, device);
-            albedo_ = create_tex_attach(
-                width,
-                height,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                mirinae::FbufUsage::color_attachment,
-                "albedo",
-                device
-            );
-            normal_ = create_tex_attach(
-                width,
-                height,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                mirinae::FbufUsage::color_attachment,
-                "normal",
-                device
-            );
-            material_ = create_tex_attach(
-                width,
-                height,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                mirinae::FbufUsage::color_attachment,
-                "material",
-                device
-            );
-            compo_ = create_tex_attach(
-                width,
-                height,
-                device.img_formats().rgb_hdr(),
-                mirinae::FbufUsage::color_attachment,
-                "compo",
-                device
-            );
-        }
+        );
 
-        uint32_t width() const { return depth_->width(); }
-        uint32_t height() const { return depth_->height(); }
-        VkExtent2D extent() const { return { this->width(), this->height() }; }
+        uint32_t width() const;
+        uint32_t height() const;
+        VkExtent2D extent() const;
 
-        mirinae::ITexture& depth() { return *depth_; }
-        mirinae::ITexture& albedo() { return *albedo_; }
-        mirinae::ITexture& normal() { return *normal_; }
-        mirinae::ITexture& material() { return *material_; }
-        mirinae::ITexture& compo() { return *compo_; }
+        VkFormat depth_format() const { return depth_.front()->format(); }
+        VkFormat albedo_format() const { return albedo_.front()->format(); }
+        VkFormat normal_format() const { return normal_.front()->format(); }
+        VkFormat material_format() const { return material_.front()->format(); }
+        VkFormat compo_format() const { return compo_.front()->format(); }
+
+        mirinae::ITexture& depth(uint32_t f_index);
+        mirinae::ITexture& albedo(uint32_t f_index);
+        mirinae::ITexture& normal(uint32_t f_index);
+        mirinae::ITexture& material(uint32_t f_index);
+        mirinae::ITexture& compo(uint32_t f_index);
 
     private:
-        std::unique_ptr<mirinae::ITexture> depth_;
-        std::unique_ptr<mirinae::ITexture> albedo_;
-        std::unique_ptr<mirinae::ITexture> normal_;
-        std::unique_ptr<mirinae::ITexture> material_;
-        std::unique_ptr<mirinae::ITexture> compo_;
+        std::vector<std::unique_ptr<mirinae::ITexture>> depth_;
+        std::vector<std::unique_ptr<mirinae::ITexture>> albedo_;
+        std::vector<std::unique_ptr<mirinae::ITexture>> normal_;
+        std::vector<std::unique_ptr<mirinae::ITexture>> material_;
+        std::vector<std::unique_ptr<mirinae::ITexture>> compo_;
     };
 
 

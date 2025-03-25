@@ -14,6 +14,8 @@ namespace mirinae {
 
     constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
 
+    using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
+
 
     const char* to_str(VkFormat format);
     const char* to_str(VkResult result);

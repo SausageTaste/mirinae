@@ -15,6 +15,9 @@
 
 namespace {
 
+    constexpr bool ENABLE_SYNC_VALIDATION = true;
+
+
     VkSurfaceKHR surface_cast(uint64_t value) {
         static_assert(sizeof(VkSurfaceKHR) == sizeof(uint64_t));
         return *reinterpret_cast<VkSurfaceKHR*>(&value);
@@ -588,14 +591,18 @@ namespace {
                 ::populate_create_info(debug_create_info);
                 cinfo_.pNext = &debug_create_info;
 
-                validation_features_.sType =
-                    VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-                enable_validation_features_[0] =
-                    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT;
-                validation_features_.enabledValidationFeatureCount = 1;
-                validation_features_.pEnabledValidationFeatures =
-                    enable_validation_features_;
-                debug_create_info.pNext = &validation_features_;
+                if (ENABLE_SYNC_VALIDATION) {
+                    validation_features_.sType =
+                        VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+                    enable_validation_features_[0] =
+                        VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT;
+                    validation_features_.enabledValidationFeatureCount = 1;
+                    validation_features_.pEnabledValidationFeatures =
+                        enable_validation_features_;
+                    debug_create_info.pNext = &validation_features_;
+                } else {
+                    debug_create_info.pNext = nullptr;
+                }
             } else
                 cinfo_.pNext = nullptr;
 

@@ -740,8 +740,8 @@ namespace { namespace transp {
         )
             : IRenderPassBundle(device) {
             formats_ = {
-                fbuf_bundle.compo().format(),
-                fbuf_bundle.depth().format(),
+                fbuf_bundle.compo_format(),
+                fbuf_bundle.depth_format(),
             };
 
             clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -756,17 +756,19 @@ namespace { namespace transp {
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
-            for (int i = 0; i < swapchain.views_count(); ++i) {
-                fbufs_.push_back(::create_framebuffer(
-                    fbuf_bundle.width(),
-                    fbuf_bundle.height(),
-                    renderpass_,
-                    device.logi_device(),
-                    {
-                        fbuf_bundle.compo().image_view(),
-                        fbuf_bundle.depth().image_view(),
-                    }
-                ));
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                fbufs_.push_back(
+                    ::create_framebuffer(
+                        fbuf_bundle.width(),
+                        fbuf_bundle.height(),
+                        renderpass_,
+                        device.logi_device(),
+                        {
+                            fbuf_bundle.compo(i).image_view(),
+                            fbuf_bundle.depth(i).image_view(),
+                        }
+                    )
+                );
             }
         }
 
@@ -949,8 +951,8 @@ namespace { namespace transp_skin {
         )
             : IRenderPassBundle(device) {
             formats_ = {
-                fbuf_bundle.compo().format(),
-                fbuf_bundle.depth().format(),
+                fbuf_bundle.compo_format(),
+                fbuf_bundle.depth_format(),
             };
 
             clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -965,17 +967,19 @@ namespace { namespace transp_skin {
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
-            for (int i = 0; i < swapchain.views_count(); ++i) {
-                fbufs_.push_back(::create_framebuffer(
-                    fbuf_bundle.width(),
-                    fbuf_bundle.height(),
-                    renderpass_,
-                    device.logi_device(),
-                    {
-                        fbuf_bundle.compo().image_view(),
-                        fbuf_bundle.depth().image_view(),
-                    }
-                ));
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                fbufs_.push_back(
+                    ::create_framebuffer(
+                        fbuf_bundle.width(),
+                        fbuf_bundle.height(),
+                        renderpass_,
+                        device.logi_device(),
+                        {
+                            fbuf_bundle.compo(i).image_view(),
+                            fbuf_bundle.depth(i).image_view(),
+                        }
+                    )
+                );
             }
         }
 
@@ -1138,8 +1142,8 @@ namespace { namespace debug_mesh {
         )
             : IRenderPassBundle(device) {
             formats_ = {
-                fbuf_bundle.compo().format(),
-                fbuf_bundle.depth().format(),
+                fbuf_bundle.compo_format(),
+                fbuf_bundle.depth_format(),
             };
 
             clear_values_.at(0).color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -1154,17 +1158,19 @@ namespace { namespace debug_mesh {
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
-            for (int i = 0; i < swapchain.views_count(); ++i) {
-                fbufs_.push_back(::create_framebuffer(
-                    fbuf_bundle.width(),
-                    fbuf_bundle.height(),
-                    renderpass_,
-                    device.logi_device(),
-                    {
-                        fbuf_bundle.compo().image_view(),
-                        fbuf_bundle.depth().image_view(),
-                    }
-                ));
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                fbufs_.push_back(
+                    ::create_framebuffer(
+                        fbuf_bundle.width(),
+                        fbuf_bundle.height(),
+                        renderpass_,
+                        device.logi_device(),
+                        {
+                            fbuf_bundle.compo(i).image_view(),
+                            fbuf_bundle.depth(i).image_view(),
+                        }
+                    )
+                );
             }
         }
 
@@ -1323,15 +1329,17 @@ namespace { namespace fillscreen {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
-                fbufs_.push_back(::create_framebuffer(
-                    swapchain.width(),
-                    swapchain.height(),
-                    renderpass_,
-                    device.logi_device(),
-                    {
-                        swapchain.view_at(i),
-                    }
-                ));
+                fbufs_.push_back(
+                    ::create_framebuffer(
+                        swapchain.width(),
+                        swapchain.height(),
+                        renderpass_,
+                        device.logi_device(),
+                        {
+                            swapchain.view_at(i),
+                        }
+                    )
+                );
             }
         }
 
@@ -1494,15 +1502,17 @@ namespace { namespace overlay {
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
             for (int i = 0; i < swapchain.views_count(); ++i) {
-                fbufs_.push_back(::create_framebuffer(
-                    swapchain.width(),
-                    swapchain.height(),
-                    renderpass_,
-                    device.logi_device(),
-                    {
-                        swapchain.view_at(i),
-                    }
-                ));
+                fbufs_.push_back(
+                    ::create_framebuffer(
+                        swapchain.width(),
+                        swapchain.height(),
+                        renderpass_,
+                        device.logi_device(),
+                        {
+                            swapchain.view_at(i),
+                        }
+                    )
+                );
             }
         }
 
@@ -1580,7 +1590,8 @@ namespace mirinae {
 
     void RenderPassPackage::destroy() { data_.clear(); }
 
-    const IRenderPassBundle& RenderPassPackage::get(const std::string& name
+    const IRenderPassBundle& RenderPassPackage::get(
+        const std::string& name
     ) const {
         auto it = data_.find(name);
         if (it == data_.end()) {

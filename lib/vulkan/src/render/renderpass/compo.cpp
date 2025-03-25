@@ -153,25 +153,25 @@ namespace {
 
                     // Depth
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.depth().image_view())
+                        .set_img_view(rp_res.gbuf_.depth(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 0);
                     // Albedo
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.albedo().image_view())
+                        .set_img_view(rp_res.gbuf_.albedo(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 1);
                     // Normal
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.normal().image_view())
+                        .set_img_view(rp_res.gbuf_.normal(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 2);
                     // Material
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.material().image_view())
+                        .set_img_view(rp_res.gbuf_.material(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 3);
@@ -220,7 +220,7 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(rp_res.gbuf_.compo().format())
+                    .add(rp_res.gbuf_.compo_format())
                     .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .op_pair_clear_store();
@@ -259,12 +259,13 @@ namespace {
 
             // Framebuffers
             {
-                mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(render_pass_)
-                    .set_dim(rp_res.gbuf_.width(), rp_res.gbuf_.height())
-                    .add_attach(rp_res.gbuf_.compo().image_view());
-                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
+                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                    mirinae::FbufCinfo fbuf_cinfo;
+                    fbuf_cinfo.set_rp(render_pass_)
+                        .set_dim(rp_res.gbuf_.width(), rp_res.gbuf_.height())
+                        .add_attach(rp_res.gbuf_.compo(i).image_view());
                     frame_data_[i].fbuf_ = fbuf_cinfo.build(device);
+                }
 
                 fbuf_width_ = rp_res.gbuf_.width();
                 fbuf_height_ = rp_res.gbuf_.height();
@@ -536,25 +537,25 @@ namespace {
 
                     // Depth
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.depth().image_view())
+                        .set_img_view(rp_res.gbuf_.depth(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 0);
                     // Albedo
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.albedo().image_view())
+                        .set_img_view(rp_res.gbuf_.albedo(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 1);
                     // Normal
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.normal().image_view())
+                        .set_img_view(rp_res.gbuf_.normal(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 2);
                     // Material
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.material().image_view())
+                        .set_img_view(rp_res.gbuf_.material(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 3);
@@ -598,7 +599,7 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(rp_res.gbuf_.compo().format())
+                    .add(rp_res.gbuf_.compo_format())
                     .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
@@ -639,12 +640,13 @@ namespace {
 
             // Framebuffers
             {
-                mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(render_pass_)
-                    .set_dim(rp_res.gbuf_.width(), rp_res.gbuf_.height())
-                    .add_attach(rp_res.gbuf_.compo().image_view());
-                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
+                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                    mirinae::FbufCinfo fbuf_cinfo;
+                    fbuf_cinfo.set_rp(render_pass_)
+                        .set_dim(rp_res.gbuf_.width(), rp_res.gbuf_.height())
+                        .add_attach(rp_res.gbuf_.compo(i).image_view());
                     frame_data_[i].fbuf_ = fbuf_cinfo.build(device);
+                }
 
                 fbuf_width_ = rp_res.gbuf_.width();
                 fbuf_height_ = rp_res.gbuf_.height();
@@ -860,25 +862,25 @@ namespace {
 
                     // Depth
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.depth().image_view())
+                        .set_img_view(rp_res.gbuf_.depth(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_main_, 0);
                     // Albedo
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.albedo().image_view())
+                        .set_img_view(rp_res.gbuf_.albedo(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_main_, 1);
                     // Normal
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.normal().image_view())
+                        .set_img_view(rp_res.gbuf_.normal(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_main_, 2);
                     // Material
                     writer.add_img_info()
-                        .set_img_view(rp_res.gbuf_.material().image_view())
+                        .set_img_view(rp_res.gbuf_.material(i).image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_main_, 3);
@@ -936,7 +938,7 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(rp_res.gbuf_.compo().format())
+                    .add(rp_res.gbuf_.compo_format())
                     .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
@@ -980,12 +982,13 @@ namespace {
                 fbuf_width_ = rp_res.gbuf_.width();
                 fbuf_height_ = rp_res.gbuf_.height();
 
-                mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(render_pass_)
-                    .set_dim(fbuf_width_, fbuf_height_)
-                    .add_attach(rp_res.gbuf_.compo().image_view());
-                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
+                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                    mirinae::FbufCinfo fbuf_cinfo;
+                    fbuf_cinfo.set_rp(render_pass_)
+                        .set_dim(fbuf_width_, fbuf_height_)
+                        .add_attach(rp_res.gbuf_.compo(i).image_view());
                     frame_data_[i].fbuf_ = fbuf_cinfo.build(device);
+                }
             }
 
             // Misc
@@ -1166,13 +1169,13 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(rp_res.gbuf_.depth().format())
+                    .add(rp_res.gbuf_.depth_format())
                     .ini_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
                     .stor_op(VK_ATTACHMENT_STORE_OP_STORE);
                 builder.attach_desc()
-                    .add(rp_res.gbuf_.compo().format())
+                    .add(rp_res.gbuf_.compo_format())
                     .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
@@ -1218,13 +1221,14 @@ namespace {
 
             // Framebuffers
             {
-                mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(render_pass_)
-                    .set_dim(rp_res.gbuf_.width(), rp_res.gbuf_.height())
-                    .add_attach(rp_res.gbuf_.depth().image_view())
-                    .add_attach(rp_res.gbuf_.compo().image_view());
-                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i)
+                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                    mirinae::FbufCinfo fbuf_cinfo;
+                    fbuf_cinfo.set_rp(render_pass_)
+                        .set_dim(rp_res.gbuf_.width(), rp_res.gbuf_.height())
+                        .add_attach(rp_res.gbuf_.depth(i).image_view())
+                        .add_attach(rp_res.gbuf_.compo(i).image_view());
                     frame_data_[i].fbuf_ = fbuf_cinfo.build(device);
+                }
 
                 fbuf_width_ = rp_res.gbuf_.width();
                 fbuf_height_ = rp_res.gbuf_.height();
