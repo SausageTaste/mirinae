@@ -240,10 +240,8 @@ namespace {
 
                 builder.attach_desc()
                     .add(shadow_maps->depth_format_)
-                    .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .fin_layout(
-                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                    )
+                    .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .op_pair_clear_store();
 
                 builder.depth_attach_ref().set(0);
@@ -343,14 +341,14 @@ namespace {
                 mirinae::ImageMemoryBarrier{}
                     .image(shadow.tex_->image())
                     .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                    .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .old_lay(VK_IMAGE_LAYOUT_UNDEFINED)
                     .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .set_src_acc(VK_ACCESS_SHADER_READ_BIT)
+                    .set_src_acc(0)
                     .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
                     .set_signle_mip_layer()
                     .record_single(
                         ctxt.cmdbuf_,
-                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                     );
 
@@ -436,14 +434,14 @@ namespace {
                 mirinae::ImageMemoryBarrier{}
                     .image(shadow.tex_->image())
                     .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                    .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .old_lay(VK_IMAGE_LAYOUT_UNDEFINED)
                     .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .set_src_acc(VK_ACCESS_SHADER_READ_BIT)
+                    .set_src_acc(0)
                     .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
                     .set_signle_mip_layer()
                     .record_single(
                         ctxt.cmdbuf_,
-                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                     );
 
