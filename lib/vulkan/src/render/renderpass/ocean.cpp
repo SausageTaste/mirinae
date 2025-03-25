@@ -2079,12 +2079,12 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(rp_res.gbuf_.compo().format())
+                    .add(rp_res.gbuf_.compo_format())
                     .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
                 builder.attach_desc()
-                    .add(rp_res.gbuf_.depth().format())
+                    .add(rp_res.gbuf_.depth_format())
                     .ini_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .op_pair_load_store();
@@ -2145,13 +2145,14 @@ namespace {
                 fbuf_width_ = rp_res.gbuf_.width();
                 fbuf_height_ = rp_res.gbuf_.height();
 
-                mirinae::FbufCinfo cinfo;
-                cinfo.set_rp(render_pass_)
-                    .add_attach(rp_res.gbuf_.compo().image_view())
-                    .add_attach(rp_res.gbuf_.depth().image_view())
-                    .set_dim(fbuf_width_, fbuf_height_);
-                for (int i = 0; i < swapchain_count; ++i)
+                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                    mirinae::FbufCinfo cinfo;
+                    cinfo.set_rp(render_pass_)
+                        .add_attach(rp_res.gbuf_.compo(i).image_view())
+                        .add_attach(rp_res.gbuf_.depth(i).image_view())
+                        .set_dim(fbuf_width_, fbuf_height_);
                     fbufs_.push_back(cinfo.build(device));
+                }
             }
 
             // Misc
@@ -2228,7 +2229,7 @@ namespace {
 
             mirinae::RenderPassBeginInfo{}
                 .rp(render_pass_)
-                .fbuf(fbufs_.at(ctxt.i_index_.get()))
+                .fbuf(fbufs_.at(ctxt.f_index_.get()))
                 .wh(fbuf_width_, fbuf_height_)
                 .clear_value_count(clear_values_.size())
                 .clear_values(clear_values_.data())

@@ -104,10 +104,10 @@ namespace { namespace gbuf {
         )
             : IRenderPassBundle(device) {
             formats_ = {
-                fbuf_bundle.depth().format(),
-                fbuf_bundle.albedo().format(),
-                fbuf_bundle.normal().format(),
-                fbuf_bundle.material().format(),
+                fbuf_bundle.depth_format(),
+                fbuf_bundle.albedo_format(),
+                fbuf_bundle.normal_format(),
+                fbuf_bundle.material_format(),
             };
 
             clear_values_.at(0).depthStencil = { 0, 0 };
@@ -128,17 +128,16 @@ namespace { namespace gbuf {
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
-            {
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(renderpass_)
-                    .add_attach(fbuf_bundle.depth().image_view())
-                    .add_attach(fbuf_bundle.albedo().image_view())
-                    .add_attach(fbuf_bundle.normal().image_view())
-                    .add_attach(fbuf_bundle.material().image_view())
+                    .add_attach(fbuf_bundle.depth(i).image_view())
+                    .add_attach(fbuf_bundle.albedo(i).image_view())
+                    .add_attach(fbuf_bundle.normal(i).image_view())
+                    .add_attach(fbuf_bundle.material(i).image_view())
                     .set_dim(fbuf_bundle.extent());
 
-                for (int i = 0; i < swapchain.views_count(); ++i)
-                    fbufs_.push_back(fbuf_cinfo.build(device));
+                fbufs_.push_back(fbuf_cinfo.build(device));
             }
         }
 
@@ -265,10 +264,10 @@ namespace { namespace gbuf_skin {
         )
             : IRenderPassBundle(device) {
             formats_ = {
-                fbuf_bundle.depth().format(),
-                fbuf_bundle.albedo().format(),
-                fbuf_bundle.normal().format(),
-                fbuf_bundle.material().format(),
+                fbuf_bundle.depth_format(),
+                fbuf_bundle.albedo_format(),
+                fbuf_bundle.normal_format(),
+                fbuf_bundle.material_format(),
             };
 
             clear_values_.at(0).depthStencil = { 0, 0 };
@@ -289,15 +288,16 @@ namespace { namespace gbuf_skin {
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
-            mirinae::FbufCinfo fbuf_cinfo;
-            fbuf_cinfo.set_rp(renderpass_)
-                .add_attach(fbuf_bundle.depth().image_view())
-                .add_attach(fbuf_bundle.albedo().image_view())
-                .add_attach(fbuf_bundle.normal().image_view())
-                .add_attach(fbuf_bundle.material().image_view())
-                .set_dim(fbuf_bundle.extent());
-            for (int i = 0; i < swapchain.views_count(); ++i)
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(renderpass_)
+                    .add_attach(fbuf_bundle.depth(i).image_view())
+                    .add_attach(fbuf_bundle.albedo(i).image_view())
+                    .add_attach(fbuf_bundle.normal(i).image_view())
+                    .add_attach(fbuf_bundle.material(i).image_view())
+                    .set_dim(fbuf_bundle.extent());
                 fbufs_.push_back(fbuf_cinfo.build(device));
+            }
         }
 
         ~RPBundle() override { this->destroy(); }
@@ -489,10 +489,10 @@ namespace { namespace gbuf_terrain {
         )
             : IRenderPassBundle(device) {
             formats_ = {
-                fbuf_bundle.depth().format(),
-                fbuf_bundle.albedo().format(),
-                fbuf_bundle.normal().format(),
-                fbuf_bundle.material().format(),
+                fbuf_bundle.depth_format(),
+                fbuf_bundle.albedo_format(),
+                fbuf_bundle.normal_format(),
+                fbuf_bundle.material_format(),
             };
 
             clear_values_.at(0).depthStencil = { 0, 0 };
@@ -517,15 +517,16 @@ namespace { namespace gbuf_terrain {
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
 
-            mirinae::FbufCinfo fbuf_cinfo;
-            fbuf_cinfo.set_rp(renderpass_)
-                .add_attach(fbuf_bundle.depth().image_view())
-                .add_attach(fbuf_bundle.albedo().image_view())
-                .add_attach(fbuf_bundle.normal().image_view())
-                .add_attach(fbuf_bundle.material().image_view())
-                .set_dim(fbuf_bundle.extent());
-            for (int i = 0; i < swapchain.views_count(); ++i)
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(renderpass_)
+                    .add_attach(fbuf_bundle.depth(i).image_view())
+                    .add_attach(fbuf_bundle.albedo(i).image_view())
+                    .add_attach(fbuf_bundle.normal(i).image_view())
+                    .add_attach(fbuf_bundle.material(i).image_view())
+                    .set_dim(fbuf_bundle.extent());
                 fbufs_.push_back(fbuf_cinfo.build(device));
+            }
         }
 
         ~RPBundle() override { this->destroy(); }
@@ -608,19 +609,11 @@ namespace {
 
         void record(const mirinae::RpContext& ctxt) override {
             this->record_static(
-                ctxt.cmdbuf_,
-                fbuf_exd_,
-                *ctxt.draw_sheet_,
-                ctxt.f_index_,
-                ctxt.i_index_
+                ctxt.cmdbuf_, fbuf_exd_, *ctxt.draw_sheet_, ctxt.f_index_
             );
 
             this->record_skinned(
-                ctxt.cmdbuf_,
-                fbuf_exd_,
-                *ctxt.draw_sheet_,
-                ctxt.f_index_,
-                ctxt.i_index_
+                ctxt.cmdbuf_, fbuf_exd_, *ctxt.draw_sheet_, ctxt.f_index_
             );
         }
 
@@ -629,14 +622,13 @@ namespace {
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_exd,
             const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index
+            const mirinae::FrameIndex frame_index
         ) {
             auto& rp = *rp_gbuf_;
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
+                .fbuf(rp.fbuf_at(frame_index.get()))
                 .wh(fbuf_exd)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())
@@ -677,14 +669,13 @@ namespace {
             const VkCommandBuffer cur_cmd_buf,
             const VkExtent2D& fbuf_exd,
             const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index
+            const mirinae::FrameIndex frame_index
         ) {
             auto& rp = *rp_gbuf_skinned_;
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
+                .fbuf(rp.fbuf_at(frame_index.get()))
                 .wh(fbuf_exd)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())
@@ -800,7 +791,7 @@ namespace {
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(ctxt.i_index_.get()))
+                .fbuf(rp.fbuf_at(ctxt.f_index_.get()))
                 .wh(fbuf_exd_)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())

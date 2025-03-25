@@ -408,14 +408,13 @@ namespace {
             const VkExtent2D& fbuf_ext,
             const mirinae::DrawSheet& draw_sheet,
             const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("transp");
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
+                .fbuf(rp.fbuf_at(frame_index.get()))
                 .wh(fbuf_ext)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())
@@ -459,14 +458,13 @@ namespace {
             const VkExtent2D& fbuf_ext,
             const mirinae::DrawSheet& draw_sheet,
             const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("transp_skin");
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
+                .fbuf(rp.fbuf_at(frame_index.get()))
                 .wh(fbuf_ext)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())
@@ -522,14 +520,14 @@ namespace {
         void begin_record(
             const VkCommandBuffer cmdbuf,
             const VkExtent2D& fbuf_ext,
-            const mirinae::ShainImageIndex image_index,
+            const mirinae::FrameIndex f_index,
             const mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("debug_mesh");
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
+                .fbuf(rp.fbuf_at(f_index.get()))
                 .wh(fbuf_ext)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())
@@ -566,12 +564,7 @@ namespace {
             vkCmdDraw(cmdbuf, 3, 1, 0, 0);
         }
 
-        void end_record(
-            const VkCommandBuffer cmdbuf,
-            const VkExtent2D& fbuf_ext,
-            const mirinae::ShainImageIndex image_index,
-            const mirinae::RenderPassPackage& rp_pkg
-        ) {
+        void end_record(const VkCommandBuffer cmdbuf) {
             vkCmdEndRenderPass(cmdbuf);
         }
     };
@@ -601,7 +594,7 @@ namespace {
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 builder.set_descset(desc_sets_.at(i))
                     .add_img_sampler(
-                        fbufs.compo().image_view(),
+                        fbufs.compo(i).image_view(),
                         device.samplers().get_linear()
                     );
             }
@@ -616,15 +609,15 @@ namespace {
             const VkCommandBuffer cmdbuf,
             const VkExtent2D shain_exd,
             const mirinae::cpnt::StandardCamera& camera,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::ShainImageIndex image_index,
+            const mirinae::FrameIndex f_index,
+            const mirinae::ShainImageIndex i_index,
             mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("fillscreen");
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(image_index.get()))
+                .fbuf(rp.fbuf_at(i_index.get()))
                 .wh(shain_exd)
                 .clear_value_count(rp.clear_value_count())
                 .clear_values(rp.clear_values())
@@ -639,7 +632,7 @@ namespace {
 
             mirinae::DescSetBindInfo{}
                 .layout(rp.pipeline_layout())
-                .set(desc_sets_.at(frame_index.get()))
+                .set(desc_sets_.at(f_index.get()))
                 .record(cmdbuf);
 
             mirinae::U_FillScreenPushConst pc;
@@ -936,7 +929,11 @@ namespace {
                     swapchain_.width(), swapchain_.height(), 0.9
                 );
                 rp_res_.gbuf_.init(
-                    gbuf_width, gbuf_height, *rp_res_.tex_man_, device_
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    gbuf_width,
+                    gbuf_height,
+                    *rp_res_.tex_man_,
+                    device_
                 );
 
                 mirinae::rp::gbuf::create_desc_layouts(desclayout_, device_);
@@ -1130,8 +1127,7 @@ namespace {
                 ren_ctxt.cmdbuf_,
                 rp_res_.gbuf_.extent(),
                 *ren_ctxt.draw_sheet_,
-                framesync_.get_frame_index(),
-                image_index,
+                ren_ctxt.f_index_,
                 rp_
             );
 
@@ -1139,13 +1135,12 @@ namespace {
                 ren_ctxt.cmdbuf_,
                 rp_res_.gbuf_.extent(),
                 *ren_ctxt.draw_sheet_,
-                framesync_.get_frame_index(),
-                image_index,
+                ren_ctxt.f_index_,
                 rp_
             );
 
             rp_states_debug_mesh_.begin_record(
-                ren_ctxt.cmdbuf_, rp_res_.gbuf_.extent(), image_index, rp_
+                ren_ctxt.cmdbuf_, rp_res_.gbuf_.extent(), ren_ctxt.f_index_, rp_
             );
             for (auto& tri : ren_ctxt.debug_ren_.tri_) {
                 rp_states_debug_mesh_.draw(
@@ -1157,15 +1152,13 @@ namespace {
                     rp_
                 );
             }
-            rp_states_debug_mesh_.end_record(
-                ren_ctxt.cmdbuf_, rp_res_.gbuf_.extent(), image_index, rp_
-            );
+            rp_states_debug_mesh_.end_record(ren_ctxt.cmdbuf_);
             rp_states_fillscreen_.record(
                 ren_ctxt.cmdbuf_,
                 swapchain_.extent(),
                 cam,
-                framesync_.get_frame_index(),
-                image_index,
+                ren_ctxt.f_index_,
+                ren_ctxt.i_index_,
                 rp_
             );
 
@@ -1175,7 +1168,7 @@ namespace {
 
                 mirinae::RenderPassBeginInfo{}
                     .rp(rp.renderpass())
-                    .fbuf(rp.fbuf_at(image_index.get()))
+                    .fbuf(rp.fbuf_at(ren_ctxt.i_index_.get()))
                     .wh(swapchain_.extent())
                     .clear_value_count(rp.clear_value_count())
                     .clear_values(rp.clear_values())
@@ -1299,7 +1292,11 @@ namespace {
                     swapchain_.width(), swapchain_.height(), 0.9
                 );
                 rp_res_.gbuf_.init(
-                    gbuf_width, gbuf_height, *rp_res_.tex_man_, device_
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    gbuf_width,
+                    gbuf_height,
+                    *rp_res_.tex_man_,
+                    device_
                 );
 
                 mirinae::rp::gbuf::create_desc_layouts(desclayout_, device_);
