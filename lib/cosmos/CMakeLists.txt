@@ -16,6 +16,7 @@ target_compile_features(mirinae_cosmos PUBLIC cxx_std_17)
 target_link_libraries(mirinae_cosmos PUBLIC
     EnTT::EnTT
     imgui::imgui
+    Jolt::Jolt
     mirinae::aux
     mirinae::platform
 )
