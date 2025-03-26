@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Jolt/Jolt.h>
+
 #include "mirinae/scene/scene.hpp"
 
 
