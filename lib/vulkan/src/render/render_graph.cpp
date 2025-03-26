@@ -376,7 +376,7 @@ namespace {
                     img_layout =
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-                auto& atta = builder.attach_desc().add(img->format());
+                auto atta = builder.attach_desc().add(img->format());
                 atta.ini_layout(img_layout).fin_layout(img_layout);
 
                 if (src.need_read(*img))

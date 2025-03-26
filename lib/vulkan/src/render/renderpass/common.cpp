@@ -19,7 +19,7 @@ namespace {
 // RenderPass
 namespace mirinae {
 
-    RenderPass::RenderPass() {}
+    RenderPass::RenderPass() = default;
 
     RenderPass::~RenderPass() {
         if (VK_NULL_HANDLE != rp_)
@@ -31,6 +31,7 @@ namespace mirinae {
             MIRINAE_ABORT("RenderPass is not destroyed");
 
         rp_ = rp;
+        return *this;
     }
 
     RenderPass::operator VkRenderPass() const { return rp_; }
@@ -57,7 +58,7 @@ namespace mirinae {
 // RpPipeline
 namespace mirinae {
 
-    RpPipeline::RpPipeline() {}
+    RpPipeline::RpPipeline() = default;
 
     RpPipeline::~RpPipeline() {
         if (VK_NULL_HANDLE != handle_)
@@ -82,6 +83,7 @@ namespace mirinae {
             MIRINAE_ABORT("Pipeline is not destroyed");
 
         handle_ = handle;
+        return *this;
     }
 
     RpPipeline::operator VkPipeline() const { return handle_; }
@@ -120,6 +122,7 @@ namespace mirinae {
             MIRINAE_ABORT("PipelineLayout is not destroyed");
 
         handle_ = handle;
+        return *this;
     }
 
     RpPipeLayout::operator VkPipelineLayout() const { return handle_; }
