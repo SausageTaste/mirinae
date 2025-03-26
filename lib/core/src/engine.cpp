@@ -461,7 +461,7 @@ namespace {
                 if (ImGui::DragScalar(cvar.id().c_str(), ImGuiDataType_S64, &v))
                     cvar.set(v);
                 if (this->need_tooltip(cvar))
-                    ImGui::SetTooltip(cvar.help().c_str());
+                    ImGui::SetTooltip("%s", cvar.help().c_str());
             }
 
             void visit(sung::ICVarFloat& cvar) override {
@@ -470,7 +470,7 @@ namespace {
                 if (ImGui::DragScalar(name, ImGuiDataType_Double, &v, 0.1f))
                     cvar.set(v);
                 if (this->need_tooltip(cvar))
-                    ImGui::SetTooltip(cvar.help().c_str());
+                    ImGui::SetTooltip("%s", cvar.help().c_str());
             }
 
             void visit(sung::ICVarStr& cvar) override {
@@ -478,7 +478,7 @@ namespace {
                 if (ImGui::InputText(cvar.id().c_str(), &str))
                     cvar.set(str);
                 if (this->need_tooltip(cvar))
-                    ImGui::SetTooltip(cvar.help().c_str());
+                    ImGui::SetTooltip("%s", cvar.help().c_str());
             }
 
         private:
