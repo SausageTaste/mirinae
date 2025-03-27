@@ -4,6 +4,7 @@
 #include <thread>
 
 #include <Jolt/Jolt.h>
+#include <entt/entity/registry.hpp>
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
@@ -16,6 +17,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
 
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 
 
@@ -289,6 +291,17 @@ namespace {
 }  // namespace
 
 
+namespace { namespace cpnt {
+
+    class PhysBody {
+
+    public:
+        JPH::BodyID id_;
+    };
+
+}}  // namespace ::cpnt
+
+
 namespace mirinae {
 
     class PhysWorld::Impl {
@@ -317,33 +330,68 @@ namespace mirinae {
             auto &body_interf = this->body_interf();
             floor_.init(body_interf);
             body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
-
-            sphere_.init(body_interf);
-            body_interf.SetLinearVelocity(
-                sphere_.id(), JPH::Vec3(0.0f, -5.0f, 0.0f)
-            );
-
-            physics_system.OptimizeBroadPhase();
         }
 
         void do_frame(double dt) {
             constexpr float OPTIMAL_DT = 1.0 / 60.0;
 
             auto &body_interf = this->body_interf();
+            physics_system.Update(OPTIMAL_DT, 1, &temp_alloc_, &job_sys_);
+        }
 
-            const auto pos = body_interf.GetCenterOfMassPosition(sphere_.id());
-            const auto vel = body_interf.GetLinearVelocity(sphere_.id());
-            SPDLOG_INFO(
-                "pos=({:.2f}, {:.2f}, {:.2f}), vel=({:.2f}, {:.2f}, {:.2f})",
-                pos.GetX(),
-                pos.GetY(),
-                pos.GetZ(),
-                vel.GetX(),
-                vel.GetY(),
-                vel.GetZ()
+        void sync_tforms(entt::registry &reg) {
+            for (auto &e : reg.view<::cpnt::PhysBody>()) {
+                auto &body = reg.get<::cpnt::PhysBody>(e);
+                auto tform = reg.try_get<cpnt::Transform>(e);
+                if (!tform)
+                    continue;
+
+                const auto pos = this->body_interf().GetCenterOfMassPosition(
+                    body.id_
+                );
+                tform->pos_ = { pos.GetX(), pos.GetY(), pos.GetZ() };
+
+                continue;
+            }
+
+            return;
+        }
+
+        void give_body(entt::entity entity, entt::registry &reg) {
+            namespace cpnt = mirinae::cpnt;
+
+            auto tform = reg.try_get<cpnt::Transform>(entity);
+            if (!tform) {
+                SPDLOG_WARN("Entity does not have a transform component");
+                return;
+            }
+
+            auto body = reg.try_get<::cpnt::PhysBody>(entity);
+            if (body) {
+                SPDLOG_WARN("Entity already has a physics body component");
+                return;
+            }
+
+            body = &reg.emplace<::cpnt::PhysBody>(entity);
+            if (!body) {
+                SPDLOG_WARN("Failed to add physics body component to entity");
+                return;
+            }
+
+            JPH::BodyCreationSettings sphere_settings(
+                new JPH::SphereShape(tform->scale_.x),
+                JPH::RVec3(tform->pos_.x, tform->pos_.y, tform->pos_.z),
+                JPH::Quat::sIdentity(),
+                JPH::EMotionType::Dynamic,
+                Layers::MOVING
             );
 
-            physics_system.Update(OPTIMAL_DT, 1, &temp_alloc_, &job_sys_);
+            body->id_ = this->body_interf().CreateAndAddBody(
+                sphere_settings, JPH::EActivation::Activate
+            );
+            this->body_interf().SetLinearVelocity(
+                body->id_, JPH::Vec3(1, -5, 0)
+            );
         }
 
     private:
@@ -363,7 +411,6 @@ namespace mirinae {
         ::MyContactListener contact_listener_;
 
         ::BoxBody floor_;
-        ::SphereBody sphere_;
     };
 
 
@@ -372,5 +419,13 @@ namespace mirinae {
     PhysWorld::~PhysWorld() = default;
 
     void PhysWorld::do_frame(double dt) { pimpl_->do_frame(dt); }
+
+    void PhysWorld::sync_tforms(entt::registry &reg) {
+        pimpl_->sync_tforms(reg);
+    }
+
+    void PhysWorld::give_body(entt::entity entity, entt::registry &reg) {
+        pimpl_->give_body(entity, reg);
+    }
 
 }  // namespace mirinae

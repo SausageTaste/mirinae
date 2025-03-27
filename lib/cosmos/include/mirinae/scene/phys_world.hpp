@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include <entt/fwd.hpp>
+
 
 namespace mirinae {
 
@@ -12,6 +14,9 @@ namespace mirinae {
         ~PhysWorld();
 
         void do_frame(double dt);
+        void sync_tforms(entt::registry& reg);
+
+        void give_body(entt::entity entity, entt::registry& reg);
 
     private:
         class Impl;

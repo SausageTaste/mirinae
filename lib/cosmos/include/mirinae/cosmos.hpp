@@ -24,11 +24,13 @@ namespace mirinae {
         void do_frame() {
             scene_.do_frame();
             phys_world_.do_frame(scene_.clock().dt());
+            phys_world_.sync_tforms(*scene_.reg_);
         }
 
         auto& scene() { return scene_; }
         auto& reg() { return *scene_.reg_; }
         auto& reg() const { return scene_.reg_; }
+        auto& phys_world() { return phys_world_; }
         auto& clock() const { return clock_; }
 
         std::vector<std::shared_ptr<ImGuiRenderUnit>> imgui_;
