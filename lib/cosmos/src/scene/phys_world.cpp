@@ -331,6 +331,7 @@ namespace mirinae {
 
             physics_system.SetBodyActivationListener(&body_active_listener_);
             physics_system.SetContactListener(&contact_listener_);
+            physics_system.SetGravity(JPH::Vec3(0, -9.81f, 0));
 
             auto &body_interf = this->body_interf();
             floor_.init(body_interf);
@@ -396,9 +397,6 @@ namespace mirinae {
 
             body->id_ = this->body_interf().CreateAndAddBody(
                 sphere_settings, JPH::EActivation::Activate
-            );
-            this->body_interf().SetLinearVelocity(
-                body->id_, JPH::Vec3(0, -5, 5)
             );
         }
 
