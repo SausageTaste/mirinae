@@ -639,6 +639,23 @@ namespace {
 
             auto& reg = cosmos_->reg();
 
+            // Physice object
+            {
+                const auto entt = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("physics object");
+
+                auto& m = reg.emplace<mirinae::cpnt::MdlActorStatic>(entt);
+                m.model_path_ = "Sung/axes.dun/axes.dmd";
+
+                auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
+                t.pos_ = { 0, 100, 0 };
+                t.scale_ = { 10, 10, 10 };
+
+                cosmos_->phys_world().give_body(entt, reg);
+            }
+
             // DLight
             {
                 const auto entt = reg.create();
