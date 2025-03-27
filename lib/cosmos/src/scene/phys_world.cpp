@@ -61,12 +61,17 @@ namespace {
 
     public:
         JoltInit() {
-            JPH::RegisterDefaultAllocator();
-            JPH::Trace = trace_impl;
-            JPH::Factory::sInstance = new JPH::Factory();
-            JPH::RegisterTypes();
+            static bool init = false;
+
+            if (!init) {
+                init = true;
+                JPH::RegisterDefaultAllocator();
+                JPH::Trace = trace_impl;
+                JPH::Factory::sInstance = new JPH::Factory();
+                JPH::RegisterTypes();
+            }
         }
-    } jolt_init_;
+    };
 
 
     namespace Layers {
@@ -403,6 +408,7 @@ namespace mirinae {
             return physics_system.GetBodyInterface();
         }
 
+        JoltInit jolt_init_;
         JPH::TempAllocatorImpl temp_alloc_;
         JPH::JobSystemThreadPool job_sys_;
         ::BPLayerInterfaceImpl broad_phase_layer_interf_;
