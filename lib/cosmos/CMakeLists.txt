@@ -8,6 +8,7 @@ add_library(mirinae_cosmos STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/ren_model.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/transform.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/phys_world.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene.cpp
 )
 add_library(mirinae::cosmos ALIAS mirinae_cosmos)
