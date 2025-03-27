@@ -13,6 +13,8 @@ namespace mirinae {
         PhysWorld();
         ~PhysWorld();
 
+        void optimize();
+
         void do_frame(double dt);
         void sync_tforms(entt::registry& reg);
 
