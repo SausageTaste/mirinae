@@ -226,6 +226,69 @@ namespace {
 }  // namespace
 
 
+namespace {
+
+    class BoxBody {
+
+    public:
+        void init(JPH::BodyInterface &body_interf) {
+            using namespace JPH::literals;
+
+            JPH::BoxShapeSettings floor_shape_settings(
+                JPH::Vec3(100.0f, 10.0f, 100.0f)
+            );
+            floor_shape_settings.SetEmbedded();
+
+            auto floor_shape_result = floor_shape_settings.Create();
+            floor_shape = floor_shape_result.Get();
+
+            JPH::BodyCreationSettings floor_settings(
+                floor_shape,
+                JPH::RVec3(0.0_r, -1.0_r, 0.0_r),
+                JPH::Quat::sIdentity(),
+                JPH::EMotionType::Static,
+                ::Layers::NON_MOVING
+            );
+
+            body_ = body_interf.CreateBody(floor_settings);
+        }
+
+        JPH::BodyID id() const { return body_->GetID(); }
+
+    private:
+        JPH::ShapeRefC floor_shape;
+        JPH::Body *body_;
+    };
+
+
+    class SphereBody {
+
+    public:
+        void init(JPH::BodyInterface &body_interf) {
+            using namespace JPH::literals;
+
+            JPH::BodyCreationSettings sphere_settings(
+                new JPH::SphereShape(0.5f),
+                JPH::RVec3(0.0_r, 10.0_r, 0.0_r),
+                JPH::Quat::sIdentity(),
+                JPH::EMotionType::Dynamic,
+                Layers::MOVING
+            );
+
+            body_ = body_interf.CreateAndAddBody(
+                sphere_settings, JPH::EActivation::Activate
+            );
+        }
+
+        JPH::BodyID id() const { return body_; }
+
+    private:
+        JPH::BodyID body_;
+    };
+
+}  // namespace
+
+
 namespace mirinae {
 
     class PhysWorld::Impl {
@@ -251,9 +314,36 @@ namespace mirinae {
             physics_system.SetBodyActivationListener(&body_active_listener_);
             physics_system.SetContactListener(&contact_listener_);
 
-            int a = 1;
-            int *aa = &a;
-            int &aaa = *aa;
+            auto &body_interf = this->body_interf();
+            floor_.init(body_interf);
+            body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
+
+            sphere_.init(body_interf);
+            body_interf.SetLinearVelocity(
+                sphere_.id(), JPH::Vec3(0.0f, -5.0f, 0.0f)
+            );
+
+            physics_system.OptimizeBroadPhase();
+        }
+
+        void do_frame(double dt) {
+            constexpr float OPTIMAL_DT = 1.0 / 60.0;
+
+            auto &body_interf = this->body_interf();
+
+            const auto pos = body_interf.GetCenterOfMassPosition(sphere_.id());
+            const auto vel = body_interf.GetLinearVelocity(sphere_.id());
+            SPDLOG_INFO(
+                "pos=({:.2f}, {:.2f}, {:.2f}), vel=({:.2f}, {:.2f}, {:.2f})",
+                pos.GetX(),
+                pos.GetY(),
+                pos.GetZ(),
+                vel.GetX(),
+                vel.GetY(),
+                vel.GetZ()
+            );
+
+            physics_system.Update(OPTIMAL_DT, 1, &temp_alloc_, &job_sys_);
         }
 
     private:
@@ -271,11 +361,16 @@ namespace mirinae {
 
         ::MyBodyActivationListener body_active_listener_;
         ::MyContactListener contact_listener_;
+
+        ::BoxBody floor_;
+        ::SphereBody sphere_;
     };
 
 
     PhysWorld::PhysWorld() : pimpl_(std::make_unique<Impl>()) {}
 
     PhysWorld::~PhysWorld() = default;
+
+    void PhysWorld::do_frame(double dt) { pimpl_->do_frame(dt); }
 
 }  // namespace mirinae

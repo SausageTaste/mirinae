@@ -2,6 +2,7 @@
 
 #include <Jolt/Jolt.h>
 
+#include "mirinae/scene/phys_world.hpp"
 #include "mirinae/scene/scene.hpp"
 
 
@@ -20,7 +21,10 @@ namespace mirinae {
 
         void tick_clock() { clock_.tick(); }
 
-        void do_frame() { scene_.do_frame(); }
+        void do_frame() {
+            scene_.do_frame();
+            phys_world_.do_frame(scene_.clock().dt());
+        }
 
         auto& scene() { return scene_; }
         auto& reg() { return *scene_.reg_; }
@@ -31,6 +35,7 @@ namespace mirinae {
 
     private:
         Scene scene_;
+        PhysWorld phys_world_;
         sung::SimClock clock_;
     };
 
