@@ -640,21 +640,37 @@ namespace {
             auto& reg = cosmos_->reg();
 
             // Physice object
-            {
-                const auto entt = reg.create();
+            for (int x = 0; x < 5; ++x) {
+                for (int y = 0; y < 5; ++y) {
+                    for (int z = 0; z < 5; ++z) {
+                        const auto entt = reg.create();
 
-                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
-                i.set_name("physics object");
+                        auto& id = reg.emplace<mirinae::cpnt::Id>(entt);
+                        id.set_name("physics object");
 
-                auto& m = reg.emplace<mirinae::cpnt::MdlActorStatic>(entt);
-                m.model_path_ = "Sung/axes.dun/axes.dmd";
+                        auto& mdl = reg.emplace<mirinae::cpnt::MdlActorStatic>(
+                            entt
+                        );
+                        mdl.model_path_ = "Sung/sphere.dun/sphere.dmd";
 
-                auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
-                t.pos_ = { 0, 100, 0 };
-                t.scale_ = { 10, 10, 10 };
+                        auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt
+                        );
+                        const auto jitter = (x + y + z) * 0.1;
+                        tform.pos_ = glm::dvec3{ 3.0 * x + jitter,
+                                                 20.0 + 3.0 * y,
+                                                 3.0 * z - jitter } +
+                                     glm::dvec3{
+                                         -114.50,
+                                         6.89,
+                                         -45.62,
+                                     };
+                        tform.scale_ = { 1, 1, 1 };
 
-                cosmos_->phys_world().give_body(entt, reg);
+                        cosmos_->phys_world().give_body(entt, reg);
+                    }
+                }
             }
+            cosmos_->phys_world().optimize();
 
             // DLight
             {

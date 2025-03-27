@@ -196,7 +196,7 @@ namespace {
             JPH::RVec3Arg inBaseOffset,
             const JPH::CollideShapeResult &inCollisionResult
         ) override {
-            SPDLOG_INFO("Contact validate callback");
+            // SPDLOG_INFO("Contact validate callback");
             return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
         }
 
@@ -206,7 +206,7 @@ namespace {
             const JPH::ContactManifold &inManifold,
             JPH::ContactSettings &ioSettings
         ) override {
-            SPDLOG_INFO("A contact was added");
+            // SPDLOG_INFO("A contact was added");
         }
 
         void OnContactPersisted(
@@ -215,13 +215,13 @@ namespace {
             const JPH::ContactManifold &inManifold,
             JPH::ContactSettings &ioSettings
         ) override {
-            SPDLOG_INFO("A contact was persisted");
+            // SPDLOG_INFO("A contact was persisted");
         }
 
         void OnContactRemoved(
             const JPH::SubShapeIDPair &inSubShapePair
         ) override {
-            SPDLOG_INFO("A contact was removed");
+            // SPDLOG_INFO("A contact was removed");
         }
     };
 
@@ -237,7 +237,7 @@ namespace {
             using namespace JPH::literals;
 
             JPH::BoxShapeSettings floor_shape_settings(
-                JPH::Vec3(100.0f, 10.0f, 100.0f)
+                JPH::Vec3(1000, 20, 1000)
             );
             floor_shape_settings.SetEmbedded();
 
@@ -246,7 +246,7 @@ namespace {
 
             JPH::BodyCreationSettings floor_settings(
                 floor_shape,
-                JPH::RVec3(0.0_r, -1.0_r, 0.0_r),
+                JPH::RVec3(0, -18.5, 0),
                 JPH::Quat::sIdentity(),
                 JPH::EMotionType::Static,
                 ::Layers::NON_MOVING
@@ -332,6 +332,8 @@ namespace mirinae {
             body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
         }
 
+        void optimize() { physics_system.OptimizeBroadPhase(); }
+
         void do_frame(double dt) {
             constexpr float OPTIMAL_DT = 1.0 / 60.0;
 
@@ -346,12 +348,13 @@ namespace mirinae {
                 if (!tform)
                     continue;
 
-                const auto pos = this->body_interf().GetCenterOfMassPosition(
-                    body.id_
-                );
+                JPH::RVec3 pos;
+                JPH::Quat rot;
+                this->body_interf().GetPositionAndRotation(body.id_, pos, rot);
                 tform->pos_ = { pos.GetX(), pos.GetY(), pos.GetZ() };
-
-                continue;
+                tform->rot_ = {
+                    rot.GetW(), rot.GetX(), rot.GetY(), rot.GetZ()
+                };
             }
 
             return;
@@ -390,7 +393,7 @@ namespace mirinae {
                 sphere_settings, JPH::EActivation::Activate
             );
             this->body_interf().SetLinearVelocity(
-                body->id_, JPH::Vec3(1, -5, 0)
+                body->id_, JPH::Vec3(0, -5, 5)
             );
         }
 
@@ -417,6 +420,8 @@ namespace mirinae {
     PhysWorld::PhysWorld() : pimpl_(std::make_unique<Impl>()) {}
 
     PhysWorld::~PhysWorld() = default;
+
+    void PhysWorld::optimize() { pimpl_->optimize(); }
 
     void PhysWorld::do_frame(double dt) { pimpl_->do_frame(dt); }
 
