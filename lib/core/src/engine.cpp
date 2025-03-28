@@ -253,6 +253,27 @@ namespace {
         double move_speed_ = 10;
     };
 
+
+    class ThirdPersonController {
+
+    public:
+        void do_frame(mirinae::Scene& scene) {
+            namespace cpnt = mirinae::cpnt;
+            auto& reg = *scene.reg_;
+
+            auto cam_tform = reg.try_get<cpnt::Transform>(camera_);
+            if (!cam_tform)
+                return;
+            auto tgt_tform = reg.try_get<cpnt::Transform>(target_);
+            if (!tgt_tform)
+                return;
+        }
+
+    private:
+        entt::entity target_ = entt::null;
+        entt::entity camera_ = entt::null;
+    };
+
 }  // namespace
 
 
