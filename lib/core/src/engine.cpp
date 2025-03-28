@@ -27,19 +27,6 @@ namespace {
     class NoclipController : public mirinae::IInputProcessor {
 
     public:
-        bool on_key_event(const mirinae::key::Event& e) {
-            keys_.notify(e);
-
-            if (e.action_type == mirinae::key::ActionType::down) {
-                if (e.key == mirinae::key::KeyCode::lbracket)
-                    move_speed_ *= 0.5;
-                else if (e.key == mirinae::key::KeyCode::rbracket)
-                    move_speed_ *= 2;
-            }
-
-            return true;
-        }
-
         bool on_mouse_event(const mirinae::mouse::Event& e) {
             using mirinae::mouse::ActionType;
 
@@ -151,18 +138,19 @@ namespace {
         }
 
         void apply(
-            mirinae::TransformQuat<double>& transform, const double delta_time
+            mirinae::TransformQuat<double>& transform,
+            const mirinae::InputActionMapper& action_map,
+            const double delta_time
         ) {
+            using InputAction = mirinae::InputActionMapper::ActionType;
+            using Angle = mirinae::cpnt::Transform::Angle;
+
             {
-                glm::dvec3 move_dir{ 0, 0, 0 };
-                if (keys_.is_pressed(mirinae::key::KeyCode::w))
-                    move_dir.z -= 1;
-                if (keys_.is_pressed(mirinae::key::KeyCode::s))
-                    move_dir.z += 1;
-                if (keys_.is_pressed(mirinae::key::KeyCode::a))
-                    move_dir.x -= 1;
-                if (keys_.is_pressed(mirinae::key::KeyCode::d))
-                    move_dir.x += 1;
+                glm::dvec3 move_dir{
+                    action_map.get_value_move_right(),
+                    0,
+                    action_map.get_value_move_backward(),
+                };
 
                 if (glm::length(move_dir) > 0) {
                     move_dir = glm::mat3_cast(transform.rot_) * move_dir;
@@ -172,39 +160,28 @@ namespace {
 
             {
                 double vertical = 0;
-                if (keys_.is_pressed(mirinae::key::KeyCode::lshfit))
-                    vertical -= 1;
-                if (keys_.is_pressed(mirinae::key::KeyCode::space))
+                if (action_map.get_value(InputAction::translate_up))
                     vertical += 1;
+                if (action_map.get_value(InputAction::translate_down))
+                    vertical -= 1;
 
-                if (vertical != 0)
-                    transform.pos_.y += vertical * delta_time * move_speed_;
+                transform.pos_.y += vertical * delta_time * move_speed_;
             }
 
             {
-                auto rot = mirinae::cpnt::Transform::Angle::from_zero();
-                if (keys_.is_pressed(mirinae::key::KeyCode::left))
-                    rot = rot.add_rad(1);
-                if (keys_.is_pressed(mirinae::key::KeyCode::right))
-                    rot = rot.add_rad(-1);
-
-                if (0 != rot.rad())
+                auto r = Angle::from_rad(action_map.get_value_look_left());
+                if (0 != r.rad())
                     transform.rotate(
-                        rot * (delta_time * 2), glm::vec3{ 0, 1, 0 }
+                        r * (delta_time * 2), glm::vec3{ 0, 1, 0 }
                     );
             }
 
             {
-                auto rot = mirinae::cpnt::Transform::Angle::from_zero();
-                if (keys_.is_pressed(mirinae::key::KeyCode::up))
-                    rot = rot.add_rad(1);
-                if (keys_.is_pressed(mirinae::key::KeyCode::down))
-                    rot = rot.add_rad(-1);
-
-                if (0 != rot.rad()) {
+                auto r = Angle::from_rad(action_map.get_value_look_up());
+                if (0 != r.rad()) {
                     const auto right = glm::mat3_cast(transform.rot_) *
                                        glm::vec3{ 1, 0, 0 };
-                    transform.rotate(rot * (delta_time * 2), right);
+                    transform.rotate(r * (delta_time * 2), right);
                 }
             }
 
@@ -256,8 +233,6 @@ namespace {
                 look_pointer_->consumed_pos_ = look_pointer_->last_pos_;
             }
         }
-
-        auto& keys() const { return keys_; }
 
         std::shared_ptr<mirinae::IOsIoFunctions> osio_;
 
@@ -897,7 +872,7 @@ namespace {
                 cosmos_->scene().main_camera_
             );
             if (cam_view)
-                camera_controller_.apply(*cam_view, clock.dt());
+                camera_controller_.apply(*cam_view, action_mapper_, clock.dt());
 
             auto flashlight_tform =
                 cosmos_->reg().try_get<mirinae::cpnt::Transform>(flashlight_);
@@ -950,6 +925,8 @@ namespace {
 
             if (renderer_->on_key_event(e))
                 return true;
+            if (action_mapper_.on_key_event(e))
+                return true;
             if (camera_controller_.on_key_event(e))
                 return true;
 
@@ -966,6 +943,7 @@ namespace {
             if (renderer_->on_mouse_event(e))
                 return true;
 
+            /*
             if (e.button_ == mirinae::mouse::ButtonCode::left &&
                 e.action_ == mirinae::mouse::ActionType::up) {
                 auto& reg = cosmos_->reg();
@@ -1007,25 +985,35 @@ namespace {
                 cosmos_->scene().pick_entt(ray);
                 return true;
             }
-
-            camera_controller_.on_mouse_event(e);
+            */
 
             auto cam = cosmos_->reg().try_get<mirinae::cpnt::StandardCamera>(
                 cosmos_->scene().main_camera_
             );
             if (cam) {
                 constexpr auto FACTOR = 1.05;
-                if (e.action_ == mirinae::mouse::ActionType::mwheel_up)
+                if (e.action_ == mirinae::mouse::ActionType::mwheel_up) {
                     cam->proj_.multiply_fov(1.0 / FACTOR);
-                else if (e.action_ == mirinae::mouse::ActionType::mwheel_down)
+                    return true;
+                } else if (e.action_ ==
+                           mirinae::mouse::ActionType::mwheel_down) {
                     cam->proj_.multiply_fov(FACTOR);
+                    return true;
+                }
             }
+
+            if (action_mapper_.on_mouse_event(e))
+                return true;
+            if (camera_controller_.on_mouse_event(e))
+                return true;
 
             return true;
         }
 
         bool on_touch_event(const mirinae::touch::Event& e) override {
             if (renderer_->on_touch_event(e))
+                return true;
+            if (action_mapper_.on_touch_event(e))
                 return true;
             if (camera_controller_.on_touch_event(e))
                 return true;
@@ -1041,7 +1029,8 @@ namespace {
         std::shared_ptr<::ImGuiMainWin> imgui_main_;
         std::unique_ptr<mirinae::IRenderer> renderer_;
 
-        sung::MonotonicRealtimeTimer delta_timer_, sec5_;
+        sung::MonotonicRealtimeTimer sec5_;
+        mirinae::InputActionMapper action_mapper_;
         ::NoclipController camera_controller_;
         entt::entity flashlight_;
         uint32_t win_width_ = 0, win_height_ = 0;
