@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -82,6 +83,48 @@ namespace mirinae {
             std::variant<IInputProcessor*, std::unique_ptr<IInputProcessor>>;
 
         std::vector<Item_t> items_;
+    };
+
+
+    class InputActionMapper : public IInputProcessor {
+
+    public:
+        enum class ActionType {
+            // Move with respect to view direction
+            move_forward,
+            move_backward,
+            move_left,
+            move_right,
+
+            look_up,
+            look_down,
+            look_left,
+            look_right,
+
+            // Move with respect to world direction
+            translate_up,    // Jump, or ascend
+            translate_down,  // Descend
+
+            zoom_in,
+            zoom_out,
+        };
+
+        InputActionMapper();
+
+        bool on_key_event(const key::Event& e) override;
+        bool on_text_event(char32_t c) override;
+        bool on_mouse_event(const mouse::Event& e) override;
+        bool on_touch_event(const touch::Event& e) override;
+
+        double get_value(ActionType action) const;
+        double get_value_move_backward() const;
+        double get_value_move_right() const;
+        double get_value_look_up() const;
+        double get_value_look_left() const;
+
+    private:
+        std::unordered_map<key::KeyCode, ActionType> key_map_;
+        std::unordered_map<ActionType, double> action_values_;
     };
 
 }  // namespace mirinae
