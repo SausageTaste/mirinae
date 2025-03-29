@@ -469,7 +469,7 @@ namespace { namespace gbuf_terrain {
         builder.tes_state().patch_ctrl_points(4);
 
         builder.rasterization_state().cull_mode_back();
-        builder.rasterization_state().polygon_mode_line();
+        // builder.rasterization_state().polygon_mode_line();
 
         builder.depth_stencil_state()
             .depth_test_enable(true)
