@@ -20,6 +20,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkcomposition.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkdevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkmajorplayers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer.cpp
 )
 target_include_directories(mirinae_vulkan PUBLIC
