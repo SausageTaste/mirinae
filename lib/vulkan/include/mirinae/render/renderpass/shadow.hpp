@@ -19,4 +19,10 @@ namespace mirinae::rp {
         mirinae::VulkanDevice& device
     );
 
+    URpStates create_rp_states_shadow_terrain(
+        mirinae::RpResources& rp_res,
+        mirinae::DesclayoutManager& desclayouts,
+        mirinae::VulkanDevice& device
+    );
+
 }  // namespace mirinae::rp
