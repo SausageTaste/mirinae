@@ -7,6 +7,7 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/renderee/terrain.hpp"
 #include "mirinae/render/renderpass/builder.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
@@ -769,43 +770,6 @@ namespace {
 // RpMasterTerrain
 namespace {
 
-    class TerrainRenUnit : public mirinae::ITerrainRenUnit {
-
-    public:
-        TerrainRenUnit(
-            const mirinae::cpnt::Terrain& src_terr,
-            mirinae::ITextureManager& tex,
-            mirinae::DesclayoutManager& desclayouts,
-            mirinae::VulkanDevice& device
-        )
-            : device_(device) {
-            height_map_ = tex.block_for_tex(src_terr.height_map_path_, false);
-            albedo_map_ = tex.block_for_tex(src_terr.albedo_map_path_, false);
-
-            auto& layout = desclayouts.get("gbuf_terrain:main");
-            desc_pool_.init(3, layout.size_info(), device.logi_device());
-            desc_set_ = desc_pool_.alloc(layout.layout(), device.logi_device());
-
-            auto& sam = device.samplers();
-            mirinae::DescWriteInfoBuilder{}
-                .set_descset(desc_set_)
-                .add_img_sampler(height_map_->image_view(), sam.get_heightmap())
-                .add_img_sampler(albedo_map_->image_view(), sam.get_linear())
-                .apply_all(device.logi_device());
-        }
-
-        ~TerrainRenUnit() override {
-            desc_pool_.destroy(device_.logi_device());
-        }
-
-        mirinae::VulkanDevice& device_;
-        std::shared_ptr<mirinae::ITexture> height_map_;
-        std::shared_ptr<mirinae::ITexture> albedo_map_;
-        mirinae::DescPool desc_pool_;
-        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
-    };
-
-
     class RpMasterTerrain : public mirinae::IRpStates {
 
     public:
@@ -903,17 +867,17 @@ namespace {
             for (auto e : reg.view<cpnt::Terrain>()) {
                 auto& terr = reg.get<cpnt::Terrain>(e);
 
-                auto unit = terr.ren_unit<::TerrainRenUnit>();
+                auto unit = terr.ren_unit<mirinae::RenUnitTerrain>();
                 if (!unit) {
-                    terr.ren_unit_ = std::make_unique<TerrainRenUnit>(
+                    terr.ren_unit_ = std::make_unique<mirinae::RenUnitTerrain>(
                         terr, *rp_res_.tex_man_, desclayouts_, device_
                     );
-                    unit = terr.ren_unit<::TerrainRenUnit>();
+                    unit = terr.ren_unit<::mirinae::RenUnitTerrain>();
                 }
 
                 mirinae::DescSetBindInfo{}
                     .layout(rp.pipeline_layout())
-                    .add(unit->desc_set_)
+                    .add(unit->desc_set())
                     .record(cmdbuf);
 
                 glm::dmat4 model_mat(1);
@@ -923,7 +887,7 @@ namespace {
                 ::gbuf_terrain::U_GbufTerrainPushConst pc;
                 pc.pvm(ctxt.proj_mat_, ctxt.view_mat_, model_mat)
                     .tile_count(24, 24)
-                    .height_map_size(unit->height_map_->extent())
+                    .height_map_size(unit->height_map_size())
                     .fbuf_size(fbuf_exd_)
                     .height_scale(64);
 
