@@ -11,6 +11,7 @@ layout (push_constant) uniform U_GbufTerrainPushConst {
     vec4 tile_index_count;
     vec4 height_map_size_fbuf_size;
     float height_scale;
+    float tess_factor;
 } u_pc;
 
 

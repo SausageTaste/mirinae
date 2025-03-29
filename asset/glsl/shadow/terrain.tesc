@@ -5,16 +5,17 @@ layout (location = 0) in vec2 v_uv[];
 layout (location = 0) out vec2 o_uv[4];
 
 
-layout (push_constant) uniform U_GbufTerrainPushConst {
+layout (push_constant) uniform U_ShadowTerrainPushConst {
     mat4 pvm;
     vec4 tile_index_count;
     vec4 height_map_size_fbuf_size;
     float height_scale;
+    float tess_factor;
 } u_pc;
 
 
 void main() {
-    const float MAX_TESS_LEVEL = 64;
+    const float MAX_TESS_LEVEL = 128;
 
     if (gl_InvocationID == 0) {
         vec4 p00 = u_pc.pvm * gl_in[0].gl_Position;
@@ -37,11 +38,10 @@ void main() {
         float edge2 = distance(p11.xy, p10.xy);
         float edge3 = distance(p10.xy, p00.xy);
 
-        const float factor = 1.0 / 10.0;
-        float tess_level0 = min(edge3 * factor, MAX_TESS_LEVEL);
-        float tess_level1 = min(edge0 * factor, MAX_TESS_LEVEL);
-        float tess_level2 = min(edge1 * factor, MAX_TESS_LEVEL);
-        float tess_level3 = min(edge2 * factor, MAX_TESS_LEVEL);
+        float tess_level0 = min(edge3 * u_pc.tess_factor, MAX_TESS_LEVEL);
+        float tess_level1 = min(edge0 * u_pc.tess_factor, MAX_TESS_LEVEL);
+        float tess_level2 = min(edge1 * u_pc.tess_factor, MAX_TESS_LEVEL);
+        float tess_level3 = min(edge2 * u_pc.tess_factor, MAX_TESS_LEVEL);
 
         gl_TessLevelOuter[0] = tess_level0;
         gl_TessLevelOuter[1] = tess_level1;

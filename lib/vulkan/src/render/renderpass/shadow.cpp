@@ -847,11 +847,17 @@ namespace {
             return *this;
         }
 
+        U_ShadowTerrainPushConst& tess_factor(float x) {
+            tess_factor_ = x;
+            return *this;
+        }
+
     private:
         glm::mat4 pvm_;
         glm::vec4 tile_index_count_;
         glm::vec4 height_map_size_fbuf_size_;
         float height_scale_;
+        float tess_factor_;
     };
 
 
@@ -1042,7 +1048,8 @@ namespace {
                             .tile_count(24, 24)
                             .height_map_size(unit->height_map_size())
                             .fbuf_size(half_width, half_height)
-                            .height_scale(64);
+                            .height_scale(64)
+                            .tess_factor(terr.tess_factor_);
 
                         for (int x = 0; x < 24; ++x) {
                             for (int y = 0; y < 24; ++y) {

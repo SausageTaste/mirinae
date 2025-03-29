@@ -5,11 +5,12 @@ layout (quads, equal_spacing, cw) in;
 layout (location = 0) in vec2 i_uv[];
 
 
-layout (push_constant) uniform U_GbufTerrainPushConst {
+layout (push_constant) uniform U_ShadowTerrainPushConst {
     mat4 pvm;
     vec4 tile_index_count;
     vec4 height_map_size_fbuf_size;
     float height_scale;
+    float tess_factor;
 } u_pc;
 
 layout(set = 0, binding = 0) uniform sampler2D u_height_map;

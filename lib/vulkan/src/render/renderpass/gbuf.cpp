@@ -387,6 +387,11 @@ namespace { namespace gbuf_terrain {
             return *this;
         }
 
+        U_GbufTerrainPushConst& tess_factor(float x) {
+            tess_factor_ = x;
+            return *this;
+        }
+
     private:
         glm::mat4 pvm_;
         glm::mat4 view_;
@@ -394,6 +399,7 @@ namespace { namespace gbuf_terrain {
         glm::vec4 tile_index_count_;
         glm::vec4 height_map_size_fbuf_size_;
         float height_scale_;
+        float tess_factor_;
     };
 
 
@@ -463,6 +469,7 @@ namespace { namespace gbuf_terrain {
         builder.tes_state().patch_ctrl_points(4);
 
         builder.rasterization_state().cull_mode_back();
+        builder.rasterization_state().polygon_mode_line();
 
         builder.depth_stencil_state()
             .depth_test_enable(true)
@@ -889,7 +896,8 @@ namespace {
                     .tile_count(24, 24)
                     .height_map_size(unit->height_map_size())
                     .fbuf_size(fbuf_exd_)
-                    .height_scale(64);
+                    .height_scale(64)
+                    .tess_factor(terr.tess_factor_);
 
                 for (int x = 0; x < 24; ++x) {
                     for (int y = 0; y < 24; ++y) {
