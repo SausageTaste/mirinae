@@ -196,10 +196,12 @@ namespace {
         void init_iimage2d(
             const std::string& id,
             const dal::TDataImage2D<uint8_t>& image,
+            std::shared_ptr<dal::IImage> img_data,
             bool srgb,
             mirinae::CommandPool& cmd_pool
         ) {
             id_ = id;
+            img_data_ = img_data;
 
             mirinae::Buffer staging_buffer;
             staging_buffer.init_staging(image.data_size(), device_.mem_alloc());
@@ -252,10 +254,12 @@ namespace {
         void init_iimage2d(
             const std::string& id,
             const dal::TDataImage2D<float>& image,
+            std::shared_ptr<dal::IImage> img_data,
             bool srgb,
             mirinae::CommandPool& cmd_pool
         ) {
             id_ = id;
+            img_data_ = img_data;
 
             mirinae::Buffer staging_buffer;
             staging_buffer.init_staging(image.data_size(), device_.mem_alloc());
@@ -359,12 +363,16 @@ namespace {
         uint32_t width() const override { return texture_.width(); }
         uint32_t height() const override { return texture_.height(); }
 
+        void free_img_data() override { img_data_.reset(); }
+        const dal::IImage* img_data() const override { return img_data_.get(); }
+
         const std::string& id() const override { return id_; }
 
     private:
         mirinae::VulkanDevice& device_;
         mirinae::Image texture_;
         mirinae::ImageView texture_view_;
+        std::shared_ptr<dal::IImage> img_data_;
         std::string id_;
     };
 
@@ -698,12 +706,12 @@ namespace {
                 }
             } else if (auto raw_img = img->as<dal::TDataImage2D<uint8_t>>()) {
                 auto out = std::make_shared<TextureData>(device_);
-                out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
+                out->init_iimage2d(id, *raw_img, img, srgb, cmd_pool_);
                 textures_.push_back(out);
                 return dal::ReqResult::ready;
             } else if (auto raw_img = img->as<dal::TDataImage2D<float>>()) {
                 auto out = std::make_shared<TextureData>(device_);
-                out->init_iimage2d(id, *raw_img, srgb, cmd_pool_);
+                out->init_iimage2d(id, *raw_img, img, srgb, cmd_pool_);
                 textures_.push_back(out);
                 return dal::ReqResult::ready;
             } else {
@@ -732,7 +740,7 @@ namespace {
         ) override {
             if (auto img = image.as<dal::TDataImage2D<uint8_t>>()) {
                 auto output = std::make_unique<TextureData>(device_);
-                output->init_iimage2d(id, *img, srgb, cmd_pool_);
+                output->init_iimage2d(id, *img, nullptr, srgb, cmd_pool_);
                 return output;
             } else {
                 SPDLOG_ERROR("Unsupported image type: {}", id);

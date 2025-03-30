@@ -19,6 +19,10 @@ namespace mirinae {
 
         ~RenUnitTerrain() override;
 
+        const dal::IImage* height_map() const override {
+            return height_map_->img_data();
+        }
+
         VkDescriptorSet desc_set() const;
         VkExtent2D height_map_size() const;
 

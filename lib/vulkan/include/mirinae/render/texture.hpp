@@ -1,6 +1,7 @@
 #pragma once
 
 #include <daltools/filesys/res_mgr.hpp>
+#include <daltools/img/img.hpp>
 #include <sung/basic/expected.hpp>
 #include <sung/basic/threading.hpp>
 
@@ -39,6 +40,9 @@ namespace mirinae {
 
         virtual uint32_t width() const = 0;
         virtual uint32_t height() const = 0;
+
+        virtual void free_img_data() {}
+        virtual const dal::IImage* img_data() const { return nullptr; }
 
         VkExtent2D extent() const {
             return VkExtent2D{ this->width(), this->height() };
