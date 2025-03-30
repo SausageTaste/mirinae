@@ -12,7 +12,7 @@ namespace mirinae {
     )
         : device_(device) {
         height_map_ = tex.block_for_tex(src_terr.height_map_path_, false);
-        albedo_map_ = tex.block_for_tex(src_terr.albedo_map_path_, false);
+        albedo_map_ = tex.block_for_tex(src_terr.albedo_map_path_, true);
 
         auto& layout = desclayouts.get("gbuf_terrain:main");
         desc_pool_.init(3, layout.size_info(), device.logi_device());

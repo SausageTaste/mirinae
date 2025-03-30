@@ -825,7 +825,7 @@ namespace {
                 i.set_name("Ocean");
 
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.height_ = 0;
+                ocean.height_ = -44;
             }
 
             // Atmosphere
@@ -840,6 +840,7 @@ namespace {
                 atm.sky_tex_path_ =
                     ":asset/textures/"
                     "kloofendal_48d_partly_cloudy_puresky_1k.hdr";
+                atm.mie_anisotropy_ = 0.8;
             }
 
             // Terrain
@@ -850,11 +851,13 @@ namespace {
                 i.set_name("Terrain");
 
                 auto& terrain = reg.emplace<mirinae::cpnt::Terrain>(entt);
-                terrain.height_map_path_ = ":asset/textures/mountains512.png";
-                terrain.albedo_map_path_ = ":asset/textures/mountains512.png";
+                terrain.height_map_path_ =
+                    "Sung/36_268_-112_353_15_4033_4033.png";
+                terrain.albedo_map_path_ =
+                    "Sung/36_268_-112_353_15_4033_4033_albedo_imagery.png";
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { -360 + 100, -5, -360 - 400 };
+                tform.pos_ = { -260, -48.5, -590 };
             }
 
             // Script
