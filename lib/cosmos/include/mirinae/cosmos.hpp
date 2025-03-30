@@ -23,8 +23,9 @@ namespace mirinae {
 
         void do_frame() {
             scene_.do_frame();
+            phys_world_.pre_sync(scene_.clock().dt(), *scene_.reg_);
             phys_world_.do_frame(scene_.clock().dt());
-            phys_world_.sync_tforms(*scene_.reg_);
+            phys_world_.post_sync(scene_.clock().dt(), *scene_.reg_);
         }
 
         auto& scene() { return scene_; }

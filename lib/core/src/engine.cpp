@@ -262,12 +262,11 @@ namespace {
     public:
         using Tform = mirinae::TransformQuat<double>;
 
-        void do_frame(
+        void pre_sync(
             mirinae::Scene& scene, const mirinae::InputActionMapper& action_map
         ) {
             namespace cpnt = mirinae::cpnt;
             using Angle = mirinae::cpnt::Transform::Angle;
-
             auto& reg = *scene.reg_;
             const auto dt = scene.clock().dt();
 
@@ -291,7 +290,7 @@ namespace {
             {
                 auto r = Angle::from_rad(look_rot.x);
                 if (0 != r.rad())
-                    cam_tform->rotate(r * (dt * 2), glm::vec3{ 0, 1, 0 });
+                    cam_tform->rotate(r * dt, glm::vec3{ 0, 1, 0 });
             }
 
             // Look vertically
@@ -300,7 +299,7 @@ namespace {
                 if (0 != r.rad()) {
                     const auto right = glm::mat3_cast(cam_tform->rot_) *
                                        glm::vec3{ 1, 0, 0 };
-                    cam_tform->rotate(r * (dt * 2), right);
+                    cam_tform->rotate(r * dt, right);
                 }
             }
 
@@ -320,20 +319,43 @@ namespace {
                         std::atan2(cam_front.z, cam_front.x)
                     );
 
-                    const auto rotated_vec = mirinae::rotate_vec(
+                    const auto move_vec_rot = mirinae::rotate_vec(
                         move_dir, cam_front_angle + ANGLE_OFFSET
                     );
+                    const auto move_vec_scale = move_vec_rot *
+                                                (dt * move_speed_);
 
-                    tgt_tform->pos_.x += rotated_vec.x * dt * 10.0;
-                    tgt_tform->pos_.z += rotated_vec.y * dt * 10.0;
+                    tgt_tform->pos_.x += move_vec_scale.x;
+                    tgt_tform->pos_.z += move_vec_scale.y;
                     tgt_tform->reset_rotation();
                     tgt_tform->rotate(
                         -Angle::from_rad(
-                            std::atan2(rotated_vec.y, rotated_vec.x)
+                            std::atan2(move_vec_rot.y, move_vec_rot.x)
                         ),
                         glm::vec3{ 0, 1, 0 }
                     );
                 }
+            }
+        }
+
+        void post_sync(
+            mirinae::Scene& scene, const mirinae::InputActionMapper& action_map
+        ) {
+            namespace cpnt = mirinae::cpnt;
+            using Angle = mirinae::cpnt::Transform::Angle;
+            auto& reg = *scene.reg_;
+            const auto dt = scene.clock().dt();
+
+            auto cam_tform = reg.try_get<cpnt::Transform>(camera_);
+            if (!cam_tform) {
+                camera_ = entt::null;
+                return;
+            }
+
+            auto tgt_tform = reg.try_get<cpnt::Transform>(target_);
+            if (!tgt_tform) {
+                target_ = entt::null;
+                return;
             }
 
             const auto cam_forward = cam_tform->make_forward_dir();
@@ -362,6 +384,7 @@ namespace {
         entt::entity camera_ = entt::null;
 
     public:
+        double move_speed_ = 3;       // World space
         double offset_dist_ = 3;      // World space
         double offset_height_ = 0.5;  // World space
         double offset_hor_ = 0.25;    // World space
@@ -972,6 +995,8 @@ namespace {
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -113, 2, -39 };
+
+                cosmos_->phys_world().give_body_player(1, 0.1, entt, reg);
             }
 
             // Script
@@ -1009,8 +1034,6 @@ namespace {
             auto cam_view = cosmos_->reg().try_get<mirinae::cpnt::Transform>(
                 cosmos_->scene().main_camera_
             );
-            if (cam_view)
-                camera_controller_.do_frame(cosmos_->scene(), action_mapper_);
 
             auto flashlight_tform =
                 cosmos_->reg().try_get<mirinae::cpnt::Transform>(flashlight_);
@@ -1031,8 +1054,10 @@ namespace {
             }
             */
 
+            camera_controller_.pre_sync(cosmos_->scene(), action_mapper_);
             client_->do_frame();
             cosmos_->do_frame();
+            camera_controller_.post_sync(cosmos_->scene(), action_mapper_);
             renderer_->do_frame();
         }
 
