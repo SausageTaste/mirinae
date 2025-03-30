@@ -1021,6 +1021,7 @@ namespace {
             renderer_ = mirinae::create_vk_renderer(
                 cinfo, task_sche, script_, cosmos_
             );
+            cosmos_->phys_world().give_debug_ren(renderer_->debug_ren());
         }
 
         ~Engine() override {}

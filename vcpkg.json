@@ -24,6 +24,12 @@
             ]
         },
         {
+            "name": "joltphysics",
+            "features": [
+                "debugrenderer"
+            ]
+        },
+        {
             "name": "ktx",
             "features": [
                 "vulkan"

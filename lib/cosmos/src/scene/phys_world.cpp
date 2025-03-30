@@ -3,6 +3,8 @@
 #include <cstdarg>
 #include <thread>
 
+#define JPH_DEBUG_RENDERER
+
 #include <Jolt/Jolt.h>
 #include <daltools/img/img2d.hpp>
 #include <entt/entity/registry.hpp>
@@ -20,6 +22,7 @@
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
+#include <Jolt/Renderer/DebugRenderer.h>
 
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
@@ -40,6 +43,10 @@ namespace {
 
     glm::dvec3 conv_vec(const JPH::Vec3 &v) {
         return glm::dvec3(v.GetX(), v.GetY(), v.GetZ());
+    }
+
+    glm::dvec4 conv_vec(const JPH::Vec4 &v) {
+        return glm::dvec4(v.GetX(), v.GetY(), v.GetZ(), v.GetW());
     }
 
 
@@ -244,6 +251,72 @@ namespace {
         }
     };
 
+
+    class DebugRenderer : public JPH::DebugRenderer {
+
+    public:
+        void DrawLine(
+            JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor
+        ) override {
+            // SPDLOG_INFO("Draw line from {} to {}", inFrom, inTo);
+        }
+
+        void DrawTriangle(
+            JPH::RVec3Arg inV1,
+            JPH::RVec3Arg inV2,
+            JPH::RVec3Arg inV3,
+            JPH::ColorArg inColor,
+            ECastShadow inCastShadow
+        ) override {
+            if (!debug_ren_)
+                return;
+
+            debug_ren_->tri(
+                ::conv_vec(inV1),
+                ::conv_vec(inV2),
+                ::conv_vec(inV3),
+                ::conv_vec(inColor.ToVec4())
+            );
+        }
+
+        void DrawGeometry(
+            JPH::RMat44Arg inModelMatrix,
+            const JPH::AABox &inWorldSpaceBounds,
+            float inLODScaleSq,
+            JPH::ColorArg inModelColor,
+            const GeometryRef &inGeometry,
+            ECullMode inCullMode = ECullMode::CullBackFace,
+            ECastShadow inCastShadow = ECastShadow::On,
+            EDrawMode inDrawMode = EDrawMode::Solid
+        ) override {
+            SPDLOG_INFO("Draw geometry with model matrix");
+        }
+
+        Batch CreateTriangleBatch(
+            const Triangle *inTriangles, int inTriangleCount
+        ) override {
+            return nullptr;
+        }
+
+        Batch CreateTriangleBatch(
+            const Vertex *inVertices,
+            int inVertexCount,
+            const JPH::uint32 *inIndices,
+            int inIndexCount
+        ) override {
+            return nullptr;
+        }
+
+        void DrawText3D(
+            JPH::RVec3Arg inPosition,
+            const JPH::string_view &inString,
+            JPH::ColorArg inColor = JPH::Color::sWhite,
+            float inHeight = 0.5f
+        ) override {}
+
+        mirinae::IDebugRen *debug_ren_ = nullptr;
+    };
+
 }  // namespace
 
 
@@ -265,7 +338,7 @@ namespace {
 
             JPH::BodyCreationSettings floor_settings(
                 floor_shape,
-                JPH::RVec3(0, -100, 0),
+                JPH::RVec3(0, -18, 0),
                 JPH::Quat::sIdentity(),
                 JPH::EMotionType::Static,
                 ::Layers::NON_MOVING
@@ -452,9 +525,17 @@ namespace mirinae {
             auto &body_interf = this->body_interf();
             floor_.init(body_interf);
             body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
+
+            JPH::DebugRenderer::sInstance = &debug_ren_;
         }
 
         void optimize() { physics_system.OptimizeBroadPhase(); }
+
+        void give_debug_ren(IDebugRen &debug_ren) {
+            debug_ren_.debug_ren_ = &debug_ren;
+        }
+
+        void remove_debug_ren() {}
 
         void do_frame(double dt) {
             constexpr float OPTIMAL_DT = 1.0 / 60.0;
@@ -523,6 +604,12 @@ namespace mirinae {
                     rot.GetW(), rot.GetX(), rot.GetY(), rot.GetZ()
                 };
             }
+
+            /*
+            physics_system.DrawBodies(
+                JPH::BodyManager::DrawSettings(), &debug_ren_
+            );
+            */
 
             return;
         }
@@ -623,6 +710,7 @@ namespace mirinae {
         ::ObjectLayerPairFilterImpl obj_vs_obj_layer_filter_;
         JPH::PhysicsSystem physics_system;
 
+        ::DebugRenderer debug_ren_;
         ::MyBodyActivationListener body_active_listener_;
         ::MyContactListener contact_listener_;
 
@@ -635,6 +723,12 @@ namespace mirinae {
     PhysWorld::~PhysWorld() = default;
 
     void PhysWorld::optimize() { pimpl_->optimize(); }
+
+    void PhysWorld::give_debug_ren(IDebugRen &debug_ren) {
+        pimpl_->give_debug_ren(debug_ren);
+    }
+
+    void PhysWorld::remove_debug_ren() {}
 
     void PhysWorld::pre_sync(double dt, entt::registry &reg) {
         pimpl_->pre_sync(dt, reg);

@@ -4,6 +4,8 @@
 
 #include <entt/fwd.hpp>
 
+#include "mirinae/lightweight/debug_ren.hpp"
+
 
 namespace mirinae {
 
@@ -14,6 +16,9 @@ namespace mirinae {
         ~PhysWorld();
 
         void optimize();
+
+        void give_debug_ren(IDebugRen& debug_ren);
+        void remove_debug_ren();
 
         void pre_sync(double dt, entt::registry& reg);
         void do_frame(double dt);
