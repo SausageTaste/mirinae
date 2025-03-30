@@ -29,17 +29,3 @@ do
 
     print("Skinned actor created:", e:get_id(), e:get_respath())
 end
-
-do
-    local e = scene.create_skinned_actor("Sung/artist.dun/artist_subset.dmd")
-
-    local a = e:get_anim_state()
-    a:set_anim_name("idle_normal_1")
-
-    local t = e:get_transform()
-    t:set_pos(-113, 2, -39)
-    t:rotate(-90, 0, 1, 0)
-    t:set_scale(2.3)
-
-    print("Skinned actor created:", e:get_id(), e:get_respath())
-end

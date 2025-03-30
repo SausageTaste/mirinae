@@ -338,7 +338,7 @@ namespace {
 
             const auto cam_forward = cam_tform->make_forward_dir();
             const auto tgt_pos = tgt_tform->pos_;
-            cam_tform->pos_ = tgt_pos - cam_forward * 10.0;
+            cam_tform->pos_ = tgt_pos - cam_forward * offset_dist_;
             cam_tform->pos_ += tgt_tform->make_up_dir() * offset_height_;
             cam_tform->pos_ += cam_tform->make_right_dir() * offset_hor_;
         }
@@ -362,8 +362,9 @@ namespace {
         entt::entity camera_ = entt::null;
 
     public:
-        double offset_height_ = 2;  // World space
-        double offset_hor_ = 0.5;   // World space
+        double offset_dist_ = 3;      // World space
+        double offset_height_ = 0.5;  // World space
+        double offset_hor_ = 0.25;    // World space
         double key_look_speed_ = 1;
         double mouse_look_speed_ = 0.1;
     };
@@ -874,6 +875,7 @@ namespace {
             {
                 const auto entt = reg.create();
                 cosmos_->scene().main_camera_ = entt;
+                camera_controller_.set_camera(entt);
 
                 auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
                 i.set_name("Main Camera");
@@ -954,6 +956,24 @@ namespace {
                 tform.pos_ = { -260, -48.5, -590 };
             }
 
+            // Player model
+            {
+                const auto entt = reg.create();
+                camera_controller_.set_target(entt);
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("Player model");
+
+                auto& mdl = reg.emplace<mirinae::cpnt::MdlActorSkinned>(entt);
+                mdl.model_path_ = "Sung/artist.dun/artist_subset.dmd";
+                mdl.anim_state_.select_anim_name(
+                    "idle_normal_1", cosmos_->scene().clock()
+                );
+
+                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
+                tform.pos_ = { -113, 2, -39 };
+            }
+
             // Script
             {
                 const auto contents = filesys_->read_file(
@@ -970,11 +990,6 @@ namespace {
                 imgui_main_ = std::make_shared<ImGuiMainWin>(cosmos_, filesys_);
                 cosmos_->imgui_.push_back(imgui_main_);
             }
-
-            camera_controller_.set_camera(cosmos_->scene().main_camera_);
-            camera_controller_.set_target(
-                cosmos_->scene().find_entt("artist_subset.dmd")
-            );
 
             renderer_ = mirinae::create_vk_renderer(
                 cinfo, task_sche, script_, cosmos_
