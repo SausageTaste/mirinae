@@ -5,6 +5,7 @@
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
+#include "mirinae/lightweight/debug_ren.hpp"
 #include "mirinae/render/renderee.hpp"
 #include "mirinae/render/texture.hpp"
 #include "mirinae/render/vkdevice.hpp"
@@ -314,12 +315,34 @@ namespace mirinae {
     };
 
 
-    struct DebugRender {
+    class DebugRender : public IDebugRen {
+
+    public:
         struct Triangle {
             std::array<glm::vec4, 4> vertices_;
             glm::vec4 color_{ 1, 0, 0, 0.5f };
         };
 
+        struct TriangleWorld {
+            std::array<glm::vec3, 4> vertices_;
+            glm::vec4 color_{ 1, 0, 0, 0.5f };
+        };
+
+    public:
+        void tri(
+            const glm::vec3& p0,
+            const glm::vec3& p1,
+            const glm::vec3& p2,
+            const glm::vec4& color
+        ) override {
+            auto& t = tri_world_.emplace_back();
+            t.vertices_[0] = p0;
+            t.vertices_[1] = p1;
+            t.vertices_[2] = p2;
+            t.color_ = color;
+        }
+
+    public:
         void clear() { tri_.clear(); }
 
         Triangle& new_tri() { return tri_.emplace_back(); }
@@ -347,6 +370,7 @@ namespace mirinae {
         }
 
         std::vector<Triangle> tri_;
+        std::vector<TriangleWorld> tri_world_;
     };
 
 

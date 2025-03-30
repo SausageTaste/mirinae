@@ -1095,6 +1095,7 @@ namespace {
             const auto proj_inv = glm::inverse(proj_mat);
             const auto view_mat = cam_view.make_view_mat();
             const auto view_inv = glm::inverse(view_mat);
+            const auto pv_mat = proj_mat * view_mat;
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -1105,7 +1106,6 @@ namespace {
             overlay_man_.widgets().tick(widget_ren_data);
 
             ren_ctxt.view_frustum_.update(proj_mat, view_mat);
-            ren_ctxt.debug_ren_.clear();
             ren_ctxt.f_index_ = framesync_.get_frame_index();
             ren_ctxt.i_index_ = image_index;
             ren_ctxt.proj_mat_ = proj_mat;
@@ -1174,6 +1174,16 @@ namespace {
                     rp_
                 );
             }
+            for (auto& tri : ren_ctxt.debug_ren_.tri_world_) {
+                rp_states_debug_mesh_.draw(
+                    ren_ctxt.cmdbuf_,
+                    pv_mat * glm::dvec4(tri.vertices_[0], 1),
+                    pv_mat * glm::dvec4(tri.vertices_[1], 1),
+                    pv_mat * glm::dvec4(tri.vertices_[2], 1),
+                    tri.color_,
+                    rp_
+                );
+            }
             rp_states_debug_mesh_.end_record(ren_ctxt.cmdbuf_);
             rp_states_fillscreen_.record(
                 ren_ctxt.cmdbuf_,
@@ -1184,6 +1194,7 @@ namespace {
                 rp_res_.gbuf_,
                 rp_
             );
+            ren_ctxt.debug_ren_.clear();
 
             // Shader: Overlay
             {
@@ -1286,6 +1297,8 @@ namespace {
 
             return false;
         }
+
+        mirinae::IDebugRen& debug_ren() override { return ren_ctxt.debug_ren_; }
 
     private:
         void resize_swapchain(uint32_t width, uint32_t height) {

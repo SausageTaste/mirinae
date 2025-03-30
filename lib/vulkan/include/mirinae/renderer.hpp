@@ -6,8 +6,10 @@
 #include <vector>
 
 #include <daltools/filesys/res_mgr.hpp>
+
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/create_info.hpp"
+#include "mirinae/lightweight/debug_ren.hpp"
 #include "mirinae/lightweight/input_proc.hpp"
 
 
@@ -20,6 +22,8 @@ namespace mirinae {
 
         virtual void do_frame() = 0;
         virtual void notify_window_resize(uint32_t width, uint32_t height) = 0;
+
+        virtual IDebugRen& debug_ren() = 0;
     };
 
 
