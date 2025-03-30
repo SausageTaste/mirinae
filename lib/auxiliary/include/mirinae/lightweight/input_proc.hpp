@@ -5,7 +5,10 @@
 #include <variant>
 #include <vector>
 
+#include <glm/vec2.hpp>
+
 #include "mirinae/lightweight/uinput.hpp"
+#include "mirinae/platform/osio.hpp"
 
 
 namespace mirinae {
@@ -111,6 +114,8 @@ namespace mirinae {
 
         InputActionMapper();
 
+        void give_osio(std::shared_ptr<IOsIoFunctions> osio) { osio_ = osio; }
+
         bool on_key_event(const key::Event& e) override;
         bool on_text_event(char32_t c) override;
         bool on_mouse_event(const mouse::Event& e) override;
@@ -119,12 +124,27 @@ namespace mirinae {
         double get_value(ActionType action) const;
         double get_value_move_backward() const;
         double get_value_move_right() const;
-        double get_value_look_up() const;
-        double get_value_look_left() const;
+
+        // Left, up
+        glm::dvec2 get_value_key_look() const;
+        // Left, up
+        glm::dvec2 get_value_mouse_look() const;
 
     private:
+        class PointerState {
+
+        public:
+            glm::dvec2 start_pos_{ 0, 0 };
+            glm::dvec2 last_pos_{ 0, 0 };
+            glm::dvec2 consumed_pos_{ 0, 0 };
+        };
+
+        std::shared_ptr<mirinae::IOsIoFunctions> osio_;
         std::unordered_map<key::KeyCode, ActionType> key_map_;
         std::unordered_map<ActionType, double> action_values_;
+        PointerState mouse_state_;
+        PointerState* move_pointer_ = nullptr;
+        PointerState* look_pointer_ = nullptr;
     };
 
 }  // namespace mirinae

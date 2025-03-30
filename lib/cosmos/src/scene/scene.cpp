@@ -533,6 +533,17 @@ namespace mirinae {
         return;
     }
 
+    entt::entity Scene::find_entt(const std::string& name) const {
+        auto view = reg_->view<cpnt::Id>();
+        for (auto e : view) {
+            auto& id = view.get<cpnt::Id>(e);
+            if (name == id.name_.data()) {
+                return e;
+            }
+        }
+        return entt::null;
+    }
+
     void Scene::pick_entt(const sung::LineSegment3& ray) {
         SPDLOG_DEBUG(
             "Ray: ({:.2f}, {:.2f}, {:.2f}) -> ({:.2f}, {:.2f}, {:.2f})",

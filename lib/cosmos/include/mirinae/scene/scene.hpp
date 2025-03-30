@@ -20,6 +20,8 @@ namespace mirinae {
 
         void do_frame();
 
+        entt::entity find_entt(const std::string& name) const;
+
         // Ray in world space
         void pick_entt(const sung::LineSegment3& ray);
 

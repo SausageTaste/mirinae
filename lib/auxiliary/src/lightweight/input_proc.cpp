@@ -41,6 +41,58 @@ namespace mirinae {
     bool InputActionMapper::on_text_event(char32_t c) { return false; }
 
     bool InputActionMapper::on_mouse_event(const mouse::Event& e) {
+        using mirinae::mouse::ActionType;
+
+        if (e.action_ == ActionType::move) {
+            if (move_pointer_ == &mouse_state_) {
+                mouse_state_.last_pos_ = { e.xpos_, e.ypos_ };
+                return true;
+            } else if (look_pointer_ == &mouse_state_) {
+                mouse_state_.last_pos_ = { e.xpos_, e.ypos_ };
+                return true;
+            }
+            return false;
+        }
+
+        if (e.button_ == mirinae::mouse::ButtonCode::right) {
+            if (e.action_ == ActionType::down) {
+                if (e.xpos_ < 400) {
+                    if (move_pointer_)
+                        return true;
+                    move_pointer_ = &mouse_state_;
+                } else {
+                    if (look_pointer_)
+                        return true;
+                    look_pointer_ = &mouse_state_;
+                    if (osio_)
+                        osio_->set_hidden_mouse_mode(true);
+                }
+
+                mouse_state_.start_pos_ = { e.xpos_, e.ypos_ };
+                mouse_state_.last_pos_ = mouse_state_.start_pos_;
+                mouse_state_.consumed_pos_ = mouse_state_.start_pos_;
+                return true;
+            } else if (e.action_ == ActionType::up) {
+                if (move_pointer_ == &mouse_state_) {
+                    move_pointer_ = nullptr;
+                } else if (look_pointer_ == &mouse_state_) {
+                    look_pointer_ = nullptr;
+                }
+
+                mouse_state_.start_pos_ = { 0, 0 };
+                mouse_state_.last_pos_ = mouse_state_.start_pos_;
+                mouse_state_.consumed_pos_ = mouse_state_.start_pos_;
+                if (osio_)
+                    osio_->set_hidden_mouse_mode(false);
+                return true;
+            }
+        }
+
+        if (move_pointer_ == &mouse_state_)
+            return true;
+        else if (look_pointer_ == &mouse_state_)
+            return true;
+
         return false;
     }
 
@@ -66,14 +118,25 @@ namespace mirinae {
                this->get_value(ActionType::move_left);
     }
 
-    double InputActionMapper::get_value_look_up() const {
-        return this->get_value(ActionType::look_up) -
-               this->get_value(ActionType::look_down);
+    glm::dvec2 InputActionMapper::get_value_key_look() const {
+        glm::dvec2 out{ 0 };
+        out.x = this->get_value(ActionType::look_left) -
+                this->get_value(ActionType::look_right);
+        out.y = this->get_value(ActionType::look_up) -
+                this->get_value(ActionType::look_down);
+        return out;
     }
 
-    double InputActionMapper::get_value_look_left() const {
-        return this->get_value(ActionType::look_left) -
-               this->get_value(ActionType::look_right);
+    glm::dvec2 InputActionMapper::get_value_mouse_look() const {
+        glm::dvec2 out{ 0 };
+
+        if (look_pointer_) {
+            out.x = look_pointer_->consumed_pos_.x - look_pointer_->last_pos_.x;
+            out.y = look_pointer_->consumed_pos_.y - look_pointer_->last_pos_.y;
+            look_pointer_->consumed_pos_ = look_pointer_->last_pos_;
+        }
+
+        return out;
     }
 
 }  // namespace mirinae

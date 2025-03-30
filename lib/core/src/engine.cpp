@@ -168,8 +168,11 @@ namespace {
                 transform.pos_.y += vertical * delta_time * move_speed_;
             }
 
+            const auto look_rot = action_map.get_value_key_look() +
+                                  action_map.get_value_mouse_look();
+
             {
-                auto r = Angle::from_rad(action_map.get_value_look_left());
+                auto r = Angle::from_rad(look_rot.x);
                 if (0 != r.rad())
                     transform.rotate(
                         r * (delta_time * 2), glm::vec3{ 0, 1, 0 }
@@ -177,7 +180,7 @@ namespace {
             }
 
             {
-                auto r = Angle::from_rad(action_map.get_value_look_up());
+                auto r = Angle::from_rad(look_rot.y);
                 if (0 != r.rad()) {
                     const auto right = glm::mat3_cast(transform.rot_) *
                                        glm::vec3{ 1, 0, 0 };
@@ -257,21 +260,112 @@ namespace {
     class ThirdPersonController {
 
     public:
-        void do_frame(mirinae::Scene& scene) {
+        using Tform = mirinae::TransformQuat<double>;
+
+        void do_frame(
+            mirinae::Scene& scene, const mirinae::InputActionMapper& action_map
+        ) {
             namespace cpnt = mirinae::cpnt;
+            using Angle = mirinae::cpnt::Transform::Angle;
+
             auto& reg = *scene.reg_;
+            const auto dt = scene.clock().dt();
 
             auto cam_tform = reg.try_get<cpnt::Transform>(camera_);
-            if (!cam_tform)
+            if (!cam_tform) {
+                camera_ = entt::null;
                 return;
+            }
+
             auto tgt_tform = reg.try_get<cpnt::Transform>(target_);
-            if (!tgt_tform)
+            if (!tgt_tform) {
+                target_ = entt::null;
                 return;
+            }
+
+            const auto look_rot =
+                (action_map.get_value_key_look() * key_look_speed_) +
+                (action_map.get_value_mouse_look() * mouse_look_speed_);
+
+            // Look horizontally
+            {
+                auto r = Angle::from_rad(look_rot.x);
+                if (0 != r.rad())
+                    cam_tform->rotate(r * (dt * 2), glm::vec3{ 0, 1, 0 });
+            }
+
+            // Look vertically
+            {
+                auto r = Angle::from_rad(look_rot.y);
+                if (0 != r.rad()) {
+                    const auto right = glm::mat3_cast(cam_tform->rot_) *
+                                       glm::vec3{ 1, 0, 0 };
+                    cam_tform->rotate(r * (dt * 2), right);
+                }
+            }
+
+            // Move with respect to camera direction
+            {
+                constexpr auto ANGLE_OFFSET = Angle::from_deg(90);
+
+                const glm::dvec2 move_dir{
+                    action_map.get_value_move_right(),
+                    action_map.get_value_move_backward(),
+                };
+                const auto move_dir_len = glm::length(move_dir);
+
+                if (move_dir_len > 0.01) {
+                    const auto cam_front = cam_tform->make_forward_dir();
+                    const auto cam_front_angle = Angle::from_rad(
+                        std::atan2(cam_front.z, cam_front.x)
+                    );
+
+                    const auto rotated_vec = mirinae::rotate_vec(
+                        move_dir, cam_front_angle + ANGLE_OFFSET
+                    );
+
+                    tgt_tform->pos_.x += rotated_vec.x * dt * 10.0;
+                    tgt_tform->pos_.z += rotated_vec.y * dt * 10.0;
+                    tgt_tform->reset_rotation();
+                    tgt_tform->rotate(
+                        -Angle::from_rad(
+                            std::atan2(rotated_vec.y, rotated_vec.x)
+                        ),
+                        glm::vec3{ 0, 1, 0 }
+                    );
+                }
+            }
+
+            const auto cam_forward = cam_tform->make_forward_dir();
+            const auto tgt_pos = tgt_tform->pos_;
+            cam_tform->pos_ = tgt_pos - cam_forward * 10.0;
+            cam_tform->pos_ += tgt_tform->make_up_dir() * offset_height_;
+            cam_tform->pos_ += cam_tform->make_right_dir() * offset_hor_;
+        }
+
+        void set_target(entt::entity target) {
+            if (target == entt::null)
+                return;
+
+            target_ = target;
+        }
+
+        void set_camera(entt::entity camera) {
+            if (camera == entt::null)
+                return;
+
+            camera_ = camera;
         }
 
     private:
         entt::entity target_ = entt::null;
         entt::entity camera_ = entt::null;
+
+    public:
+        double offset_height_ = 2;  // World space
+        double offset_hor_ = 0.5;   // World space
+        double key_look_speed_ = 1;
+        double mouse_look_speed_ = 0.1;
     };
 
 }  // namespace
@@ -622,7 +716,7 @@ namespace {
             win_height_ = cinfo.init_height_;
 
             filesys_ = cinfo.filesys_;
-            camera_controller_.osio_ = cinfo.osio_;
+            action_mapper_.give_osio(cinfo.osio_);
 
             sung::HTaskSche task_sche = sung::create_task_scheduler();
             client_ = mirinae::create_client();
@@ -877,6 +971,11 @@ namespace {
                 cosmos_->imgui_.push_back(imgui_main_);
             }
 
+            camera_controller_.set_camera(cosmos_->scene().main_camera_);
+            camera_controller_.set_target(
+                cosmos_->scene().find_entt("artist_subset.dmd")
+            );
+
             renderer_ = mirinae::create_vk_renderer(
                 cinfo, task_sche, script_, cosmos_
             );
@@ -896,7 +995,7 @@ namespace {
                 cosmos_->scene().main_camera_
             );
             if (cam_view)
-                camera_controller_.apply(*cam_view, action_mapper_, clock.dt());
+                camera_controller_.do_frame(cosmos_->scene(), action_mapper_);
 
             auto flashlight_tform =
                 cosmos_->reg().try_get<mirinae::cpnt::Transform>(flashlight_);
@@ -950,8 +1049,6 @@ namespace {
             if (renderer_->on_key_event(e))
                 return true;
             if (action_mapper_.on_key_event(e))
-                return true;
-            if (camera_controller_.on_key_event(e))
                 return true;
 
             return false;
@@ -1028,8 +1125,6 @@ namespace {
 
             if (action_mapper_.on_mouse_event(e))
                 return true;
-            if (camera_controller_.on_mouse_event(e))
-                return true;
 
             return true;
         }
@@ -1038,8 +1133,6 @@ namespace {
             if (renderer_->on_touch_event(e))
                 return true;
             if (action_mapper_.on_touch_event(e))
-                return true;
-            if (camera_controller_.on_touch_event(e))
                 return true;
 
             return true;
@@ -1055,7 +1148,7 @@ namespace {
 
         sung::MonotonicRealtimeTimer sec5_;
         mirinae::InputActionMapper action_mapper_;
-        ::NoclipController camera_controller_;
+        ::ThirdPersonController camera_controller_;
         entt::entity flashlight_;
         uint32_t win_width_ = 0, win_height_ = 0;
     };
