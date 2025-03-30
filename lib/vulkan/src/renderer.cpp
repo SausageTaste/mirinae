@@ -35,10 +35,10 @@ namespace {
     }
 
     template <typename T>
-    std::pair<T, T> calc_scaled_dimensions(T w, T h, double factor) {
+    std::pair<uint32_t, uint32_t> calc_scaled_dimensions(T w, T h) {
         return std::make_pair(
-            static_cast<T>(static_cast<double>(w) * factor),
-            static_cast<T>(static_cast<double>(h) * factor)
+            static_cast<uint32_t>(static_cast<double>(w) * 1.25),
+            static_cast<uint32_t>(static_cast<double>(h) * 1.25)
         );
     }
 
@@ -947,7 +947,7 @@ namespace {
                 swapchain_.init(fbuf_width_, fbuf_height_, device_);
 
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
-                    swapchain_.width(), swapchain_.height(), 0.9
+                    swapchain_.width(), swapchain_.height()
                 );
                 rp_res_.gbuf_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -1306,7 +1306,7 @@ namespace {
             swapchain_.init(width, height, device_);
 
             const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
-                swapchain_.width(), swapchain_.height(), 0.9
+                swapchain_.width(), swapchain_.height()
             );
 
             // Destroy
@@ -1325,7 +1325,7 @@ namespace {
                 swapchain_.init(fbuf_width_, fbuf_height_, device_);
 
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
-                    swapchain_.width(), swapchain_.height(), 0.9
+                    swapchain_.width(), swapchain_.height()
                 );
                 rp_res_.gbuf_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
