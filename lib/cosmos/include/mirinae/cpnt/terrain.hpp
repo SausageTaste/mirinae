@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include <daltools/img/img.hpp>
 #include <sung/basic/time.hpp>
 
 
@@ -9,6 +10,7 @@ namespace mirinae {
 
     struct ITerrainRenUnit {
         virtual ~ITerrainRenUnit() = default;
+        virtual const dal::IImage* height_map() const = 0;
     };
 
 }  // namespace mirinae

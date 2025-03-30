@@ -977,6 +977,8 @@ namespace {
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -260, -48.5, -590 };
+
+                cosmos_->phys_world().give_body_height_field(entt, reg);
             }
 
             // Player model

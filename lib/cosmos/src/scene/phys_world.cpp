@@ -4,6 +4,7 @@
 #include <thread>
 
 #include <Jolt/Jolt.h>
+#include <daltools/img/img2d.hpp>
 #include <entt/entity/registry.hpp>
 
 #include <Jolt/Core/Factory.h>
@@ -14,11 +15,13 @@
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
 
+#include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 
@@ -262,7 +265,7 @@ namespace {
 
             JPH::BodyCreationSettings floor_settings(
                 floor_shape,
-                JPH::RVec3(0, -18.5, 0),
+                JPH::RVec3(0, -100, 0),
                 JPH::Quat::sIdentity(),
                 JPH::EMotionType::Static,
                 ::Layers::NON_MOVING
@@ -313,6 +316,93 @@ namespace { namespace cpnt {
 
     public:
         JPH::BodyID id_;
+    };
+
+
+    class HeightFieldBody {
+
+    public:
+        bool try_populate_height_data(
+            entt::entity entity,
+            entt::registry &reg,
+            JPH::BodyInterface &body_interf
+        ) {
+            namespace cpnt = mirinae::cpnt;
+
+            auto terr = reg.try_get<cpnt::Terrain>(entity);
+            if (!terr) {
+                SPDLOG_WARN("Entity does not have a terrain component");
+                return false;
+            }
+
+            if (!terr->ren_unit_) {
+                SPDLOG_WARN("Entity does not have a terrain render unit");
+                return false;
+            }
+
+            const auto height_map = terr->ren_unit_->height_map();
+            if (!height_map) {
+                SPDLOG_WARN("Entity does not have a height map");
+                return false;
+            }
+
+            const auto img2d = height_map->as<dal::TDataImage2D<uint8_t>>();
+            if (!img2d) {
+                SPDLOG_WARN("Entity does not have a 2D image");
+                return false;
+            }
+
+            if (4 != img2d->channels()) {
+                SPDLOG_WARN("Height map does not have 4 channels");
+                return false;
+            }
+            if (img2d->width() != img2d->height()) {
+                SPDLOG_WARN("Height map is not square");
+                return false;
+            }
+
+            height_data_len_ = img2d->width();
+
+            const auto texel_count = img2d->width() * img2d->height();
+            height_data_.resize(texel_count);
+            for (uint32_t i = 0; i < texel_count; ++i) {
+                const auto *texel = img2d->texel_ptr(
+                    i % img2d->width(), i / img2d->width()
+                );
+                height_data_[i] = static_cast<float>(texel[0]) / 255.0f;
+            }
+
+            shape_settings_ = std::make_unique<JPH::HeightFieldShapeSettings>(
+                height_data_.data(),
+                JPH::Vec3(0, 0, 0),
+                JPH::Vec3(
+                    60 * 24 / height_data_len_, 64, 60 * 24 / height_data_len_
+                ),
+                height_data_len_
+            );
+
+            body_settings_ = JPH::BodyCreationSettings(
+                shape_settings_.get(),
+                JPH::RVec3(-260, -48.5, -590),
+                JPH::Quat::sIdentity(),
+                JPH::EMotionType::Static,
+                Layers::NON_MOVING
+            );
+
+            id_ = body_interf.CreateAndAddBody(
+                body_settings_, JPH::EActivation::DontActivate
+            );
+
+            ready_ = true;
+            return false;
+        }
+
+        JPH::BodyID id_;
+        std::unique_ptr<JPH::HeightFieldShapeSettings> shape_settings_;
+        JPH::BodyCreationSettings body_settings_;
+        std::vector<float> height_data_;
+        uint32_t height_data_len_ = 0;
+        bool ready_ = false;
     };
 
 
@@ -374,6 +464,13 @@ namespace mirinae {
         }
 
         void pre_sync(double dt, entt::registry &reg) {
+            for (auto e : reg.view<::cpnt::HeightFieldBody>()) {
+                auto &body = reg.get<::cpnt::HeightFieldBody>(e);
+
+                if (!body.ready_)
+                    body.try_populate_height_data(e, reg, this->body_interf());
+            }
+
             for (auto &e : reg.view<::cpnt::PlayerPhysBody>()) {
                 auto &body = reg.get<::cpnt::PlayerPhysBody>(e);
                 auto tform = reg.try_get<cpnt::Transform>(e);
@@ -465,6 +562,19 @@ namespace mirinae {
             );
         }
 
+        void give_body_height_field(entt::entity entity, entt::registry &reg) {
+            namespace cpnt = mirinae::cpnt;
+
+            auto terr = reg.try_get<cpnt::Terrain>(entity);
+            if (!terr) {
+                SPDLOG_WARN("Entity does not have a terrain component");
+                return;
+            }
+
+            auto &body = reg.emplace<::cpnt::HeightFieldBody>(entity);
+            body.try_populate_height_data(entity, reg, this->body_interf());
+        }
+
         void give_body_player(
             float height, float radius, entt::entity entity, entt::registry &reg
         ) {
@@ -538,6 +648,12 @@ namespace mirinae {
 
     void PhysWorld::give_body(entt::entity entity, entt::registry &reg) {
         pimpl_->give_body(entity, reg);
+    }
+
+    void PhysWorld::give_body_height_field(
+        entt::entity entity, entt::registry &reg
+    ) {
+        pimpl_->give_body_height_field(entity, reg);
     }
 
     void PhysWorld::give_body_player(
