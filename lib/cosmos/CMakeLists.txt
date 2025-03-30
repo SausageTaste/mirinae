@@ -19,5 +19,4 @@ target_link_libraries(mirinae_cosmos PUBLIC
     imgui::imgui
     Jolt::Jolt
     mirinae::aux
-    mirinae::platform
 )
