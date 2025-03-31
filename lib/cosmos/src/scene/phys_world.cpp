@@ -488,9 +488,9 @@ namespace {
 
             JPH::CharacterVirtualSettings settings;
             settings.mShape = new JPH::CapsuleShape(half_height_, radius_);
-            settings.mMaxSlopeAngle = JPH::DegreesToRadians(60);
+            settings.mMaxSlopeAngle = JPH::DegreesToRadians(45);
             settings.mSupportingVolume = JPH::Plane(
-                JPH::Vec3::sAxisY(), -half_height_ * 0.2f
+                JPH::Vec3::sAxisY(), -half_height_ * 0.75f
             );
             settings.mMass = 70;
             settings.mInnerBodyShape = settings.mShape;
@@ -604,14 +604,12 @@ namespace { namespace cpnt {
                 model_acc_.vtx(), model_acc_.idx()
             );
             mesh_shape.mActiveEdgeCosThresholdAngle = 0.999f;
-            auto result = mesh_shape.Create();
-            if (result.HasError()) {
-                SPDLOG_ERROR(
-                    "Failed to create mesh shape: {}", result.GetError()
-                );
+            auto res = mesh_shape.Create();
+            if (res.HasError()) {
+                SPDLOG_ERROR("Failed to create mesh shape: {}", res.GetError());
                 return false;
             }
-            shape_ = result.Get();
+            shape_ = res.Get();
 
             JPH::BodyCreationSettings body_settings(
                 shape_, pos, rot, JPH::EMotionType::Static, ::Layers::NON_MOVING
@@ -816,7 +814,15 @@ namespace mirinae {
 
                 const auto pos_diff = ::conv_vec(tform->pos_) -
                                       body->world_pos();
-                body->set_linear_vel(pos_diff * dt_rcp);
+                auto vel = pos_diff * dt_rcp;
+
+                switch (body->chara().GetGroundState()) {
+                    case JPH::CharacterBase::EGroundState::InAir:
+                        vel += physics_system.GetGravity();
+                        break;
+                }
+
+                body->set_linear_vel(vel);
                 body->extended_update(dt, temp_alloc_, physics_system);
 
                 for (auto &contact : body->chara().GetActiveContacts()) {

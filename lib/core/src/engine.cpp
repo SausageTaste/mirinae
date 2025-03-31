@@ -268,6 +268,7 @@ namespace {
         ) {
             namespace cpnt = mirinae::cpnt;
             using Angle = mirinae::cpnt::Transform::Angle;
+            using ActionType = mirinae::InputActionMapper::ActionType;
             auto& reg = *scene.reg_;
             const auto dt = scene.clock().dt();
 
@@ -337,6 +338,17 @@ namespace {
                         glm::vec3{ 0, 1, 0 }
                     );
                 }
+            }
+
+            // Move vertically
+            {
+                double vertical = 0;
+                if (action_map.get_value(ActionType::translate_up))
+                    vertical += 1;
+                if (action_map.get_value(ActionType::translate_down))
+                    vertical -= 1;
+
+                tgt_tform->pos_.y += vertical * dt * 15;
             }
         }
 
