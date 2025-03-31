@@ -642,33 +642,33 @@ namespace { namespace cpnt {
 
             auto terr = reg.try_get<cpnt::Terrain>(entity);
             if (!terr) {
-                SPDLOG_WARN("Entity does not have a terrain component");
+                // SPDLOG_WARN("Entity does not have a terrain component");
                 return false;
             }
 
             if (!terr->ren_unit_) {
-                SPDLOG_WARN("Entity does not have a terrain render unit");
+                // SPDLOG_WARN("Entity does not have a terrain render unit");
                 return false;
             }
 
             const auto height_map = terr->ren_unit_->height_map();
             if (!height_map) {
-                SPDLOG_WARN("Entity does not have a height map");
+                // SPDLOG_WARN("Entity does not have a height map");
                 return false;
             }
 
             const auto img2d = height_map->as<dal::TDataImage2D<uint8_t>>();
             if (!img2d) {
-                SPDLOG_WARN("Entity does not have a 2D image");
+                // SPDLOG_WARN("Entity does not have a 2D image");
                 return false;
             }
 
             if (4 != img2d->channels()) {
-                SPDLOG_WARN("Height map does not have 4 channels");
+                // SPDLOG_WARN("Height map does not have 4 channels");
                 return false;
             }
             if (img2d->width() != img2d->height()) {
-                SPDLOG_WARN("Height map is not square");
+                // SPDLOG_WARN("Height map is not square");
                 return false;
             }
 
