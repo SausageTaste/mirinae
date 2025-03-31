@@ -606,8 +606,6 @@ namespace {
             rp_gbuf_skinned_ = std::make_unique<::gbuf_skin::RPBundle>(
                 rp_res.gbuf_, desclayouts, swapchain, device
             );
-
-            fbuf_exd_ = rp_res.gbuf_.extent();
         }
 
         const std::string& name() const override {
@@ -619,7 +617,7 @@ namespace {
             auto& gbufs = ctxt.rp_res_->gbuf_;
 
             this->record_static(
-                ctxt.cmdbuf_, fbuf_exd_, *ctxt.draw_sheet_, ctxt.f_index_
+                ctxt.cmdbuf_, gbufs.extent(), *ctxt.draw_sheet_, ctxt.f_index_
             );
 
             mirinae::ImageMemoryBarrier{}
@@ -666,7 +664,7 @@ namespace {
                 );
 
             this->record_skinned(
-                ctxt.cmdbuf_, fbuf_exd_, *ctxt.draw_sheet_, ctxt.f_index_
+                ctxt.cmdbuf_, gbufs.extent(), *ctxt.draw_sheet_, ctxt.f_index_
             );
         }
 
@@ -768,7 +766,6 @@ namespace {
         mirinae::VulkanDevice& device_;
         std::unique_ptr<::gbuf::RPBundle> rp_gbuf_;
         std::unique_ptr<::gbuf_skin::RPBundle> rp_gbuf_skinned_;
-        VkExtent2D fbuf_exd_;
     };
 
 }  // namespace

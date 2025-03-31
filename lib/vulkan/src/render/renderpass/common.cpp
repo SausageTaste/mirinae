@@ -158,6 +158,8 @@ namespace mirinae {
         mirinae::ITextureManager& tex_man,
         mirinae::VulkanDevice& device
     ) {
+        this->destroy();
+
         for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
             depth_.push_back(create_tex_depth(width, height, device));
             albedo_.push_back(create_tex_attach(
@@ -193,6 +195,14 @@ namespace mirinae {
                 device
             ));
         }
+    }
+
+    void FbufImageBundle::destroy() {
+        depth_.clear();
+        albedo_.clear();
+        normal_.clear();
+        material_.clear();
+        compo_.clear();
     }
 
     uint32_t FbufImageBundle::width() const { return depth_.front()->width(); }

@@ -161,6 +161,8 @@ namespace mirinae {
             mirinae::VulkanDevice& device
         );
 
+        void destroy();
+
         uint32_t width() const;
         uint32_t height() const;
         VkExtent2D extent() const;
