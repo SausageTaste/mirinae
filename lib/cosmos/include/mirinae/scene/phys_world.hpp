@@ -28,13 +28,6 @@ namespace mirinae {
         void give_body_triangles(entt::entity entity, entt::registry& reg);
         void give_body_height_field(entt::entity entity, entt::registry& reg);
 
-        void give_body_player(
-            double height,
-            double radius,
-            entt::entity entity,
-            entt::registry& reg
-        );
-
     private:
         class Impl;
         std::unique_ptr<Impl> pimpl_;

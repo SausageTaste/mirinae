@@ -14,6 +14,7 @@
 #include "mirinae/cpnt/identifier.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
+#include "mirinae/cpnt/phys_body.hpp"
 #include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
@@ -1007,7 +1008,9 @@ namespace {
                 tform.set_scale(0.14);
 #endif
 
-                cosmos_->phys_world().give_body_player(1, 0.15, entt, reg);
+                auto& phys = reg.emplace<mirinae::cpnt::CharacterPhys>(entt);
+                phys.height_ = 1;
+                phys.radius_ = 0.15;
             }
 
             // City

@@ -25,6 +25,7 @@
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Renderer/DebugRenderer.h>
 
+#include "mirinae/cpnt/phys_body.hpp"
 #include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
@@ -39,9 +40,24 @@ namespace {
     constexpr JPH::uint cMaxContactConstraints = 1024;
 
 
-    JPH::Vec3 conv_vec(const glm::vec3 &v) { return JPH::Vec3(v.x, v.y, v.z); }
+    template <typename T>
+    JPH::Vec3 conv_vec(const glm::tvec3<T> &v) {
+        return JPH::Vec3(
+            static_cast<float>(v.x),
+            static_cast<float>(v.y),
+            static_cast<float>(v.z)
+        );
+    }
 
-    JPH::Vec3 conv_vec(const glm::dvec3 &v) { return JPH::Vec3(v.x, v.y, v.z); }
+    template <typename T>
+    JPH::Quat conv_quat(const glm::tquat<T> &q) {
+        return JPH::Quat(
+            static_cast<float>(q.x),
+            static_cast<float>(q.y),
+            static_cast<float>(q.z),
+            static_cast<float>(q.w)
+        );
+    }
 
     glm::dvec3 conv_vec(const JPH::Vec3 &v) {
         return glm::dvec3(v.GetX(), v.GetY(), v.GetZ());
@@ -49,6 +65,10 @@ namespace {
 
     glm::dvec4 conv_vec(const JPH::Vec4 &v) {
         return glm::dvec4(v.GetX(), v.GetY(), v.GetZ(), v.GetW());
+    }
+
+    glm::dquat conv_quat(const JPH::Quat &q) {
+        return glm::dquat(q.GetW(), q.GetX(), q.GetY(), q.GetZ());
     }
 
 }  // namespace
@@ -454,6 +474,85 @@ namespace {
         JPH::BodyID body_;
     };
 
+
+    class CharacterPhysBody : public mirinae::ICharacterPhysBody {
+
+    public:
+        void init(
+            const mirinae::cpnt::CharacterPhys &phys,
+            const mirinae::cpnt::Transform *tform,
+            JPH::PhysicsSystem &phys_sys
+        ) {
+            half_height_ = static_cast<float>(phys.height_ * 0.5);
+            radius_ = static_cast<float>(phys.radius_);
+
+            JPH::CharacterVirtualSettings settings;
+            settings.mShape = new JPH::CapsuleShape(half_height_, radius_);
+            settings.mMaxSlopeAngle = JPH::DegreesToRadians(60);
+            settings.mSupportingVolume = JPH::Plane(
+                JPH::Vec3::sAxisY(), -half_height_ * 0.2f
+            );
+            settings.mMass = 70;
+            settings.mInnerBodyShape = settings.mShape;
+
+            JPH::RVec3 pos(0, 0, 0);
+            auto rot = JPH::Quat::sIdentity();
+            if (tform) {
+                pos = ::conv_vec(tform->pos_);
+                rot = ::conv_quat(tform->rot_);
+            }
+
+            character_ = new JPH::CharacterVirtual(
+                &settings, pos + this->offset_vec(), rot, &phys_sys
+            );
+        }
+
+        void extended_update(
+            float dt,
+            JPH::TempAllocatorImpl &temp_alloc,
+            JPH::PhysicsSystem &physics_system
+        ) {
+            if (!character_)
+                return;
+
+            character_->ExtendedUpdate(
+                static_cast<float>(dt),
+                physics_system.GetGravity(),
+                update_settings_,
+                physics_system.GetDefaultBroadPhaseLayerFilter(Layers::MOVING),
+                physics_system.GetDefaultLayerFilter(Layers::MOVING),
+                {},
+                {},
+                temp_alloc
+            );
+        }
+
+        void set_linear_vel(const JPH::RVec3 &vel) {
+            if (!character_)
+                return;
+
+            character_->SetLinearVelocity(vel);
+        }
+
+        JPH::CharacterVirtual &chara() { return *character_; }
+
+        JPH::RVec3 world_pos() const {
+            return character_->GetPosition() - this->offset_vec();
+        }
+
+    private:
+        float offset() const { return half_height_ + radius_; }
+
+        JPH::RVec3 offset_vec() const {
+            return JPH::RVec3(0, this->offset(), 0);
+        }
+
+        JPH::CharacterVirtual::ExtendedUpdateSettings update_settings_;
+        JPH::CharacterVirtual *character_;
+        float half_height_ = 0;
+        float radius_ = 0;
+    };
+
 }  // namespace
 
 
@@ -495,9 +594,7 @@ namespace { namespace cpnt {
             JPH::Quat rot = JPH::Quat::sIdentity();
             if (auto tform = reg.try_get<cpnt::Transform>(entity)) {
                 pos = ::conv_vec(tform->pos_);
-                rot.Set(
-                    tform->rot_.x, tform->rot_.y, tform->rot_.z, tform->rot_.w
-                );
+                rot = ::conv_quat(tform->rot_);
                 model_acc_.set_scale(tform->scale_);
             }
 
@@ -517,11 +614,7 @@ namespace { namespace cpnt {
             shape_ = result.Get();
 
             JPH::BodyCreationSettings body_settings(
-                shape_,
-                pos,                       // position
-                rot,                       // rotation
-                JPH::EMotionType::Static,  // for triangle mesh
-                ::Layers::NON_MOVING       // or your custom layer
+                shape_, pos, rot, JPH::EMotionType::Static, ::Layers::NON_MOVING
             );
 
             id_ = body_interf.CreateAndAddBody(
@@ -625,21 +718,6 @@ namespace { namespace cpnt {
         bool ready_ = false;
     };
 
-
-    class PlayerPhysBody {
-
-    public:
-        float offset() const { return half_height_ + radius_; }
-
-        glm::dvec3 offset_vec() const {
-            return glm::dvec3(0, this->offset(), 0);
-        }
-
-        JPH::CharacterVirtual *character_;
-        float half_height_ = 0;
-        float radius_ = 0;
-    };
-
 }}  // namespace ::cpnt
 
 
@@ -694,9 +772,9 @@ namespace mirinae {
             physics_system.Update(OPTIMAL_DT, 1, &temp_alloc_, &job_sys_);
         }
 
-        void pre_sync(double dt, entt::registry &reg) {
+        void pre_sync(float dt, entt::registry &reg) {
             auto &bodies = this->body_interf();
-            const auto dt_rcp = static_cast<float>(1.0 / dt);
+            const auto dt_rcp = 1.f / dt;
             const auto push_force_factor = 100 * dt_rcp;
 
             someone_is_preparing_ = false;
@@ -721,31 +799,27 @@ namespace mirinae {
             if (someone_is_preparing_)
                 return;
 
-            for (auto &e : reg.view<::cpnt::PlayerPhysBody>()) {
-                auto &body = reg.get<::cpnt::PlayerPhysBody>(e);
+            for (auto &e : reg.view<cpnt::CharacterPhys>()) {
+                auto &phys = reg.get<cpnt::CharacterPhys>(e);
                 auto tform = reg.try_get<cpnt::Transform>(e);
+                auto body = phys.ren_unit<::CharacterPhysBody>();
+
+                if (!body) {
+                    auto p_body = std::make_unique<::CharacterPhysBody>();
+                    p_body->init(phys, tform, physics_system);
+                    body = p_body.get();
+                    phys.ren_unit_ = std::move(p_body);
+                }
+
                 if (!tform)
                     continue;
 
                 const auto pos_diff = ::conv_vec(tform->pos_) -
-                                      body.character_->GetPosition();
-                body.character_->SetLinearVelocity(pos_diff * dt_rcp);
+                                      body->world_pos();
+                body->set_linear_vel(pos_diff * dt_rcp);
+                body->extended_update(dt, temp_alloc_, physics_system);
 
-                JPH::CharacterVirtual::ExtendedUpdateSettings update_settings;
-                body.character_->ExtendedUpdate(
-                    static_cast<float>(dt),
-                    physics_system.GetGravity(),
-                    update_settings,
-                    physics_system.GetDefaultBroadPhaseLayerFilter(
-                        Layers::MOVING
-                    ),
-                    physics_system.GetDefaultLayerFilter(Layers::MOVING),
-                    {},
-                    {},
-                    temp_alloc_
-                );
-
-                for (auto &contact : body.character_->GetActiveContacts()) {
+                for (auto &contact : body->chara().GetActiveContacts()) {
                     const auto c_motion = bodies.GetMotionType(contact.mBodyB);
                     if (c_motion != JPH::EMotionType::Dynamic)
                         continue;
@@ -761,14 +835,16 @@ namespace mirinae {
             if (someone_is_preparing_)
                 return;
 
-            for (auto &e : reg.view<::cpnt::PlayerPhysBody>()) {
-                auto &body = reg.get<::cpnt::PlayerPhysBody>(e);
+            for (auto &e : reg.view<cpnt::CharacterPhys>()) {
+                auto &phys = reg.get<cpnt::CharacterPhys>(e);
+                auto body = phys.ren_unit<::CharacterPhysBody>();
+                if (!body)
+                    continue;
                 auto tform = reg.try_get<cpnt::Transform>(e);
                 if (!tform)
                     continue;
 
-                const auto pos = body.character_->GetPosition();
-                tform->pos_ = ::conv_vec(pos) - body.offset_vec();
+                tform->pos_ = ::conv_vec(body->world_pos());
             }
 
             for (auto &e : reg.view<::cpnt::PhysBody>()) {
@@ -780,10 +856,8 @@ namespace mirinae {
                 JPH::RVec3 pos;
                 JPH::Quat rot;
                 this->body_interf().GetPositionAndRotation(body.id_, pos, rot);
-                tform->pos_ = { pos.GetX(), pos.GetY(), pos.GetZ() };
-                tform->rot_ = {
-                    rot.GetW(), rot.GetX(), rot.GetY(), rot.GetZ()
-                };
+                tform->pos_ = ::conv_vec(pos);
+                tform->rot_ = ::conv_quat(rot);
             }
 
             /*
@@ -818,7 +892,7 @@ namespace mirinae {
 
             JPH::BodyCreationSettings sphere_settings(
                 new JPH::SphereShape(tform->scale_.x),
-                JPH::RVec3(tform->pos_.x, tform->pos_.y, tform->pos_.z),
+                ::conv_vec(tform->pos_),
                 JPH::Quat::sIdentity(),
                 JPH::EMotionType::Dynamic,
                 Layers::MOVING
@@ -848,39 +922,6 @@ namespace mirinae {
 
             auto &body = reg.emplace<::cpnt::HeightFieldBody>(entity);
             body.try_populate_height_data(entity, reg, this->body_interf());
-        }
-
-        void give_body_player(
-            float height, float radius, entt::entity entity, entt::registry &reg
-        ) {
-            namespace cpnt = mirinae::cpnt;
-
-            auto tform = reg.try_get<cpnt::Transform>(entity);
-            if (!tform) {
-                SPDLOG_WARN("Entity does not have a transform component");
-                return;
-            }
-
-            auto &body = reg.emplace<::cpnt::PlayerPhysBody>(entity);
-            body.half_height_ = height * 0.5f;
-            body.radius_ = radius;
-
-            JPH::CharacterVirtualSettings settings;
-            settings.mShape = new JPH::CapsuleShape(body.half_height_, radius);
-            settings.mMaxSlopeAngle = JPH::DegreesToRadians(60);
-            settings.mSupportingVolume = JPH::Plane(
-                JPH::Vec3::sAxisY(), -height * 0.4f
-            );
-            settings.mMass = 70;
-            settings.mInnerBodyShape = settings.mShape;
-
-            const auto quat = tform->rot_;
-            body.character_ = new JPH::CharacterVirtual(
-                &settings,
-                ::conv_vec(tform->pos_ + body.offset_vec()),
-                JPH::Quat(quat.x, quat.y, quat.z, quat.w),
-                &physics_system
-            );
         }
 
     private:
@@ -942,12 +983,6 @@ namespace mirinae {
         entt::entity entity, entt::registry &reg
     ) {
         pimpl_->give_body_height_field(entity, reg);
-    }
-
-    void PhysWorld::give_body_player(
-        double height, double radius, entt::entity entity, entt::registry &reg
-    ) {
-        pimpl_->give_body_player(height, radius, entity, reg);
     }
 
 }  // namespace mirinae
