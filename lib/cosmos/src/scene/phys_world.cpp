@@ -866,14 +866,13 @@ namespace mirinae {
             body.radius_ = radius;
 
             JPH::CharacterVirtualSettings settings;
-            settings.mShape = new JPH::CapsuleShape(height * 0.5f, radius);
-            settings.mMaxSlopeAngle = JPH::DegreesToRadians(45.0f);
-            // settings.mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(),
-            // -0.9f);
-            settings.mMass = 70;
-            settings.mInnerBodyShape = new JPH::CapsuleShape(
-                height * 0.5f, radius
+            settings.mShape = new JPH::CapsuleShape(body.half_height_, radius);
+            settings.mMaxSlopeAngle = JPH::DegreesToRadians(60);
+            settings.mSupportingVolume = JPH::Plane(
+                JPH::Vec3::sAxisY(), -height * 0.4f
             );
+            settings.mMass = 70;
+            settings.mInnerBodyShape = settings.mShape;
 
             const auto quat = tform->rot_;
             body.character_ = new JPH::CharacterVirtual(
