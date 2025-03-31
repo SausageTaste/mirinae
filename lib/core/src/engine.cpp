@@ -329,9 +329,10 @@ namespace {
                     tgt_tform->pos_.z += move_vec_scale.y;
                     tgt_tform->reset_rotation();
                     tgt_tform->rotate(
-                        -Angle::from_rad(
-                            std::atan2(move_vec_rot.y, move_vec_rot.x)
-                        ),
+                        ANGLE_OFFSET -
+                            Angle::from_rad(
+                                std::atan2(move_vec_rot.y, move_vec_rot.x)
+                            ),
                         glm::vec3{ 0, 1, 0 }
                     );
                 }
@@ -990,15 +991,23 @@ namespace {
                 i.set_name("Player model");
 
                 auto& mdl = reg.emplace<mirinae::cpnt::MdlActorSkinned>(entt);
-                mdl.model_path_ = "Sung/artist.dun/artist_subset.dmd";
-                mdl.anim_state_.select_anim_name(
-                    "idle_normal_1", cosmos_->scene().clock()
-                );
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -113, 2, -39 };
 
-                cosmos_->phys_world().give_body_player(1, 0.1, entt, reg);
+#if false
+                mdl.model_path_ = "Sung/artist.dun/artist_subset.dmd";
+                mdl.anim_state_.select_anim_name(
+                    "idle_normal_1", cosmos_->scene().clock()
+                );
+#else
+                mdl.model_path_ =
+                    "Sung/Character Running.dun/Character Running.dmd";
+                mdl.anim_state_.select_anim_index(0, cosmos_->scene().clock());
+                tform.set_scale(0.14);
+#endif
+
+                cosmos_->phys_world().give_body_player(1, 0.15, entt, reg);
             }
 
             // Script

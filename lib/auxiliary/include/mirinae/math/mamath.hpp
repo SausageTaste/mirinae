@@ -54,6 +54,12 @@ namespace mirinae {
         }
         void reset_rotation() { rot_ = glm::quat(1, 0, 0, 0); }
 
+        void set_scale(T x) {
+            scale_.x = x;
+            scale_.y = x;
+            scale_.z = x;
+        }
+
         glm::tvec3<T> make_forward_dir() const {
             return glm::normalize(
                 glm::mat3_cast(rot_) * glm::tvec3<T>(0, 0, -1)
