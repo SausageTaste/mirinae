@@ -293,6 +293,7 @@ namespace {
             using ActionType = mirinae::InputActionMapper::ActionType;
             auto& reg = *scene.reg_;
             const auto dt = scene.clock().dt();
+            auto& modl = reg.get<cpnt::MdlActorSkinned>(target_);
 
             auto cam_tform = reg.try_get<cpnt::Transform>(camera_);
             if (!cam_tform) {
@@ -359,9 +360,18 @@ namespace {
                     tgt_tform->pos_.z += move_vec_scale.y;
                     tgt_tform->reset_rotation();
                     tgt_tform->rotate(
-                        ANGLE_OFFSET - tgt_heading_.get(dt),
-                        glm::vec3{ 0, 1, 0 }
+                        -tgt_heading_.get(dt), glm::vec3{ 0, 1, 0 }
                     );
+
+                    if (modl.anim_state_.get_cur_anim_name() != "run_normal_1")
+                        modl.anim_state_.select_anim_name(
+                            "run_normal_1", scene.clock()
+                        );
+                } else {
+                    if (modl.anim_state_.get_cur_anim_name() != "idle_normal_1")
+                        modl.anim_state_.select_anim_name(
+                            "idle_normal_1", scene.clock()
+                        );
                 }
             }
 
@@ -424,10 +434,10 @@ namespace {
         ::ValueInterpolator tgt_heading_;
 
     public:
-        double move_speed_ = 3;       // World space
-        double offset_dist_ = 3;      // World space
-        double offset_height_ = 0.5;  // World space
-        double offset_hor_ = 0.25;    // World space
+        double move_speed_ = 3;        // World space
+        double offset_dist_ = 2;       // World space
+        double offset_height_ = 0.75;  // World space
+        double offset_hor_ = 0.25;     // World space
         double key_look_speed_ = 1;
         double mouse_look_speed_ = 0.1;
     };
@@ -1034,7 +1044,7 @@ namespace {
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -113, 2, -39 };
 
-#if false
+#if true
                 mdl.model_path_ = "Sung/artist.dun/artist_subset.dmd";
                 mdl.anim_state_.select_anim_name(
                     "idle_normal_1", cosmos_->scene().clock()
