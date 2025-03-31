@@ -25,6 +25,7 @@ namespace mirinae {
         void post_sync(double dt, entt::registry& reg);
 
         void give_body(entt::entity entity, entt::registry& reg);
+        void give_body_triangles(entt::entity entity, entt::registry& reg);
         void give_body_height_field(entt::entity entity, entt::registry& reg);
 
         void give_body_player(

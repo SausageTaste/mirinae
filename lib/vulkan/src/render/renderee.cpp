@@ -170,6 +170,7 @@ namespace mirinae {
         VulkanDevice& device
     ) {
         name_ = name;
+        raw_data_ = vertices;
 
         auto& desclayout = desclayouts.get("gbuf:model");
         desc_pool_.init(
@@ -195,7 +196,7 @@ namespace mirinae {
         builder.apply_all(device.logi_device());
 
         vert_index_pair_.init(
-            vertices,
+            raw_data_,
             cmd_pool,
             device.mem_alloc(),
             device.graphics_queue(),
@@ -387,6 +388,31 @@ namespace mirinae {
         render_units_alpha_.clear();
     }
 
+    bool RenderModel::is_ready() const {
+        if (render_units_.empty() && render_units_alpha_.empty())
+            return false;
+
+        return true;
+    }
+
+    void RenderModel::access_positions(IModelAccessor& acc) const {
+        for (auto& unit : render_units_) {
+            for (auto idx : unit.raw_data().indices_) {
+                auto& v = unit.raw_data().vertices_.at(idx);
+                if (!acc.position(v.pos_))
+                    return;
+            }
+        }
+
+        for (auto& unit : render_units_alpha_) {
+            for (auto idx : unit.raw_data().indices_) {
+                auto& v = unit.raw_data().vertices_.at(idx);
+                if (!acc.position(v.pos_))
+                    return;
+            }
+        }
+    }
+
     size_t RenderModel::ren_unit_count() const {
         return render_units_.size() + render_units_alpha_.size();
     }
@@ -419,6 +445,10 @@ namespace mirinae {
             unit.destroy(device_.mem_alloc(), device_.logi_device());
         runits_alpha_.clear();
     }
+
+    bool RenderModelSkinned::is_ready() const { return false; }
+
+    void RenderModelSkinned::access_positions(IModelAccessor& acc) const {}
 
     size_t RenderModelSkinned::ren_unit_count() const {
         return runits_.size() + runits_alpha_.size();

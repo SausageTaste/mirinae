@@ -1010,6 +1010,23 @@ namespace {
                 cosmos_->phys_world().give_body_player(1, 0.15, entt, reg);
             }
 
+            // City
+            {
+                const auto entt = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("City");
+
+                auto& mdl = reg.emplace<mirinae::cpnt::MdlActorStatic>(entt);
+                mdl.model_path_ = "Sung/city.dun/city.dmd";
+
+                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
+                tform.pos_ = { -21, 1.8, 40.7 };
+                tform.set_scale(0.65);
+
+                cosmos_->phys_world().give_body_triangles(entt, reg);
+            }
+
             // Script
             {
                 const auto contents = filesys_->read_file(

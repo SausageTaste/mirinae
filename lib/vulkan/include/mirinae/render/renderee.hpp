@@ -35,8 +35,11 @@ namespace mirinae {
         void record_bind_vert_buf(VkCommandBuffer cmdbuf);
         uint32_t vertex_count() const;
 
+        auto& raw_data() const { return raw_data_; }
+
     private:
         std::string name_;
+        VerticesStaticPair raw_data_;
         DescPool desc_pool_;
         VertexIndexPair vert_index_pair_;
         Buffer uniform_buf_;
@@ -115,6 +118,9 @@ namespace mirinae {
         RenderModel(VulkanDevice& vulkan_device);
         ~RenderModel();
 
+        bool is_ready() const override;
+        void access_positions(IModelAccessor& acc) const override;
+
         size_t ren_unit_count() const override;
         std::string_view ren_unit_name(size_t index) const override;
 
@@ -130,6 +136,9 @@ namespace mirinae {
     public:
         RenderModelSkinned(VulkanDevice& vulkan_device);
         ~RenderModelSkinned();
+
+        bool is_ready() const override;
+        void access_positions(IModelAccessor& acc) const override;
 
         size_t ren_unit_count() const override;
         std::string_view ren_unit_name(size_t index) const override;

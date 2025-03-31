@@ -3,13 +3,25 @@
 #include <array>
 #include <filesystem>
 
+#include <glm/vec3.hpp>
+
 #include "mirinae/lightweight/skin_anim.hpp"
 
 
 namespace mirinae {
 
+    struct IModelAccessor {
+        virtual ~IModelAccessor() = default;
+
+        virtual bool position(const glm::vec3& p) = 0;
+    };
+
+
     struct IRenModel {
         virtual ~IRenModel() = default;
+
+        virtual bool is_ready() const = 0;
+        virtual void access_positions(IModelAccessor& acc) const = 0;
 
         virtual size_t ren_unit_count() const = 0;
         virtual std::string_view ren_unit_name(size_t index) const = 0;

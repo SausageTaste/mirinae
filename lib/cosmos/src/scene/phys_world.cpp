@@ -18,12 +18,14 @@
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Renderer/DebugRenderer.h>
 
+#include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
@@ -49,6 +51,10 @@ namespace {
         return glm::dvec4(v.GetX(), v.GetY(), v.GetZ(), v.GetW());
     }
 
+}  // namespace
+
+
+namespace {
 
     static void trace_impl(const char *inFMT, ...) {
         // Format the message
@@ -322,6 +328,74 @@ namespace {
 
 namespace {
 
+    class MeshBuilder {
+
+    public:
+        void add_tri(
+            const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2
+        ) {
+            indices_.push_back(
+                JPH::IndexedTriangle(
+                    this->add_vtx(v0), this->add_vtx(v1), this->add_vtx(v2), 0
+                )
+            );
+        }
+
+        auto &vtx() const { return vertices_; }
+        auto &idx() const { return indices_; }
+
+    private:
+        JPH::uint32 add_vtx(const JPH::Float3 &v) {
+            const auto idx = vertices_.size();
+            vertices_.push_back(v);
+            return idx;
+        }
+
+        JPH::uint32 add_vtx(const glm::vec3 &v) {
+            return this->add_vtx(JPH::Float3(v.x, v.y, v.z));
+        }
+
+        JPH::uint32 add_vtx(const JPH::RVec3 &v) {
+            return this->add_vtx(JPH::Float3(v.GetX(), v.GetY(), v.GetZ()));
+        }
+
+        JPH::VertexList vertices_;
+        JPH::IndexedTriangleList indices_;
+    };
+
+
+    class ModelAccessor : public mirinae::IModelAccessor {
+
+    public:
+        bool position(const glm::vec3 &p) override {
+            vtx_buf_[vtx_count_] = p * scale_;
+            ++vtx_count_;
+
+            if (vtx_count_ >= vtx_buf_.size()) {
+                mesh_builder_.add_tri(vtx_buf_[0], vtx_buf_[1], vtx_buf_[2]);
+                vtx_count_ = 0;
+            }
+
+            return true;
+        }
+
+        void set_scale(const glm::vec3 &scale) { scale_ = scale; }
+
+        auto &vtx() const { return mesh_builder_.vtx(); }
+        auto &idx() const { return mesh_builder_.idx(); }
+
+    private:
+        MeshBuilder mesh_builder_;
+        std::array<glm::vec3, 3> vtx_buf_;
+        glm::vec3 scale_{ 1, 1, 1 };
+        size_t vtx_count_ = 0;
+    };
+
+}  // namespace
+
+
+namespace {
+
     class BoxBody {
 
     public:
@@ -389,6 +463,79 @@ namespace { namespace cpnt {
 
     public:
         JPH::BodyID id_;
+    };
+
+
+    class MeshBody {
+
+    public:
+        bool try_init(
+            entt::entity entity,
+            entt::registry &reg,
+            JPH::BodyInterface &body_interf
+        ) {
+            namespace cpnt = mirinae::cpnt;
+
+            auto modl = reg.try_get<cpnt::MdlActorStatic>(entity);
+            if (!modl) {
+                // SPDLOG_WARN("Entity does not have a model component");
+                return false;
+            }
+
+            if (!modl->model_) {
+                // SPDLOG_WARN("Entity does not have a model ren unit");
+                return false;
+            }
+            if (!modl->model_->is_ready()) {
+                // SPDLOG_WARN("Model is not ready");
+                return false;
+            }
+
+            JPH::Vec3 pos(0, 0, 0);
+            JPH::Quat rot = JPH::Quat::sIdentity();
+            if (auto tform = reg.try_get<cpnt::Transform>(entity)) {
+                pos = ::conv_vec(tform->pos_);
+                rot.Set(
+                    tform->rot_.x, tform->rot_.y, tform->rot_.z, tform->rot_.w
+                );
+                model_acc_.set_scale(tform->scale_);
+            }
+
+            modl->model_->access_positions(model_acc_);
+
+            JPH::MeshShapeSettings mesh_shape(
+                model_acc_.vtx(), model_acc_.idx()
+            );
+            mesh_shape.mActiveEdgeCosThresholdAngle = 0.999f;
+            auto result = mesh_shape.Create();
+            if (result.HasError()) {
+                SPDLOG_ERROR(
+                    "Failed to create mesh shape: {}", result.GetError()
+                );
+                return false;
+            }
+            shape_ = result.Get();
+
+            JPH::BodyCreationSettings body_settings(
+                shape_,
+                pos,                       // position
+                rot,                       // rotation
+                JPH::EMotionType::Static,  // for triangle mesh
+                ::Layers::NON_MOVING       // or your custom layer
+            );
+
+            id_ = body_interf.CreateAndAddBody(
+                body_settings, JPH::EActivation::DontActivate
+            );
+
+            ready_ = true;
+            return false;
+        }
+
+        JPH::BodyID id_;
+        JPH::Ref<JPH::Shape> shape_;
+        ::ModelAccessor model_acc_;
+        bool ready_ = false;
     };
 
 
@@ -523,8 +670,8 @@ namespace mirinae {
             physics_system.SetGravity(JPH::Vec3(0, -9.81f, 0));
 
             auto &body_interf = this->body_interf();
-            floor_.init(body_interf);
-            body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
+            // floor_.init(body_interf);
+            // body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
 
             JPH::DebugRenderer::sInstance = &debug_ren_;
         }
@@ -540,6 +687,9 @@ namespace mirinae {
         void do_frame(double dt) {
             constexpr float OPTIMAL_DT = 1.0 / 60.0;
 
+            if (someone_is_preparing_)
+                return;
+
             auto &body_interf = this->body_interf();
             physics_system.Update(OPTIMAL_DT, 1, &temp_alloc_, &job_sys_);
         }
@@ -549,12 +699,27 @@ namespace mirinae {
             const auto dt_rcp = static_cast<float>(1.0 / dt);
             const auto push_force_factor = 100 * dt_rcp;
 
+            someone_is_preparing_ = false;
+
+            for (auto e : reg.view<::cpnt::MeshBody>()) {
+                auto &body = reg.get<::cpnt::MeshBody>(e);
+
+                if (body.ready_)
+                    continue;
+                if (!body.try_init(e, reg, bodies))
+                    someone_is_preparing_ = true;
+            }
+
             for (auto e : reg.view<::cpnt::HeightFieldBody>()) {
                 auto &body = reg.get<::cpnt::HeightFieldBody>(e);
 
-                if (!body.ready_)
-                    body.try_populate_height_data(e, reg, bodies);
+                if (body.ready_)
+                    continue;
+                body.try_populate_height_data(e, reg, bodies);
             }
+
+            if (someone_is_preparing_)
+                return;
 
             for (auto &e : reg.view<::cpnt::PlayerPhysBody>()) {
                 auto &body = reg.get<::cpnt::PlayerPhysBody>(e);
@@ -593,6 +758,9 @@ namespace mirinae {
         }
 
         void post_sync(double dt, entt::registry &reg) {
+            if (someone_is_preparing_)
+                return;
+
             for (auto &e : reg.view<::cpnt::PlayerPhysBody>()) {
                 auto &body = reg.get<::cpnt::PlayerPhysBody>(e);
                 auto tform = reg.try_get<cpnt::Transform>(e);
@@ -662,6 +830,13 @@ namespace mirinae {
             );
         }
 
+        void give_body_triangles(entt::entity entity, entt::registry &reg) {
+            namespace cpnt = mirinae::cpnt;
+
+            auto &body = reg.emplace<::cpnt::MeshBody>(entity);
+            body.try_init(entity, reg, this->body_interf());
+        }
+
         void give_body_height_field(entt::entity entity, entt::registry &reg) {
             namespace cpnt = mirinae::cpnt;
 
@@ -728,6 +903,7 @@ namespace mirinae {
         ::MyContactListener contact_listener_;
 
         ::BoxBody floor_;
+        bool someone_is_preparing_ = false;
     };
 
 
@@ -755,6 +931,12 @@ namespace mirinae {
 
     void PhysWorld::give_body(entt::entity entity, entt::registry &reg) {
         pimpl_->give_body(entity, reg);
+    }
+
+    void PhysWorld::give_body_triangles(
+        entt::entity entity, entt::registry &reg
+    ) {
+        pimpl_->give_body_triangles(entity, reg);
     }
 
     void PhysWorld::give_body_height_field(
