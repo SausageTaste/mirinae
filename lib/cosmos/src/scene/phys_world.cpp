@@ -545,11 +545,15 @@ namespace mirinae {
         }
 
         void pre_sync(double dt, entt::registry &reg) {
+            auto &bodies = this->body_interf();
+            const auto dt_rcp = static_cast<float>(1.0 / dt);
+            const auto push_force_factor = 100 * dt_rcp;
+
             for (auto e : reg.view<::cpnt::HeightFieldBody>()) {
                 auto &body = reg.get<::cpnt::HeightFieldBody>(e);
 
                 if (!body.ready_)
-                    body.try_populate_height_data(e, reg, this->body_interf());
+                    body.try_populate_height_data(e, reg, bodies);
             }
 
             for (auto &e : reg.view<::cpnt::PlayerPhysBody>()) {
@@ -560,12 +564,11 @@ namespace mirinae {
 
                 const auto pos_diff = ::conv_vec(tform->pos_) -
                                       body.character_->GetPosition();
-
-                body.character_->SetLinearVelocity(pos_diff / dt);
+                body.character_->SetLinearVelocity(pos_diff * dt_rcp);
 
                 JPH::CharacterVirtual::ExtendedUpdateSettings update_settings;
                 body.character_->ExtendedUpdate(
-                    dt,
+                    static_cast<float>(dt),
                     physics_system.GetGravity(),
                     update_settings,
                     physics_system.GetDefaultBroadPhaseLayerFilter(
@@ -576,6 +579,16 @@ namespace mirinae {
                     {},
                     temp_alloc_
                 );
+
+                for (auto &contact : body.character_->GetActiveContacts()) {
+                    const auto c_motion = bodies.GetMotionType(contact.mBodyB);
+                    if (c_motion != JPH::EMotionType::Dynamic)
+                        continue;
+
+                    const auto push_dir = -contact.mContactNormal;
+                    const auto push_force = push_dir * push_force_factor;
+                    bodies.AddForce(contact.mBodyB, push_force);
+                }
             }
         }
 
