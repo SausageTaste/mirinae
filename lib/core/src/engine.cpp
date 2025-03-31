@@ -258,6 +258,28 @@ namespace {
     };
 
 
+    class ValueInterpolator {
+
+    public:
+        void set(sung::TAngle<double> tgt) {
+            tgt_ = tgt;
+            cur_ = tgt;
+        }
+
+        void set_target(sung::TAngle<double> tgt) { tgt_ = tgt; }
+
+        sung::TAngle<double> get(double dt) {
+            const auto diff = tgt_.calc_short_diff_from(cur_);
+            cur_ = cur_ + diff * (dt * 20);
+            return cur_;
+        }
+
+    private:
+        sung::TAngle<double> cur_;
+        sung::TAngle<double> tgt_;
+    };
+
+
     class ThirdPersonController {
 
     public:
@@ -327,14 +349,17 @@ namespace {
                     const auto move_vec_scale = move_vec_rot *
                                                 (dt * move_speed_);
 
+                    tgt_heading_.set_target(
+                        Angle::from_rad(
+                            std::atan2(move_vec_rot.y, move_vec_rot.x)
+                        )
+                    );
+
                     tgt_tform->pos_.x += move_vec_scale.x;
                     tgt_tform->pos_.z += move_vec_scale.y;
                     tgt_tform->reset_rotation();
                     tgt_tform->rotate(
-                        ANGLE_OFFSET -
-                            Angle::from_rad(
-                                std::atan2(move_vec_rot.y, move_vec_rot.x)
-                            ),
+                        ANGLE_OFFSET - tgt_heading_.get(dt),
                         glm::vec3{ 0, 1, 0 }
                     );
                 }
@@ -396,6 +421,7 @@ namespace {
     private:
         entt::entity target_ = entt::null;
         entt::entity camera_ = entt::null;
+        ::ValueInterpolator tgt_heading_;
 
     public:
         double move_speed_ = 3;       // World space
