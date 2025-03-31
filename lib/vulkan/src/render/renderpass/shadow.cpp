@@ -1033,6 +1033,8 @@ namespace {
                         auto unit = terr.ren_unit<mirinae::RenUnitTerrain>();
                         if (!unit)
                             continue;
+                        if (!unit->is_ready())
+                            continue;
 
                         mirinae::DescSetBindInfo{}
                             .layout(pipe_layout_)

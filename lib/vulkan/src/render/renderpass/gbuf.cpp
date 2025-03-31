@@ -881,6 +881,8 @@ namespace {
                     );
                     unit = terr.ren_unit<::mirinae::RenUnitTerrain>();
                 }
+                if (!unit->is_ready())
+                    continue;
 
                 mirinae::DescSetBindInfo{}
                     .layout(rp.pipeline_layout())
