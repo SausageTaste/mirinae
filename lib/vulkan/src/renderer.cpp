@@ -1184,6 +1184,28 @@ namespace {
                     rp_
                 );
             }
+            for (auto& mesh : ren_ctxt.debug_ren_.meshes_) {
+                const auto tri_count = mesh->idx_.size() / 3;
+
+                for (size_t i = 0; i < tri_count; ++i) {
+                    const auto i0 = mesh->idx_[3 * i + 0];
+                    const auto i1 = mesh->idx_[3 * i + 1];
+                    const auto i2 = mesh->idx_[3 * i + 2];
+
+                    const auto& v0 = mesh->vtx_[i0].pos_;
+                    const auto& v1 = mesh->vtx_[i1].pos_;
+                    const auto& v2 = mesh->vtx_[i2].pos_;
+
+                    rp_states_debug_mesh_.draw(
+                        ren_ctxt.cmdbuf_,
+                        pv_mat * glm::dvec4(v0, 1),
+                        pv_mat * glm::dvec4(v1, 1),
+                        pv_mat * glm::dvec4(v2, 1),
+                        glm::vec4(1, 0, 0, 1),
+                        rp_
+                    );
+                }
+            }
             rp_states_debug_mesh_.end_record(ren_ctxt.cmdbuf_);
             rp_states_fillscreen_.record(
                 ren_ctxt.cmdbuf_,

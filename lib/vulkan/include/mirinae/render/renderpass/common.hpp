@@ -344,6 +344,8 @@ namespace mirinae {
             t.color_ = color;
         }
 
+        void mesh(const DebugMesh& mesh) override { meshes_.push_back(&mesh); }
+
     public:
         void clear() { tri_.clear(); }
 
@@ -373,6 +375,7 @@ namespace mirinae {
 
         std::vector<Triangle> tri_;
         std::vector<TriangleWorld> tri_world_;
+        std::vector<const DebugMesh*> meshes_;
     };
 
 

@@ -63,6 +63,10 @@ namespace {
         return glm::dvec3(v.GetX(), v.GetY(), v.GetZ());
     }
 
+    glm::dvec3 conv_vec(const JPH::Float3 &v) {
+        return glm::dvec3(v.x, v.y, v.z);
+    }
+
     glm::dvec4 conv_vec(const JPH::Vec4 &v) {
         return glm::dvec4(v.GetX(), v.GetY(), v.GetZ(), v.GetW());
     }
@@ -280,19 +284,43 @@ namespace {
 
     class DebugRenderer : public JPH::DebugRenderer {
 
+    private:
+        class MyBatch : public JPH::RefTargetVirtual {
+
+        public:
+            void AddRef() override { ++ref_count_; }
+
+            void Release() override { --ref_count_; }
+
+            void append(const mirinae::DebugMesh::Vertex &v) {
+                mesh_.idx_.push_back(mesh_.vtx_.size());
+                mesh_.vtx_.push_back(v);
+            }
+
+            mirinae::DebugMesh mesh_;
+            std::atomic_size_t ref_count_;
+        };
+
     public:
+        DebugRenderer() {
+            this->Initialize();
+            return;
+        }
+
         void DrawLine(
-            JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor
+            const JPH::RVec3Arg inFrom,
+            const JPH::RVec3Arg inTo,
+            const JPH::ColorArg inColor
         ) override {
             // SPDLOG_INFO("Draw line from {} to {}", inFrom, inTo);
         }
 
         void DrawTriangle(
-            JPH::RVec3Arg inV1,
-            JPH::RVec3Arg inV2,
-            JPH::RVec3Arg inV3,
-            JPH::ColorArg inColor,
-            ECastShadow inCastShadow
+            const JPH::RVec3Arg inV1,
+            const JPH::RVec3Arg inV2,
+            const JPH::RVec3Arg inV3,
+            const JPH::ColorArg inColor,
+            const ECastShadow inCastShadow
         ) override {
             if (!debug_ren_)
                 return;
@@ -306,38 +334,68 @@ namespace {
         }
 
         void DrawGeometry(
-            JPH::RMat44Arg inModelMatrix,
+            const JPH::RMat44Arg inModelMatrix,
             const JPH::AABox &inWorldSpaceBounds,
-            float inLODScaleSq,
-            JPH::ColorArg inModelColor,
+            const float inLODScaleSq,
+            const JPH::ColorArg inModelColor,
             const GeometryRef &inGeometry,
-            ECullMode inCullMode = ECullMode::CullBackFace,
-            ECastShadow inCastShadow = ECastShadow::On,
-            EDrawMode inDrawMode = EDrawMode::Solid
+            const ECullMode inCullMode,
+            const ECastShadow inCastShadow,
+            const EDrawMode inDrawMode
         ) override {
-            SPDLOG_INFO("Draw geometry with model matrix");
+            if (!debug_ren_)
+                return;
+
+            auto ptr = inGeometry->mLODs[0].mTriangleBatch.GetPtr();
+            auto batch = static_cast<const MyBatch *>(ptr);
+            if (!batch)
+                return;
+
+            debug_ren_->mesh(batch->mesh_);
         }
 
         Batch CreateTriangleBatch(
-            const Triangle *inTriangles, int inTriangleCount
+            const Triangle *inTriangles, const int inTriangleCount
         ) override {
-            return nullptr;
+            auto batch = std::make_unique<MyBatch>();
+
+            for (int i = 0; i < inTriangleCount; ++i) {
+                auto &src_tri = inTriangles[i];
+
+                for (int j = 0; j < 3; ++j) {
+                    mirinae::DebugMesh::Vertex v;
+                    v.pos_ = ::conv_vec(src_tri.mV[j].mPosition);
+                    batch->append(v);
+                }
+            }
+
+            return batch.release();
         }
 
         Batch CreateTriangleBatch(
             const Vertex *inVertices,
-            int inVertexCount,
+            const int inVertexCount,
             const JPH::uint32 *inIndices,
-            int inIndexCount
+            const int inIndexCount
         ) override {
-            return nullptr;
+            auto batch = std::make_unique<MyBatch>();
+
+            batch->mesh_.vtx_.reserve(inVertexCount);
+            for (int i = 0; i < inVertexCount; ++i) {
+                auto &v = batch->mesh_.vtx_.emplace_back();
+                v.pos_ = ::conv_vec(inVertices[i].mPosition);
+            }
+
+            batch->mesh_.idx_.assign(inIndices, inIndices + inIndexCount);
+
+            return batch.release();
         }
 
         void DrawText3D(
-            JPH::RVec3Arg inPosition,
+            const JPH::RVec3Arg inPosition,
             const JPH::string_view &inString,
-            JPH::ColorArg inColor = JPH::Color::sWhite,
-            float inHeight = 0.5f
+            const JPH::ColorArg inColor,
+            const float inHeight
         ) override {}
 
         mirinae::IDebugRen *debug_ren_ = nullptr;
@@ -455,8 +513,10 @@ namespace {
         void init(JPH::BodyInterface &body_interf) {
             using namespace JPH::literals;
 
+            shape_ = new JPH::SphereShape(0.5f);
+
             JPH::BodyCreationSettings sphere_settings(
-                new JPH::SphereShape(0.5f),
+                shape_,
                 JPH::RVec3(0.0_r, 10.0_r, 0.0_r),
                 JPH::Quat::sIdentity(),
                 JPH::EMotionType::Dynamic,
@@ -472,6 +532,7 @@ namespace {
 
     private:
         JPH::BodyID body_;
+        JPH::Ref<JPH::Shape> shape_;
     };
 
 
@@ -683,7 +744,7 @@ namespace { namespace cpnt {
                 height_data_[i] = static_cast<float>(texel[0]) / 255.0f;
             }
 
-            shape_settings_ = std::make_unique<JPH::HeightFieldShapeSettings>(
+            JPH::HeightFieldShapeSettings shape_settings(
                 height_data_.data(),
                 JPH::Vec3(0, 0, 0),
                 JPH::Vec3(
@@ -692,8 +753,17 @@ namespace { namespace cpnt {
                 height_data_len_
             );
 
-            body_settings_ = JPH::BodyCreationSettings(
-                shape_settings_.get(),
+            auto result = shape_settings.Create();
+            if (result.HasError()) {
+                SPDLOG_ERROR(
+                    "Failed to create height field shape: {}", result.GetError()
+                );
+                return false;
+            }
+            shape_ = result.Get();
+
+            JPH::BodyCreationSettings body_settings(
+                shape_,
                 JPH::RVec3(-260, -48.5, -590),
                 JPH::Quat::sIdentity(),
                 JPH::EMotionType::Static,
@@ -701,7 +771,7 @@ namespace { namespace cpnt {
             );
 
             id_ = body_interf.CreateAndAddBody(
-                body_settings_, JPH::EActivation::DontActivate
+                body_settings, JPH::EActivation::DontActivate
             );
 
             ready_ = true;
@@ -709,8 +779,7 @@ namespace { namespace cpnt {
         }
 
         JPH::BodyID id_;
-        std::unique_ptr<JPH::HeightFieldShapeSettings> shape_settings_;
-        JPH::BodyCreationSettings body_settings_;
+        JPH::Ref<JPH::Shape> shape_;
         std::vector<float> height_data_;
         uint32_t height_data_len_ = 0;
         bool ready_ = false;
@@ -758,7 +827,7 @@ namespace mirinae {
             debug_ren_.debug_ren_ = &debug_ren;
         }
 
-        void remove_debug_ren() {}
+        void remove_debug_ren() { debug_ren_.debug_ren_ = nullptr; }
 
         void do_frame(double dt) {
             constexpr float OPTIMAL_DT = 1.0 / 60.0;
@@ -866,12 +935,7 @@ namespace mirinae {
                 tform->rot_ = ::conv_quat(rot);
             }
 
-            /*
-            physics_system.DrawBodies(
-                JPH::BodyManager::DrawSettings(), &debug_ren_
-            );
-            */
-
+            physics_system.DrawBodies(debug_ren_settings_, &debug_ren_);
             return;
         }
 
@@ -944,6 +1008,7 @@ namespace mirinae {
         ::ObjectLayerPairFilterImpl obj_vs_obj_layer_filter_;
         JPH::PhysicsSystem physics_system;
 
+        JPH::BodyManager::DrawSettings debug_ren_settings_;
         ::DebugRenderer debug_ren_;
         ::MyBodyActivationListener body_active_listener_;
         ::MyContactListener contact_listener_;
