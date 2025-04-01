@@ -3,6 +3,7 @@
         "aklomp-base64",
         "argparse",
         "brotli",
+        "enkits",
         "entt",
         "glfw3",
         "glm",
