@@ -293,7 +293,13 @@ namespace {
             using ActionType = mirinae::InputActionMapper::ActionType;
             auto& reg = *scene.reg_;
             const auto dt = scene.clock().dt();
-            auto& modl = reg.get<cpnt::MdlActorSkinned>(target_);
+
+            auto modl = reg.try_get<cpnt::MdlActorSkinned>(target_);
+            if (!modl) {
+                camera_ = entt::null;
+                return;
+            }
+            auto& anim_state = modl->anim_state_;
 
             auto cam_tform = reg.try_get<cpnt::Transform>(camera_);
             if (!cam_tform) {
@@ -360,18 +366,15 @@ namespace {
                     tgt_tform->pos_.z += move_vec_scale.y;
                     tgt_tform->reset_rotation();
                     tgt_tform->rotate(
-                        -tgt_heading_.get(dt), glm::vec3{ 0, 1, 0 }
+                        player_model_heading_ - tgt_heading_.get(dt),
+                        glm::vec3{ 0, 1, 0 }
                     );
 
-                    if (modl.anim_state_.get_cur_anim_name() != "run_normal_1")
-                        modl.anim_state_.select_anim_name(
-                            "run_normal_1", scene.clock()
-                        );
+                    if (anim_state.get_cur_anim_name() != anim_run_)
+                        anim_state.select_anim_name(anim_run_, scene.clock());
                 } else {
-                    if (modl.anim_state_.get_cur_anim_name() != "idle_normal_1")
-                        modl.anim_state_.select_anim_name(
-                            "idle_normal_1", scene.clock()
-                        );
+                    if (anim_state.get_cur_anim_name() != anim_idle_)
+                        anim_state.select_anim_name(anim_idle_, scene.clock());
                 }
             }
 
@@ -434,6 +437,9 @@ namespace {
         ::ValueInterpolator tgt_heading_;
 
     public:
+        std::string anim_idle_;
+        std::string anim_run_;
+        sung::TAngle<double> player_model_heading_;
         double move_speed_ = 3;        // World space
         double offset_dist_ = 2;       // World space
         double offset_height_ = 0.75;  // World space
@@ -1044,12 +1050,18 @@ namespace {
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -113, 2, -39 };
 
-#if true
+#if false
+                camera_controller_.anim_idle_ = "idle_normal_1";
+                camera_controller_.anim_run_ = "run_normal_1";
+                camera_controller_.player_model_heading_.set_zero();
                 mdl.model_path_ = "Sung/artist.dun/artist_subset.dmd";
                 mdl.anim_state_.select_anim_name(
                     "idle_normal_1", cosmos_->scene().clock()
                 );
 #else
+                camera_controller_.anim_idle_ = "t pos";
+                camera_controller_.anim_run_ = "run";
+                camera_controller_.player_model_heading_.set_deg(90);
                 mdl.model_path_ =
                     "Sung/Character Running.dun/Character Running.dmd";
                 mdl.anim_state_.select_anim_index(0, cosmos_->scene().clock());
