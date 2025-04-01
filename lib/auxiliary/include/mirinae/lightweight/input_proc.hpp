@@ -107,9 +107,6 @@ namespace mirinae {
             // Move with respect to world direction
             translate_up,    // Jump, or ascend
             translate_down,  // Descend
-
-            zoom_in,
-            zoom_out,
         };
 
         InputActionMapper();
@@ -130,6 +127,13 @@ namespace mirinae {
         // Left, up
         glm::dvec2 get_value_mouse_look() const;
 
+        int get_mwheel_zoom() {
+            int zoom = mwheel_up_ - mwheel_down_;
+            mwheel_up_ = 0;
+            mwheel_down_ = 0;
+            return zoom;
+        }
+
     private:
         class PointerState {
 
@@ -145,6 +149,8 @@ namespace mirinae {
         PointerState mouse_state_;
         PointerState* move_pointer_ = nullptr;
         PointerState* look_pointer_ = nullptr;
+        int mwheel_up_ = false;
+        int mwheel_down_ = false;
     };
 
 }  // namespace mirinae

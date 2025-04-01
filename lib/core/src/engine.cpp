@@ -286,7 +286,7 @@ namespace {
         using Tform = mirinae::TransformQuat<double>;
 
         void pre_sync(
-            mirinae::Scene& scene, const mirinae::InputActionMapper& action_map
+            mirinae::Scene& scene, mirinae::InputActionMapper& action_map
         ) {
             namespace cpnt = mirinae::cpnt;
             using Angle = mirinae::cpnt::Transform::Angle;
@@ -333,6 +333,9 @@ namespace {
                     cam_tform->rotate(r * dt, right);
                 }
             }
+
+            // Zoom
+            offset_dist_ -= 5 * action_map.get_mwheel_zoom() * dt;
 
             // Move with respect to camera direction
             {
@@ -1239,21 +1242,6 @@ namespace {
                 return true;
             }
             */
-
-            auto cam = cosmos_->reg().try_get<mirinae::cpnt::StandardCamera>(
-                cosmos_->scene().main_camera_
-            );
-            if (cam) {
-                constexpr auto FACTOR = 1.05;
-                if (e.action_ == mirinae::mouse::ActionType::mwheel_up) {
-                    cam->proj_.multiply_fov(1.0 / FACTOR);
-                    return true;
-                } else if (e.action_ ==
-                           mirinae::mouse::ActionType::mwheel_down) {
-                    cam->proj_.multiply_fov(FACTOR);
-                    return true;
-                }
-            }
 
             if (action_mapper_.on_mouse_event(e))
                 return true;

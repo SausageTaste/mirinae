@@ -43,6 +43,14 @@ namespace mirinae {
     bool InputActionMapper::on_mouse_event(const mouse::Event& e) {
         using mirinae::mouse::ActionType;
 
+        if (e.action_ == ActionType::mwheel_up) {
+            ++mwheel_up_;
+            return true;
+        } else if (e.action_ == ActionType::mwheel_down) {
+            ++mwheel_down_;
+            return true;
+        }
+
         if (e.action_ == ActionType::move) {
             if (move_pointer_ == &mouse_state_) {
                 mouse_state_.last_pos_ = { e.xpos_, e.ypos_ };
