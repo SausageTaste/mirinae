@@ -51,6 +51,13 @@ Please refer to `__find_glslc` function in the script for more detail as to find
 Once it's done, you should see a number of `.spv` files in `<repo>/asset/spv` directory.
 And finally you can execute `mirinapp.exe`!
 
+## It Might Not Be Enough Yet!
+
+This project is under active development, and sometimes it crashes if there are not required assets.
+If that happens, it's a bug so please make an issue.
+All you need to run the app are *executable* files, *shared library* files, and `<repo>/asset` folder.
+Oh, by the way, don't forget to compile shaders!
+
 # Control
 
 ## Keyboard
@@ -68,6 +75,4 @@ And finally you can execute `mirinapp.exe`!
 
 |Key |Action
 |- |-
-|Left mouse click |Do nothing
-|Right click on left part of screen| Move
-|Right click on right part of screen |Look around
+|Right mouse click |Look around
