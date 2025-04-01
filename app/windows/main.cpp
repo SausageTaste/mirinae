@@ -15,9 +15,9 @@
 #ifdef SUNG_OS_WINDOWS
     #include "dump.hpp"
 #elif defined(SUNG_OS_LINUX)
-    #include <unistd.h>
-    #include <sys/types.h>
     #include <pwd.h>
+    #include <sys/types.h>
+    #include <unistd.h>
 #endif
 
 
@@ -60,7 +60,7 @@ namespace {
     }
 #elif defined(SUNG_OS_LINUX)
     std::filesystem::path get_home_path() {
-        const char *homedir;
+        const char* homedir;
         if ((homedir = getenv("HOME")) == NULL) {
             homedir = getpwuid(getuid())->pw_dir;
         }
