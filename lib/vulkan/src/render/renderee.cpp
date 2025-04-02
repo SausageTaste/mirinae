@@ -95,7 +95,7 @@ namespace {
             normal_map_ = this->block_for_tex(
                 res_id,
                 src_material.normal_map_,
-                ":asset/textures/null_normal_map.png",
+                ":asset/textures/null_normal_map.ktx",
                 false,
                 tex_man
             );
@@ -103,7 +103,7 @@ namespace {
             orm_map_ = this->block_for_tex(
                 res_id,
                 src_material.roughness_map_,
-                ":asset/textures/white.png",
+                ":asset/textures/white.ktx",
                 false,
                 tex_man
             );
