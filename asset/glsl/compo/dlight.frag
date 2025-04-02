@@ -94,7 +94,7 @@ void main() {
 
     // Volumetric scattering
     {
-        const int SAMPLE_COUNT = 20;
+        const int SAMPLE_COUNT = 5;
         const float INTENSITY_DLIGHT = 0.6;
 
         const float dlight_factor = INTENSITY_DLIGHT * phase_mie(dot(view_direc, ubuf_sh.dlight_dir.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);

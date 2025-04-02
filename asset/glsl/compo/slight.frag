@@ -78,7 +78,7 @@ void main() {
 
     // Volumetric scattering
     {
-        const int SAMPLE_COUNT = 20;
+        const int SAMPLE_COUNT = 5;
         const float INTENSITY = 0.6;
 
         const float light_factor = INTENSITY * phase_mie(dot(view_direc, u_pc.dir_n_outer_angle.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);
