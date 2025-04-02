@@ -831,16 +831,14 @@ namespace {
 
                         auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt
                         );
-                        const auto jitter = (x + y + z) * 0.1;
-                        tform.pos_ = glm::dvec3{ 3.0 * x + jitter,
-                                                 20.0 + 3.0 * y,
-                                                 3.0 * z - jitter } +
-                                     glm::dvec3{
-                                         -114.50,
-                                         6.89,
-                                         -45.62,
-                                     };
-                        tform.scale_ = { 1, 1, 1 };
+                        const auto radius = 1.0;
+                        const auto jitter = (x + y + z) * radius * 0.2;
+                        tform.pos_ = glm::dvec3{
+                            2.2 * radius * x - 50 - jitter,
+                            2.2 * radius * y + 20,
+                            2.2 * radius * z + 100 + jitter,
+                        };
+                        tform.set_scale(radius);
 
                         cosmos_->phys_world().give_body(entt, reg);
                     }
@@ -1006,7 +1004,7 @@ namespace {
                 i.set_name("Ocean");
 
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.height_ = -44;
+                ocean.height_ = -50;
             }
 
             // Atmosphere
@@ -1033,12 +1031,15 @@ namespace {
 
                 auto& terrain = reg.emplace<mirinae::cpnt::Terrain>(entt);
                 terrain.height_map_path_ =
-                    "Sung/36_268_-112_353_15_4033_4033.png";
+                    "Sung/36_271_-112_357_14_4096_4096.png";
                 terrain.albedo_map_path_ =
-                    "Sung/36_268_-112_353_15_4033_4033_albedo_imagery.png";
+                    "Sung/36_271_-112_357_14_4096_4096_albedo_imagery.png";
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { -260, -48.5, -590 };
+                tform.pos_ = { -607, -59, 1303 };
+                tform.rotate(
+                    sung::TAngle<double>::from_deg(90), glm::vec3{ 0, 1, 0 }
+                );
 
                 cosmos_->phys_world().give_body_height_field(entt, reg);
             }

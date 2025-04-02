@@ -778,11 +778,16 @@ namespace { namespace cpnt {
 
             JPH::BodyCreationSettings body_settings(
                 shape_,
-                JPH::RVec3(-260, -48.5, -590),
+                JPH::RVec3(),
                 JPH::Quat::sIdentity(),
                 JPH::EMotionType::Static,
                 Layers::NON_MOVING
             );
+
+            if (auto tform = reg.try_get<cpnt::Transform>(entity)) {
+                body_settings.mPosition = ::conv_vec(tform->pos_);
+                body_settings.mRotation = ::conv_quat(tform->rot_);
+            }
 
             id_ = body_interf.CreateAndAddBody(
                 body_settings, JPH::EActivation::DontActivate
