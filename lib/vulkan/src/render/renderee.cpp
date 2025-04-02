@@ -701,6 +701,14 @@ namespace {
             }
             if (!task->is_done())
                 return dal::ReqResult::loading;
+            if (task->has_failed()) {
+                SPDLOG_ERROR(
+                    "Failed to load model '{}': {}",
+                    res_id.u8string(),
+                    task->err_msg()
+                );
+                return dal::ReqResult::cannot_read_file;
+            }
 
             const auto dmd = task->try_get_dmd();
             if (!dmd)
