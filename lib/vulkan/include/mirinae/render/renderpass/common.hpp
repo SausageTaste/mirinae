@@ -344,10 +344,18 @@ namespace mirinae {
             t.color_ = color;
         }
 
-        void mesh(const DebugMesh& mesh) override { meshes_.push_back(&mesh); }
+        void mesh(const DebugMesh& mesh, const glm::mat4& model) override {
+            auto& dst = meshes_.emplace_back();
+            dst.mesh_ = &mesh;
+            dst.model_mat_ = model;
+        }
 
     public:
-        void clear() { tri_.clear(); }
+        void clear() {
+            tri_.clear();
+            tri_world_.clear();
+            meshes_.clear();
+        }
 
         Triangle& new_tri() { return tri_.emplace_back(); }
 
@@ -373,9 +381,14 @@ namespace mirinae {
             tri.color_ = color;
         }
 
+        struct MeshActor {
+            const DebugMesh* mesh_;
+            glm::dmat4 model_mat_;
+        };
+
         std::vector<Triangle> tri_;
         std::vector<TriangleWorld> tri_world_;
-        std::vector<const DebugMesh*> meshes_;
+        std::vector<MeshActor> meshes_;
     };
 
 

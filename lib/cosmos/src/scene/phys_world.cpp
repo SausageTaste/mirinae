@@ -75,6 +75,15 @@ namespace {
         return glm::dquat(q.GetW(), q.GetX(), q.GetY(), q.GetZ());
     }
 
+    glm::mat4 conv_mat(const JPH::Mat44 &m) {
+        return glm::mat4(
+            ::conv_vec(m.GetColumn4(0)),
+            ::conv_vec(m.GetColumn4(1)),
+            ::conv_vec(m.GetColumn4(2)),
+            ::conv_vec(m.GetColumn4(3))
+        );
+    }
+
 }  // namespace
 
 
@@ -351,7 +360,7 @@ namespace {
             if (!batch)
                 return;
 
-            debug_ren_->mesh(batch->mesh_);
+            debug_ren_->mesh(batch->mesh_, ::conv_mat(inModelMatrix));
         }
 
         Batch CreateTriangleBatch(

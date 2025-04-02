@@ -1,5 +1,6 @@
 #pragma once
 
+#include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
@@ -32,7 +33,7 @@ namespace mirinae {
 
         // You must keep the mesh object around!
         // The renderer won't make a copy of it.
-        virtual void mesh(const DebugMesh& mesh) = 0;
+        virtual void mesh(const DebugMesh& mesh, const glm::mat4& model) = 0;
     };
 
 }  // namespace mirinae
