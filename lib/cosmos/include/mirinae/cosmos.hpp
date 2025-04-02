@@ -17,16 +17,10 @@ namespace mirinae {
     class CosmosSimulator {
 
     public:
-        CosmosSimulator(ScriptEngine& script) : scene_(clock_, script) {}
+        CosmosSimulator(ScriptEngine& script);
 
-        void tick_clock() { clock_.tick(); }
-
-        void do_frame() {
-            scene_.do_frame();
-            phys_world_.pre_sync(scene_.clock().dt(), *scene_.reg_);
-            phys_world_.do_frame(scene_.clock().dt());
-            phys_world_.post_sync(scene_.clock().dt(), *scene_.reg_);
-        }
+        void tick_clock();
+        void do_frame();
 
         auto& scene() { return scene_; }
         auto& reg() { return *scene_.reg_; }
