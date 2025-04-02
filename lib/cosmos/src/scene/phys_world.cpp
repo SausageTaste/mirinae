@@ -794,7 +794,7 @@ namespace { namespace cpnt {
             );
 
             ready_ = true;
-            return false;
+            return true;
         }
 
         JPH::BodyID id_;
@@ -870,7 +870,9 @@ namespace mirinae {
 
                 if (body.ready_)
                     continue;
-                if (!body.try_init(e, reg, bodies))
+                if (body.try_init(e, reg, bodies))
+                    this->optimize();
+                else
                     someone_is_preparing_ = true;
             }
 
@@ -879,7 +881,10 @@ namespace mirinae {
 
                 if (body.ready_)
                     continue;
-                body.try_populate_height_data(e, reg, bodies);
+                if (body.try_populate_height_data(e, reg, bodies))
+                    this->optimize();
+                else
+                    someone_is_preparing_ = true;
             }
 
             if (someone_is_preparing_)
