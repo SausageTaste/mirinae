@@ -386,6 +386,8 @@ namespace {
 
             mirinae::DescWriteInfoBuilder builder;
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                const mirinae::FrameIndex f_idx(i);
+
                 auto& ubuf = ubufs_.emplace_back();
                 ubuf.init_ubuf(
                     sizeof(mirinae::U_TranspFrame), device.mem_alloc()
@@ -393,7 +395,9 @@ namespace {
 
                 builder.set_descset(desc_sets_.at(i))
                     .add_ubuf(ubuf)
-                    .add_img_sampler(shadow_maps.dlight_view_at(0), sam_nea)
+                    .add_img_sampler(
+                        shadow_maps.dlights().at(0).view(f_idx), sam_nea
+                    )
                     .add_img_sampler(shadow_maps.slight_view_at(0), sam_nea)
                     .add_img_sampler(rp_res.envmaps_->diffuse_at(0), sam_cube)
                     .add_img_sampler(rp_res.envmaps_->specular_at(0), sam_cube)

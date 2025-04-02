@@ -128,7 +128,154 @@ namespace { namespace shadowmap_skin_transp {
 
 namespace {
 
-    class ShadowMapBundle : public mirinae::IShadowMapBundle {
+    using IShadowBundle = mirinae::IShadowMapBundle;
+
+
+    class ImageFbufPair {
+
+    public:
+        void init_img(uint32_t w, uint32_t h, mirinae::VulkanDevice& device) {
+            tex_ = mirinae::create_tex_depth(w, h, device);
+        }
+
+        void init_fbuf(
+            VkRenderPass render_pass, mirinae::VulkanDevice& device
+        ) {
+            mirinae::FbufCinfo fbuf_info;
+            fbuf_info.set_rp(render_pass)
+                .clear_attach()
+                .add_attach(tex_->image_view())
+                .set_dim(tex_->width(), tex_->height());
+            fbuf_.init(fbuf_info.get(), device.logi_device());
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            fbuf_.destroy(device.logi_device());
+            tex_.reset();
+        }
+
+        VkImage img() const { return tex_->image(); }
+        VkImageView view() const { return tex_->image_view(); }
+        VkFramebuffer fbuf() const { return fbuf_.get(); }
+
+        uint32_t width() const { return tex_->width(); }
+        uint32_t height() const { return tex_->height(); }
+
+    private:
+        std::unique_ptr<mirinae::ITexture> tex_;
+        mirinae::Fbuf fbuf_;
+    };
+
+
+    class DlightShadowMap : public IShadowBundle::IDlightShadowMap {
+
+    public:
+        void init_images(
+            const uint32_t w,
+            const uint32_t h,
+            const size_t frames_in_flight,
+            mirinae::VulkanDevice& device
+        ) {
+            images_.resize(frames_in_flight);
+            for (auto& x : images_) {
+                x.init_img(w, h, device);
+            }
+        }
+
+        void init_fbufs(
+            const VkRenderPass render_pass, mirinae::VulkanDevice& device
+        ) {
+            for (auto& x : images_) {
+                x.init_fbuf(render_pass, device);
+            }
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            for (auto& x : images_) {
+                x.destroy(device);
+            }
+            images_.clear();
+            entt_ = entt::null;
+        }
+
+        VkImage img(mirinae::FrameIndex f_idx) const override {
+            return images_.at(f_idx).img();
+        }
+
+        VkImageView view(mirinae::FrameIndex f_idx) const override {
+            return images_.at(f_idx).view();
+        }
+
+        VkFramebuffer fbuf(mirinae::FrameIndex f_idx) const override {
+            return images_.at(f_idx).fbuf();
+        }
+
+        entt::entity entt() const override { return entt_; }
+
+        void set_entt(entt::entity entt) { entt_ = entt; }
+
+        uint32_t width() const { return images_.at(0).width(); }
+
+        uint32_t height() const { return images_.at(0).height(); }
+
+        VkExtent2D extent2d() const {
+            return { this->width(), this->height() };
+        }
+
+    private:
+        std::vector<::ImageFbufPair> images_;
+        entt::entity entt_ = entt::null;
+    };
+
+
+    class DlightShadowMapBundle : public IShadowBundle::IDlightShadowMapBundle {
+
+    public:
+        void init_images(
+            const size_t shadow_count,
+            const size_t frames_in_flight,
+            mirinae::VulkanDevice& device
+        ) {
+            for (auto& x : dlights_) {
+                x.destroy(device);
+            }
+
+            dlights_.clear();
+            dlights_.resize(shadow_count);
+
+            for (auto& x : dlights_) {
+                x.init_images(2048, 2048, frames_in_flight, device);
+            }
+        }
+
+        void init_fbufs(
+            const VkRenderPass render_pass, mirinae::VulkanDevice& device
+        ) {
+            for (auto& x : dlights_) {
+                x.init_fbufs(render_pass, device);
+            }
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            for (auto& x : dlights_) {
+                x.destroy(device);
+            }
+        }
+
+        uint32_t count() const override {
+            return static_cast<uint32_t>(dlights_.size());
+        }
+
+        ::DlightShadowMap& at(uint32_t index) override {
+            return dlights_.at(index);
+        }
+
+    private:
+        std::vector<::DlightShadowMap> dlights_;
+    };
+
+
+    class ShadowMapBundle : public IShadowBundle {
 
     public:
         struct Item {
@@ -142,33 +289,37 @@ namespace {
         };
 
     public:
-        ShadowMapBundle(mirinae::VulkanDevice& device) : device_(device) {}
+        ShadowMapBundle(mirinae::VulkanDevice& device) : device_(device) {
+            dlights_.init_images(2, mirinae::MAX_FRAMES_IN_FLIGHT, device);
+
+            slights_.emplace_back().tex_ = mirinae::create_tex_depth(
+                512, 512, device
+            );
+            slights_.emplace_back().tex_ = mirinae::create_tex_depth(
+                512, 512, device
+            );
+            slights_.emplace_back().tex_ = mirinae::create_tex_depth(
+                512, 512, device
+            );
+        }
 
         ~ShadowMapBundle() {
-            for (auto& x : dlights_) {
-                x.fbuf_.destroy(device_.logi_device());
-            }
+            dlights_.destroy(device_);
 
             for (auto& x : slights_) {
                 x.fbuf_.destroy(device_.logi_device());
             }
         }
 
-        uint32_t dlight_count() const override { return dlights_.size(); }
+        ::DlightShadowMapBundle& dlights() override { return dlights_; }
 
-        entt::entity dlight_entt_at(size_t idx) override {
-            return dlights_.at(idx).entt_;
+        const ::DlightShadowMapBundle& dlights() const override {
+            return dlights_;
         }
 
-        VkImage dlight_img_at(size_t idx) override {
-            return dlights_.at(idx).tex_->image();
+        uint32_t slight_count() const override {
+            return static_cast<uint32_t>(slights_.size());
         }
-
-        VkImageView dlight_view_at(size_t idx) override {
-            return dlights_.at(idx).tex_->image_view();
-        }
-
-        uint32_t slight_count() const override { return slights_.size(); }
 
         entt::entity slight_entt_at(size_t idx) override {
             return slights_.at(idx).entt_;
@@ -185,15 +336,10 @@ namespace {
         void recreate_fbufs(
             const VkRenderPass rp, mirinae::VulkanDevice& device
         ) {
+            dlights_.init_fbufs(rp, device);
+
             mirinae::FbufCinfo fbuf_info;
             fbuf_info.set_rp(rp);
-
-            for (auto& x : dlights_) {
-                fbuf_info.clear_attach()
-                    .add_attach(x.tex_->image_view())
-                    .set_dim(x.width(), x.height());
-                x.fbuf_.init(fbuf_info.get(), device.logi_device());
-            }
 
             for (auto& x : slights_) {
                 fbuf_info.clear_attach()
@@ -203,12 +349,12 @@ namespace {
             }
         }
 
-    public:
+    private:
         mirinae::VulkanDevice& device_;
+        ::DlightShadowMapBundle dlights_;
 
-        std::vector<Item> dlights_;
+    public:
         std::vector<Item> slights_;
-        VkFormat depth_format_ = VK_FORMAT_UNDEFINED;
     };
 
 }  // namespace
@@ -231,17 +377,12 @@ namespace {
             );
             MIRINAE_ASSERT(shadow_maps);
 
-            // Depth format
-            {
-                shadow_maps->depth_format_ = device_.img_formats().depth_map();
-            }
-
             // Render pass
             {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(shadow_maps->depth_format_)
+                    .add(device.img_formats().depth_map())
                     .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .op_pair_clear_store();
@@ -292,18 +433,7 @@ namespace {
 
             // Misc
             {
-                shadow_maps->dlights_.emplace_back().tex_ =
-                    mirinae::create_tex_depth(4096, 4096, device);
-                shadow_maps->dlights_.emplace_back().tex_ =
-                    mirinae::create_tex_depth(4096, 4096, device);
-                shadow_maps->slights_.emplace_back().tex_ =
-                    mirinae::create_tex_depth(512, 512, device);
-                shadow_maps->slights_.emplace_back().tex_ =
-                    mirinae::create_tex_depth(512, 512, device);
-                shadow_maps->slights_.emplace_back().tex_ =
-                    mirinae::create_tex_depth(512, 512, device);
                 shadow_maps->recreate_fbufs(render_pass_.get(), device);
-
                 clear_values_.at(0).depthStencil = { 0, 0 };
             }
 
@@ -329,19 +459,20 @@ namespace {
                 rp_res_.shadow_maps_.get()
             );
             MIRINAE_ASSERT(shadow_maps);
+            auto& dlights = shadow_maps->dlights();
 
-            size_t i = 0;
+            uint32_t i = 0;
             for (const auto e : reg.view<cpnt::DLight>()) {
                 const auto light_idx = i++;
-                if (light_idx >= shadow_maps->dlights_.size())
+                if (light_idx >= dlights.count())
                     break;
 
                 auto& dlight = reg.get<cpnt::DLight>(e);
-                auto& shadow = shadow_maps->dlights_.at(light_idx);
-                shadow.entt_ = e;
+                auto& shadow = dlights.at(light_idx);
+                shadow.set_entt(e);
 
                 mirinae::ImageMemoryBarrier{}
-                    .image(shadow.tex_->image())
+                    .image(shadow.img(ctxt.f_index_))
                     .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                     .old_lay(VK_IMAGE_LAYOUT_UNDEFINED)
                     .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
@@ -356,8 +487,8 @@ namespace {
 
                 mirinae::RenderPassBeginInfo{}
                     .rp(render_pass_.get())
-                    .fbuf(shadow.fbuf())
-                    .wh(shadow.tex_->extent())
+                    .fbuf(shadow.fbuf(ctxt.f_index_))
+                    .wh(shadow.extent2d())
                     .clear_value_count(clear_values_.size())
                     .clear_values(clear_values_.data())
                     .record_begin(cmdbuf);
@@ -367,8 +498,8 @@ namespace {
                 );
                 vkCmdSetDepthBias(cmdbuf, -10, 0, -5);
 
-                const auto half_width = shadow.width() / 2.0;
-                const auto half_height = shadow.height() / 2.0;
+                const auto half_width = shadow.width() * 0.5;
+                const auto half_height = shadow.height() * 0.5;
                 const std::array<glm::dvec2, 4> offsets{
                     glm::dvec2{ 0, 0 },
                     glm::dvec2{ half_width, 0 },
@@ -539,13 +670,9 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(shadow_maps->depth_format_)
-                    .ini_layout(
-                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                    )
-                    .fin_layout(
-                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                    )
+                    .add(device.img_formats().depth_map())
+                    .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
 
                 builder.depth_attach_ref().set(0);
@@ -618,14 +745,14 @@ namespace {
             );
             MIRINAE_ASSERT(shadow_maps);
 
-            for (size_t i = 0; i < shadow_maps->dlight_count(); ++i) {
-                auto& shadow = shadow_maps->dlights_[i];
-                if (shadow.entt_ == entt::null)
+            for (uint32_t i = 0; i < shadow_maps->dlights().count(); ++i) {
+                auto& shadow = shadow_maps->dlights().at(i);
+                if (shadow.entt() == entt::null)
                     continue;
-                auto& dlight = reg.get<cpnt::DLight>(shadow.entt_);
+                auto& dlight = reg.get<cpnt::DLight>(shadow.entt());
 
                 mirinae::ImageMemoryBarrier{}
-                    .image(shadow.tex_->image())
+                    .image(shadow.img(ctxt.f_index_))
                     .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                     .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
@@ -640,8 +767,8 @@ namespace {
 
                 mirinae::RenderPassBeginInfo{}
                     .rp(render_pass_.get())
-                    .fbuf(shadow.fbuf())
-                    .wh(shadow.tex_->extent())
+                    .fbuf(shadow.fbuf(ctxt.f_index_))
+                    .wh(shadow.extent2d())
                     .clear_value_count(clear_values_.size())
                     .clear_values(clear_values_.data())
                     .record_begin(cmdbuf);
@@ -880,7 +1007,7 @@ namespace {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(shadow_maps->depth_format_)
+                    .add(device.img_formats().depth_map())
                     .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .op_pair_load_store();
@@ -962,14 +1089,14 @@ namespace {
             );
             MIRINAE_ASSERT(shadow_maps);
 
-            for (size_t i = 0; i < shadow_maps->dlight_count(); ++i) {
-                auto& shadow = shadow_maps->dlights_[i];
-                if (shadow.entt_ == entt::null)
+            for (uint32_t i = 0; i < shadow_maps->dlights().count(); ++i) {
+                auto& shadow = shadow_maps->dlights().at(i);
+                if (shadow.entt() == entt::null)
                     continue;
-                auto& dlight = reg.get<cpnt::DLight>(shadow.entt_);
+                auto& dlight = reg.get<cpnt::DLight>(shadow.entt());
 
                 mirinae::ImageMemoryBarrier{}
-                    .image(shadow.tex_->image())
+                    .image(shadow.img(ctxt.f_index_))
                     .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                     .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
@@ -984,8 +1111,8 @@ namespace {
 
                 mirinae::RenderPassBeginInfo{}
                     .rp(render_pass_.get())
-                    .fbuf(shadow.fbuf())
-                    .wh(shadow.tex_->extent())
+                    .fbuf(shadow.fbuf(ctxt.f_index_))
+                    .wh(shadow.extent2d())
                     .clear_value_count(clear_values_.size())
                     .clear_values(clear_values_.data())
                     .record_begin(cmdbuf);

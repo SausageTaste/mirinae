@@ -231,12 +231,25 @@ namespace mirinae {
 
 
     struct IShadowMapBundle {
+        struct IDlightShadowMap {
+            virtual ~IDlightShadowMap() = default;
+
+            virtual VkImage img(mirinae::FrameIndex f_idx) const = 0;
+            virtual VkImageView view(mirinae::FrameIndex f_idx) const = 0;
+            virtual VkFramebuffer fbuf(mirinae::FrameIndex f_idx) const = 0;
+            virtual entt::entity entt() const = 0;
+        };
+
+        struct IDlightShadowMapBundle {
+            virtual ~IDlightShadowMapBundle() = default;
+            virtual uint32_t count() const = 0;
+            virtual IDlightShadowMap& at(uint32_t index) = 0;
+        };
+
         virtual ~IShadowMapBundle() = default;
 
-        virtual uint32_t dlight_count() const = 0;
-        virtual entt::entity dlight_entt_at(size_t idx) = 0;
-        virtual VkImage dlight_img_at(size_t idx) = 0;
-        virtual VkImageView dlight_view_at(size_t idx) = 0;
+        virtual IDlightShadowMapBundle& dlights() = 0;
+        virtual const IDlightShadowMapBundle& dlights() const = 0;
 
         virtual uint32_t slight_count() const = 0;
         virtual entt::entity slight_entt_at(size_t idx) = 0;

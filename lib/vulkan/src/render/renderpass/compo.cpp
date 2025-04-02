@@ -146,7 +146,7 @@ namespace {
                 );
 
                 mirinae::DescWriter writer;
-                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
                     fd.ubuf_.init_ubuf<U_CompoDlightMain>(device.mem_alloc());
@@ -184,33 +184,46 @@ namespace {
 
             // Desc sets: shadow map
             {
-                const auto sh_count = rp_res.shadow_maps_->dlight_count();
+                constexpr auto FD_COUNT = mirinae::MAX_FRAMES_IN_FLIGHT;
+                auto& dlights = rp_res.shadow_maps_->dlights();
                 auto& desc_layout = desclayouts.get(name() + ":shadow_map");
 
                 desc_pool_sh_.init(
-                    sh_count, desc_layout.size_info(), device.logi_device()
+                    dlights.count() * FD_COUNT,
+                    desc_layout.size_info(),
+                    device.logi_device()
                 );
 
                 auto desc_sets = desc_pool_sh_.alloc(
-                    sh_count, desc_layout.layout(), device.logi_device()
+                    dlights.count() * FD_COUNT,
+                    desc_layout.layout(),
+                    device.logi_device()
                 );
 
                 mirinae::DescWriter writer;
-                for (size_t i = 0; i < sh_count; i++) {
-                    auto& fd = shmap_data_.emplace_back();
-                    fd.desc_set_ = desc_sets[i];
-                    fd.ubuf_.init_ubuf<U_CompoDlightShadowMap>(device.mem_alloc(
-                    ));
+                for (uint32_t i_fd = 0; i_fd < FD_COUNT; i_fd++) {
+                    const mirinae::FrameIndex f_idx(i_fd);
+                    auto& fd = frame_data_[i_fd];
 
-                    // Shadow map
-                    writer.add_img_info()
-                        .set_img_view(rp_res.shadow_maps_->dlight_view_at(i))
-                        .set_sampler(device.samplers().get_shadow())
-                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 0);
-                    // U_CompoDlightShadowMap
-                    writer.add_buf_info(fd.ubuf_);
-                    writer.add_buf_write(fd.desc_set_, 1);
+                    for (uint32_t i_sh = 0; i_sh < dlights.count(); ++i_sh) {
+                        auto& sh = fd.shadows_.emplace_back();
+                        sh.desc_set_ = desc_sets.at(i_sh * FD_COUNT + i_fd);
+                        sh.ubuf_.init_ubuf<U_CompoDlightShadowMap>(
+                            device.mem_alloc()
+                        );
+
+                        // Shadow map
+                        writer.add_img_info()
+                            .set_img_view(dlights.at(i_sh).view(f_idx))
+                            .set_sampler(device.samplers().get_shadow())
+                            .set_layout(
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                            );
+                        writer.add_sampled_img_write(sh.desc_set_, 0);
+                        // U_CompoDlightShadowMap
+                        writer.add_buf_info(sh.ubuf_);
+                        writer.add_buf_write(sh.desc_set_, 1);
+                    }
                 }
                 writer.apply_all(device.logi_device());
             }
@@ -289,10 +302,10 @@ namespace {
                     );
                     fd.fbuf_ = VK_NULL_HANDLE;
                 }
-            }
 
-            for (auto& sh_data : shmap_data_) {
-                sh_data.ubuf_.destroy(device_.mem_alloc());
+                for (auto& sh_data : fd.shadows_) {
+                    sh_data.ubuf_.destroy(device_.mem_alloc());
+                }
             }
 
             desc_pool_.destroy(device_.logi_device());
@@ -372,14 +385,15 @@ namespace {
                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                 );
 
-            for (size_t i = 0; i < rp_res_.shadow_maps_->dlight_count(); ++i) {
-                const auto e = rp_res_.shadow_maps_->dlight_entt_at(i);
+            auto& dlights = rp_res_.shadow_maps_->dlights();
+            for (uint32_t i = 0; i < dlights.count(); ++i) {
+                auto& dlight = dlights.at(i);
+                const auto e = dlight.entt();
                 if (entt::null == e)
                     continue;
 
-                auto shadow_img = rp_res_.shadow_maps_->dlight_img_at(i);
                 mirinae::ImageMemoryBarrier{}
-                    .image(shadow_img)
+                    .image(dlight.img(ctxt.f_index_))
                     .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                     .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .new_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -414,16 +428,18 @@ namespace {
                 .set(fd.desc_set_)
                 .record(cmdbuf);
 
-            for (size_t i = 0; i < rp_res_.shadow_maps_->dlight_count(); ++i) {
-                const auto e = rp_res_.shadow_maps_->dlight_entt_at(i);
+            for (uint32_t i = 0; i < dlights.count(); ++i) {
+                auto& dlight = dlights.at(i);
+                const auto e = dlight.entt();
                 if (entt::null == e)
                     continue;
 
-                auto& sh_data = shmap_data_.at(i);
-                auto shadow_view = rp_res_.shadow_maps_->dlight_view_at(i);
-                const auto& dlight = reg.get<mirinae::cpnt::DLight>(e);
+                auto& fd = frame_data_[ctxt.f_index_.get()];
+                auto& sh_data = fd.shadows_.at(i);
+                const auto shadow_view = dlight.view(ctxt.f_index_);
+                const auto& light = reg.get<mirinae::cpnt::DLight>(e);
                 const auto& tform = reg.get<mirinae::cpnt::Transform>(e);
-                const auto& cascades = dlight.cascades_;
+                const auto& cascades = light.cascades_;
                 const auto& casc_arr = cascades.cascades_;
 
                 U_CompoDlightShadowMap ubuf_sh;
@@ -432,8 +448,8 @@ namespace {
                     .set_light_mat(2, casc_arr[2].light_mat_ * view_inv)
                     .set_light_mat(3, casc_arr[3].light_mat_ * view_inv)
                     .set_cascade_depths(cascades.far_depths_.data())
-                    .set_dlight_dir(dlight.calc_to_light_dir(view_mat, tform))
-                    .set_dlight_color(dlight.color_.scaled_color());
+                    .set_dlight_dir(light.calc_to_light_dir(view_mat, tform))
+                    .set_dlight_color(light.color_.scaled_color());
                 sh_data.ubuf_.set_data(ubuf_sh, device_.mem_alloc());
 
                 mirinae::DescSetBindInfo{}
@@ -449,15 +465,16 @@ namespace {
         }
 
     private:
-        struct FrameData {
-            mirinae::Buffer ubuf_;
-            VkDescriptorSet desc_set_;
-            VkFramebuffer fbuf_;
-        };
-
         struct ShadowMapData {
             mirinae::Buffer ubuf_;
             VkDescriptorSet desc_set_;
+        };
+
+        struct FrameData {
+            std::vector<ShadowMapData> shadows_;
+            mirinae::Buffer ubuf_;
+            VkDescriptorSet desc_set_;
+            VkFramebuffer fbuf_;
         };
 
         static entt::entity select_atmos_simple(entt::registry& reg) {
@@ -471,7 +488,6 @@ namespace {
         mirinae::RpResources& rp_res_;
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
-        std::vector<ShadowMapData> shmap_data_;
 
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_, desc_pool_sh_;
@@ -598,7 +614,7 @@ namespace {
                 );
 
                 mirinae::DescWriter writer;
-                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
                     fd.ubuf_.init_ubuf<U_CompoSlightMain>(device.mem_alloc());
@@ -946,7 +962,7 @@ namespace {
                 );
 
                 mirinae::DescWriter writer;
-                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
                     fd.desc_set_main_ = desc_sets[i];
 
