@@ -1145,17 +1145,6 @@ namespace {
                 }
             }
 
-            sky_tex_ = tex_man.block_for_tex("Sung/satara_night_4k.hdr", false);
-            if (!sky_tex_) {
-                const auto alt_path =
-                    ":asset/textures/"
-                    "kloofendal_48d_partly_cloudy_puresky_1k.hdr";
-                sky_tex_ = tex_man.block_for_tex(alt_path, false);
-            }
-            if (!sky_tex_) {
-                MIRINAE_ABORT("Failed to load sky texture");
-            }
-
             desc_set_ = desc_pool_.alloc(
                 desclayouts.get("env_sky:main").layout(), device_.logi_device()
             );

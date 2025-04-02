@@ -848,6 +848,10 @@ namespace {
 
             // DLight
             {
+                constexpr auto d45 = mirinae::cpnt::Transform::Angle::from_deg(
+                    45
+                );
+
                 const auto entt = reg.create();
 
                 auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
@@ -857,12 +861,9 @@ namespace {
                 d.color_.set_scaled_color(5);
 
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
-                d.set_light_dir(
-                    -0.582960250876931,
-                    -0.7173565198848785,
-                    -0.381519290830964,
-                    t
-                );
+                t.reset_rotation();
+                t.rotate(-d45, glm::vec3{ 1, 0, 0 });
+                t.rotate(d45, glm::vec3{ 0, 1, 0 });
             }
 
             // DLight
@@ -1016,9 +1017,7 @@ namespace {
 
                 auto& atm = reg.emplace<mirinae::cpnt::AtmosphereSimple>(entt);
                 atm.fog_color_ = { 0.556, 0.707, 0.846 };
-                atm.sky_tex_path_ =
-                    ":asset/textures/"
-                    "kloofendal_48d_partly_cloudy_puresky_1k.hdr";
+                atm.sky_tex_path_ = ":asset/textures/empty_sky.hdr";
                 atm.mie_anisotropy_ = 0.8;
             }
 
