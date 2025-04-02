@@ -372,9 +372,11 @@ namespace {
                 auto &src_tri = inTriangles[i];
 
                 for (int j = 0; j < 3; ++j) {
-                    mirinae::DebugMesh::Vertex v;
-                    v.pos_ = ::conv_vec(src_tri.mV[j].mPosition);
-                    batch->append(v);
+                    mirinae::DebugMesh::Vertex dst_vtx;
+                    auto &src_vtx = src_tri.mV[j];
+                    dst_vtx.pos_ = ::conv_vec(src_vtx.mPosition);
+                    dst_vtx.color_ = ::conv_vec(src_vtx.mColor.ToVec4());
+                    batch->append(dst_vtx);
                 }
             }
 
@@ -393,6 +395,7 @@ namespace {
             for (int i = 0; i < inVertexCount; ++i) {
                 auto &v = batch->mesh_.vtx_.emplace_back();
                 v.pos_ = ::conv_vec(inVertices[i].mPosition);
+                v.color_ = ::conv_vec(inVertices[i].mColor.ToVec4());
             }
 
             batch->mesh_.idx_.assign(inIndices, inIndices + inIndexCount);

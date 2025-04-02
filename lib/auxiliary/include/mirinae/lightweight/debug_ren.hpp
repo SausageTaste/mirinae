@@ -12,6 +12,7 @@ namespace mirinae {
     public:
         struct Vertex {
             glm::vec3 pos_;  // World pos
+            glm::vec4 color_;
         };
 
         std::vector<Vertex> vtx_;

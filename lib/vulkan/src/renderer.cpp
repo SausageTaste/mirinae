@@ -1194,16 +1194,16 @@ namespace {
                     const auto i1 = mesh.idx_[3 * i + 1];
                     const auto i2 = mesh.idx_[3 * i + 2];
 
-                    const auto& v0 = mesh.vtx_[i0].pos_;
-                    const auto& v1 = mesh.vtx_[i1].pos_;
-                    const auto& v2 = mesh.vtx_[i2].pos_;
+                    const auto& v0 = mesh.vtx_[i0];
+                    const auto& v1 = mesh.vtx_[i1];
+                    const auto& v2 = mesh.vtx_[i2];
 
                     rp_states_debug_mesh_.draw(
                         ren_ctxt.cmdbuf_,
-                        pvm * glm::vec4(v0, 1),
-                        pvm * glm::vec4(v1, 1),
-                        pvm * glm::vec4(v2, 1),
-                        glm::vec4(1, 0, 0, 1),
+                        pvm * glm::vec4(v0.pos_, 1),
+                        pvm * glm::vec4(v1.pos_, 1),
+                        pvm * glm::vec4(v2.pos_, 1),
+                        v0.color_,
                         rp_
                     );
                 }
