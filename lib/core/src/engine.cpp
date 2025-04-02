@@ -818,7 +818,7 @@ namespace {
             // Physice object
             for (int x = 0; x < 5; ++x) {
                 for (int y = 0; y < 5; ++y) {
-                    for (int z = 0; z < 5; ++z) {
+                    for (int z = 0; z < 2; ++z) {
                         const auto entt = reg.create();
 
                         auto& id = reg.emplace<mirinae::cpnt::Id>(entt);
@@ -836,7 +836,7 @@ namespace {
                         tform.pos_ = glm::dvec3{
                             2.2 * radius * x - 50 - jitter,
                             2.2 * radius * y + 20,
-                            2.2 * radius * z + 100 + jitter,
+                            2.2 * radius * z + 00 + jitter,
                         };
                         tform.set_scale(radius);
 
@@ -1054,7 +1054,7 @@ namespace {
                 auto& mdl = reg.emplace<mirinae::cpnt::MdlActorSkinned>(entt);
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { -113, 2, -39 };
+                tform.pos_ = { -70, 2, -4 };
 
 #if false
                 camera_controller_.anim_idle_ = "idle_normal_1";
@@ -1090,7 +1090,7 @@ namespace {
                 mdl.model_path_ = "Sung/city.dun/city.dmd";
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { -21, 1.8, 40.7 };
+                tform.pos_ = { -21, 1.8, 42 };
                 tform.set_scale(0.65);
 
                 cosmos_->phys_world().give_body_triangles(entt, reg);
