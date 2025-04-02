@@ -760,7 +760,9 @@ namespace { namespace cpnt {
                 height_data_.data(),
                 JPH::Vec3(0, 0, 0),
                 JPH::Vec3(
-                    60 * 24 / height_data_len_, 64, 60 * 24 / height_data_len_
+                    60 * 24 / double(height_data_len_ - 1),
+                    64,
+                    60 * 24 / double(height_data_len_ - 1)
                 ),
                 height_data_len_
             );
@@ -947,7 +949,7 @@ namespace mirinae {
                 tform->rot_ = ::conv_quat(rot);
             }
 
-            physics_system.DrawBodies(debug_ren_settings_, &debug_ren_);
+            // physics_system.DrawBodies(debug_ren_settings_, &debug_ren_);
             return;
         }
 
