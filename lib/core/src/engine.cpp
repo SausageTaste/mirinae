@@ -335,7 +335,10 @@ namespace {
             }
 
             // Zoom
-            offset_dist_ -= 5 * action_map.get_mwheel_zoom() * dt;
+            {
+                offset_dist_ *= std::pow(1.04, -action_map.get_mwheel_zoom());
+                offset_dist_ = std::max(offset_dist_, 0.001);
+            }
 
             // Move with respect to camera direction
             {
