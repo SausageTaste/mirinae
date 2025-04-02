@@ -167,6 +167,11 @@ namespace mirinae {
             return *this;
         }
 
+        RenderPassBeginInfo& clear_value_count(size_t count) {
+            info_.clearValueCount = static_cast<uint32_t>(count);
+            return *this;
+        }
+
         RenderPassBeginInfo& clear_values(const VkClearValue* values) {
             info_.pClearValues = values;
             return *this;
