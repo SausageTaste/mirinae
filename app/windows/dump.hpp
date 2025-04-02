@@ -6,7 +6,16 @@
 
 #include <Windows.h>
 
-#include <Windows.h>
+namespace mirinae { namespace windows {
+
+    void create_minidump(EXCEPTION_POINTERS* pep);
+
+}}  // namespace mirinae::windows
+
+#endif
+
+
+#if true
 
 #define MIRINAE_WIN_TRY __try
 #define MIRINAE_WIN_CATCH                                             \
@@ -15,12 +24,6 @@
         EXCEPTION_EXECUTE_HANDLER                                     \
     )
 
-
-namespace mirinae { namespace windows {
-
-    void create_minidump(EXCEPTION_POINTERS* pep);
-
-}}  // namespace mirinae::windows
 
 #else
 
