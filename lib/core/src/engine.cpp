@@ -689,21 +689,9 @@ namespace {
             cvars_.set_init_size(360, 480);
             cvars_.set_init_pos(50, 50);
 
-            if (auto dat = filesys->read_file("Sung/NotoSansKR-Regular.ttf")) {
-                const int arr_size = dat->size();
-                const auto arr = new sung::byte8[arr_size];
-                std::copy(dat->begin(), dat->end(), arr);
-
-                auto& io = ImGui::GetIO();
-                auto& fonts = *io.Fonts;
-                fonts.Clear();
-
-                ImFontGlyphRangesBuilder builder;
-                builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
-                // builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
-                builder.BuildRanges(&ranges_);
-
-                fonts.AddFontFromMemoryTTF(arr, arr_size, 20, 0, ranges_.Data);
+            const auto font_path = ":asset/font/SeoulNamsanM.ttf";
+            if (auto data = filesys->read_file(font_path)) {
+                this->add_font(*data);
             }
         }
 
@@ -780,6 +768,23 @@ namespace {
             std::array<char, 256> input_buf_{};
             bool scroll_to_bottom_ = false;
         };
+
+        void add_font(const std::vector<sung::byte8>& data) {
+            const int arr_size = data.size();
+            const auto arr = new sung::byte8[arr_size];
+            std::copy(data.begin(), data.end(), arr);
+
+            auto& io = ImGui::GetIO();
+            auto& fonts = *io.Fonts;
+            fonts.Clear();
+
+            ImFontGlyphRangesBuilder builder;
+            builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+            // builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+            builder.BuildRanges(&ranges_);
+
+            fonts.AddFontFromMemoryTTF(arr, arr_size, 20, 0, ranges_.Data);
+        }
 
         DevConsole console_;
 
