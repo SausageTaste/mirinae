@@ -89,9 +89,9 @@ namespace mirinae::cpnt {
 
         ImGui::DragScalar("Height", ImGuiDataType_Double, &height_, 0.1f);
 
-        ImGui::SliderFloat("Wind speed", &wind_speed_, 0.1f, 10000, 0, flog);
-        ImGui::SliderFloat("Fetch", &fetch_, 0, 5000, 0, flog);
-        ImGui::SliderFloat("Depth", &depth_, 0.0000001f, 100000, "%.6f", flog);
+        ImGui::SliderFloat("Wind speed", &wind_speed_, 0.001f, 1000, 0, flog);
+        ImGui::SliderFloat("Fetch", &fetch_, 0, 1000000, 0, flog);
+        ImGui::SliderFloat("Depth", &depth_, 0.0000001f, 5000, "%.6f", flog);
         ImGui::SliderFloat("Swell", &swell_, 0, 1);
         ImGui::SliderFloat("Spread blend", &spread_blend_, 0, 1);
 
@@ -120,11 +120,7 @@ namespace mirinae::cpnt {
             auto& c = cascades_[cascade_imgui_idx_];
 
             ImGui::Checkbox("Active", &c.active_);
-
-            float amp = c.amplitude_ / AMP_BASE;
-            ImGui::SliderFloat("Amplitude", &amp, 0.0001f, 100, 0, flog);
-            c.amplitude_ = amp * AMP_BASE;
-
+            ImGui::SliderFloat("Amplitude", &c.amplitude_, 0.01f, 10, 0, flog);
             ImGui::SliderFloat(
                 "Jacobian scale", &c.jacobian_scale_, 0, 10, 0, flog
             );

@@ -513,14 +513,14 @@ namespace {
 
         template <typename T>
         void set_init_pos(T x, T y) {
-            init_pos_.x = x;
-            init_pos_.y = y;
+            init_pos_.x = static_cast<float>(x);
+            init_pos_.y = static_cast<float>(y);
         }
 
         template <typename T>
         void set_init_size(T x, T y) {
-            init_size_.x = x;
-            init_size_.y = y;
+            init_size_.x = static_cast<float>(x);
+            init_size_.y = static_cast<float>(y);
         }
 
         void add_begin_flag(ImGuiWindowFlags flag) { begin_flags_ |= flag; }
@@ -1011,6 +1011,38 @@ namespace {
 
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
                 ocean.height_ = -50;
+                ocean.wind_speed_ = 1;
+                ocean.fetch_ = 100000;
+                ocean.spread_blend_ = 0.284;
+                ocean.swell_ = 0.284;
+                ocean.depth_ = 500;
+
+                constexpr double len_scale0 = 250;
+                constexpr double len_scale1 = 17;
+                constexpr double len_scale2 = 5;
+                constexpr auto boundary1 = SUNG_TAU / len_scale1 * 6;
+                constexpr auto boundary2 = SUNG_TAU / len_scale2 * 6;
+
+                auto cas = &ocean.cascades_[0];
+                cas->lod_scale_ = len_scale0;
+                cas->cutoff_low_ = 0.0001;
+                cas->cutoff_high_ = boundary1;
+                cas->amplitude_ = 1;
+                cas->L_ = cas->lod_scale_;
+
+                cas = &ocean.cascades_[1];
+                cas->lod_scale_ = len_scale1;
+                cas->cutoff_low_ = boundary1;
+                cas->cutoff_high_ = boundary2;
+                cas->amplitude_ = 1;
+                cas->L_ = cas->lod_scale_;
+
+                cas = &ocean.cascades_[2];
+                cas->lod_scale_ = len_scale2;
+                cas->cutoff_low_ = boundary2;
+                cas->cutoff_high_ = 9999;
+                cas->amplitude_ = 0.3;
+                cas->L_ = cas->lod_scale_;
             }
 
             // Atmosphere
