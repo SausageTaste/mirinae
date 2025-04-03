@@ -3,8 +3,8 @@
 #include <stdexcept>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
-#include "mirinae/render/renderpass/builder.hpp"
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/renderpass/builder.hpp"
+#include "mirinae/renderpass/common.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
 

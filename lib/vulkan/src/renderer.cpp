@@ -15,12 +15,12 @@
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/render_graph.hpp"
 #include "mirinae/render/renderpass.hpp"
-#include "mirinae/render/renderpass/builder.hpp"
-#include "mirinae/render/renderpass/compo.hpp"
-#include "mirinae/render/renderpass/envmap.hpp"
-#include "mirinae/render/renderpass/gbuf.hpp"
-#include "mirinae/render/renderpass/ocean.hpp"
-#include "mirinae/render/renderpass/shadow.hpp"
+#include "mirinae/renderpass/builder.hpp"
+#include "mirinae/renderpass/compo.hpp"
+#include "mirinae/renderpass/envmap.hpp"
+#include "mirinae/renderpass/gbuf.hpp"
+#include "mirinae/renderpass/ocean.hpp"
+#include "mirinae/renderpass/shadow.hpp"
 
 
 namespace {

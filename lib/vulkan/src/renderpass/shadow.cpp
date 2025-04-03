@@ -1,4 +1,4 @@
-#include "mirinae/render/renderpass/shadow.hpp"
+#include "mirinae/renderpass/shadow.hpp"
 
 #include <entt/entity/registry.hpp>
 
@@ -7,8 +7,8 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/renderee/terrain.hpp"
-#include "mirinae/render/renderpass/builder.hpp"
+#include "mirinae/renderee/terrain.hpp"
+#include "mirinae/renderpass/builder.hpp"
 
 
 // shadowmap skin transp

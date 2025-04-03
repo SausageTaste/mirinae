@@ -2,7 +2,7 @@
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/renderpass/builder.hpp"
+#include "mirinae/renderpass/builder.hpp"
 
 
 #define MIRINAE_GET_IMPL()                                        \

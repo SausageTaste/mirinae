@@ -8,13 +8,6 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/render_graph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderee.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/builder.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/common.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/compo.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/envmap.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/gbuf.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/ocean.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass/shadow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/texture.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/uniform.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkcomposition.cpp
@@ -22,6 +15,13 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkmajorplayers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/builder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/common.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow.cpp
 )
 target_include_directories(mirinae_vulkan PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include

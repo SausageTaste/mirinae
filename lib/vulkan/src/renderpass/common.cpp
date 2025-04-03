@@ -1,4 +1,4 @@
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/renderpass/common.hpp"
 
 #include <set>
 

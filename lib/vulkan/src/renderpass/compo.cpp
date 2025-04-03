@@ -1,11 +1,11 @@
-#include "mirinae/render/renderpass/compo.hpp"
+#include "mirinae/renderpass/compo.hpp"
 
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/renderpass/builder.hpp"
+#include "mirinae/renderpass/builder.hpp"
 
 
 // Compo Dlight

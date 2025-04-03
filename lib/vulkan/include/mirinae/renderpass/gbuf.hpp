@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mirinae/render/render_graph.hpp"
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/renderpass/common.hpp"
 
 
 namespace mirinae::rp::gbuf {

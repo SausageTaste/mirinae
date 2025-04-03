@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/renderpass/common.hpp"
 #include "mirinae/render/vkdevice.hpp"
 
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mirinae/cosmos.hpp"
-#include "mirinae/render/renderpass/common.hpp"
+#include "mirinae/renderpass/common.hpp"
 
 
 namespace mirinae::rp::envmap {

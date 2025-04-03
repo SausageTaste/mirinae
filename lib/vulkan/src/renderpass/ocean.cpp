@@ -1,4 +1,4 @@
-#include "mirinae/render/renderpass/ocean.hpp"
+#include "mirinae/renderpass/ocean.hpp"
 
 #include <entt/entity/registry.hpp>
 #include <sung/basic/aabb.hpp>
@@ -9,7 +9,7 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/renderpass/builder.hpp"
+#include "mirinae/renderpass/builder.hpp"
 
 #define GET_OCEAN_ENTT(ctxt)                        \
     if (!(ctxt).draw_sheet_)                        \

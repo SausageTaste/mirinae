@@ -1,4 +1,4 @@
-#include "mirinae/render/renderee/terrain.hpp"
+#include "mirinae/renderee/terrain.hpp"
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 
