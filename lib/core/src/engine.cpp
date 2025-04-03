@@ -349,6 +349,11 @@ namespace {
                     action_map.get_value_move_backward(),
                 };
                 const auto move_dir_len = glm::length(move_dir);
+                const auto sprint = action_map.get_value(ActionType::sprint) >
+                                    0.1;
+                const auto walk = action_map.get_value(
+                                      ActionType::translate_down
+                                  ) > 0.1;
 
                 if (move_dir_len > 0.01) {
                     const auto cam_front = cam_tform->make_forward_dir();
@@ -356,11 +361,18 @@ namespace {
                         std::atan2(cam_front.z, cam_front.x)
                     );
 
+                    auto move_speed = move_speed_;
+                    if (sprint) {
+                        move_speed *= 3;
+                    } else if (walk) {
+                        move_speed = 0.7;
+                    }
+
                     const auto move_vec_rot = mirinae::rotate_vec(
                         move_dir, cam_front_angle + ANGLE_OFFSET
                     );
                     const auto move_vec_scale = move_vec_rot *
-                                                (dt * move_speed_);
+                                                (dt * move_speed);
 
                     tgt_heading_.set_target(
                         Angle::from_rad(
@@ -376,8 +388,22 @@ namespace {
                         glm::vec3{ 0, 1, 0 }
                     );
 
-                    if (anim_state.get_cur_anim_name() != anim_run_)
-                        anim_state.select_anim_name(anim_run_, scene.clock());
+                    if (sprint) {
+                        if (anim_state.get_cur_anim_name() != anim_sprint_)
+                            anim_state.select_anim_name(
+                                anim_sprint_, scene.clock()
+                            );
+                    } else if (walk) {
+                        if (anim_state.get_cur_anim_name() != anim_walk_)
+                            anim_state.select_anim_name(
+                                anim_walk_, scene.clock()
+                            );
+                    } else {
+                        if (anim_state.get_cur_anim_name() != anim_run_)
+                            anim_state.select_anim_name(
+                                anim_run_, scene.clock()
+                            );
+                    }
                 } else {
                     if (anim_state.get_cur_anim_name() != anim_idle_)
                         anim_state.select_anim_name(anim_idle_, scene.clock());
@@ -444,7 +470,9 @@ namespace {
 
     public:
         std::string anim_idle_;
+        std::string anim_walk_;
         std::string anim_run_;
+        std::string anim_sprint_;
         sung::TAngle<double> player_model_heading_;
         double move_speed_ = 3;        // World space
         double offset_dist_ = 2;       // World space
@@ -1093,16 +1121,18 @@ namespace {
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -70, 2, -4 };
 
-#if false
+#if true
                 camera_controller_.anim_idle_ = "idle_normal_1";
+                camera_controller_.anim_walk_ = "evt1_walk_normal_1";
                 camera_controller_.anim_run_ = "run_normal_1";
+                camera_controller_.anim_sprint_ = "hwan_run_battle_1";
                 camera_controller_.player_model_heading_.set_zero();
                 mdl.model_path_ = "Sung/artist.dun/artist_subset.dmd";
                 mdl.anim_state_.select_anim_name(
                     "idle_normal_1", cosmos_->scene().clock()
                 );
 #else
-                camera_controller_.anim_idle_ = "t pos";
+                camera_controller_.anim_idle_ = "standing";
                 camera_controller_.anim_run_ = "run";
                 camera_controller_.player_model_heading_.set_deg(90);
                 mdl.model_path_ =

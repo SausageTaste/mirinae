@@ -16,7 +16,8 @@ namespace mirinae {
         key_map_.emplace(key::KeyCode::right, ActionType::look_right);
 
         key_map_.emplace(key::KeyCode::space, ActionType::translate_up);
-        key_map_.emplace(key::KeyCode::lshfit, ActionType::translate_down);
+        key_map_.emplace(key::KeyCode::lalt, ActionType::translate_down);
+        key_map_.emplace(key::KeyCode::lshfit, ActionType::sprint);
     }
 
     bool InputActionMapper::on_key_event(const key::Event& e) {

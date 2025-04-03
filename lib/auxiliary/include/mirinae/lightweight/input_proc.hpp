@@ -107,6 +107,7 @@ namespace mirinae {
             // Move with respect to world direction
             translate_up,    // Jump, or ascend
             translate_down,  // Descend
+            sprint,
         };
 
         InputActionMapper();
