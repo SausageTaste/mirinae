@@ -22,6 +22,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/transp.cpp
 )
 target_include_directories(mirinae_vulkan PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include

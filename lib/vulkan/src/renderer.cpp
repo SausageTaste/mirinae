@@ -21,6 +21,7 @@
 #include "mirinae/renderpass/gbuf.hpp"
 #include "mirinae/renderpass/ocean.hpp"
 #include "mirinae/renderpass/shadow.hpp"
+#include "mirinae/renderpass/transp.hpp"
 
 
 namespace {
