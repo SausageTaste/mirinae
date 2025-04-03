@@ -27,7 +27,7 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     vec4 dlight_dir;
     vec4 fog_color_density;
     vec4 jacobian_scale;
-    vec4 len_scales_lod_scale;
+    vec4 len_lod_scales;
     vec4 ocean_color;
     float foam_bias;
     float foam_scale;
@@ -52,17 +52,6 @@ vec2 map_cube(vec3 v) {
 }
 
 
-vec2 transform_uv(vec2 uv, int cascade) {
-    vec2 tile_idx = u_pc.tile_index_count.xy;
-    vec2 offset = u_params.texco_offset_rot_[cascade].xy;
-    vec2 scale = u_params.texco_offset_rot_[cascade].zw;
-
-    const vec2 global_uv = complex_init(uv);
-    const vec2 offset_rot = complex_init(scale);
-    return complex_mul(global_uv, offset_rot) + offset;
-}
-
-
 void main() {
     const mat3 tbn = make_tbn_mat(vec3(0, 1, 0), vec3(1, 0, 0), u_pc.view * u_pc.model);
     const vec3 albedo = u_params.ocean_color.xyz;
@@ -72,15 +61,11 @@ void main() {
     const vec3 to_view = i_frag_pos / (-frag_dist);
     const vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
-    float jacobian = 0;
     vec4 derivatives = vec4(0);
-    for (int i = 0; i < 3; i++) {
-        const vec2 t_uv = transform_uv(i_uv, i) / u_params.len_scales_lod_scale[i];
-        if (i == 0)
-            derivatives += texture(u_deri_map[i], t_uv);
-        else
-            derivatives += texture(u_deri_map[i], t_uv) * i_lod_scales[i];
-        jacobian += texture(u_turb_map[i], t_uv).x * u_params.jacobian_scale[i];
+    {
+        derivatives += texture(u_deri_map[0], i_uv / u_params.len_lod_scales[0]);
+        derivatives += texture(u_deri_map[1], i_uv / u_params.len_lod_scales[1]) * i_lod_scales.y;
+        derivatives += texture(u_deri_map[2], i_uv / u_params.len_lod_scales[2]) * i_lod_scales.z;
     }
 
     const vec2 slope = vec2(
@@ -93,7 +78,7 @@ void main() {
 
     vec3 light = vec3(0);
 
-    /*/
+    //*/
     light += calc_pbr_illumination(
         roughness,
         metallic,
@@ -146,9 +131,14 @@ void main() {
 
     // Foam
     {
+        float jacobian =
+              texture(u_turb_map[0], i_uv / u_params.len_lod_scales[0]).x * u_params.jacobian_scale[0]
+            + texture(u_turb_map[1], i_uv / u_params.len_lod_scales[1]).x * u_params.jacobian_scale[1]
+            + texture(u_turb_map[2], i_uv / u_params.len_lod_scales[2]).x * u_params.jacobian_scale[2];
+
         jacobian = (-jacobian + u_params.foam_bias) * u_params.foam_scale;
         jacobian = clamp(jacobian, 0, 1);
-        jacobian *= clamp(u_params.len_scales_lod_scale[3] / frag_dist, 0, 1);
+        jacobian *= clamp(u_params.len_lod_scales[3] / frag_dist, 0, 1);
         light = mix(light, vec3(1), jacobian);
     }
 

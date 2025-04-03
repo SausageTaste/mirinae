@@ -1840,21 +1840,21 @@ namespace {
 
         template <typename T>
         U_OceanTessParams& len_scale(size_t idx, T x) {
-            len_scales_lod_scale_[idx] = static_cast<float>(x);
+            len_lod_scales_[idx] = static_cast<float>(x);
             return *this;
         }
 
         template <typename T>
         U_OceanTessParams& len_scales(T x, T y, T z) {
-            len_scales_lod_scale_.x = static_cast<float>(x);
-            len_scales_lod_scale_.y = static_cast<float>(y);
-            len_scales_lod_scale_.z = static_cast<float>(z);
+            len_lod_scales_.x = static_cast<float>(x);
+            len_lod_scales_.y = static_cast<float>(y);
+            len_lod_scales_.z = static_cast<float>(z);
             return *this;
         }
 
         template <typename T>
         U_OceanTessParams& lod_scale(T x) {
-            len_scales_lod_scale_.w = static_cast<float>(x);
+            len_lod_scales_.w = static_cast<float>(x);
             return *this;
         }
 
@@ -1902,7 +1902,7 @@ namespace {
         glm::vec4 dlight_dir_;
         glm::vec4 fog_color_density_;
         glm::vec4 jacobian_scale_;
-        glm::vec4 len_scales_lod_scale_;
+        glm::vec4 len_lod_scales_;
         glm::vec4 ocean_color_;
         float foam_bias_;
         float foam_scale_;

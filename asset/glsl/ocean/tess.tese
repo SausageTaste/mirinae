@@ -28,7 +28,7 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     vec4 dlight_dir;
     vec4 fog_color_density;
     vec4 jacobian_scale;
-    vec4 len_scales_lod_scale;
+    vec4 len_lod_scales;
     vec4 ocean_color;
     float foam_bias;
     float foam_scale;
@@ -62,7 +62,7 @@ void main() {
 
     const vec2 t0 = (t01 - t00) * u + t00;
     const vec2 t1 = (t11 - t10) * u + t10;
-    const vec2 tex_coord = (t1 - t0) * v + t0;
+    const vec2 tex_coord = (t1 - t0) * v + t0;  // aka world pos
 
     const vec3 p00 = gl_in[0].gl_Position.xyz;
     const vec3 p01 = gl_in[1].gl_Position.xyz;
@@ -74,16 +74,14 @@ void main() {
     vec3 p = (p1 - p0) * v + p0;
 
     float p_dist = length((u_pc.view * u_pc.model * vec4(p, 1)).xyz);
-    float lod_c0 = min(u_params.len_scales_lod_scale[3] * u_params.len_scales_lod_scale[0] / p_dist, 1);
-    float lod_c1 = min(u_params.len_scales_lod_scale[3] * u_params.len_scales_lod_scale[1] / p_dist, 1);
-    float lod_c2 = min(u_params.len_scales_lod_scale[3] * u_params.len_scales_lod_scale[2] / p_dist, 1);
+    float lod_c0 = min(u_params.len_lod_scales[3] * u_params.len_lod_scales[0] / p_dist, 1);
+    float lod_c1 = min(u_params.len_lod_scales[3] * u_params.len_lod_scales[1] / p_dist, 1);
+    float lod_c2 = min(u_params.len_lod_scales[3] * u_params.len_lod_scales[2] / p_dist, 1);
 
-    vec3 displacement = vec3(0);
-    float largeWavesBias = 0;
-    displacement += texture(u_disp_map[0], transform_uv(tex_coord, 0) / u_params.len_scales_lod_scale[0]).xyz * lod_c0;
-    largeWavesBias = displacement.y;
-    displacement += texture(u_disp_map[1], transform_uv(tex_coord, 1) / u_params.len_scales_lod_scale[1]).xyz * lod_c1;
-    displacement += texture(u_disp_map[2], transform_uv(tex_coord, 2) / u_params.len_scales_lod_scale[2]).xyz * lod_c2;
+    vec3 displacement = texture(u_disp_map[0], tex_coord / u_params.len_lod_scales[0]).xyz * lod_c0;
+    const float largeWavesBias = displacement.y;
+    displacement += texture(u_disp_map[1], tex_coord / u_params.len_lod_scales[1]).xyz * lod_c1;
+    displacement += texture(u_disp_map[2], tex_coord / u_params.len_lod_scales[2]).xyz * lod_c2;
     p += displacement;
     o_lod_scales = vec4(lod_c0, lod_c1, lod_c2, max(displacement.y - largeWavesBias * 0.8 - u_params.sss_base, 0) / u_params.sss_scale);
 
