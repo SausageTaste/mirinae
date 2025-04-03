@@ -20,7 +20,7 @@ float normalization_factor(ivec2 nm) {
     const float perms[2] = float[2](1.0, -1.0);
     const int index = int(mod(nm.x + nm.y, 2));
     const float perm = perms[index];
-    return perm / float(u_pc.N * u_pc.N);
+    return perm;
 }
 
 

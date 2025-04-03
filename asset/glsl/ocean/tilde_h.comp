@@ -25,7 +25,7 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
 } u_pc;
 
 const float GAMMA = 3.3;
-const float SHORT_WAVES_FADE = 0.0001;
+const float SHORT_WAVES_FADE = 0.01;
 
 
 vec4 gauseRnd() {
@@ -207,7 +207,7 @@ float jonswap_spectrum(vec2 wave_vector) {
         return 0;
 
     const float k_angle = atan(wave_vector.y, wave_vector.x);
-    const float peak_omega = 22 * GRAVITY_EARTH * GRAVITY_EARTH / (u_pc.wind_speed * u_pc.fetch);
+    const float peak_omega = 22 * pow(GRAVITY_EARTH * GRAVITY_EARTH / (u_pc.wind_speed * u_pc.fetch), 0.33);
     const float omega = Frequency(k_len);
     const vec4 wave_data = vec4(wave_vector.x, 1 / k_len, wave_vector.y, omega);
     const float domega_dk = FrequencyDerivative(k_len);
