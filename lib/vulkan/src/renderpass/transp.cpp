@@ -228,8 +228,6 @@ namespace {
 
                 builder.vertex_input_state().set_skinned();
 
-                builder.rasterization_state().cull_mode_back();
-
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
                     .depth_write_enable(false);
