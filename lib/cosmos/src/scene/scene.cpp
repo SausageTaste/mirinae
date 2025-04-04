@@ -509,6 +509,82 @@ namespace { namespace scene {
 }}  // namespace ::scene
 
 
+namespace {
+
+    class TaskOceanUpdate : public dal::ITask {
+
+    public:
+        TaskOceanUpdate(mirinae::Scene& scene) : scene_(scene) {}
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            auto& view = scene_.reg_->view<mirinae::cpnt::Ocean>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+
+            for (auto it = begin; it != end; ++it) {
+                entt::entity e = *it;
+                auto& o = view.get<mirinae::cpnt::Ocean>(e);
+                o.do_frame(scene_.clock());
+            }
+        }
+
+        mirinae::Scene& scene_;
+    };
+
+
+    class TaskSkinnedActorUpdate : public dal::ITask {
+
+    public:
+        TaskSkinnedActorUpdate(mirinae::Scene& scene) : scene_(scene) {}
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            auto& view = scene_.reg_->view<mirinae::cpnt::MdlActorSkinned>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+
+            for (auto it = begin; it != end; ++it) {
+                entt::entity e = *it;
+                auto& a = view.get<mirinae::cpnt::MdlActorSkinned>(e);
+                a.anim_state_.update_tick(scene_.clock());
+            }
+        }
+
+        mirinae::Scene& scene_;
+    };
+
+
+    class TaskEnttUpdate : public dal::ITask {
+
+    public:
+        TaskEnttUpdate(mirinae::Scene& scene)
+            : scene_(scene), skinned_actor_task_(scene), ocean_task_(scene_) {}
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            {
+                const auto& view =
+                    scene_.reg_->view<mirinae::cpnt::MdlActorSkinned>();
+                skinned_actor_task_.set_size(view.size());
+                skinned_actor_task_.submit();
+            }
+
+            {
+                const auto& view = scene_.reg_->view<mirinae::cpnt::Ocean>();
+                ocean_task_.set_size(view.size());
+                ocean_task_.submit();
+            }
+        }
+
+        mirinae::Scene& scene_;
+        TaskSkinnedActorUpdate skinned_actor_task_;
+        TaskOceanUpdate ocean_task_;
+    };
+
+}  // namespace
+
+
 // Scene
 namespace mirinae {
 
@@ -523,14 +599,10 @@ namespace mirinae {
         script_.register_module("scene", scene::luaopen_scene);
     }
 
-    void Scene::do_frame() {
-        clock_.tick();
+    void Scene::do_frame() { clock_.tick(); }
 
-        reg_->view<cpnt::Ocean>().each([this](cpnt::Ocean& ocean) {
-            ocean.do_frame(clock_);
-        });
-
-        return;
+    std::unique_ptr<dal::ITask> Scene::create_cpnt_update_task() {
+        return std::make_unique<::TaskEnttUpdate>(*this);
     }
 
     entt::entity Scene::find_entt(const std::string& name) const {

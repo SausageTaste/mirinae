@@ -6,6 +6,7 @@
 #include <imgui_stdlib.h>
 #include <spdlog/sinks/base_sink.h>
 #include <daltools/common/glm_tool.hpp>
+#include <daltools/common/task_sys.hpp>
 #include <entt/entity/registry.hpp>
 #include <sung/basic/cvar.hpp>
 
@@ -827,6 +828,26 @@ namespace {
 
 namespace {
 
+    class TaskGlobalStateProceed : public dal::ITask {
+
+    public:
+        TaskGlobalStateProceed(std::shared_ptr<mirinae::CosmosSimulator> cosmos)
+            : cosmos_(cosmos) {}
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cosmos_->tick_clock();
+            cosmos_->scene().do_frame();
+        }
+
+        std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
+    };
+
+}  // namespace
+
+
+namespace {
+
     class Engine : public mirinae::IEngine {
 
     public:
@@ -1182,6 +1203,16 @@ namespace {
                 cosmos_->imgui_.push_back(imgui_main_);
             }
 
+            // Tasks
+            {
+                auto global_cosmos = std::make_unique<TaskGlobalStateProceed>(
+                    cosmos_
+                );
+                global_cosmos->set_dep(cosmos_->scene().create_cpnt_update_task(
+                ));
+                tasks_.push_back(std::move(global_cosmos));
+            }
+
             renderer_ = mirinae::create_vk_renderer(
                 cinfo, task_sche, script_, cosmos_
             );
@@ -1191,13 +1222,16 @@ namespace {
         ~Engine() override {}
 
         void do_frame() override {
-            cosmos_->tick_clock();
-            auto& clock = cosmos_->clock();
-
             if (sec5_.check_if_elapsed(5)) {
                 client_->send();
             }
 
+            for (auto& task : tasks_) {
+                task->submit();
+            }
+            dal::tasker().WaitforAll();
+
+            /*
             auto cam_view = cosmos_->reg().try_get<mirinae::cpnt::Transform>(
                 cosmos_->scene().main_camera_
             );
@@ -1213,6 +1247,7 @@ namespace {
                     cam_view->make_right_dir()
                 );
             }
+            */
 
             /*
             for (auto e : cosmos_->reg().view<mirinae::cpnt::Envmap>()) {
@@ -1338,6 +1373,7 @@ namespace {
         std::shared_ptr<::ImGuiMainWin> imgui_main_;
         std::unique_ptr<mirinae::IRenderer> renderer_;
 
+        std::vector<std::unique_ptr<dal::ITask>> tasks_;
         sung::MonotonicRealtimeTimer sec5_;
         mirinae::InputActionMapper action_mapper_;
         ::ThirdPersonController camera_controller_;

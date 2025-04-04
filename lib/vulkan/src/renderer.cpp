@@ -1533,8 +1533,6 @@ namespace {
                 if (!actor)
                     continue;
 
-                mactor.anim_state_.update_tick(clock);
-
                 glm::dmat4 model_mat(1);
                 if (auto tform = reg.try_get<cpnt::Transform>(e))
                     model_mat = tform->make_model_mat();

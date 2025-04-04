@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include <daltools/common/task_sys.hpp>
 #include <entt/fwd.hpp>
 #include <sung/basic/geometry3d.hpp>
 #include <sung/basic/time.hpp>
@@ -19,6 +20,8 @@ namespace mirinae {
         const sung::SimClock& clock() const { return clock_; }
 
         void do_frame();
+
+        std::unique_ptr<dal::ITask> create_cpnt_update_task();
 
         entt::entity find_entt(const std::string& name) const;
 
