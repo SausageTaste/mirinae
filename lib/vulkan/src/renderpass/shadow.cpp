@@ -244,7 +244,7 @@ namespace {
             dlights_.resize(shadow_count);
 
             for (auto& x : dlights_) {
-                x.init_images(2048, 2048, frames_in_flight, device);
+                x.init_images(2 << 11, 2 << 11, frames_in_flight, device);
             }
         }
 

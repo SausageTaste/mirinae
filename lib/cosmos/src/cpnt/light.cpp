@@ -169,7 +169,8 @@ namespace mirinae {
         const DirectionalLight& dlight,
         const DirectionalLight::Tform& tform
     ) {
-        const auto dist = this->make_plane_distances(pers.near_, pers.far_);
+        const auto capped_far = std::min<double>(pers.far_, 200);
+        const auto dist = this->make_plane_distances(pers.near_, capped_far);
 
         for (size_t i = 0; i < dist.size() - 1; ++i) {
             auto& c = cascades_.at(i);
@@ -225,7 +226,7 @@ namespace mirinae {
         const auto dist = p_far - p_near;
 
         out[0] = p_near;
-        out[1] = p_near + dist * 0.05;
+        out[1] = p_near + dist * 0.03;
         out[2] = p_near + dist * 0.2;
         out[3] = p_near + dist * 0.5;
         out[4] = p_far;
