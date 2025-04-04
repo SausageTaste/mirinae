@@ -1133,7 +1133,9 @@ namespace {
                 );
 #else
                 camera_controller_.anim_idle_ = "standing";
+                camera_controller_.anim_walk_ = "run";
                 camera_controller_.anim_run_ = "run";
+                camera_controller_.anim_sprint_ = "run";
                 camera_controller_.player_model_heading_.set_deg(90);
                 mdl.model_path_ =
                     "Sung/Character Running.dun/Character Running.dmd";
