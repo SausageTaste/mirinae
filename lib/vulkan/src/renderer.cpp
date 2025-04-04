@@ -225,6 +225,12 @@ namespace {
                     swapchain.views_count(), cosmos, rp_res, desclayouts, device
                 )
             );
+
+            rp_post_.push_back(
+                mirinae::rp::create_rp_states_transp_skinned(
+                    rp_res, desclayouts, device
+                )
+            );
         }
 
         void destroy_std_rp() {
@@ -1151,14 +1157,6 @@ namespace {
             rpm_.record_computes(ren_ctxt);
 
             rp_states_transp_.record_static(
-                ren_ctxt.cmdbuf_,
-                rp_res_.gbuf_.extent(),
-                *ren_ctxt.draw_sheet_,
-                ren_ctxt.f_index_,
-                rp_
-            );
-
-            rp_states_transp_.record_skinned(
                 ren_ctxt.cmdbuf_,
                 rp_res_.gbuf_.extent(),
                 *ren_ctxt.draw_sheet_,
