@@ -171,6 +171,12 @@ namespace {
             );
 
             rp_pre_.push_back(
+                mirinae::rp::create_rp_states_shadow_skinned_transp(
+                    rp_res, desclayouts, device
+                )
+            );
+
+            rp_pre_.push_back(
                 mirinae::rp::create_rp_states_shadow_terrain(
                     rp_res, desclayouts, device
                 )

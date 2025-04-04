@@ -39,7 +39,7 @@ float dither4x4(vec2 position, float brightness) {
 void main() {
     const vec4 albedo_texel = texture(u_albedo_map, v_uv);
     const float alpha = albedo_texel.a;
-    const float dithered = dither4x4(gl_FragCoord.xy, alpha);
+    const float dithered = dither4x4(gl_FragCoord.xy, pow(alpha, 1));
     if (dithered < 0.5)
         discard;
 }
