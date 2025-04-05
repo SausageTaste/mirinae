@@ -447,7 +447,8 @@ namespace {
             const auto tgt_pos = tgt_tform->pos_;
             cam_tform->pos_ = tgt_pos - cam_forward * offset_dist_;
             cam_tform->pos_ += tgt_tform->make_up_dir() * offset_height_;
-            cam_tform->pos_ += cam_tform->make_right_dir() * offset_hor_;
+            cam_tform->pos_ += cam_tform->make_right_dir() * offset_hor_ *
+                               offset_dist_;
         }
 
         void set_target(entt::entity target) {
@@ -478,7 +479,7 @@ namespace {
         double move_speed_ = 3;        // World space
         double offset_dist_ = 2;       // World space
         double offset_height_ = 0.75;  // World space
-        double offset_hor_ = 0.25;     // World space
+        double offset_hor_ = 0.2;      // World space
         double key_look_speed_ = 1;
         double mouse_look_speed_ = 0.1;
     };
