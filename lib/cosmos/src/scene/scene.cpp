@@ -518,7 +518,7 @@ namespace {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            auto& view = scene_.reg_->view<mirinae::cpnt::Ocean>();
+            auto view = scene_.reg_->view<mirinae::cpnt::Ocean>();
             auto begin = view.begin() + range.start;
             auto end = view.begin() + range.end;
 
@@ -540,7 +540,7 @@ namespace {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            auto& view = scene_.reg_->view<mirinae::cpnt::MdlActorSkinned>();
+            auto view = scene_.reg_->view<mirinae::cpnt::MdlActorSkinned>();
             auto begin = view.begin() + range.start;
             auto end = view.begin() + range.end;
 
