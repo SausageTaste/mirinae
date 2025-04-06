@@ -48,14 +48,56 @@ vec2 map_cube(vec3 v) {
     uv *= invAtan;
     uv += 0.5;
     uv.y = 1.0 - uv.y;
+    uv = clamp(uv, 0.0, 1.0);
     return uv;
 }
 
 
+float meanFresnel(float cosThetaV, float sigmaV) {
+    return pow(1.0 - cosThetaV, 5.0 * exp(-2.69 * sigmaV)) / (1.0 + 22.7 * pow(sigmaV, 1.5));
+}
+
+
+float meanFresnel(vec3 V, vec3 N, float sigmaSq) {
+    return meanFresnel(dot(V, N), sqrt(sigmaSq));
+}
+
+
+float reflectedSunRadiance(vec3 V, vec3 N, vec3 L, float sigmaSq) {
+    vec3 H = normalize(L + V);
+
+    float hn = dot(H, N);
+    float p = exp(-2.0 * ((1.0 - hn * hn) / sigmaSq) / (1.0 + hn)) / (4.0 * PI * sigmaSq);
+
+    float c = 1.0 - dot(V, H);
+    float c2 = c * c;
+    float fresnel = 0.02 + 0.98 * c2 * c2 * c;
+
+    float zL = dot(L, N);
+    float zV = dot(V, N);
+    zL = max(zL, 0.01);
+    zV = max(zV, 0.01);
+
+    // brdf times cos(thetaL)
+    return zL <= 0.0 ? 0.0 : max(fresnel * p * sqrt(abs(zL / zV)), 0.0);
+}
+
+
+vec3 oceanRadiance(vec3 V, vec3 N, vec3 L, float seaRoughness, vec3 sunL, vec3 skyE, vec3 seaColor) {
+    float F = meanFresnel(V, N, seaRoughness);
+    vec3 Lsun = reflectedSunRadiance(V, N, L, seaRoughness) * sunL;
+    vec3 Lsky = skyE * F / PI;
+    vec3 Lsea = (1.0 - F) * seaColor * skyE / PI;
+    return Lsun + Lsky + Lsea;
+}
+
+
 void main() {
+    const mat4 view_inv = inverse(u_pc.view);
+    const mat3 view_inv3 = mat3(view_inv);
     const mat3 tbn = make_tbn_mat(vec3(0, 1, 0), vec3(1, 0, 0), u_pc.view * u_pc.model);
     const vec3 albedo = u_params.ocean_color.xyz;
-    const float roughness = 0.1;
+    const float roughness = 0.2;
     const float metallic = 0;
     const float frag_dist = length(i_frag_pos);
     const vec3 to_view = i_frag_pos / (-frag_dist);
@@ -73,61 +115,18 @@ void main() {
         derivatives.y / (1.0 + derivatives.w)
     );
     const vec3 world_normal = normalize(vec3(-slope.x, 1, -slope.y));
+    const vec3 world_view = normalize(view_inv3 * (-i_frag_pos));
     const vec3 normal = normalize(mat3(u_pc.view * u_pc.model) * world_normal);
-    const vec3 light_dir = u_params.dlight_dir.xyz;
+    const vec3 light_dir = view_inv3 * (u_params.dlight_dir.xyz);
 
     vec3 light = vec3(0);
 
-    //*/
-    light += calc_pbr_illumination(
-        roughness,
-        metallic,
-        albedo,
-        normal,
-        F0,
-        -normalize(i_frag_pos),
-        light_dir,
-        u_params.dlight_color.xyz
-    );
-    /*/
-    {
-        vec3 n = normal;
-        vec3 v = to_view;
-        vec3 l = reflect(-v, n);
-
-        // Fresnel faktor (levegő IOR: 1.000293f, víz IOR: 1.33f)
-        float F0 = 0.020018673;
-        float F = F0 + (1.0 - F0) * pow(1.0 - max(0.1, dot(n, l)), 5.0);
-
-        // tükröződő égbolt
-        vec3 l_world = (inverse(u_pc.view) * vec4(l, 0)).xyz;
-        vec3 refl = textureLod(u_sky_tex, map_cube(l_world), 0).xyz;
-
-        // habzás (az ARM/Mali példakódja alapján)
-        float turbulence = max(1.6 - 3, 0.0);
-        float color_mod = 1.0 + 3.0 * smoothstep(1.2, 1.8, turbulence);
-
-        // napfény (Ward modell)
-        const vec3 sundir = light_dir;
-        const float rho   = 0.3;
-        const float ax    = 0.25;
-        const float ay    = 0.1;
-
-        vec3 h = sundir + v;
-        vec3 x = cross(sundir, n);
-        vec3 y = cross(x, n);
-
-        const float ONE_OVER_4PI = 1.0 / (4.0 * PI);
-        float mult = (ONE_OVER_4PI * rho / (ax * ay * sqrt(max(1e-5, dot(sundir, n) * dot(v, n)))));
-        float hdotx = dot(h, x) / ax;
-        float hdoty = dot(h, y) / ay;
-        float hdotn = dot(h, n);
-        float spec = mult * exp(-((hdotx * hdotx) + (hdoty * hdoty)) / (hdotn * hdotn));
-
-        vec3 oceanColor = albedo;
-        light += vec3(mix(oceanColor, refl * color_mod, F) + u_params.dlight_color.xyz * spec);
-    }
-    //*/
+    vec3 l_world = reflect(-world_view, world_normal);
+    vec2 texco = map_cube(l_world);
+    texco.y = clamp(texco.y, 0.0, 0.45);
+    vec3 refl = textureLod(u_sky_tex, texco, 0).xyz;
+    vec3 surfaceColor = oceanRadiance(world_view, world_normal, light_dir, 0.01, u_params.dlight_color.xyz, refl, albedo);
+    light += surfaceColor;
 
     // Foam
     {
@@ -139,7 +138,19 @@ void main() {
         jacobian = (-jacobian + u_params.foam_bias) * u_params.foam_scale;
         jacobian = clamp(jacobian, 0, 1);
         jacobian *= clamp(u_params.len_lod_scales[3] / frag_dist, 0, 1);
-        light = mix(light, vec3(1), jacobian);
+
+        vec3 foam_light = calc_pbr_illumination(
+            0.5,
+            metallic,
+            vec3(1),
+            normal,
+            F0,
+            -normalize(i_frag_pos),
+            light_dir,
+            u_params.dlight_color.xyz
+        );
+
+        light = mix(light, foam_light, jacobian);
     }
 
     // Fog
