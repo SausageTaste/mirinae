@@ -3,7 +3,7 @@
 #include <cstdarg>
 #include <thread>
 
-#define JPH_DEBUG_RENDERER
+// #define MIRINAE_JOLT_DEBUG_RENDERER
 
 #include <Jolt/Jolt.h>
 #include <daltools/img/img2d.hpp>
@@ -23,7 +23,10 @@
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
-#include <Jolt/Renderer/DebugRenderer.h>
+
+#ifdef MIRINAE_JOLT_DEBUG_RENDERER
+    #include <Jolt/Renderer/DebugRenderer.h>
+#endif
 
 #include "mirinae/cpnt/phys_body.hpp"
 #include "mirinae/cpnt/ren_model.hpp"
@@ -291,7 +294,9 @@ namespace {
     };
 
 
-    class DebugRenderer : public JPH::DebugRenderer {
+#ifdef MIRINAE_JOLT_DEBUG_RENDERER
+
+    class DebugRen : public JPH::DebugRenderer {
 
     private:
         class MyBatch : public JPH::RefTargetVirtual {
@@ -311,7 +316,7 @@ namespace {
         };
 
     public:
-        DebugRenderer() {
+        DebugRen() {
             this->Initialize();
             return;
         }
@@ -412,6 +417,8 @@ namespace {
 
         mirinae::IDebugRen *debug_ren_ = nullptr;
     };
+
+#endif  // JPH_DEBUG_RENDERER
 
 }  // namespace
 
@@ -837,16 +844,24 @@ namespace mirinae {
             // floor_.init(body_interf);
             // body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
 
+#ifdef MIRINAE_JOLT_DEBUG_RENDERER
             JPH::DebugRenderer::sInstance = &debug_ren_;
+#endif
         }
 
         void optimize() { physics_system.OptimizeBroadPhase(); }
 
         void give_debug_ren(IDebugRen &debug_ren) {
+#ifdef MIRINAE_JOLT_DEBUG_RENDERER
             debug_ren_.debug_ren_ = &debug_ren;
+#endif
         }
 
-        void remove_debug_ren() { debug_ren_.debug_ren_ = nullptr; }
+        void remove_debug_ren() {
+#ifdef MIRINAE_JOLT_DEBUG_RENDERER
+            debug_ren_.debug_ren_ = nullptr;
+#endif
+        }
 
         void do_frame(double dt) {
             constexpr float OPTIMAL_DT = 1.0 / 60.0;
@@ -1032,10 +1047,13 @@ namespace mirinae {
         ::ObjectLayerPairFilterImpl obj_vs_obj_layer_filter_;
         JPH::PhysicsSystem physics_system;
 
-        JPH::BodyManager::DrawSettings debug_ren_settings_;
-        ::DebugRenderer debug_ren_;
         ::MyBodyActivationListener body_active_listener_;
         ::MyContactListener contact_listener_;
+
+#ifdef MIRINAE_JOLT_DEBUG_RENDERER
+        JPH::BodyManager::DrawSettings debug_ren_settings_;
+        ::DebugRen debug_ren_;
+#endif
 
         ::BoxBody floor_;
         bool someone_is_preparing_ = false;

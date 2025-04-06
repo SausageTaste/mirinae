@@ -8,7 +8,6 @@
         "glfw3",
         "glm",
         "gtest",
-        "joltphysics",
         "lua",
         "nlohmann-json",
         "spdlog",
