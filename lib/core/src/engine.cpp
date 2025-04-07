@@ -21,6 +21,7 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/network.hpp"
+#include "mirinae/lightweight/task.hpp"
 #include "mirinae/renderer.hpp"
 
 
@@ -1206,12 +1207,7 @@ namespace {
 
             // Tasks
             {
-                auto global_cosmos = std::make_unique<TaskGlobalStateProceed>(
-                    cosmos_
-                );
-                global_cosmos->set_dep(cosmos_->scene().create_cpnt_update_task(
-                ));
-                tasks_.push_back(std::move(global_cosmos));
+                cosmos_->register_tasks(tasks_);
             }
 
             renderer_ = mirinae::create_vk_renderer(
@@ -1227,10 +1223,9 @@ namespace {
                 client_->send();
             }
 
-            for (auto& task : tasks_) {
-                task->submit();
-            }
-            dal::tasker().WaitforAll();
+            SPDLOG_INFO("Task start");
+            tasks_.start();
+            SPDLOG_INFO("Task end");
 
             /*
             auto cam_view = cosmos_->reg().try_get<mirinae::cpnt::Transform>(
@@ -1374,7 +1369,7 @@ namespace {
         std::shared_ptr<::ImGuiMainWin> imgui_main_;
         std::unique_ptr<mirinae::IRenderer> renderer_;
 
-        std::vector<std::unique_ptr<dal::ITask>> tasks_;
+        mirinae::TaskGraph tasks_;
         sung::MonotonicRealtimeTimer sec5_;
         mirinae::InputActionMapper action_mapper_;
         ::ThirdPersonController camera_controller_;

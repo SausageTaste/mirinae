@@ -9,6 +9,7 @@
 #include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
+#include "mirinae/lightweight/task.hpp"
 
 
 #define GET_SCENE_PTR()                                  \
@@ -511,13 +512,19 @@ namespace { namespace scene {
 
 namespace {
 
-    class TaskOceanUpdate : public dal::ITask {
+    class TaskOceanUpdate : public mirinae::DependingTask {
 
     public:
         TaskOceanUpdate(mirinae::Scene& scene) : scene_(scene) {}
 
-    private:
+        void prepare() {
+            auto view = scene_.reg_->view<mirinae::cpnt::Ocean>();
+            m_SetSize = view.size();
+        }
+
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            SPDLOG_INFO("TaskOceanUpdate start");
+
             auto view = scene_.reg_->view<mirinae::cpnt::Ocean>();
             auto begin = view.begin() + range.start;
             auto end = view.begin() + range.end;
@@ -527,19 +534,28 @@ namespace {
                 auto& o = view.get<mirinae::cpnt::Ocean>(e);
                 o.do_frame(scene_.clock());
             }
+
+            SPDLOG_INFO("TaskOceanUpdate end");
         }
 
+    private:
         mirinae::Scene& scene_;
     };
 
 
-    class TaskSkinnedActorUpdate : public dal::ITask {
+    class TaskSkinnedActorUpdate : public mirinae::DependingTask {
 
     public:
         TaskSkinnedActorUpdate(mirinae::Scene& scene) : scene_(scene) {}
 
-    private:
+        void prepare() {
+            auto view = scene_.reg_->view<mirinae::cpnt::MdlActorSkinned>();
+            m_SetSize = view.size();
+        }
+
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            SPDLOG_INFO("TaskSkinnedActorUpdate start");
+
             auto view = scene_.reg_->view<mirinae::cpnt::MdlActorSkinned>();
             auto begin = view.begin() + range.start;
             auto end = view.begin() + range.end;
@@ -549,37 +565,39 @@ namespace {
                 auto& a = view.get<mirinae::cpnt::MdlActorSkinned>(e);
                 a.anim_state_.update_tick(scene_.clock());
             }
+
+            SPDLOG_INFO("TaskSkinnedActorUpdate end");
         }
 
+    private:
         mirinae::Scene& scene_;
     };
 
 
-    class TaskEnttUpdate : public dal::ITask {
+    class TaskEnttUpdate : public mirinae::StageTask {
 
     public:
         TaskEnttUpdate(mirinae::Scene& scene)
-            : scene_(scene), skinned_actor_task_(scene), ocean_task_(scene_) {}
-
-    private:
-        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            {
-                const auto& view =
-                    scene_.reg_->view<mirinae::cpnt::MdlActorSkinned>();
-                skinned_actor_task_.set_size(view.size());
-                skinned_actor_task_.submit();
-            }
-
-            {
-                const auto& view = scene_.reg_->view<mirinae::cpnt::Ocean>();
-                ocean_task_.set_size(view.size());
-                ocean_task_.submit();
-            }
+            : scene_(scene), skinned_actor_task_(scene), ocean_task_(scene_) {
+            fence_.succeed(&skinned_actor_task_, &fence_);
+            skinned_actor_task_.succeed(this);
+            ocean_task_.succeed(this);
         }
 
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            SPDLOG_INFO("TaskEnttUpdate start");
+            skinned_actor_task_.prepare();
+            ocean_task_.prepare();
+            SPDLOG_INFO("TaskEnttUpdate end");
+        }
+
+        enki::ITaskSet* get_fence() override { return &fence_; }
+
+    private:
         mirinae::Scene& scene_;
         TaskSkinnedActorUpdate skinned_actor_task_;
         TaskOceanUpdate ocean_task_;
+        mirinae::FenceTask fence_;
     };
 
 }  // namespace
@@ -601,8 +619,9 @@ namespace mirinae {
 
     void Scene::do_frame() { clock_.tick(); }
 
-    std::unique_ptr<dal::ITask> Scene::create_cpnt_update_task() {
-        return std::make_unique<::TaskEnttUpdate>(*this);
+    void Scene::register_tasks(TaskGraph& tasks) {
+        auto& stage = tasks.stages_.emplace_back();
+        stage.task_ = std::make_unique<::TaskEnttUpdate>(*this);
     }
 
     entt::entity Scene::find_entt(const std::string& name) const {

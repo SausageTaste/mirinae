@@ -8,6 +8,9 @@
 
 namespace mirinae {
 
+    class TaskGraph;
+
+
     struct ImGuiRenderUnit {
         virtual ~ImGuiRenderUnit() = default;
         virtual void render() = 0;
@@ -18,6 +21,8 @@ namespace mirinae {
 
     public:
         CosmosSimulator(ScriptEngine& script);
+
+        void register_tasks(TaskGraph& tasks);
 
         void tick_clock();
         void do_frame();

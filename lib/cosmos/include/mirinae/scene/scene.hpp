@@ -12,6 +12,9 @@
 
 namespace mirinae {
 
+    class TaskGraph;
+
+
     class Scene {
 
     public:
@@ -21,7 +24,7 @@ namespace mirinae {
 
         void do_frame();
 
-        std::unique_ptr<dal::ITask> create_cpnt_update_task();
+        void register_tasks(TaskGraph& tasks);
 
         entt::entity find_entt(const std::string& name) const;
 
