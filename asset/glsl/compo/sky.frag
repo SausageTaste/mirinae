@@ -72,6 +72,6 @@ void main() {
     {
         const float x = max(dot(world_direc, vec3(0, 1, 0)), 0);
         const float fog_factor = clamp(pow(x, u_pc.fog_color_density.w * 500 + 0.5), 0, 1);
-        f_color.xyz = mix(u_pc.fog_color_density.xyz, f_color.xyz, fog_factor);
+        //f_color.xyz = mix(u_pc.fog_color_density.xyz, f_color.xyz, fog_factor);
     }
 }

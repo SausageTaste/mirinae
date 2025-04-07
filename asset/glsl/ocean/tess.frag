@@ -86,6 +86,7 @@ float reflectedSunRadiance(vec3 V, vec3 N, vec3 L, float sigmaSq) {
 
 vec3 oceanRadiance(vec3 V, vec3 N, vec3 L, float seaRoughness, vec3 sunL, vec3 skyE, vec3 seaColor) {
     float F = meanFresnel(V, N, seaRoughness);
+    F = pow(F, 1.0 / 5.0);
     vec3 Lsun = reflectedSunRadiance(V, N, L, seaRoughness) * sunL;
     vec3 Lsky = skyE * F / PI;
     vec3 Lsea = (1.0 - F) * seaColor * skyE / PI;
@@ -124,7 +125,7 @@ void main() {
 
     vec3 l_world = reflect(-world_view, world_normal);
     vec2 texco = map_cube(l_world);
-    texco.y = clamp(texco.y, 0.0, 0.45);
+    texco.y = clamp(texco.y, 0.0, 0.5);
     vec3 refl = textureLod(u_sky_tex, texco, 0).xyz;
     vec3 surfaceColor = oceanRadiance(world_view, world_normal, light_dir, roughness, u_params.dlight_color.xyz, refl, albedo);
     light += surfaceColor;
