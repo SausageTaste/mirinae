@@ -30,6 +30,7 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     float foam_bias;
     float foam_scale;
     float foam_threshold;
+    float roughness;
     float sss_base;
     float sss_scale;
 } u_params;

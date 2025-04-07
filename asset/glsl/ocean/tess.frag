@@ -32,6 +32,7 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     float foam_bias;
     float foam_scale;
     float foam_threshold;
+    float roughness;
     float sss_base;
     float sss_scale;
 } u_params;
@@ -97,7 +98,7 @@ void main() {
     const mat3 view_inv3 = mat3(view_inv);
     const mat3 tbn = make_tbn_mat(vec3(0, 1, 0), vec3(1, 0, 0), u_pc.view * u_pc.model);
     const vec3 albedo = u_params.ocean_color.xyz;
-    const float roughness = 0.2;
+    const float roughness = u_params.roughness;
     const float metallic = 0;
     const float frag_dist = length(i_frag_pos);
     const vec3 to_view = i_frag_pos / (-frag_dist);
@@ -125,7 +126,7 @@ void main() {
     vec2 texco = map_cube(l_world);
     texco.y = clamp(texco.y, 0.0, 0.45);
     vec3 refl = textureLod(u_sky_tex, texco, 0).xyz;
-    vec3 surfaceColor = oceanRadiance(world_view, world_normal, light_dir, 0.01, u_params.dlight_color.xyz, refl, albedo);
+    vec3 surfaceColor = oceanRadiance(world_view, world_normal, light_dir, roughness, u_params.dlight_color.xyz, refl, albedo);
     light += surfaceColor;
 
     // Foam

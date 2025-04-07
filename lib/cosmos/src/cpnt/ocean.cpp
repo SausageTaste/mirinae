@@ -44,6 +44,7 @@ namespace mirinae::cpnt {
         , foam_bias_(2.3f)
         , foam_scale_(1.5f)
         , lod_scale_(100)
+        , roughness_(0.01)
         , spread_blend_(0.7f)
         , swell_(0.7f)
         , tile_size_(20)
@@ -89,6 +90,7 @@ namespace mirinae::cpnt {
 
         ImGui::DragScalar("Height", ImGuiDataType_Double, &height_, 0.1f);
 
+        ImGui::SliderFloat("Roughness", &roughness_, 0, 1, 0, flog);
         ImGui::SliderFloat("Wind speed", &wind_speed_, 0.001f, 1000, 0, flog);
         ImGui::SliderFloat("Fetch", &fetch_, 0, 1000000, 0, flog);
         ImGui::SliderFloat("Depth", &depth_, 0.0000001f, 5000, "%.6f", flog);

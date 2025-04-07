@@ -52,6 +52,7 @@ namespace mirinae::cpnt {
         float foam_bias_;
         float foam_scale_;
         float lod_scale_;
+        float roughness_;
         float spread_blend_;
         float swell_;
         float tile_size_;

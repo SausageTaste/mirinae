@@ -1885,6 +1885,12 @@ namespace {
         }
 
         template <typename T>
+        U_OceanTessParams& roughness(T x) {
+            roughness_ = static_cast<float>(x);
+            return *this;
+        }
+
+        template <typename T>
         U_OceanTessParams& sss_base(T x) {
             sss_base_ = static_cast<float>(x);
             return *this;
@@ -1907,6 +1913,7 @@ namespace {
         float foam_bias_;
         float foam_scale_;
         float foam_threshold_;
+        float roughness_;
         float sss_base_;
         float sss_scale_;
     };
@@ -2253,6 +2260,7 @@ namespace {
                 .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
                 .lod_scale(ocean_entt.lod_scale_)
                 .ocean_color(ocean_entt.ocean_color_)
+                .roughness(ocean_entt.roughness_)
                 .sss_base(cv_foam_sss_base.get())
                 .sss_scale(cv_foam_sss_scale.get());
             for (size_t i = 0; i < CASCADE_COUNT; i++)
