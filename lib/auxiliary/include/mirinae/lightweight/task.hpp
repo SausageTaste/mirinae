@@ -5,8 +5,6 @@
 
 #include <enkiTS/TaskScheduler.h>
 
-#include "mirinae/lightweight/include_spdlog.hpp"
-
 
 namespace mirinae {
 
@@ -29,7 +27,6 @@ namespace mirinae {
 
     struct FenceTask : public DependingTask {
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            SPDLOG_INFO("Fence");
         }
     };
 
@@ -51,15 +48,20 @@ namespace mirinae {
     class TaskGraph {
 
     public:
+        template <typename T, typename... TArgs>
+        T* emplace_back(TArgs&&... args) {
+            auto& item = stages_.emplace_back();
+            auto task = std::make_unique<T>(std::forward<TArgs>(args)...);
+            auto ptr = task.get();
+            item.task_ = std::move(task);
+            return ptr;
+        }
+
         void start() {
-            SPDLOG_INFO("Frame start");
             for (auto& stage : stages_) {
-                SPDLOG_INFO("Stage start");
                 dal::tasker().AddTaskSetToPipe(stage.task_.get());
                 dal::tasker().WaitforTask(stage.task_->get_fence());
-                SPDLOG_INFO("Stage end");
             }
-            SPDLOG_INFO("Frame end");
         }
 
         struct Stage {

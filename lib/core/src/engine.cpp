@@ -259,232 +259,6 @@ namespace {
         double move_speed_ = 10;
     };
 
-
-    class ValueInterpolator {
-
-    public:
-        void set(sung::TAngle<double> tgt) {
-            tgt_ = tgt;
-            cur_ = tgt;
-        }
-
-        void set_target(sung::TAngle<double> tgt) { tgt_ = tgt; }
-
-        sung::TAngle<double> get(double dt) {
-            const auto diff = tgt_.calc_short_diff_from(cur_);
-            cur_ = cur_ + diff * (dt * 20);
-            return cur_;
-        }
-
-    private:
-        sung::TAngle<double> cur_;
-        sung::TAngle<double> tgt_;
-    };
-
-
-    class ThirdPersonController {
-
-    public:
-        using Tform = mirinae::TransformQuat<double>;
-
-        void pre_sync(
-            mirinae::Scene& scene, mirinae::InputActionMapper& action_map
-        ) {
-            namespace cpnt = mirinae::cpnt;
-            using Angle = mirinae::cpnt::Transform::Angle;
-            using ActionType = mirinae::InputActionMapper::ActionType;
-            auto& reg = *scene.reg_;
-            const auto dt = scene.clock().dt();
-
-            auto modl = reg.try_get<cpnt::MdlActorSkinned>(target_);
-            if (!modl) {
-                camera_ = entt::null;
-                return;
-            }
-            auto& anim_state = modl->anim_state_;
-
-            auto cam_tform = reg.try_get<cpnt::Transform>(camera_);
-            if (!cam_tform) {
-                camera_ = entt::null;
-                return;
-            }
-
-            auto tgt_tform = reg.try_get<cpnt::Transform>(target_);
-            if (!tgt_tform) {
-                target_ = entt::null;
-                return;
-            }
-
-            const auto look_rot =
-                (action_map.get_value_key_look() * key_look_speed_) +
-                (action_map.get_value_mouse_look() * mouse_look_speed_);
-
-            // Look horizontally
-            {
-                auto r = Angle::from_rad(look_rot.x);
-                if (0 != r.rad())
-                    cam_tform->rotate(r * dt, glm::vec3{ 0, 1, 0 });
-            }
-
-            // Look vertically
-            {
-                auto r = Angle::from_rad(look_rot.y);
-                if (0 != r.rad()) {
-                    const auto right = glm::mat3_cast(cam_tform->rot_) *
-                                       glm::vec3{ 1, 0, 0 };
-                    cam_tform->rotate(r * dt, right);
-                }
-            }
-
-            // Zoom
-            {
-                offset_dist_ *= std::pow(1.04, -action_map.get_mwheel_zoom());
-                offset_dist_ = std::max(offset_dist_, 0.001);
-            }
-
-            // Move with respect to camera direction
-            {
-                constexpr auto ANGLE_OFFSET = Angle::from_deg(90);
-
-                const glm::dvec2 move_dir{
-                    action_map.get_value_move_right(),
-                    action_map.get_value_move_backward(),
-                };
-                const auto move_dir_len = glm::length(move_dir);
-                const auto sprint = action_map.get_value(ActionType::sprint) >
-                                    0.1;
-                const auto walk = action_map.get_value(
-                                      ActionType::translate_down
-                                  ) > 0.1;
-
-                if (move_dir_len > 0.01) {
-                    const auto cam_front = cam_tform->make_forward_dir();
-                    const auto cam_front_angle = Angle::from_rad(
-                        std::atan2(cam_front.z, cam_front.x)
-                    );
-
-                    auto move_speed = move_speed_;
-                    if (sprint) {
-                        move_speed *= 3;
-                    } else if (walk) {
-                        move_speed = 0.7;
-                    }
-
-                    const auto move_vec_rot = mirinae::rotate_vec(
-                        move_dir, cam_front_angle + ANGLE_OFFSET
-                    );
-                    const auto move_vec_scale = move_vec_rot *
-                                                (dt * move_speed);
-
-                    tgt_heading_.set_target(
-                        Angle::from_rad(
-                            std::atan2(move_vec_rot.y, move_vec_rot.x)
-                        )
-                    );
-
-                    tgt_tform->pos_.x += move_vec_scale.x;
-                    tgt_tform->pos_.z += move_vec_scale.y;
-                    tgt_tform->reset_rotation();
-                    tgt_tform->rotate(
-                        player_model_heading_ - tgt_heading_.get(dt),
-                        glm::vec3{ 0, 1, 0 }
-                    );
-
-                    if (sprint) {
-                        if (anim_state.get_cur_anim_name() != anim_sprint_)
-                            anim_state.select_anim_name(
-                                anim_sprint_, scene.clock()
-                            );
-                    } else if (walk) {
-                        if (anim_state.get_cur_anim_name() != anim_walk_)
-                            anim_state.select_anim_name(
-                                anim_walk_, scene.clock()
-                            );
-                    } else {
-                        if (anim_state.get_cur_anim_name() != anim_run_)
-                            anim_state.select_anim_name(
-                                anim_run_, scene.clock()
-                            );
-                    }
-                } else {
-                    if (anim_state.get_cur_anim_name() != anim_idle_)
-                        anim_state.select_anim_name(anim_idle_, scene.clock());
-                }
-            }
-
-            // Move vertically
-            {
-                double vertical = 0;
-                if (action_map.get_value(ActionType::translate_up))
-                    vertical += 1;
-                if (action_map.get_value(ActionType::translate_down))
-                    vertical -= 1;
-
-                tgt_tform->pos_.y += vertical * dt * 15;
-            }
-        }
-
-        void post_sync(
-            mirinae::Scene& scene, const mirinae::InputActionMapper& action_map
-        ) {
-            namespace cpnt = mirinae::cpnt;
-            using Angle = mirinae::cpnt::Transform::Angle;
-            auto& reg = *scene.reg_;
-            const auto dt = scene.clock().dt();
-
-            auto cam_tform = reg.try_get<cpnt::Transform>(camera_);
-            if (!cam_tform) {
-                camera_ = entt::null;
-                return;
-            }
-
-            auto tgt_tform = reg.try_get<cpnt::Transform>(target_);
-            if (!tgt_tform) {
-                target_ = entt::null;
-                return;
-            }
-
-            const auto cam_forward = cam_tform->make_forward_dir();
-            const auto tgt_pos = tgt_tform->pos_;
-            cam_tform->pos_ = tgt_pos - cam_forward * offset_dist_;
-            cam_tform->pos_ += tgt_tform->make_up_dir() * offset_height_;
-            cam_tform->pos_ += cam_tform->make_right_dir() * offset_hor_ *
-                               offset_dist_;
-        }
-
-        void set_target(entt::entity target) {
-            if (target == entt::null)
-                return;
-
-            target_ = target;
-        }
-
-        void set_camera(entt::entity camera) {
-            if (camera == entt::null)
-                return;
-
-            camera_ = camera;
-        }
-
-    private:
-        entt::entity target_ = entt::null;
-        entt::entity camera_ = entt::null;
-        ::ValueInterpolator tgt_heading_;
-
-    public:
-        std::string anim_idle_;
-        std::string anim_walk_;
-        std::string anim_run_;
-        std::string anim_sprint_;
-        sung::TAngle<double> player_model_heading_;
-        double move_speed_ = 3;        // World space
-        double offset_dist_ = 2;       // World space
-        double offset_height_ = 0.75;  // World space
-        double offset_hor_ = 0.2;      // World space
-        double key_look_speed_ = 1;
-        double mouse_look_speed_ = 0.1;
-    };
-
 }  // namespace
 
 
@@ -1015,7 +789,7 @@ namespace {
             {
                 const auto entt = reg.create();
                 cosmos_->scene().main_camera_ = entt;
-                camera_controller_.set_camera(entt);
+                cosmos_->cam_ctrl().set_camera(entt);
 
                 auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
                 i.set_name("Main Camera");
@@ -1067,6 +841,7 @@ namespace {
                 ocean.spread_blend_ = 0.284;
                 ocean.swell_ = 0.284;
                 ocean.depth_ = 500;
+                ocean.roughness_ = 0.01;
 
                 constexpr double len_scale0 = 250;
                 constexpr double len_scale1 = 17;
@@ -1134,7 +909,7 @@ namespace {
             // Player model
             {
                 const auto entt = reg.create();
-                camera_controller_.set_target(entt);
+                cosmos_->cam_ctrl().set_target(entt);
 
                 auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
                 i.set_name("Player model");
@@ -1144,22 +919,22 @@ namespace {
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -70, 2, -4 };
 
-#if true
-                camera_controller_.anim_idle_ = "idle_normal_1";
-                camera_controller_.anim_walk_ = "evt1_walk_normal_1";
-                camera_controller_.anim_run_ = "run_normal_1";
-                camera_controller_.anim_sprint_ = "hwan_run_battle_1";
-                camera_controller_.player_model_heading_.set_zero();
+#if false
+                cosmos_->cam_ctrl().anim_idle_ = "idle_normal_1";
+                cosmos_->cam_ctrl().anim_walk_ = "evt1_walk_normal_1";
+                cosmos_->cam_ctrl().anim_run_ = "run_normal_1";
+                cosmos_->cam_ctrl().anim_sprint_ = "hwan_run_battle_1";
+                cosmos_->cam_ctrl().player_model_heading_.set_zero();
                 mdl.model_path_ = "Sung/artist.dun/artist_subset.dmd";
                 mdl.anim_state_.select_anim_name(
                     "idle_normal_1", cosmos_->scene().clock()
                 );
 #else
-                camera_controller_.anim_idle_ = "standing";
-                camera_controller_.anim_walk_ = "run";
-                camera_controller_.anim_run_ = "run";
-                camera_controller_.anim_sprint_ = "run";
-                camera_controller_.player_model_heading_.set_deg(90);
+                cosmos_->cam_ctrl().anim_idle_ = "standing";
+                cosmos_->cam_ctrl().anim_walk_ = "run";
+                cosmos_->cam_ctrl().anim_run_ = "run";
+                cosmos_->cam_ctrl().anim_sprint_ = "run";
+                cosmos_->cam_ctrl().player_model_heading_.set_deg(90);
                 mdl.model_path_ =
                     "Sung/Character Running.dun/Character Running.dmd";
                 mdl.anim_state_.select_anim_index(0, cosmos_->scene().clock());
@@ -1207,7 +982,7 @@ namespace {
 
             // Tasks
             {
-                cosmos_->register_tasks(tasks_);
+                cosmos_->register_tasks(tasks_, action_mapper_);
             }
 
             renderer_ = mirinae::create_vk_renderer(
@@ -1223,9 +998,7 @@ namespace {
                 client_->send();
             }
 
-            SPDLOG_INFO("Task start");
             tasks_.start();
-            SPDLOG_INFO("Task end");
 
             /*
             auto cam_view = cosmos_->reg().try_get<mirinae::cpnt::Transform>(
@@ -1252,10 +1025,8 @@ namespace {
             }
             */
 
-            camera_controller_.pre_sync(cosmos_->scene(), action_mapper_);
             client_->do_frame();
             cosmos_->do_frame();
-            camera_controller_.post_sync(cosmos_->scene(), action_mapper_);
             renderer_->do_frame();
         }
 
@@ -1372,7 +1143,6 @@ namespace {
         mirinae::TaskGraph tasks_;
         sung::MonotonicRealtimeTimer sec5_;
         mirinae::InputActionMapper action_mapper_;
-        ::ThirdPersonController camera_controller_;
         entt::entity flashlight_;
         uint32_t win_width_ = 0, win_height_ = 0;
     };

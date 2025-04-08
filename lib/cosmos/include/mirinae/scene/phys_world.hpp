@@ -9,11 +9,16 @@
 
 namespace mirinae {
 
+    class TaskGraph;
+
+
     class PhysWorld {
 
     public:
         PhysWorld();
         ~PhysWorld();
+
+        void register_tasks(TaskGraph& tasks, entt::registry& reg);
 
         void optimize();
 

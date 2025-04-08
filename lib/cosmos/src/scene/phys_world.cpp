@@ -6,6 +6,7 @@
 // #define MIRINAE_JOLT_DEBUG_RENDERER
 
 #include <Jolt/Jolt.h>
+#include <daltools/common/task_sys.hpp>
 #include <daltools/img/img2d.hpp>
 #include <entt/entity/registry.hpp>
 
@@ -33,6 +34,7 @@
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
+#include "mirinae/lightweight/task.hpp"
 
 
 namespace {
@@ -649,13 +651,12 @@ namespace { namespace cpnt {
 
     public:
         bool try_init(
-            entt::entity entity,
-            entt::registry &reg,
+            const mirinae::cpnt::MdlActorStatic *modl,
+            const mirinae::cpnt::Transform *tform,
             JPH::BodyInterface &body_interf
         ) {
             namespace cpnt = mirinae::cpnt;
 
-            auto modl = reg.try_get<cpnt::MdlActorStatic>(entity);
             if (!modl) {
                 // SPDLOG_WARN("Entity does not have a model component");
                 return false;
@@ -672,7 +673,7 @@ namespace { namespace cpnt {
 
             JPH::Vec3 pos(0, 0, 0);
             JPH::Quat rot = JPH::Quat::sIdentity();
-            if (auto tform = reg.try_get<cpnt::Transform>(entity)) {
+            if (tform) {
                 pos = ::conv_vec(tform->pos_);
                 rot = ::conv_quat(tform->rot_);
                 model_acc_.set_scale(tform->scale_);
@@ -700,7 +701,7 @@ namespace { namespace cpnt {
             );
 
             ready_ = true;
-            return false;
+            return true;
         }
 
         JPH::BodyID id_;
@@ -713,14 +714,13 @@ namespace { namespace cpnt {
     class HeightFieldBody {
 
     public:
-        bool try_populate_height_data(
-            entt::entity entity,
-            entt::registry &reg,
+        bool try_init(
+            const mirinae::cpnt::Terrain *terr,
+            const mirinae::cpnt::Transform *tform,
             JPH::BodyInterface &body_interf
         ) {
             namespace cpnt = mirinae::cpnt;
 
-            auto terr = reg.try_get<cpnt::Terrain>(entity);
             if (!terr) {
                 // SPDLOG_WARN("Entity does not have a terrain component");
                 return false;
@@ -791,7 +791,7 @@ namespace { namespace cpnt {
                 Layers::NON_MOVING
             );
 
-            if (auto tform = reg.try_get<cpnt::Transform>(entity)) {
+            if (tform) {
                 body_settings.mPosition = ::conv_vec(tform->pos_);
                 body_settings.mRotation = ::conv_quat(tform->rot_);
             }
@@ -812,6 +812,339 @@ namespace { namespace cpnt {
     };
 
 }}  // namespace ::cpnt
+
+
+// Tasks
+namespace {
+
+    class TaskPreSync_Mesh : public mirinae::DependingTask {
+
+    public:
+        void prepare(entt::registry &reg, JPH::BodyInterface &body_interf) {
+            reg_ = &reg;
+            body_interf_ = &body_interf;
+
+            auto view = reg.view<::cpnt::MeshBody>();
+            m_SetSize = view.size();
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            namespace cpnt = mirinae::cpnt;
+
+            someone_is_preparing_ = false;
+            someone_finished_preparing_ = false;
+
+            if (!reg_)
+                return;
+            if (!body_interf_)
+                return;
+
+            auto view = reg_->view<::cpnt::MeshBody>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+
+            for (auto it = begin; it != end; ++it) {
+                entt::entity e = *it;
+                auto &body = view.get<::cpnt::MeshBody>(e);
+                if (body.ready_)
+                    continue;
+
+                auto tform = reg_->try_get<cpnt::Transform>(e);
+                auto modl = reg_->try_get<cpnt::MdlActorStatic>(e);
+                if (body.try_init(modl, tform, *body_interf_))
+                    someone_finished_preparing_ = true;
+                else
+                    someone_is_preparing_ = true;
+            }
+        }
+
+    private:
+        entt::registry *reg_ = nullptr;
+        JPH::BodyInterface *body_interf_ = nullptr;
+        bool someone_is_preparing_ = false;
+        bool someone_finished_preparing_ = false;
+    };
+
+
+    class TaskPreSync_Height : public mirinae::DependingTask {
+
+    public:
+        void prepare(entt::registry &reg, JPH::BodyInterface &body_interf) {
+            reg_ = &reg;
+            body_interf_ = &body_interf;
+
+            auto view = reg.view<::cpnt::HeightFieldBody>();
+            m_SetSize = view.size();
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            namespace cpnt = mirinae::cpnt;
+
+            someone_is_preparing_ = false;
+            someone_finished_preparing_ = false;
+
+            if (!reg_)
+                return;
+            if (!body_interf_)
+                return;
+
+            auto view = reg_->view<::cpnt::HeightFieldBody>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+
+            for (auto it = begin; it != end; ++it) {
+                const auto e = *it;
+                auto &body = view.get<::cpnt::HeightFieldBody>(e);
+                if (body.ready_)
+                    continue;
+
+                auto tform = reg_->try_get<cpnt::Transform>(e);
+                auto terr = reg_->try_get<cpnt::Terrain>(e);
+                if (body.try_init(terr, tform, *body_interf_))
+                    someone_finished_preparing_ = true;
+                else
+                    someone_is_preparing_ = true;
+            }
+        }
+
+    private:
+        entt::registry *reg_ = nullptr;
+        JPH::BodyInterface *body_interf_ = nullptr;
+        bool someone_is_preparing_ = false;
+        bool someone_finished_preparing_ = false;
+    };
+
+
+    class TaskPreSync_Player : public mirinae::DependingTask {
+
+    public:
+        void prepare(
+            entt::registry &reg,
+            JPH::PhysicsSystem &phys_sys,
+            JPH::BodyInterface &body_interf,
+            JPH::TempAllocatorImpl &temp_alloc
+        ) {
+            reg_ = &reg;
+            phys_sys_ = &phys_sys;
+            body_interf_ = &body_interf;
+            temp_alloc_ = &temp_alloc;
+
+            auto view = reg.view<mirinae::cpnt::CharacterPhys>();
+            m_SetSize = view.size();
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            namespace cpnt = mirinae::cpnt;
+
+            constexpr float dt_rcp = 60;
+            constexpr float dt = 1.f / dt_rcp;
+            constexpr float push_force_factor = 100 * dt_rcp;
+
+            auto &reg = *reg_;
+            auto &phys_sys = *phys_sys_;
+            auto &bodies = *body_interf_;
+
+            for (auto &e : reg.view<cpnt::CharacterPhys>()) {
+                auto &phys = reg.get<cpnt::CharacterPhys>(e);
+                auto tform = reg.try_get<cpnt::Transform>(e);
+                auto body = phys.ren_unit<::CharacterPhysBody>();
+
+                if (!body) {
+                    auto p_body = std::make_unique<::CharacterPhysBody>();
+                    p_body->init(phys, tform, phys_sys);
+                    body = p_body.get();
+                    phys.ren_unit_ = std::move(p_body);
+                }
+
+                if (!tform)
+                    continue;
+
+                const auto cur_pos = ::conv_vec(tform->pos_);
+                const auto pos_diff = cur_pos - body->world_pos();
+                auto vel = pos_diff * dt_rcp;
+
+                switch (body->chara().GetGroundState()) {
+                    case JPH::CharacterBase::EGroundState::InAir:
+                        // vel += phys_sys.GetGravity();
+                        break;
+                }
+
+                body->set_linear_vel(vel);
+                body->extended_update(dt, *temp_alloc_, phys_sys);
+
+                for (auto &contact : body->chara().GetActiveContacts()) {
+                    const auto c_motion = bodies.GetMotionType(contact.mBodyB);
+                    if (c_motion != JPH::EMotionType::Dynamic)
+                        continue;
+
+                    const auto push_dir = -contact.mContactNormal;
+                    const auto push_force = push_dir * push_force_factor;
+                    bodies.AddForce(contact.mBodyB, push_force);
+                }
+            }
+        }
+
+    private:
+        entt::registry *reg_ = nullptr;
+        JPH::PhysicsSystem *phys_sys_ = nullptr;
+        JPH::BodyInterface *body_interf_ = nullptr;
+        JPH::TempAllocatorImpl *temp_alloc_ = nullptr;
+    };
+
+
+    class TaskUpdate : public mirinae::DependingTask {
+
+    public:
+        void prepare(
+            JPH::PhysicsSystem &phys_sys,
+            JPH::JobSystemThreadPool &job_sys,
+            JPH::TempAllocatorImpl &temp_alloc
+        ) {
+            phys_sys_ = &phys_sys;
+            job_sys_ = &job_sys;
+            temp_alloc_ = &temp_alloc;
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            constexpr float dt_rcp = 60;
+            constexpr float dt = 1.f / dt_rcp;
+            constexpr float push_force_factor = 100 * dt_rcp;
+
+            const auto res = phys_sys_->Update(dt, 1, temp_alloc_, job_sys_);
+        }
+
+    private:
+        JPH::PhysicsSystem *phys_sys_ = nullptr;
+        JPH::JobSystemThreadPool *job_sys_ = nullptr;
+        JPH::TempAllocatorImpl *temp_alloc_ = nullptr;
+    };
+
+
+    class TaskPostSync_PhysBody : public mirinae::DependingTask {
+
+    public:
+        void prepare(entt::registry &reg, JPH::BodyInterface &body_interf) {
+            reg_ = &reg;
+            body_interf_ = &body_interf;
+            m_SetSize = reg.view<::cpnt::PhysBody>().size();
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            auto view = reg_->view<::cpnt::PhysBody>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+
+            for (auto it = begin; it != end; ++it) {
+                const auto e = *it;
+                auto &body = reg_->get<::cpnt::PhysBody>(e);
+                auto tform = reg_->try_get<mirinae::cpnt::Transform>(e);
+                if (!tform)
+                    continue;
+
+                JPH::RVec3 pos;
+                JPH::Quat rot;
+                body_interf_->GetPositionAndRotation(body.id_, pos, rot);
+                tform->pos_ = ::conv_vec(pos);
+                tform->rot_ = ::conv_quat(rot);
+            }
+        }
+
+    private:
+        entt::registry *reg_ = nullptr;
+        JPH::BodyInterface *body_interf_ = nullptr;
+    };
+
+
+    class TaskPostSync_Player : public mirinae::DependingTask {
+
+    public:
+        void prepare(entt::registry &reg) {
+            reg_ = &reg;
+            m_SetSize = reg_->view<mirinae::cpnt::CharacterPhys>().size();
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            auto view = reg_->view<mirinae::cpnt::CharacterPhys>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+
+            for (auto it = begin; it != end; ++it) {
+                const auto e = *it;
+                auto &phys = reg_->get<mirinae::cpnt::CharacterPhys>(e);
+                auto body = phys.ren_unit<::CharacterPhysBody>();
+                if (!body)
+                    continue;
+                auto tform = reg_->try_get<mirinae::cpnt::Transform>(e);
+                if (!tform)
+                    continue;
+
+                tform->pos_ = ::conv_vec(body->world_pos());
+            }
+        }
+
+    private:
+        entt::registry *reg_ = nullptr;
+    };
+
+
+    class TaskPhysWorld : public mirinae::StageTask {
+
+    public:
+        TaskPhysWorld(
+            entt::registry &reg,
+            JPH::PhysicsSystem &phys_sys,
+            JPH::BodyInterface &body_interf,
+            JPH::JobSystemThreadPool &job_sys,
+            JPH::TempAllocatorImpl &temp_alloc
+        )
+            : StageTask("PhysWorld")
+            , reg_(&reg)
+            , phys_sys_(&phys_sys)
+            , body_interf_(&body_interf)
+            , job_sys_(&job_sys)
+            , temp_alloc_(&temp_alloc) {
+            // Pre
+            pre_mesh_.succeed(this);
+            pre_height_.succeed(this);
+            pre_player_.succeed(&pre_mesh_, &pre_height_);
+            // Update
+            update_.succeed(&pre_player_);
+            // Post
+            post_phys_body_.succeed(&update_);
+            post_player_.succeed(&update_);
+            // Fence
+            fence_.succeed(&post_phys_body_, &post_player_);
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            pre_mesh_.prepare(*reg_, *body_interf_);
+            pre_height_.prepare(*reg_, *body_interf_);
+            pre_player_.prepare(*reg_, *phys_sys_, *body_interf_, *temp_alloc_);
+            update_.prepare(*phys_sys_, *job_sys_, *temp_alloc_);
+            post_phys_body_.prepare(*reg_, *body_interf_);
+            post_player_.prepare(*reg_);
+        }
+
+        enki::ITaskSet *get_fence() override { return &fence_; }
+
+    private:
+        entt::registry *reg_ = nullptr;
+        JPH::PhysicsSystem *phys_sys_ = nullptr;
+        JPH::BodyInterface *body_interf_ = nullptr;
+        JPH::JobSystemThreadPool *job_sys_ = nullptr;
+        JPH::TempAllocatorImpl *temp_alloc_ = nullptr;
+
+        TaskPreSync_Mesh pre_mesh_;
+        TaskPreSync_Height pre_height_;
+        TaskPreSync_Player pre_player_;
+        TaskUpdate update_;
+        TaskPostSync_PhysBody post_phys_body_;
+        TaskPostSync_Player post_player_;
+
+        mirinae::FenceTask fence_;
+    };
+
+}  // namespace
 
 
 namespace mirinae {
@@ -849,6 +1182,13 @@ namespace mirinae {
 #endif
         }
 
+        void register_tasks(TaskGraph &tasks, entt::registry &reg) {
+            auto &stage = tasks.stages_.emplace_back();
+            stage.task_ = std::make_unique<TaskPhysWorld>(
+                reg, physics_system, this->body_interf(), job_sys_, temp_alloc_
+            );
+        }
+
         void optimize() { physics_system.OptimizeBroadPhase(); }
 
         void give_debug_ren(IDebugRen &debug_ren) {
@@ -861,121 +1201,6 @@ namespace mirinae {
 #ifdef MIRINAE_JOLT_DEBUG_RENDERER
             debug_ren_.debug_ren_ = nullptr;
 #endif
-        }
-
-        void do_frame(double dt) {
-            constexpr float OPTIMAL_DT = 1.0 / 60.0;
-
-            if (someone_is_preparing_)
-                return;
-
-            auto &body_interf = this->body_interf();
-            physics_system.Update(OPTIMAL_DT, 1, &temp_alloc_, &job_sys_);
-        }
-
-        void pre_sync(float dt, entt::registry &reg) {
-            auto &bodies = this->body_interf();
-            const auto dt_rcp = 1.f / dt;
-            const auto push_force_factor = 100 * dt_rcp;
-
-            someone_is_preparing_ = false;
-
-            for (auto e : reg.view<::cpnt::MeshBody>()) {
-                auto &body = reg.get<::cpnt::MeshBody>(e);
-
-                if (body.ready_)
-                    continue;
-                if (body.try_init(e, reg, bodies))
-                    this->optimize();
-                else
-                    someone_is_preparing_ = true;
-            }
-
-            for (auto e : reg.view<::cpnt::HeightFieldBody>()) {
-                auto &body = reg.get<::cpnt::HeightFieldBody>(e);
-
-                if (body.ready_)
-                    continue;
-                if (body.try_populate_height_data(e, reg, bodies))
-                    this->optimize();
-                else
-                    someone_is_preparing_ = true;
-            }
-
-            if (someone_is_preparing_)
-                return;
-
-            for (auto &e : reg.view<cpnt::CharacterPhys>()) {
-                auto &phys = reg.get<cpnt::CharacterPhys>(e);
-                auto tform = reg.try_get<cpnt::Transform>(e);
-                auto body = phys.ren_unit<::CharacterPhysBody>();
-
-                if (!body) {
-                    auto p_body = std::make_unique<::CharacterPhysBody>();
-                    p_body->init(phys, tform, physics_system);
-                    body = p_body.get();
-                    phys.ren_unit_ = std::move(p_body);
-                }
-
-                if (!tform)
-                    continue;
-
-                const auto pos_diff = ::conv_vec(tform->pos_) -
-                                      body->world_pos();
-                auto vel = pos_diff * dt_rcp;
-
-                switch (body->chara().GetGroundState()) {
-                    case JPH::CharacterBase::EGroundState::InAir:
-                        vel += physics_system.GetGravity();
-                        break;
-                }
-
-                body->set_linear_vel(vel);
-                body->extended_update(dt, temp_alloc_, physics_system);
-
-                for (auto &contact : body->chara().GetActiveContacts()) {
-                    const auto c_motion = bodies.GetMotionType(contact.mBodyB);
-                    if (c_motion != JPH::EMotionType::Dynamic)
-                        continue;
-
-                    const auto push_dir = -contact.mContactNormal;
-                    const auto push_force = push_dir * push_force_factor;
-                    bodies.AddForce(contact.mBodyB, push_force);
-                }
-            }
-        }
-
-        void post_sync(double dt, entt::registry &reg) {
-            if (someone_is_preparing_)
-                return;
-
-            for (auto &e : reg.view<cpnt::CharacterPhys>()) {
-                auto &phys = reg.get<cpnt::CharacterPhys>(e);
-                auto body = phys.ren_unit<::CharacterPhysBody>();
-                if (!body)
-                    continue;
-                auto tform = reg.try_get<cpnt::Transform>(e);
-                if (!tform)
-                    continue;
-
-                tform->pos_ = ::conv_vec(body->world_pos());
-            }
-
-            for (auto &e : reg.view<::cpnt::PhysBody>()) {
-                auto &body = reg.get<::cpnt::PhysBody>(e);
-                auto tform = reg.try_get<cpnt::Transform>(e);
-                if (!tform)
-                    continue;
-
-                JPH::RVec3 pos;
-                JPH::Quat rot;
-                this->body_interf().GetPositionAndRotation(body.id_, pos, rot);
-                tform->pos_ = ::conv_vec(pos);
-                tform->rot_ = ::conv_quat(rot);
-            }
-
-            // physics_system.DrawBodies(debug_ren_settings_, &debug_ren_);
-            return;
         }
 
         void give_body(entt::entity entity, entt::registry &reg) {
@@ -1015,22 +1240,12 @@ namespace mirinae {
 
         void give_body_triangles(entt::entity entity, entt::registry &reg) {
             namespace cpnt = mirinae::cpnt;
-
             auto &body = reg.emplace<::cpnt::MeshBody>(entity);
-            body.try_init(entity, reg, this->body_interf());
         }
 
         void give_body_height_field(entt::entity entity, entt::registry &reg) {
             namespace cpnt = mirinae::cpnt;
-
-            auto terr = reg.try_get<cpnt::Terrain>(entity);
-            if (!terr) {
-                SPDLOG_WARN("Entity does not have a terrain component");
-                return;
-            }
-
             auto &body = reg.emplace<::cpnt::HeightFieldBody>(entity);
-            body.try_populate_height_data(entity, reg, this->body_interf());
         }
 
     private:
@@ -1064,6 +1279,10 @@ namespace mirinae {
 
     PhysWorld::~PhysWorld() = default;
 
+    void PhysWorld::register_tasks(TaskGraph &tasks, entt::registry &reg) {
+        pimpl_->register_tasks(tasks, reg);
+    }
+
     void PhysWorld::optimize() { pimpl_->optimize(); }
 
     void PhysWorld::give_debug_ren(IDebugRen &debug_ren) {
@@ -1072,15 +1291,11 @@ namespace mirinae {
 
     void PhysWorld::remove_debug_ren() {}
 
-    void PhysWorld::pre_sync(double dt, entt::registry &reg) {
-        pimpl_->pre_sync(dt, reg);
-    }
+    void PhysWorld::pre_sync(double dt, entt::registry &reg) {}
 
-    void PhysWorld::do_frame(double dt) { pimpl_->do_frame(dt); }
+    void PhysWorld::do_frame(double dt) {}
 
-    void PhysWorld::post_sync(double dt, entt::registry &reg) {
-        pimpl_->post_sync(dt, reg);
-    }
+    void PhysWorld::post_sync(double dt, entt::registry &reg) {}
 
     void PhysWorld::give_body(entt::entity entity, entt::registry &reg) {
         pimpl_->give_body(entity, reg);

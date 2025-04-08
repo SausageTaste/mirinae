@@ -523,8 +523,6 @@ namespace {
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            SPDLOG_INFO("TaskOceanUpdate start");
-
             auto view = scene_.reg_->view<mirinae::cpnt::Ocean>();
             auto begin = view.begin() + range.start;
             auto end = view.begin() + range.end;
@@ -534,8 +532,6 @@ namespace {
                 auto& o = view.get<mirinae::cpnt::Ocean>(e);
                 o.do_frame(scene_.clock());
             }
-
-            SPDLOG_INFO("TaskOceanUpdate end");
         }
 
     private:
@@ -554,8 +550,6 @@ namespace {
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            SPDLOG_INFO("TaskSkinnedActorUpdate start");
-
             auto view = scene_.reg_->view<mirinae::cpnt::MdlActorSkinned>();
             auto begin = view.begin() + range.start;
             auto end = view.begin() + range.end;
@@ -565,8 +559,6 @@ namespace {
                 auto& a = view.get<mirinae::cpnt::MdlActorSkinned>(e);
                 a.anim_state_.update_tick(scene_.clock());
             }
-
-            SPDLOG_INFO("TaskSkinnedActorUpdate end");
         }
 
     private:
@@ -588,10 +580,8 @@ namespace {
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            SPDLOG_INFO("TaskEnttUpdate start");
             skinned_actor_task_.prepare();
             ocean_task_.prepare();
-            SPDLOG_INFO("TaskEnttUpdate end");
         }
 
         enki::ITaskSet* get_fence() override { return &fence_; }
