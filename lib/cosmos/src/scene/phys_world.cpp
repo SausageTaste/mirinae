@@ -296,6 +296,71 @@ namespace {
     };
 
 
+    class JoltEnkiTaskSystem : public JPH::JobSystemWithBarrier {
+
+    private:
+        class MyJob
+            : public JPH::JobSystem::Job
+            , public enki::ITaskSet {
+
+        public:
+            MyJob(
+                const char *inJobName,
+                const JPH::ColorArg inColor,
+                JobSystem *inJobSystem,
+                const JobFunction &inJobFunction,
+                const JPH::uint32 inNumDependencies
+            )
+                : Job(inJobName,
+                      inColor,
+                      inJobSystem,
+                      inJobFunction,
+                      inNumDependencies) {}
+
+            void ExecuteRange(enki::TaskSetPartition r, uint32_t tid) override {
+                this->Execute();
+            }
+        };
+
+    public:
+        int GetMaxConcurrency() const override {
+            return dal::tasker().GetNumTaskThreads() - 1;
+        }
+
+        JobHandle CreateJob(
+            const char *inName,
+            const JPH::ColorArg inColor,
+            const JobFunction &inJobFunction,
+            const JPH::uint32 inNumDependencies = 0
+        ) override {
+            return JobHandle(new MyJob(
+                inName, inColor, this, inJobFunction, inNumDependencies
+            ));
+
+
+            JPH::JobSystemThreadPool shit;
+        }
+
+        void FreeJob(Job *inJob) override {
+            auto task = static_cast<MyJob *>(inJob);
+            task->Release();
+            delete task;
+        }
+
+        void QueueJob(Job *inJob) override {
+            auto task = static_cast<MyJob *>(inJob);
+            dal::tasker().AddTaskSetToPipe(task);
+        }
+
+        void QueueJobs(Job **inJobs, JPH::uint inNumJobs) override {
+            for (JPH::uint i = 0; i < inNumJobs; ++i) {
+                auto task = static_cast<MyJob *>(inJobs[i]);
+                dal::tasker().AddTaskSetToPipe(task);
+            }
+        }
+    };
+
+
 #ifdef MIRINAE_JOLT_DEBUG_RENDERER
 
     class DebugRen : public JPH::DebugRenderer {
@@ -1152,13 +1217,8 @@ namespace mirinae {
     class PhysWorld::Impl {
 
     public:
-        Impl()
-            : temp_alloc_(10 * 1024 * 1024)
-            , job_sys_(
-                  JPH::cMaxPhysicsJobs,
-                  JPH::cMaxPhysicsBarriers,
-                  std::thread::hardware_concurrency() - 1
-              ) {
+        Impl() : temp_alloc_(10 * 1024 * 1024) {
+            job_sys_.Init(JPH::cMaxPhysicsBarriers);
             physics_system.Init(
                 cMaxBodies,
                 cNumBodyMutexes,
@@ -1256,7 +1316,7 @@ namespace mirinae {
 
         JoltInit jolt_init_;
         JPH::TempAllocatorImpl temp_alloc_;
-        JPH::JobSystemThreadPool job_sys_;
+        ::JoltEnkiTaskSystem job_sys_;
         ::BPLayerInterfaceImpl broad_phase_layer_interf_;
         ::ObjectVsBroadPhaseLayerFilterImpl obj_vs_broadphase_layer_filter_;
         ::ObjectLayerPairFilterImpl obj_vs_obj_layer_filter_;
