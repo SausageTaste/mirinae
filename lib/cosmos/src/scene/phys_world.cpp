@@ -997,7 +997,7 @@ namespace {
     public:
         void prepare(
             JPH::PhysicsSystem &phys_sys,
-            JPH::JobSystemThreadPool &job_sys,
+            JPH::JobSystem &job_sys,
             JPH::TempAllocatorImpl &temp_alloc
         ) {
             phys_sys_ = &phys_sys;
@@ -1015,7 +1015,7 @@ namespace {
 
     private:
         JPH::PhysicsSystem *phys_sys_ = nullptr;
-        JPH::JobSystemThreadPool *job_sys_ = nullptr;
+        JPH::JobSystem *job_sys_ = nullptr;
         JPH::TempAllocatorImpl *temp_alloc_ = nullptr;
     };
 
@@ -1094,7 +1094,7 @@ namespace {
             entt::registry &reg,
             JPH::PhysicsSystem &phys_sys,
             JPH::BodyInterface &body_interf,
-            JPH::JobSystemThreadPool &job_sys,
+            JPH::JobSystem &job_sys,
             JPH::TempAllocatorImpl &temp_alloc
         )
             : StageTask("PhysWorld")
@@ -1131,7 +1131,7 @@ namespace {
         entt::registry *reg_ = nullptr;
         JPH::PhysicsSystem *phys_sys_ = nullptr;
         JPH::BodyInterface *body_interf_ = nullptr;
-        JPH::JobSystemThreadPool *job_sys_ = nullptr;
+        JPH::JobSystem *job_sys_ = nullptr;
         JPH::TempAllocatorImpl *temp_alloc_ = nullptr;
 
         TaskPreSync_Mesh pre_mesh_;
