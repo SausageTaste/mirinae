@@ -319,7 +319,78 @@ namespace {
 
             void ExecuteRange(enki::TaskSetPartition r, uint32_t tid) override {
                 this->Execute();
+                this->Release();
             }
+        };
+
+        class JobPool {
+
+        public:
+            JobPool() { used_.fill(false); }
+
+            ~JobPool() noexcept { this->clear(); }
+
+            JobPool(const JobPool &) = delete;
+            JobPool &operator=(const JobPool &) = delete;
+            JobPool(JobPool &&) = delete;
+            JobPool &operator=(JobPool &&) = delete;
+
+            MyJob *alloc(
+                const char *inJobName,
+                const JPH::ColorArg inColor,
+                JobSystem *inJobSystem,
+                const JobFunction &inJobFunction,
+                const JPH::uint32 inNumDependencies
+            ) {
+                std::lock_guard<std::mutex> lock(mut_);
+
+                for (size_t i = 0; i < N; ++i) {
+                    if (!used_[i]) {
+                        used_[i] = true;
+                        auto out = new (data_ + i) MyJob(
+                            inJobName,
+                            inColor,
+                            inJobSystem,
+                            inJobFunction,
+                            inNumDependencies
+                        );
+                        return out;
+                    }
+                }
+
+                SPDLOG_CRITICAL("No more jobs available in the pool!");
+                return nullptr;
+            }
+
+            void free(MyJob *inJob) {
+                dal::tasker().WaitforTask(inJob);
+                std::lock_guard<std::mutex> lock(mut_);
+
+                const auto index = (reinterpret_cast<uintptr_t>(inJob) -
+                                    reinterpret_cast<uintptr_t>(data_)) /
+                                   sizeof(MyJob);
+                if (index < N) {
+                    used_[index] = false;
+                    inJob->~MyJob();
+                }
+            }
+
+            void clear() {
+                std::lock_guard<std::mutex> lock(mut_);
+
+                for (size_t i = 0; i < N; ++i) {
+                    if (used_[i]) {
+                        used_[i] = false;
+                        reinterpret_cast<MyJob *>(data_ + i)->~MyJob();
+                    }
+                }
+            }
+
+        private:
+            constexpr static size_t N = 1024;
+            std::aligned_storage_t<sizeof(MyJob), alignof(MyJob)> data_[N];
+            std::array<bool, N> used_;
+            std::mutex mut_;
         };
 
     public:
@@ -333,31 +404,32 @@ namespace {
             const JobFunction &inJobFunction,
             const JPH::uint32 inNumDependencies = 0
         ) override {
-            return JobHandle(new MyJob(
+            return JobHandle(jobs_.alloc(
                 inName, inColor, this, inJobFunction, inNumDependencies
             ));
-
-
-            JPH::JobSystemThreadPool shit;
         }
 
         void FreeJob(Job *inJob) override {
             auto task = static_cast<MyJob *>(inJob);
-            task->Release();
-            delete task;
+            jobs_.free(task);
         }
 
         void QueueJob(Job *inJob) override {
             auto task = static_cast<MyJob *>(inJob);
+            task->AddRef();
             dal::tasker().AddTaskSetToPipe(task);
         }
 
         void QueueJobs(Job **inJobs, JPH::uint inNumJobs) override {
             for (JPH::uint i = 0; i < inNumJobs; ++i) {
                 auto task = static_cast<MyJob *>(inJobs[i]);
+                task->AddRef();
                 dal::tasker().AddTaskSetToPipe(task);
             }
         }
+
+    private:
+        JobPool jobs_;
     };
 
 

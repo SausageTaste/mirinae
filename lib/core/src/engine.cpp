@@ -919,7 +919,7 @@ namespace {
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -70, 2, -4 };
 
-#if false
+#if true
                 cosmos_->cam_ctrl().anim_idle_ = "idle_normal_1";
                 cosmos_->cam_ctrl().anim_walk_ = "evt1_walk_normal_1";
                 cosmos_->cam_ctrl().anim_run_ = "run_normal_1";
