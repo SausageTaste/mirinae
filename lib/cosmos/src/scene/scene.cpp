@@ -578,7 +578,10 @@ namespace {
 
     public:
         TaskEnttUpdate(mirinae::Scene& scene)
-            : scene_(scene), skinned_actor_task_(scene), ocean_task_(scene_) {
+            : StageTask("entt update")
+            , scene_(scene)
+            , skinned_actor_task_(scene)
+            , ocean_task_(scene_) {
             fence_.succeed(&skinned_actor_task_, &ocean_task_);
             skinned_actor_task_.succeed(this);
             ocean_task_.succeed(this);

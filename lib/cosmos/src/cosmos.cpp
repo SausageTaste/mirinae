@@ -9,7 +9,8 @@ namespace {
     class TaskGlobalInit : public mirinae::StageTask {
 
     public:
-        TaskGlobalInit(mirinae::CosmosSimulator& cosmos) : cosmos_(cosmos) {
+        TaskGlobalInit(mirinae::CosmosSimulator& cosmos)
+            : StageTask("global init"), cosmos_(cosmos) {
             fence_.succeed(this);
         }
 

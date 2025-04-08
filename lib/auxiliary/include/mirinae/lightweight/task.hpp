@@ -35,7 +35,16 @@ namespace mirinae {
 
 
     struct StageTask : public enki::ITaskSet {
+
+    public:
+        StageTask(std::string_view name) : name_(name) {}
+
         virtual enki::ITaskSet* get_fence() = 0;
+
+        const std::string& name() const { return name_; }
+
+    private:
+        std::string name_;
     };
 
 
@@ -43,12 +52,14 @@ namespace mirinae {
 
     public:
         void start() {
+            SPDLOG_INFO("Frame start");
             for (auto& stage : stages_) {
                 SPDLOG_INFO("Stage start");
                 dal::tasker().AddTaskSetToPipe(stage.task_.get());
                 dal::tasker().WaitforTask(stage.task_->get_fence());
                 SPDLOG_INFO("Stage end");
             }
+            SPDLOG_INFO("Frame end");
         }
 
         struct Stage {
