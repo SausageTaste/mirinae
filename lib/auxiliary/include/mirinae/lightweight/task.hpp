@@ -15,6 +15,8 @@ namespace mirinae {
     public:
         template <typename... TArgs>
         void succeed(const TArgs&... prev) {
+            assert((((const void*)prev != (const void*)this) && ...));
+
             deps_.resize(sizeof...(prev));
             size_t i = 0;
             (deps_[i++].SetDependency(prev, this), ...);
