@@ -375,7 +375,8 @@ namespace {
                 const auto index = (i_job - i_begin) / sizeof(MyJob);
                 MIRINAE_ASSERT(index < N);
 
-                dal::tasker().WaitforTask(inJob);
+                if (!inJob->IsDone())
+                    dal::tasker().WaitforTask(inJob);
 
                 std::lock_guard<std::mutex> lock(mut_);
                 if (!used_[index]) {
