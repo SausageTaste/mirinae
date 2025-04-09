@@ -326,7 +326,7 @@ namespace {
         class JobPool {
 
         public:
-            JobPool() { used_.fill(false); }
+            JobPool() = default;
 
             ~JobPool() noexcept { this->clear(); }
 
@@ -342,11 +342,11 @@ namespace {
                 const JobFunction &inJobFunction,
                 const JPH::uint32 inNumDependencies
             ) {
-                std::lock_guard<std::mutex> lock(mut_);
-
                 for (size_t i = 0; i < N; ++i) {
-                    if (!used_[i]) {
-                        used_[i] = true;
+                    bool expected = false;
+                    if (used_[i].compare_exchange_strong(
+                            expected, true, std::memory_order_acquire
+                        )) {
                         auto out = new (data_ + i) MyJob(
                             inJobName,
                             inColor,
@@ -375,22 +375,19 @@ namespace {
                 const auto index = (i_job - i_begin) / sizeof(MyJob);
                 MIRINAE_ASSERT(index < N);
 
-                if (!inJob->IsDone())
-                    dal::tasker().WaitforTask(inJob);
-
-                std::lock_guard<std::mutex> lock(mut_);
-                if (!used_[index]) {
+                if (!used_[index].load(std::memory_order_acquire)) {
                     SPDLOG_WARN("Double free or corrupted job pool: {}", index);
                     return;
                 }
 
+                if (!inJob->IsDone())
+                    dal::tasker().WaitforTask(inJob);
+
                 inJob->~MyJob();
-                used_[index] = false;
+                used_[index].store(false, std::memory_order_release);
             }
 
             void clear() {
-                std::lock_guard<std::mutex> lock(mut_);
-
                 for (size_t i = 0; i < N; ++i) {
                     if (used_[i]) {
                         used_[i] = false;
@@ -400,15 +397,13 @@ namespace {
             }
 
             size_t active_count() {
-                std::lock_guard<std::mutex> lock(mut_);
                 return std::count(used_.begin(), used_.end(), true);
             }
 
         private:
             constexpr static size_t N = 1024;
             std::aligned_storage_t<sizeof(MyJob), alignof(MyJob)> data_[N];
-            std::array<bool, N> used_;
-            std::mutex mut_;
+            std::array<std::atomic_bool, N> used_;
         };
 
     public:
