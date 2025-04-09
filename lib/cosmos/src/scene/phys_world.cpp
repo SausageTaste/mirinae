@@ -363,16 +363,28 @@ namespace {
             }
 
             void free(MyJob *inJob) {
-                dal::tasker().WaitforTask(inJob);
-                std::lock_guard<std::mutex> lock(mut_);
+                const auto i_begin = reinterpret_cast<uintptr_t>(data_);
+                const auto i_end = reinterpret_cast<uintptr_t>(data_ + N);
+                const auto i_job = reinterpret_cast<uintptr_t>(inJob);
 
-                const auto index = (reinterpret_cast<uintptr_t>(inJob) -
-                                    reinterpret_cast<uintptr_t>(data_)) /
-                                   sizeof(MyJob);
-                if (index < N) {
-                    used_[index] = false;
-                    inJob->~MyJob();
+                if (i_job < i_begin || i_job >= i_end) {
+                    SPDLOG_WARN("Trying to free an invalid job pointer");
+                    return;
                 }
+
+                const auto index = (i_job - i_begin) / sizeof(MyJob);
+                MIRINAE_ASSERT(index < N);
+
+                dal::tasker().WaitforTask(inJob);
+
+                std::lock_guard<std::mutex> lock(mut_);
+                if (!used_[index]) {
+                    SPDLOG_WARN("Double free or corrupted job pool: {}", index);
+                    return;
+                }
+
+                inJob->~MyJob();
+                used_[index] = false;
             }
 
             void clear() {
@@ -384,6 +396,11 @@ namespace {
                         reinterpret_cast<MyJob *>(data_ + i)->~MyJob();
                     }
                 }
+            }
+
+            size_t active_count() {
+                std::lock_guard<std::mutex> lock(mut_);
+                return std::count(used_.begin(), used_.end(), true);
             }
 
         private:
