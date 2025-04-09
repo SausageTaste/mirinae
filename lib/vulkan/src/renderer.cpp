@@ -785,10 +785,6 @@ namespace {
         }
 
         void on_swchain_resize(mirinae::Swapchain& swchain) {
-            if (swchain.width() == fbuf_width_ &&
-                swchain.height() == fbuf_height_)
-                return;
-
             // Destroy
             {
                 auto device = device_.logi_device();
