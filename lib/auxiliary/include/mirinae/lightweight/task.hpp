@@ -20,6 +20,9 @@ namespace mirinae {
             (deps_[i++].SetDependency(prev, this), ...);
         }
 
+        void set_size(uint32_t size) { m_SetSize = size; }
+        void set_size(uint64_t size) { m_SetSize = size; }
+
     private:
         std::vector<enki::Dependency> deps_;
     };

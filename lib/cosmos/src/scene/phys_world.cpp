@@ -561,7 +561,7 @@ namespace {
         JPH::uint32 add_vtx(const JPH::Float3& v) {
             const auto idx = vertices_.size();
             vertices_.push_back(v);
-            return idx;
+            return static_cast<JPH::uint32>(idx);
         }
 
         JPH::uint32 add_vtx(const glm::vec3& v) {
@@ -881,9 +881,9 @@ namespace { namespace cpnt {
                 height_data_.data(),
                 JPH::Vec3(0, 0, 0),
                 JPH::Vec3(
-                    60 * 24 / double(height_data_len_ - 1),
+                    (60 * 24) / float(height_data_len_ - 1),
                     64,
-                    60 * 24 / double(height_data_len_ - 1)
+                    (60 * 24) / float(height_data_len_ - 1)
                 ),
                 height_data_len_
             );
@@ -937,9 +937,7 @@ namespace {
         void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
             reg_ = &reg;
             body_interf_ = &body_interf;
-
-            auto view = reg.view<::cpnt::MeshBody>();
-            m_SetSize = view.size();
+            this->set_size(reg.view<::cpnt::MeshBody>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -986,9 +984,7 @@ namespace {
         void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
             reg_ = &reg;
             body_interf_ = &body_interf;
-
-            auto view = reg.view<::cpnt::HeightFieldBody>();
-            m_SetSize = view.size();
+            this->set_size(reg.view<::cpnt::HeightFieldBody>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -1042,9 +1038,7 @@ namespace {
             phys_sys_ = &phys_sys;
             body_interf_ = &body_interf;
             temp_alloc_ = &temp_alloc;
-
-            auto view = reg.view<mirinae::cpnt::CharacterPhys>();
-            m_SetSize = view.size();
+            this->set_size(reg.view<mirinae::cpnt::CharacterPhys>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -1140,7 +1134,7 @@ namespace {
         void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
             reg_ = &reg;
             body_interf_ = &body_interf;
-            m_SetSize = reg.view<::cpnt::PhysBody>().size();
+            this->set_size(reg.view<::cpnt::PhysBody>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -1174,7 +1168,7 @@ namespace {
     public:
         void prepare(entt::registry& reg) {
             reg_ = &reg;
-            m_SetSize = reg_->view<mirinae::cpnt::CharacterPhys>().size();
+            this->set_size(reg.view<mirinae::cpnt::CharacterPhys>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -1334,7 +1328,7 @@ namespace mirinae {
             }
 
             JPH::BodyCreationSettings sphere_settings(
-                new JPH::SphereShape(tform->scale_.x),
+                new JPH::SphereShape(static_cast<float>(tform->scale_.x)),
                 ::conv_vec(tform->pos_),
                 JPH::Quat::sIdentity(),
                 JPH::EMotionType::Dynamic,
