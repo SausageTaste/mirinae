@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Jolt/Jolt.h>
 #include <sung/basic/angle.hpp>
 
 #include "mirinae/scene/phys_world.hpp"

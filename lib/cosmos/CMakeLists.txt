@@ -8,6 +8,7 @@ add_library(mirinae_cosmos STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/ren_model.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/transform.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/jolt_job_sys.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/phys_world.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene.cpp
 )
@@ -19,4 +20,9 @@ target_link_libraries(mirinae_cosmos PUBLIC
     imgui::imgui
     Jolt::Jolt
     mirinae::aux
+)
+
+set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/jolt_job_sys.cpp
+    PROPERTIES COMPILE_FLAGS "-fno-rtti"
 )
