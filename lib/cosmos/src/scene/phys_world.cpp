@@ -9,6 +9,7 @@
 #include <daltools/common/task_sys.hpp>
 #include <daltools/img/img2d.hpp>
 #include <entt/entity/registry.hpp>
+#include <sung/basic/static_pool.hpp>
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
@@ -326,15 +327,7 @@ namespace {
         class JobPool {
 
         public:
-            JobPool() = default;
-
-            ~JobPool() noexcept { this->clear(); }
-
-            JobPool(const JobPool &) = delete;
-            JobPool &operator=(const JobPool &) = delete;
-            JobPool(JobPool &&) = delete;
-            JobPool &operator=(JobPool &&) = delete;
-
+            [[nodiscard]]
             MyJob *alloc(
                 const char *inJobName,
                 const JPH::ColorArg inColor,
@@ -342,68 +335,41 @@ namespace {
                 const JobFunction &inJobFunction,
                 const JPH::uint32 inNumDependencies
             ) {
-                for (size_t i = 0; i < N; ++i) {
-                    bool expected = false;
-                    if (used_[i].compare_exchange_strong(
-                            expected, true, std::memory_order_acquire
-                        )) {
-                        auto out = new (data_ + i) MyJob(
-                            inJobName,
-                            inColor,
-                            inJobSystem,
-                            inJobFunction,
-                            inNumDependencies
-                        );
-                        return out;
-                    }
+                auto job = data_.alloc(
+                    inJobName,
+                    inColor,
+                    inJobSystem,
+                    inJobFunction,
+                    inNumDependencies
+                );
+
+                const auto active_count = data_.active_count();
+                if (active_count > max_alloc_.load(std::memory_order_acquire)) {
+                    SPDLOG_INFO("Max alloc: {} ", active_count);
+                    max_alloc_.store(active_count, std::memory_order_release);
                 }
+
+                if (job)
+                    return job;
 
                 SPDLOG_CRITICAL("No more jobs available in the pool!");
                 return nullptr;
             }
 
             void free(MyJob *inJob) {
-                const auto i_begin = reinterpret_cast<uintptr_t>(data_);
-                const auto i_end = reinterpret_cast<uintptr_t>(data_ + N);
-                const auto i_job = reinterpret_cast<uintptr_t>(inJob);
-
-                if (i_job < i_begin || i_job >= i_end) {
-                    SPDLOG_WARN("Trying to free an invalid job pointer");
-                    return;
-                }
-
-                const auto index = (i_job - i_begin) / sizeof(MyJob);
-                MIRINAE_ASSERT(index < N);
-
-                if (!used_[index].load(std::memory_order_acquire)) {
-                    SPDLOG_WARN("Double free or corrupted job pool: {}", index);
+                if (!data_.is_valid(inJob)) {
+                    SPDLOG_CRITICAL("Invalid job pointer passed to free!");
                     return;
                 }
 
                 if (!inJob->IsDone())
                     dal::tasker().WaitforTask(inJob);
-
-                inJob->~MyJob();
-                used_[index].store(false, std::memory_order_release);
-            }
-
-            void clear() {
-                for (size_t i = 0; i < N; ++i) {
-                    if (used_[i]) {
-                        used_[i] = false;
-                        reinterpret_cast<MyJob *>(data_ + i)->~MyJob();
-                    }
-                }
-            }
-
-            size_t active_count() {
-                return std::count(used_.begin(), used_.end(), true);
+                data_.free(inJob);
             }
 
         private:
-            constexpr static size_t N = 1024;
-            std::aligned_storage_t<sizeof(MyJob), alignof(MyJob)> data_[N];
-            std::array<std::atomic_bool, N> used_;
+            sung::StaticPool<MyJob, 1024> data_;
+            std::atomic_size_t max_alloc_;
         };
 
     public:
@@ -435,9 +401,7 @@ namespace {
 
         void QueueJobs(Job **inJobs, JPH::uint inNumJobs) override {
             for (JPH::uint i = 0; i < inNumJobs; ++i) {
-                auto task = static_cast<MyJob *>(inJobs[i]);
-                task->AddRef();
-                dal::tasker().AddTaskSetToPipe(task);
+                this->QueueJob(inJobs[i]);
             }
         }
 
