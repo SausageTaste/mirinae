@@ -47,7 +47,7 @@ namespace {
 
 
     template <typename T>
-    JPH::Vec3 conv_vec(const glm::tvec3<T> &v) {
+    JPH::Vec3 conv_vec(const glm::tvec3<T>& v) {
         return JPH::Vec3(
             static_cast<float>(v.x),
             static_cast<float>(v.y),
@@ -56,7 +56,7 @@ namespace {
     }
 
     template <typename T>
-    JPH::Quat conv_quat(const glm::tquat<T> &q) {
+    JPH::Quat conv_quat(const glm::tquat<T>& q) {
         return JPH::Quat(
             static_cast<float>(q.x),
             static_cast<float>(q.y),
@@ -65,23 +65,23 @@ namespace {
         );
     }
 
-    glm::dvec3 conv_vec(const JPH::Vec3 &v) {
+    glm::dvec3 conv_vec(const JPH::Vec3& v) {
         return glm::dvec3(v.GetX(), v.GetY(), v.GetZ());
     }
 
-    glm::dvec3 conv_vec(const JPH::Float3 &v) {
+    glm::dvec3 conv_vec(const JPH::Float3& v) {
         return glm::dvec3(v.x, v.y, v.z);
     }
 
-    glm::dvec4 conv_vec(const JPH::Vec4 &v) {
+    glm::dvec4 conv_vec(const JPH::Vec4& v) {
         return glm::dvec4(v.GetX(), v.GetY(), v.GetZ(), v.GetW());
     }
 
-    glm::dquat conv_quat(const JPH::Quat &q) {
+    glm::dquat conv_quat(const JPH::Quat& q) {
         return glm::dquat(q.GetW(), q.GetX(), q.GetY(), q.GetZ());
     }
 
-    glm::mat4 conv_mat(const JPH::Mat44 &m) {
+    glm::mat4 conv_mat(const JPH::Mat44& m) {
         return glm::mat4(
             ::conv_vec(m.GetColumn4(0)),
             ::conv_vec(m.GetColumn4(1)),
@@ -95,7 +95,7 @@ namespace {
 
 namespace {
 
-    static void trace_impl(const char *inFMT, ...) {
+    static void trace_impl(const char* inFMT, ...) {
         // Format the message
         va_list list;
         va_start(list, inFMT);
@@ -107,9 +107,9 @@ namespace {
     }
 
     bool AssertFailedImpl(
-        const char *inExpression,
-        const char *inMessage,
-        const char *inFile,
+        const char* inExpression,
+        const char* inMessage,
+        const char* inFile,
         JPH::uint inLine
     ) {
         spdlog::default_logger_raw()->log(
@@ -176,7 +176,7 @@ namespace {
         }
 
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
-        const char *GetBroadPhaseLayerName(
+        const char* GetBroadPhaseLayerName(
             BroadPhaseLayer inLayer
         ) const override {
             switch ((BroadPhaseLayer::Type)inLayer) {
@@ -240,7 +240,7 @@ namespace {
 
     public:
         void OnBodyActivated(
-            const JPH::BodyID &inBodyID, JPH::uint64 inBodyUserData
+            const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData
         ) override {
             SPDLOG_INFO(
                 "A body got activated: {}", inBodyID.GetIndexAndSequenceNumber()
@@ -248,7 +248,7 @@ namespace {
         }
 
         void OnBodyDeactivated(
-            const JPH::BodyID &inBodyID, JPH::uint64 inBodyUserData
+            const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData
         ) override {
             SPDLOG_INFO(
                 "A body got deactivated: {}",
@@ -262,35 +262,35 @@ namespace {
 
     public:
         JPH::ValidateResult OnContactValidate(
-            const JPH::Body &inBody1,
-            const JPH::Body &inBody2,
+            const JPH::Body& inBody1,
+            const JPH::Body& inBody2,
             JPH::RVec3Arg inBaseOffset,
-            const JPH::CollideShapeResult &inCollisionResult
+            const JPH::CollideShapeResult& inCollisionResult
         ) override {
             // SPDLOG_INFO("Contact validate callback");
             return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
         }
 
         void OnContactAdded(
-            const JPH::Body &inBody1,
-            const JPH::Body &inBody2,
-            const JPH::ContactManifold &inManifold,
-            JPH::ContactSettings &ioSettings
+            const JPH::Body& inBody1,
+            const JPH::Body& inBody2,
+            const JPH::ContactManifold& inManifold,
+            JPH::ContactSettings& ioSettings
         ) override {
             // SPDLOG_INFO("A contact was added");
         }
 
         void OnContactPersisted(
-            const JPH::Body &inBody1,
-            const JPH::Body &inBody2,
-            const JPH::ContactManifold &inManifold,
-            JPH::ContactSettings &ioSettings
+            const JPH::Body& inBody1,
+            const JPH::Body& inBody2,
+            const JPH::ContactManifold& inManifold,
+            JPH::ContactSettings& ioSettings
         ) override {
             // SPDLOG_INFO("A contact was persisted");
         }
 
         void OnContactRemoved(
-            const JPH::SubShapeIDPair &inSubShapePair
+            const JPH::SubShapeIDPair& inSubShapePair
         ) override {
             // SPDLOG_INFO("A contact was removed");
         }
@@ -306,10 +306,10 @@ namespace {
 
         public:
             MyJob(
-                const char *inJobName,
+                const char* inJobName,
                 const JPH::ColorArg inColor,
-                JobSystem *inJobSystem,
-                const JobFunction &inJobFunction,
+                JobSystem* inJobSystem,
+                const JobFunction& inJobFunction,
                 const JPH::uint32 inNumDependencies
             )
                 : Job(inJobName,
@@ -328,11 +328,11 @@ namespace {
 
         public:
             [[nodiscard]]
-            MyJob *alloc(
-                const char *inJobName,
+            MyJob* alloc(
+                const char* inJobName,
                 const JPH::ColorArg inColor,
-                JobSystem *inJobSystem,
-                const JobFunction &inJobFunction,
+                JobSystem* inJobSystem,
+                const JobFunction& inJobFunction,
                 const JPH::uint32 inNumDependencies
             ) {
                 auto job = data_.alloc(
@@ -356,7 +356,7 @@ namespace {
                 return nullptr;
             }
 
-            void free(MyJob *inJob) {
+            void free(MyJob* inJob) {
                 if (!data_.is_valid(inJob)) {
                     SPDLOG_CRITICAL("Invalid job pointer passed to free!");
                     return;
@@ -378,9 +378,9 @@ namespace {
         }
 
         JobHandle CreateJob(
-            const char *inName,
+            const char* inName,
             const JPH::ColorArg inColor,
-            const JobFunction &inJobFunction,
+            const JobFunction& inJobFunction,
             const JPH::uint32 inNumDependencies = 0
         ) override {
             return JobHandle(jobs_.alloc(
@@ -388,18 +388,18 @@ namespace {
             ));
         }
 
-        void FreeJob(Job *inJob) override {
-            auto task = static_cast<MyJob *>(inJob);
+        void FreeJob(Job* inJob) override {
+            auto task = static_cast<MyJob*>(inJob);
             jobs_.free(task);
         }
 
-        void QueueJob(Job *inJob) override {
-            auto task = static_cast<MyJob *>(inJob);
+        void QueueJob(Job* inJob) override {
+            auto task = static_cast<MyJob*>(inJob);
             task->AddRef();
             dal::tasker().AddTaskSetToPipe(task);
         }
 
-        void QueueJobs(Job **inJobs, JPH::uint inNumJobs) override {
+        void QueueJobs(Job** inJobs, JPH::uint inNumJobs) override {
             for (JPH::uint i = 0; i < inNumJobs; ++i) {
                 this->QueueJob(inJobs[i]);
             }
@@ -422,7 +422,7 @@ namespace {
 
             void Release() override { --ref_count_; }
 
-            void append(const mirinae::DebugMesh::Vertex &v) {
+            void append(const mirinae::DebugMesh::Vertex& v) {
                 mesh_.idx_.push_back(mesh_.vtx_.size());
                 mesh_.vtx_.push_back(v);
             }
@@ -465,10 +465,10 @@ namespace {
 
         void DrawGeometry(
             const JPH::RMat44Arg inModelMatrix,
-            const JPH::AABox &inWorldSpaceBounds,
+            const JPH::AABox& inWorldSpaceBounds,
             const float inLODScaleSq,
             const JPH::ColorArg inModelColor,
-            const GeometryRef &inGeometry,
+            const GeometryRef& inGeometry,
             const ECullMode inCullMode,
             const ECastShadow inCastShadow,
             const EDrawMode inDrawMode
@@ -477,7 +477,7 @@ namespace {
                 return;
 
             auto ptr = inGeometry->mLODs[0].mTriangleBatch.GetPtr();
-            auto batch = static_cast<const MyBatch *>(ptr);
+            auto batch = static_cast<const MyBatch*>(ptr);
             if (!batch)
                 return;
 
@@ -485,16 +485,16 @@ namespace {
         }
 
         Batch CreateTriangleBatch(
-            const Triangle *inTriangles, const int inTriangleCount
+            const Triangle* inTriangles, const int inTriangleCount
         ) override {
             auto batch = std::make_unique<MyBatch>();
 
             for (int i = 0; i < inTriangleCount; ++i) {
-                auto &src_tri = inTriangles[i];
+                auto& src_tri = inTriangles[i];
 
                 for (int j = 0; j < 3; ++j) {
                     mirinae::DebugMesh::Vertex dst_vtx;
-                    auto &src_vtx = src_tri.mV[j];
+                    auto& src_vtx = src_tri.mV[j];
                     dst_vtx.pos_ = ::conv_vec(src_vtx.mPosition);
                     dst_vtx.color_ = ::conv_vec(src_vtx.mColor.ToVec4());
                     batch->append(dst_vtx);
@@ -505,16 +505,16 @@ namespace {
         }
 
         Batch CreateTriangleBatch(
-            const Vertex *inVertices,
+            const Vertex* inVertices,
             const int inVertexCount,
-            const JPH::uint32 *inIndices,
+            const JPH::uint32* inIndices,
             const int inIndexCount
         ) override {
             auto batch = std::make_unique<MyBatch>();
 
             batch->mesh_.vtx_.reserve(inVertexCount);
             for (int i = 0; i < inVertexCount; ++i) {
-                auto &v = batch->mesh_.vtx_.emplace_back();
+                auto& v = batch->mesh_.vtx_.emplace_back();
                 v.pos_ = ::conv_vec(inVertices[i].mPosition);
                 v.color_ = ::conv_vec(inVertices[i].mColor.ToVec4());
             }
@@ -526,12 +526,12 @@ namespace {
 
         void DrawText3D(
             const JPH::RVec3Arg inPosition,
-            const JPH::string_view &inString,
+            const JPH::string_view& inString,
             const JPH::ColorArg inColor,
             const float inHeight
         ) override {}
 
-        mirinae::IDebugRen *debug_ren_ = nullptr;
+        mirinae::IDebugRen* debug_ren_ = nullptr;
     };
 
 #endif  // JPH_DEBUG_RENDERER
@@ -545,7 +545,7 @@ namespace {
 
     public:
         void add_tri(
-            const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2
+            const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2
         ) {
             indices_.push_back(
                 JPH::IndexedTriangle(
@@ -554,21 +554,21 @@ namespace {
             );
         }
 
-        auto &vtx() const { return vertices_; }
-        auto &idx() const { return indices_; }
+        auto& vtx() const { return vertices_; }
+        auto& idx() const { return indices_; }
 
     private:
-        JPH::uint32 add_vtx(const JPH::Float3 &v) {
+        JPH::uint32 add_vtx(const JPH::Float3& v) {
             const auto idx = vertices_.size();
             vertices_.push_back(v);
             return idx;
         }
 
-        JPH::uint32 add_vtx(const glm::vec3 &v) {
+        JPH::uint32 add_vtx(const glm::vec3& v) {
             return this->add_vtx(JPH::Float3(v.x, v.y, v.z));
         }
 
-        JPH::uint32 add_vtx(const JPH::RVec3 &v) {
+        JPH::uint32 add_vtx(const JPH::RVec3& v) {
             return this->add_vtx(JPH::Float3(v.GetX(), v.GetY(), v.GetZ()));
         }
 
@@ -580,7 +580,7 @@ namespace {
     class ModelAccessor : public mirinae::IModelAccessor {
 
     public:
-        bool position(const glm::vec3 &p) override {
+        bool position(const glm::vec3& p) override {
             vtx_buf_[vtx_count_] = p * scale_;
             ++vtx_count_;
 
@@ -592,10 +592,10 @@ namespace {
             return true;
         }
 
-        void set_scale(const glm::vec3 &scale) { scale_ = scale; }
+        void set_scale(const glm::vec3& scale) { scale_ = scale; }
 
-        auto &vtx() const { return mesh_builder_.vtx(); }
-        auto &idx() const { return mesh_builder_.idx(); }
+        auto& vtx() const { return mesh_builder_.vtx(); }
+        auto& idx() const { return mesh_builder_.idx(); }
 
     private:
         MeshBuilder mesh_builder_;
@@ -612,7 +612,7 @@ namespace {
     class BoxBody {
 
     public:
-        void init(JPH::BodyInterface &body_interf) {
+        void init(JPH::BodyInterface& body_interf) {
             using namespace JPH::literals;
 
             JPH::BoxShapeSettings floor_shape_settings(
@@ -638,14 +638,14 @@ namespace {
 
     private:
         JPH::ShapeRefC floor_shape;
-        JPH::Body *body_;
+        JPH::Body* body_;
     };
 
 
     class SphereBody {
 
     public:
-        void init(JPH::BodyInterface &body_interf) {
+        void init(JPH::BodyInterface& body_interf) {
             using namespace JPH::literals;
 
             shape_ = new JPH::SphereShape(0.5f);
@@ -675,9 +675,9 @@ namespace {
 
     public:
         void init(
-            const mirinae::cpnt::CharacterPhys &phys,
-            const mirinae::cpnt::Transform *tform,
-            JPH::PhysicsSystem &phys_sys
+            const mirinae::cpnt::CharacterPhys& phys,
+            const mirinae::cpnt::Transform* tform,
+            JPH::PhysicsSystem& phys_sys
         ) {
             half_height_ = static_cast<float>(phys.height_ * 0.5);
             radius_ = static_cast<float>(phys.radius_);
@@ -705,8 +705,8 @@ namespace {
 
         void extended_update(
             float dt,
-            JPH::TempAllocatorImpl &temp_alloc,
-            JPH::PhysicsSystem &physics_system
+            JPH::TempAllocatorImpl& temp_alloc,
+            JPH::PhysicsSystem& physics_system
         ) {
             if (!character_)
                 return;
@@ -723,14 +723,14 @@ namespace {
             );
         }
 
-        void set_linear_vel(const JPH::RVec3 &vel) {
+        void set_linear_vel(const JPH::RVec3& vel) {
             if (!character_)
                 return;
 
             character_->SetLinearVelocity(vel);
         }
 
-        JPH::CharacterVirtual &chara() { return *character_; }
+        JPH::CharacterVirtual& chara() { return *character_; }
 
         JPH::RVec3 world_pos() const {
             return character_->GetPosition() - this->offset_vec();
@@ -744,7 +744,7 @@ namespace {
         }
 
         JPH::CharacterVirtual::ExtendedUpdateSettings update_settings_;
-        JPH::CharacterVirtual *character_;
+        JPH::CharacterVirtual* character_;
         float half_height_ = 0;
         float radius_ = 0;
     };
@@ -765,9 +765,9 @@ namespace { namespace cpnt {
 
     public:
         bool try_init(
-            const mirinae::cpnt::MdlActorStatic *modl,
-            const mirinae::cpnt::Transform *tform,
-            JPH::BodyInterface &body_interf
+            const mirinae::cpnt::MdlActorStatic* modl,
+            const mirinae::cpnt::Transform* tform,
+            JPH::BodyInterface& body_interf
         ) {
             namespace cpnt = mirinae::cpnt;
 
@@ -829,9 +829,9 @@ namespace { namespace cpnt {
 
     public:
         bool try_init(
-            const mirinae::cpnt::Terrain *terr,
-            const mirinae::cpnt::Transform *tform,
-            JPH::BodyInterface &body_interf
+            const mirinae::cpnt::Terrain* terr,
+            const mirinae::cpnt::Transform* tform,
+            JPH::BodyInterface& body_interf
         ) {
             namespace cpnt = mirinae::cpnt;
 
@@ -871,7 +871,7 @@ namespace { namespace cpnt {
             const auto texel_count = img2d->width() * img2d->height();
             height_data_.resize(texel_count);
             for (uint32_t i = 0; i < texel_count; ++i) {
-                const auto *texel = img2d->texel_ptr(
+                const auto* texel = img2d->texel_ptr(
                     i % img2d->width(), i / img2d->width()
                 );
                 height_data_[i] = static_cast<float>(texel[0]) / 255.0f;
@@ -934,7 +934,7 @@ namespace {
     class TaskPreSync_Mesh : public mirinae::DependingTask {
 
     public:
-        void prepare(entt::registry &reg, JPH::BodyInterface &body_interf) {
+        void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
             reg_ = &reg;
             body_interf_ = &body_interf;
 
@@ -959,7 +959,7 @@ namespace {
 
             for (auto it = begin; it != end; ++it) {
                 entt::entity e = *it;
-                auto &body = view.get<::cpnt::MeshBody>(e);
+                auto& body = view.get<::cpnt::MeshBody>(e);
                 if (body.ready_)
                     continue;
 
@@ -973,8 +973,8 @@ namespace {
         }
 
     private:
-        entt::registry *reg_ = nullptr;
-        JPH::BodyInterface *body_interf_ = nullptr;
+        entt::registry* reg_ = nullptr;
+        JPH::BodyInterface* body_interf_ = nullptr;
         bool someone_is_preparing_ = false;
         bool someone_finished_preparing_ = false;
     };
@@ -983,7 +983,7 @@ namespace {
     class TaskPreSync_Height : public mirinae::DependingTask {
 
     public:
-        void prepare(entt::registry &reg, JPH::BodyInterface &body_interf) {
+        void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
             reg_ = &reg;
             body_interf_ = &body_interf;
 
@@ -1008,7 +1008,7 @@ namespace {
 
             for (auto it = begin; it != end; ++it) {
                 const auto e = *it;
-                auto &body = view.get<::cpnt::HeightFieldBody>(e);
+                auto& body = view.get<::cpnt::HeightFieldBody>(e);
                 if (body.ready_)
                     continue;
 
@@ -1022,8 +1022,8 @@ namespace {
         }
 
     private:
-        entt::registry *reg_ = nullptr;
-        JPH::BodyInterface *body_interf_ = nullptr;
+        entt::registry* reg_ = nullptr;
+        JPH::BodyInterface* body_interf_ = nullptr;
         bool someone_is_preparing_ = false;
         bool someone_finished_preparing_ = false;
     };
@@ -1033,10 +1033,10 @@ namespace {
 
     public:
         void prepare(
-            entt::registry &reg,
-            JPH::PhysicsSystem &phys_sys,
-            JPH::BodyInterface &body_interf,
-            JPH::TempAllocatorImpl &temp_alloc
+            entt::registry& reg,
+            JPH::PhysicsSystem& phys_sys,
+            JPH::BodyInterface& body_interf,
+            JPH::TempAllocatorImpl& temp_alloc
         ) {
             reg_ = &reg;
             phys_sys_ = &phys_sys;
@@ -1054,12 +1054,12 @@ namespace {
             constexpr float dt = 1.f / dt_rcp;
             constexpr float push_force_factor = 100 * dt_rcp;
 
-            auto &reg = *reg_;
-            auto &phys_sys = *phys_sys_;
-            auto &bodies = *body_interf_;
+            auto& reg = *reg_;
+            auto& phys_sys = *phys_sys_;
+            auto& bodies = *body_interf_;
 
-            for (auto &e : reg.view<cpnt::CharacterPhys>()) {
-                auto &phys = reg.get<cpnt::CharacterPhys>(e);
+            for (auto& e : reg.view<cpnt::CharacterPhys>()) {
+                auto& phys = reg.get<cpnt::CharacterPhys>(e);
                 auto tform = reg.try_get<cpnt::Transform>(e);
                 auto body = phys.ren_unit<::CharacterPhysBody>();
 
@@ -1086,7 +1086,7 @@ namespace {
                 body->set_linear_vel(vel);
                 body->extended_update(dt, *temp_alloc_, phys_sys);
 
-                for (auto &contact : body->chara().GetActiveContacts()) {
+                for (auto& contact : body->chara().GetActiveContacts()) {
                     const auto c_motion = bodies.GetMotionType(contact.mBodyB);
                     if (c_motion != JPH::EMotionType::Dynamic)
                         continue;
@@ -1099,10 +1099,10 @@ namespace {
         }
 
     private:
-        entt::registry *reg_ = nullptr;
-        JPH::PhysicsSystem *phys_sys_ = nullptr;
-        JPH::BodyInterface *body_interf_ = nullptr;
-        JPH::TempAllocatorImpl *temp_alloc_ = nullptr;
+        entt::registry* reg_ = nullptr;
+        JPH::PhysicsSystem* phys_sys_ = nullptr;
+        JPH::BodyInterface* body_interf_ = nullptr;
+        JPH::TempAllocatorImpl* temp_alloc_ = nullptr;
     };
 
 
@@ -1110,9 +1110,9 @@ namespace {
 
     public:
         void prepare(
-            JPH::PhysicsSystem &phys_sys,
-            JPH::JobSystem &job_sys,
-            JPH::TempAllocatorImpl &temp_alloc
+            JPH::PhysicsSystem& phys_sys,
+            JPH::JobSystem& job_sys,
+            JPH::TempAllocatorImpl& temp_alloc
         ) {
             phys_sys_ = &phys_sys;
             job_sys_ = &job_sys;
@@ -1128,16 +1128,16 @@ namespace {
         }
 
     private:
-        JPH::PhysicsSystem *phys_sys_ = nullptr;
-        JPH::JobSystem *job_sys_ = nullptr;
-        JPH::TempAllocatorImpl *temp_alloc_ = nullptr;
+        JPH::PhysicsSystem* phys_sys_ = nullptr;
+        JPH::JobSystem* job_sys_ = nullptr;
+        JPH::TempAllocatorImpl* temp_alloc_ = nullptr;
     };
 
 
     class TaskPostSync_PhysBody : public mirinae::DependingTask {
 
     public:
-        void prepare(entt::registry &reg, JPH::BodyInterface &body_interf) {
+        void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
             reg_ = &reg;
             body_interf_ = &body_interf;
             m_SetSize = reg.view<::cpnt::PhysBody>().size();
@@ -1150,7 +1150,7 @@ namespace {
 
             for (auto it = begin; it != end; ++it) {
                 const auto e = *it;
-                auto &body = reg_->get<::cpnt::PhysBody>(e);
+                auto& body = reg_->get<::cpnt::PhysBody>(e);
                 auto tform = reg_->try_get<mirinae::cpnt::Transform>(e);
                 if (!tform)
                     continue;
@@ -1164,15 +1164,15 @@ namespace {
         }
 
     private:
-        entt::registry *reg_ = nullptr;
-        JPH::BodyInterface *body_interf_ = nullptr;
+        entt::registry* reg_ = nullptr;
+        JPH::BodyInterface* body_interf_ = nullptr;
     };
 
 
     class TaskPostSync_Player : public mirinae::DependingTask {
 
     public:
-        void prepare(entt::registry &reg) {
+        void prepare(entt::registry& reg) {
             reg_ = &reg;
             m_SetSize = reg_->view<mirinae::cpnt::CharacterPhys>().size();
         }
@@ -1184,7 +1184,7 @@ namespace {
 
             for (auto it = begin; it != end; ++it) {
                 const auto e = *it;
-                auto &phys = reg_->get<mirinae::cpnt::CharacterPhys>(e);
+                auto& phys = reg_->get<mirinae::cpnt::CharacterPhys>(e);
                 auto body = phys.ren_unit<::CharacterPhysBody>();
                 if (!body)
                     continue;
@@ -1197,7 +1197,7 @@ namespace {
         }
 
     private:
-        entt::registry *reg_ = nullptr;
+        entt::registry* reg_ = nullptr;
     };
 
 
@@ -1205,11 +1205,11 @@ namespace {
 
     public:
         TaskPhysWorld(
-            entt::registry &reg,
-            JPH::PhysicsSystem &phys_sys,
-            JPH::BodyInterface &body_interf,
-            JPH::JobSystem &job_sys,
-            JPH::TempAllocatorImpl &temp_alloc
+            entt::registry& reg,
+            JPH::PhysicsSystem& phys_sys,
+            JPH::BodyInterface& body_interf,
+            JPH::JobSystem& job_sys,
+            JPH::TempAllocatorImpl& temp_alloc
         )
             : StageTask("PhysWorld")
             , reg_(&reg)
@@ -1239,14 +1239,14 @@ namespace {
             post_player_.prepare(*reg_);
         }
 
-        enki::ITaskSet *get_fence() override { return &fence_; }
+        enki::ITaskSet* get_fence() override { return &fence_; }
 
     private:
-        entt::registry *reg_ = nullptr;
-        JPH::PhysicsSystem *phys_sys_ = nullptr;
-        JPH::BodyInterface *body_interf_ = nullptr;
-        JPH::JobSystem *job_sys_ = nullptr;
-        JPH::TempAllocatorImpl *temp_alloc_ = nullptr;
+        entt::registry* reg_ = nullptr;
+        JPH::PhysicsSystem* phys_sys_ = nullptr;
+        JPH::BodyInterface* body_interf_ = nullptr;
+        JPH::JobSystem* job_sys_ = nullptr;
+        JPH::TempAllocatorImpl* temp_alloc_ = nullptr;
 
         TaskPreSync_Mesh pre_mesh_;
         TaskPreSync_Height pre_height_;
@@ -1282,7 +1282,7 @@ namespace mirinae {
             physics_system.SetContactListener(&contact_listener_);
             physics_system.SetGravity(JPH::Vec3(0, -9.81f, 0));
 
-            auto &body_interf = this->body_interf();
+            auto& body_interf = this->body_interf();
             // floor_.init(body_interf);
             // body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
 
@@ -1291,8 +1291,8 @@ namespace mirinae {
 #endif
         }
 
-        void register_tasks(TaskGraph &tasks, entt::registry &reg) {
-            auto &stage = tasks.stages_.emplace_back();
+        void register_tasks(TaskGraph& tasks, entt::registry& reg) {
+            auto& stage = tasks.stages_.emplace_back();
             stage.task_ = std::make_unique<TaskPhysWorld>(
                 reg, physics_system, this->body_interf(), job_sys_, temp_alloc_
             );
@@ -1300,7 +1300,7 @@ namespace mirinae {
 
         void optimize() { physics_system.OptimizeBroadPhase(); }
 
-        void give_debug_ren(IDebugRen &debug_ren) {
+        void give_debug_ren(IDebugRen& debug_ren) {
 #ifdef MIRINAE_JOLT_DEBUG_RENDERER
             debug_ren_.debug_ren_ = &debug_ren;
 #endif
@@ -1312,7 +1312,7 @@ namespace mirinae {
 #endif
         }
 
-        void give_body(entt::entity entity, entt::registry &reg) {
+        void give_body(entt::entity entity, entt::registry& reg) {
             namespace cpnt = mirinae::cpnt;
 
             auto tform = reg.try_get<cpnt::Transform>(entity);
@@ -1347,19 +1347,19 @@ namespace mirinae {
             );
         }
 
-        void give_body_triangles(entt::entity entity, entt::registry &reg) {
+        void give_body_triangles(entt::entity entity, entt::registry& reg) {
             namespace cpnt = mirinae::cpnt;
-            auto &body = reg.emplace<::cpnt::MeshBody>(entity);
+            auto& body = reg.emplace<::cpnt::MeshBody>(entity);
         }
 
-        void give_body_height_field(entt::entity entity, entt::registry &reg) {
+        void give_body_height_field(entt::entity entity, entt::registry& reg) {
             namespace cpnt = mirinae::cpnt;
-            auto &body = reg.emplace<::cpnt::HeightFieldBody>(entity);
+            auto& body = reg.emplace<::cpnt::HeightFieldBody>(entity);
         }
 
     private:
         // Locking body interface
-        JPH::BodyInterface &body_interf() {
+        JPH::BodyInterface& body_interf() {
             return physics_system.GetBodyInterface();
         }
 
@@ -1388,36 +1388,36 @@ namespace mirinae {
 
     PhysWorld::~PhysWorld() = default;
 
-    void PhysWorld::register_tasks(TaskGraph &tasks, entt::registry &reg) {
+    void PhysWorld::register_tasks(TaskGraph& tasks, entt::registry& reg) {
         pimpl_->register_tasks(tasks, reg);
     }
 
     void PhysWorld::optimize() { pimpl_->optimize(); }
 
-    void PhysWorld::give_debug_ren(IDebugRen &debug_ren) {
+    void PhysWorld::give_debug_ren(IDebugRen& debug_ren) {
         pimpl_->give_debug_ren(debug_ren);
     }
 
     void PhysWorld::remove_debug_ren() {}
 
-    void PhysWorld::pre_sync(double dt, entt::registry &reg) {}
+    void PhysWorld::pre_sync(double dt, entt::registry& reg) {}
 
     void PhysWorld::do_frame(double dt) {}
 
-    void PhysWorld::post_sync(double dt, entt::registry &reg) {}
+    void PhysWorld::post_sync(double dt, entt::registry& reg) {}
 
-    void PhysWorld::give_body(entt::entity entity, entt::registry &reg) {
+    void PhysWorld::give_body(entt::entity entity, entt::registry& reg) {
         pimpl_->give_body(entity, reg);
     }
 
     void PhysWorld::give_body_triangles(
-        entt::entity entity, entt::registry &reg
+        entt::entity entity, entt::registry& reg
     ) {
         pimpl_->give_body_triangles(entity, reg);
     }
 
     void PhysWorld::give_body_height_field(
-        entt::entity entity, entt::registry &reg
+        entt::entity entity, entt::registry& reg
     ) {
         pimpl_->give_body_height_field(entity, reg);
     }
