@@ -42,7 +42,6 @@ namespace mirinae {
         );
 
         void tick_clock();
-        void do_frame();
 
         auto& scene() { return scene_; }
         auto& reg() { return *scene_.reg_; }

@@ -635,7 +635,7 @@ namespace {
             action_mapper_.give_osio(cinfo.osio_);
 
             sung::HTaskSche task_sche = sung::create_task_scheduler();
-            client_ = mirinae::create_client();
+            // client_ = mirinae::create_client();
             script_ = std::make_shared<mirinae::ScriptEngine>();
             cosmos_ = std::make_shared<mirinae::CosmosSimulator>(*script_);
 
@@ -994,10 +994,6 @@ namespace {
         ~Engine() override {}
 
         void do_frame() override {
-            if (sec5_.check_if_elapsed(5)) {
-                client_->send();
-            }
-
             tasks_.start();
 
             /*
@@ -1025,8 +1021,7 @@ namespace {
             }
             */
 
-            client_->do_frame();
-            cosmos_->do_frame();
+            // client_->do_frame();
             renderer_->do_frame();
         }
 
@@ -1134,7 +1129,7 @@ namespace {
 
     private:
         std::shared_ptr<dal::Filesystem> filesys_;
-        std::unique_ptr<mirinae::INetworkClient> client_;
+        // std::unique_ptr<mirinae::INetworkClient> client_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
         std::shared_ptr<::ImGuiMainWin> imgui_main_;

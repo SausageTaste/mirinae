@@ -355,6 +355,4 @@ namespace mirinae {
 
     void CosmosSimulator::tick_clock() { clock_.tick(); }
 
-    void CosmosSimulator::do_frame() {}
-
 }  // namespace mirinae
