@@ -10,79 +10,58 @@
 namespace {
 
     class JoltEnkiTaskSystem final : public JPH::JobSystemWithBarrier {
-        virtual void nortti() {}
 
     private:
-        class MyJob
-            : public JPH::JobSystem::Job
-            , public enki::ITaskSet {
+        class JobTask : private enki::ITaskSet {
 
         public:
-            MyJob(
-                const char* inJobName,
-                const JPH::ColorArg inColor,
-                JobSystem* inJobSystem,
-                const JobFunction& inJobFunction,
-                const JPH::uint32 inNumDependencies
-            )
-                : Job(inJobName,
-                      inColor,
-                      inJobSystem,
-                      inJobFunction,
-                      inNumDependencies) {}
+            bool try_exec(Job* inJob) {
+                std::unique_lock<std::mutex> lock(mut_, std::try_to_lock);
+                if (!lock.owns_lock())
+                    return false;
+                if (job_)
+                    return false;
 
-            void ExecuteRange(enki::TaskSetPartition r, uint32_t tid) override {
-                this->Execute();
-                this->Release();
-            }
-        };
-
-        class JobPool {
-
-        public:
-            [[nodiscard]]
-            MyJob* alloc(
-                const char* inJobName,
-                const JPH::ColorArg inColor,
-                JobSystem* inJobSystem,
-                const JobFunction& inJobFunction,
-                const JPH::uint32 inNumDependencies
-            ) {
-                auto job = data_.alloc(
-                    inJobName,
-                    inColor,
-                    inJobSystem,
-                    inJobFunction,
-                    inNumDependencies
-                );
-
-                const auto active_count = data_.active_count();
-                if (active_count > max_alloc_.load(std::memory_order_acquire)) {
-                    SPDLOG_INFO("Max alloc: {} ", active_count);
-                    max_alloc_.store(active_count, std::memory_order_release);
-                }
-
-                if (job)
-                    return job;
-
-                SPDLOG_CRITICAL("No more jobs available in the pool!");
-                return nullptr;
-            }
-
-            void free(MyJob* inJob) {
-                if (!data_.is_valid(inJob)) {
-                    SPDLOG_CRITICAL("Invalid job pointer passed to free!");
-                    return;
-                }
-
-                if (!inJob->IsDone())
-                    dal::tasker().WaitforTask(inJob);
-                data_.free(inJob);
+                this->try_join();
+                this->set_job(inJob);
+                dal::tasker().AddTaskSetToPipe(this);
+                return true;
             }
 
         private:
-            sung::StaticPool<MyJob, 1024> data_;
-            std::atomic_size_t max_alloc_;
+            void ExecuteRange(enki::TaskSetPartition r, uint32_t tid) override {
+                std::lock_guard<std::mutex> lock(mut_);
+                joinable_ = true;
+
+                if (job_) {
+                    job_->Execute();
+                    this->clear_job();
+                }
+            }
+
+            void clear_job() {
+                if (job_) {
+                    job_->Release();
+                    job_ = nullptr;
+                }
+            }
+
+            void set_job(Job* const inJob) {
+                this->clear_job();
+                inJob->AddRef();
+                job_ = inJob;
+            }
+
+            void try_join() {
+                if (joinable_) {
+                    joinable_ = false;
+                    dal::tasker().WaitforTask(this);
+                }
+            }
+
+            std::mutex mut_;
+            Job* job_ = nullptr;
+            bool joinable_ = false;
         };
 
     public:
@@ -98,20 +77,21 @@ namespace {
             const JobFunction& inJobFunction,
             const JPH::uint32 inNumDependencies = 0
         ) override {
-            return JobHandle(jobs_.alloc(
+            return JobHandle(job_pool_.alloc(
                 inName, inColor, this, inJobFunction, inNumDependencies
             ));
         }
 
-        void FreeJob(Job* inJob) override {
-            auto task = static_cast<MyJob*>(inJob);
-            jobs_.free(task);
-        }
+        void FreeJob(Job* inJob) override { job_pool_.free(inJob); }
 
         void QueueJob(Job* inJob) override {
-            auto task = static_cast<MyJob*>(inJob);
-            task->AddRef();
-            dal::tasker().AddTaskSetToPipe(task);
+            for (auto& task : task_pool_) {
+                if (task.try_exec(inJob)) {
+                    return;
+                }
+            }
+
+            SPDLOG_ERROR("No available task to queue job");
         }
 
         void QueueJobs(Job** inJobs, JPH::uint inNumJobs) override {
@@ -121,8 +101,10 @@ namespace {
         }
 
     private:
-        JobPool jobs_;
+        sung::StaticPool<Job, 1024> job_pool_;
+        std::array<JobTask, 1024> task_pool_;
     };
+
 
 }  // namespace
 
