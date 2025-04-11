@@ -16,14 +16,17 @@ namespace {
 
         public:
             bool try_exec(Job* inJob) {
-                std::unique_lock<std::mutex> lock(mut_, std::try_to_lock);
-                if (!lock.owns_lock())
-                    return false;
-                if (job_)
-                    return false;
+                {
+                    std::unique_lock<std::mutex> lock(mut_, std::try_to_lock);
+                    if (!lock.owns_lock())
+                        return false;
+                    if (job_)
+                        return false;
 
-                this->try_join();
-                this->set_job(inJob);
+                    this->try_join();
+                    this->set_job(inJob);
+                }
+
                 dal::tasker().AddTaskSetToPipe(this);
                 return true;
             }
