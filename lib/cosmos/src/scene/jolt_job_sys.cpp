@@ -3,11 +3,36 @@
 #include <Jolt/Core/JobSystemWithBarrier.h>
 #include <daltools/common/task_sys.hpp>
 #include <sung/basic/static_pool.hpp>
+#include <sung/basic/time.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 
 
 namespace {
+
+    class Counter {
+
+    public:
+        void increment() {
+            count_.fetch_add(1);
+            max_.store(std::max(count_.load(), max_.load()));
+        }
+
+        void decrement() { count_.fetch_sub(1); }
+
+        void periodic_report() {
+            if (timer_.check_if_elapsed(1.0)) {
+                SPDLOG_INFO("Max jobs: {}", max_.load());
+                max_.store(0);
+            }
+        }
+
+    private:
+        std::atomic<uint64_t> count_ = 0;
+        std::atomic<uint64_t> max_ = 0;
+        sung::MonotonicRealtimeTimer timer_;
+    };
+
 
     class JoltEnkiTaskSystem final : public JPH::JobSystemWithBarrier {
 
@@ -80,12 +105,19 @@ namespace {
             const JobFunction& inJobFunction,
             const JPH::uint32 inNumDependencies = 0
         ) override {
-            return JobHandle(job_pool_.alloc(
+            JobHandle job(job_pool_.alloc(
                 inName, inColor, this, inJobFunction, inNumDependencies
             ));
+
+            counter_.increment();
+            // counter_.periodic_report();
+            return job;
         }
 
-        void FreeJob(Job* inJob) override { job_pool_.free(inJob); }
+        void FreeJob(Job* inJob) override {
+            job_pool_.free(inJob);
+            counter_.decrement();
+        }
 
         void QueueJob(Job* inJob) override {
             for (auto& task : task_pool_) {
@@ -106,6 +138,7 @@ namespace {
     private:
         sung::StaticPool<Job, 1024> job_pool_;
         std::array<JobTask, 1024> task_pool_;
+        ::Counter counter_;
     };
 
 
