@@ -489,6 +489,13 @@ namespace {
         size_t vtx_count_ = 0;
     };
 
+
+    class PhysWorldStates {
+
+    public:
+        std::atomic_bool no_simulate_{ false };
+    };
+
 }  // namespace
 
 
@@ -819,10 +826,18 @@ namespace {
     class TaskPreSync_Mesh : public mirinae::DependingTask {
 
     public:
-        void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
+        void init(
+            ::PhysWorldStates& states,
+            entt::registry& reg,
+            JPH::BodyInterface& body_interf
+        ) {
+            states_ = &states;
             reg_ = &reg;
             body_interf_ = &body_interf;
-            this->set_size(reg.view<::cpnt::MeshBody>().size());
+        }
+
+        void prepare() {
+            this->set_size(reg_->view<::cpnt::MeshBody>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -853,9 +868,13 @@ namespace {
                 else
                     someone_is_preparing_ = true;
             }
+
+            if (someone_is_preparing_)
+                states_->no_simulate_.store(true);
         }
 
     private:
+        ::PhysWorldStates* states_ = nullptr;
         entt::registry* reg_ = nullptr;
         JPH::BodyInterface* body_interf_ = nullptr;
         bool someone_is_preparing_ = false;
@@ -866,10 +885,18 @@ namespace {
     class TaskPreSync_Height : public mirinae::DependingTask {
 
     public:
-        void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
+        void init(
+            ::PhysWorldStates& states,
+            entt::registry& reg,
+            JPH::BodyInterface& body_interf
+        ) {
+            states_ = &states;
             reg_ = &reg;
             body_interf_ = &body_interf;
-            this->set_size(reg.view<::cpnt::HeightFieldBody>().size());
+        }
+
+        void prepare() {
+            this->set_size(reg_->view<::cpnt::HeightFieldBody>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -900,9 +927,13 @@ namespace {
                 else
                     someone_is_preparing_ = true;
             }
+
+            if (someone_is_preparing_)
+                states_->no_simulate_.store(true);
         }
 
     private:
+        ::PhysWorldStates* states_ = nullptr;
         entt::registry* reg_ = nullptr;
         JPH::BodyInterface* body_interf_ = nullptr;
         bool someone_is_preparing_ = false;
@@ -913,25 +944,31 @@ namespace {
     class TaskPreSync_Player : public mirinae::DependingTask {
 
     public:
-        void prepare(
+        void init(
+            ::PhysWorldStates& states,
             entt::registry& reg,
             JPH::PhysicsSystem& phys_sys,
             JPH::BodyInterface& body_interf,
             JPH::TempAllocatorImpl& temp_alloc
         ) {
+            states_ = &states;
             reg_ = &reg;
             phys_sys_ = &phys_sys;
             body_interf_ = &body_interf;
             temp_alloc_ = &temp_alloc;
-            this->set_size(reg.view<mirinae::cpnt::CharacterPhys>().size());
+        }
+
+        void prepare(double dt) {
+            dt_ = dt;
+            this->set_size(reg_->view<mirinae::cpnt::CharacterPhys>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             namespace cpnt = mirinae::cpnt;
 
-            constexpr float dt_rcp = 60;
-            constexpr float dt = 1.f / dt_rcp;
-            constexpr float push_force_factor = 100 * dt_rcp;
+            const float dt_rcp = static_cast<float>(1.0 / dt_);
+            const float dt = static_cast<float>(dt_);
+            const float push_force_factor = 100 * dt_rcp;
 
             auto& reg = *reg_;
             auto& phys_sys = *phys_sys_;
@@ -978,48 +1015,65 @@ namespace {
         }
 
     private:
+        ::PhysWorldStates* states_ = nullptr;
         entt::registry* reg_ = nullptr;
         JPH::PhysicsSystem* phys_sys_ = nullptr;
         JPH::BodyInterface* body_interf_ = nullptr;
         JPH::TempAllocatorImpl* temp_alloc_ = nullptr;
+        double dt_ = 1.0 / 60.0;
     };
 
 
     class TaskUpdate : public mirinae::DependingTask {
 
     public:
-        void prepare(
+        void init(
+            ::PhysWorldStates& states,
             JPH::PhysicsSystem& phys_sys,
             JPH::JobSystem& job_sys,
             JPH::TempAllocatorImpl& temp_alloc
         ) {
+            states_ = &states;
             phys_sys_ = &phys_sys;
             job_sys_ = &job_sys;
             temp_alloc_ = &temp_alloc;
         }
 
-        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            constexpr float dt_rcp = 60;
-            constexpr float dt = 1.f / dt_rcp;
-            constexpr float push_force_factor = 100 * dt_rcp;
+        void prepare(double dt) { dt_ = dt; }
 
-            const auto res = phys_sys_->Update(dt, 1, temp_alloc_, job_sys_);
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            if (states_->no_simulate_.load())
+                return;
+
+            const auto res = phys_sys_->Update(dt_, 1, temp_alloc_, job_sys_);
         }
 
     private:
+        constexpr static double DESIRED_DT = 1.0 / 60.0;
+
+        ::PhysWorldStates* states_ = nullptr;
         JPH::PhysicsSystem* phys_sys_ = nullptr;
         JPH::JobSystem* job_sys_ = nullptr;
         JPH::TempAllocatorImpl* temp_alloc_ = nullptr;
+        double dt_ = 1.0 / 60.0;
     };
 
 
     class TaskPostSync_PhysBody : public mirinae::DependingTask {
 
     public:
-        void prepare(entt::registry& reg, JPH::BodyInterface& body_interf) {
+        void init(
+            ::PhysWorldStates& states,
+            entt::registry& reg,
+            JPH::BodyInterface& body_interf
+        ) {
+            states_ = &states;
             reg_ = &reg;
             body_interf_ = &body_interf;
-            this->set_size(reg.view<::cpnt::PhysBody>().size());
+        }
+
+        void prepare() {
+            this->set_size(reg_->view<::cpnt::PhysBody>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -1043,6 +1097,7 @@ namespace {
         }
 
     private:
+        ::PhysWorldStates* states_ = nullptr;
         entt::registry* reg_ = nullptr;
         JPH::BodyInterface* body_interf_ = nullptr;
     };
@@ -1051,9 +1106,13 @@ namespace {
     class TaskPostSync_Player : public mirinae::DependingTask {
 
     public:
-        void prepare(entt::registry& reg) {
+        void init(::PhysWorldStates& states, entt::registry& reg) {
+            states_ = &states;
             reg_ = &reg;
-            this->set_size(reg.view<mirinae::cpnt::CharacterPhys>().size());
+        }
+
+        void prepare() {
+            this->set_size(reg_->view<mirinae::cpnt::CharacterPhys>().size());
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -1076,6 +1135,7 @@ namespace {
         }
 
     private:
+        ::PhysWorldStates* states_ = nullptr;
         entt::registry* reg_ = nullptr;
     };
 
@@ -1084,6 +1144,7 @@ namespace {
 
     public:
         TaskPhysWorld(
+            ::PhysWorldStates& states,
             entt::registry& reg,
             JPH::PhysicsSystem& phys_sys,
             JPH::BodyInterface& body_interf,
@@ -1091,9 +1152,10 @@ namespace {
             JPH::TempAllocatorImpl& temp_alloc
         )
             : StageTask("PhysWorld")
+            , states_(&states)
             , reg_(&reg)
             , phys_sys_(&phys_sys)
-            , body_interf_(&body_interf)
+            , bodies_(&body_interf)
             , job_sys_(&job_sys)
             , temp_alloc_(&temp_alloc) {
             // Pre
@@ -1107,25 +1169,40 @@ namespace {
             post_player_.succeed(&update_);
             // Fence
             fence_.succeed(&post_phys_body_, &post_player_);
+
+            pre_mesh_.init(*states_, *reg_, *bodies_);
+            pre_height_.init(*states_, *reg_, *bodies_);
+            pre_player_.init(
+                *states_, *reg_, *phys_sys_, *bodies_, *temp_alloc_
+            );
+            update_.init(*states_, *phys_sys_, *job_sys_, *temp_alloc_);
+            post_phys_body_.init(*states_, *reg_, *bodies_);
+            post_player_.init(*states_, *reg_);
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            pre_mesh_.prepare(*reg_, *body_interf_);
-            pre_height_.prepare(*reg_, *body_interf_);
-            pre_player_.prepare(*reg_, *phys_sys_, *body_interf_, *temp_alloc_);
-            update_.prepare(*phys_sys_, *job_sys_, *temp_alloc_);
-            post_phys_body_.prepare(*reg_, *body_interf_);
-            post_player_.prepare(*reg_);
+            const auto dt = timer_.check_get_elapsed();
+            states_->no_simulate_.store(false);
+
+            pre_mesh_.prepare();
+            pre_height_.prepare();
+            pre_player_.prepare(dt);
+            update_.prepare(dt);
+            post_phys_body_.prepare();
+            post_player_.prepare();
         }
 
         enki::ITaskSet* get_fence() override { return &fence_; }
 
     private:
+        ::PhysWorldStates* states_ = nullptr;
         entt::registry* reg_ = nullptr;
         JPH::PhysicsSystem* phys_sys_ = nullptr;
-        JPH::BodyInterface* body_interf_ = nullptr;
+        JPH::BodyInterface* bodies_ = nullptr;
         JPH::JobSystem* job_sys_ = nullptr;
         JPH::TempAllocatorImpl* temp_alloc_ = nullptr;
+
+        sung::MonotonicRealtimeTimer timer_;
 
         TaskPreSync_Mesh pre_mesh_;
         TaskPreSync_Height pre_height_;
@@ -1174,7 +1251,12 @@ namespace mirinae {
         void register_tasks(TaskGraph& tasks, entt::registry& reg) {
             auto& stage = tasks.stages_.emplace_back();
             stage.task_ = std::make_unique<TaskPhysWorld>(
-                reg, physics_system, this->body_interf(), *job_sys_, temp_alloc_
+                states_,
+                reg,
+                physics_system,
+                this->body_interf(),
+                *job_sys_,
+                temp_alloc_
             );
         }
 
@@ -1249,6 +1331,7 @@ namespace mirinae {
         ::BPLayerInterfaceImpl broad_phase_layer_interf_;
         ::ObjectVsBroadPhaseLayerFilterImpl obj_vs_broadphase_layer_filter_;
         ::ObjectLayerPairFilterImpl obj_vs_obj_layer_filter_;
+        ::PhysWorldStates states_;
         JPH::PhysicsSystem physics_system;
 
         ::MyBodyActivationListener body_active_listener_;
