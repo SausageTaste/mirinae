@@ -863,6 +863,79 @@ namespace {
 // Tasks
 namespace { namespace task {
 
+    class UpdateRenContext : public mirinae::DependingTask {
+
+    public:
+        void init(
+            mirinae::RpContext& rp_ctxt,
+            const ::FrameSync& framesync,
+            const mirinae::Scene& scene,
+            const mirinae::Swapchain& swapchain,
+            const std::vector<VkCommandBuffer>& cmd_buffers
+        ) {
+            ren_ctxt_ = &rp_ctxt;
+            framesync_ = &framesync;
+            scene_ = &scene;
+            swapchain_ = &swapchain;
+            cmd_buffers_ = &cmd_buffers;
+        }
+
+        void prepare() {}
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            this->update(
+                *ren_ctxt_, *framesync_, *scene_, *swapchain_, *cmd_buffers_
+            );
+        }
+
+        static void update(
+            mirinae::RpContext& ren_ctxt,
+            const ::FrameSync& framesync,
+            const mirinae::Scene& scene,
+            const mirinae::Swapchain& swapchain,
+            const std::vector<VkCommandBuffer>& cmd_buffers
+        ) {
+            namespace cpnt = mirinae::cpnt;
+
+            const auto e_cam = scene.main_camera_;
+            const auto cam = scene.reg_->try_get<cpnt::StandardCamera>(e_cam);
+            if (!cam) {
+                SPDLOG_WARN("No camera found in scene.");
+                return;
+            }
+
+            ren_ctxt.proj_mat_ = cam->proj_.make_proj_mat(
+                swapchain.width(), swapchain.height()
+            );
+
+            if (auto tform = scene.reg_->try_get<cpnt::Transform>(e_cam)) {
+                ren_ctxt.view_mat_ = tform->make_view_mat();
+                ren_ctxt.view_pos_ = tform->pos_;
+            } else {
+                ren_ctxt.view_mat_ = glm::dmat4(1);
+                ren_ctxt.view_pos_ = glm::dvec3(0);
+            }
+
+            ren_ctxt.f_index_ = framesync.get_frame_index();
+            ren_ctxt.cmdbuf_ = cmd_buffers.at(ren_ctxt.f_index_.get());
+
+            ren_ctxt.view_frustum_.update(
+                ren_ctxt.proj_mat_, ren_ctxt.view_mat_
+            );
+        }
+
+        mirinae::RpContext* ren_ctxt_ = nullptr;
+        const ::FrameSync* framesync_ = nullptr;
+        const mirinae::Scene* scene_ = nullptr;
+        const mirinae::Swapchain* swapchain_ = nullptr;
+        const std::vector<VkCommandBuffer>* cmd_buffers_ = nullptr;
+    };
+
+
+    std::mutex g_model_mtx;
+    std::mutex g_actor_mtx;
+
     class InitStaticModel : public mirinae::DependingTask {
 
     public:
@@ -870,11 +943,15 @@ namespace { namespace task {
             entt::registry& reg,
             mirinae::VulkanDevice& device,
             mirinae::IModelManager& model_mgr,
+            mirinae::RpContext& rp_ctxt,
+            mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayout
         ) {
             reg_ = &reg;
             device_ = &device;
             model_mgr_ = &model_mgr;
+            rp_ctxt_ = &rp_ctxt;
+            rp_res_ = &rp_res;
             desclayout_ = &desclayout;
         }
 
@@ -882,6 +959,7 @@ namespace { namespace task {
             this->set_size(reg_->view<mirinae::cpnt::MdlActorStatic>().size());
         }
 
+    private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             namespace cpnt = mirinae::cpnt;
 
@@ -894,48 +972,97 @@ namespace { namespace task {
                 const auto e = *it;
                 auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
 
-                if (!mactor.model_) {
-                    std::lock_guard<std::mutex> lock(model_mtx_);
+                if (!this->load_model(mactor, *model_mgr_))
+                    continue;
 
-                    const auto& mdl_path = mactor.model_path_;
-                    const auto res = model_mgr_->request_static(mdl_path);
-                    if (dal::ReqResult::loading == res) {
-                        continue;
-                    } else if (dal::ReqResult::ready != res) {
-                        const auto path_str = mdl_path.u8string();
-                        SPDLOG_WARN("Failed to get model: {}", path_str);
-                        mactor.model_path_ = "Sung/rickroll.dun/rickroll.dmd";
-                        continue;
-                    }
+                if (!this->create_actor(mactor, *desclayout_, *device_))
+                    continue;
 
-                    mactor.model_ = model_mgr_->get_static(mdl_path);
-                    if (!mactor.model_) {
-                        const auto path_str = mdl_path.u8string();
-                        SPDLOG_WARN("Failed to get model: {}", path_str);
-                        continue;
-                    }
-                }
-
-                if (!mactor.actor_) {
-                    std::lock_guard<std::mutex> lock(actor_mtx_);
-
-                    auto a = std::make_shared<mirinae::RenderActor>(*device_);
-                    a->init(mirinae::MAX_FRAMES_IN_FLIGHT, *desclayout_);
-                    mactor.actor_ = a;
-                }
+                this->update_ubuf(e, mactor, reg, *rp_ctxt_, *device_);
             }
 
             return;
         }
 
-    private:
+        static bool load_model(
+            mirinae::cpnt::MdlActorStatic& mactor,
+            mirinae::IModelManager& model_mgr
+        ) {
+            if (mactor.model_)
+                return true;
+
+            std::lock_guard<std::mutex> lock(g_model_mtx);
+
+            const auto& mdl_path = mactor.model_path_;
+            const auto res = model_mgr.request_static(mdl_path);
+            if (dal::ReqResult::loading == res) {
+                return false;
+            } else if (dal::ReqResult::ready != res) {
+                const auto path_str = mdl_path.u8string();
+                SPDLOG_WARN("Failed to get model: {}", path_str);
+                mactor.model_path_ = "Sung/rickroll.dun/rickroll.dmd";
+                return false;
+            }
+
+            mactor.model_ = model_mgr.get_static(mdl_path);
+            if (!mactor.model_) {
+                const auto path_str = mdl_path.u8string();
+                SPDLOG_WARN("Failed to get model: {}", path_str);
+                return false;
+            }
+
+            return true;
+        }
+
+        static bool create_actor(
+            mirinae::cpnt::MdlActorStatic& mactor,
+            mirinae::DesclayoutManager& desclayout,
+            mirinae::VulkanDevice& device
+        ) {
+            if (mactor.actor_)
+                return true;
+
+            std::lock_guard<std::mutex> lock(g_actor_mtx);
+
+            auto a = std::make_shared<mirinae::RenderActor>(device);
+            a->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout);
+            mactor.actor_ = a;
+            return true;
+        }
+
+        static bool update_ubuf(
+            const entt::entity e,
+            mirinae::cpnt::MdlActorStatic& mactor,
+            const entt::registry& reg,
+            const mirinae::RpContext& rp_ctxt,
+            mirinae::VulkanDevice& device
+        ) {
+            auto actor = mactor.get_actor<mirinae::RenderActor>();
+
+            glm::dmat4 model_mat(1);
+            if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e))
+                model_mat = tform->make_model_mat();
+            const auto vm = rp_ctxt.view_mat_ * model_mat;
+            const auto pvm = rp_ctxt.proj_mat_ * vm;
+
+            mirinae::U_GbufActor udata;
+            udata.model = model_mat;
+            udata.view_model = vm;
+            udata.pvm = pvm;
+
+            actor->udpate_ubuf(
+                rp_ctxt.f_index_.get(), udata, device.mem_alloc()
+            );
+
+            return true;
+        }
+
         entt::registry* reg_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
         mirinae::IModelManager* model_mgr_ = nullptr;
+        mirinae::RpContext* rp_ctxt_ = nullptr;
+        mirinae::RpResources* rp_res_ = nullptr;
         mirinae::DesclayoutManager* desclayout_ = nullptr;
-
-        std::mutex model_mtx_;
-        std::mutex actor_mtx_;
     };
 
 
@@ -946,11 +1073,15 @@ namespace { namespace task {
             entt::registry& reg,
             mirinae::VulkanDevice& device,
             mirinae::IModelManager& model_mgr,
+            mirinae::RpContext& rp_ctxt,
+            mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayout
         ) {
             reg_ = &reg;
             device_ = &device;
             model_mgr_ = &model_mgr;
+            rp_ctxt_ = &rp_ctxt;
+            rp_res_ = &rp_res;
             desclayout_ = &desclayout;
         }
 
@@ -958,6 +1089,7 @@ namespace { namespace task {
             this->set_size(reg_->view<mirinae::cpnt::MdlActorSkinned>().size());
         }
 
+    private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             namespace cpnt = mirinae::cpnt;
 
@@ -970,50 +1102,256 @@ namespace { namespace task {
                 const auto e = *it;
                 auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
 
-                if (!mactor.model_) {
-                    std::lock_guard<std::mutex> lock(model_mtx_);
+                if (!this->load_model(mactor, *model_mgr_))
+                    continue;
 
-                    const auto mdl_path = mactor.model_path_;
-                    const auto res = model_mgr_->request_skinned(mdl_path);
-                    if (dal::ReqResult::loading == res) {
-                        continue;
-                    } else if (dal::ReqResult::ready != res) {
-                        const auto path_str = mdl_path.u8string();
-                        SPDLOG_WARN("Failed to get model: {}", path_str);
-                        continue;
-                    }
+                if (!this->create_actor(mactor, *desclayout_, *device_))
+                    continue;
 
-                    auto model = model_mgr_->get_skinned(mdl_path);
-                    if (!model) {
-                        const auto path_str = mdl_path.u8string();
-                        SPDLOG_WARN("Failed to get model: {}", path_str);
-                        continue;
-                    }
-
-                    mactor.model_ = model;
-                    mactor.anim_state_.set_skel_anim(model->skel_anim_);
-                }
-
-                if (!mactor.actor_) {
-                    std::lock_guard<std::mutex> lock(actor_mtx_);
-
-                    auto a = std::make_shared<mirinae::RenderActorSkinned>(
-                        *device_
-                    );
-                    a->init(mirinae::MAX_FRAMES_IN_FLIGHT, *desclayout_);
-                    mactor.actor_ = a;
-                }
+                this->update_ubuf(e, mactor, reg, *rp_ctxt_, *device_);
             }
         }
 
-    private:
+        static bool load_model(
+            mirinae::cpnt::MdlActorSkinned& mactor,
+            mirinae::IModelManager& model_mgr
+        ) {
+            if (mactor.model_)
+                return true;
+
+            std::lock_guard<std::mutex> lock(g_model_mtx);
+
+            const auto mdl_path = mactor.model_path_;
+            const auto res = model_mgr.request_skinned(mdl_path);
+            if (dal::ReqResult::loading == res) {
+                return false;
+            } else if (dal::ReqResult::ready != res) {
+                const auto path_str = mdl_path.u8string();
+                SPDLOG_WARN("Failed to get model: {}", path_str);
+                return false;
+            }
+
+            auto model = model_mgr.get_skinned(mdl_path);
+            if (!model) {
+                const auto path_str = mdl_path.u8string();
+                SPDLOG_WARN("Failed to get model: {}", path_str);
+                return false;
+            }
+
+            mactor.model_ = model;
+            mactor.anim_state_.set_skel_anim(model->skel_anim_);
+
+            return true;
+        }
+
+        static bool create_actor(
+            mirinae::cpnt::MdlActorSkinned& mactor,
+            mirinae::DesclayoutManager& desclayout,
+            mirinae::VulkanDevice& device
+        ) {
+            if (mactor.actor_)
+                return true;
+
+            std::lock_guard<std::mutex> lock(g_actor_mtx);
+
+            auto a = std::make_shared<mirinae::RenderActorSkinned>(device);
+            a->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout);
+            mactor.actor_ = a;
+            return true;
+        }
+
+        static bool update_ubuf(
+            const entt::entity e,
+            mirinae::cpnt::MdlActorSkinned& mactor,
+            const entt::registry& reg,
+            const mirinae::RpContext& rp_ctxt,
+            mirinae::VulkanDevice& device
+        ) {
+            auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
+
+            glm::dmat4 model_mat(1);
+            if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e))
+                model_mat = tform->make_model_mat();
+            const auto vm = rp_ctxt.view_mat_ * model_mat;
+            const auto pvm = rp_ctxt.proj_mat_ * vm;
+
+            mirinae::U_GbufActorSkinned udata;
+            udata.view_model = vm;
+            udata.pvm = pvm;
+
+            mactor.anim_state_.sample_anim(
+                udata.joint_transforms_,
+                mirinae::MAX_JOINTS,
+                rp_ctxt.cosmos_->clock()
+            );
+
+            actor->udpate_ubuf(
+                rp_ctxt.f_index_.get(), udata, device.mem_alloc()
+            );
+
+            return true;
+        }
+
         entt::registry* reg_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
         mirinae::IModelManager* model_mgr_ = nullptr;
+        mirinae::RpContext* rp_ctxt_ = nullptr;
+        mirinae::RpResources* rp_res_ = nullptr;
         mirinae::DesclayoutManager* desclayout_ = nullptr;
+    };
 
-        std::mutex model_mtx_;
-        std::mutex actor_mtx_;
+
+    class UpdateDlight : public mirinae::DependingTask {
+
+    public:
+        void init(
+            mirinae::CosmosSimulator& cosmos, mirinae::Swapchain& swhain
+        ) {
+            cosmos_ = &cosmos;
+            swhain_ = &swhain;
+        }
+
+        void prepare() {
+            this->set_size(cosmos_->reg().view<mirinae::cpnt::DLight>().size());
+        }
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            namespace cpnt = mirinae::cpnt;
+
+            auto& reg = cosmos_->reg();
+
+            const auto e_cam = cosmos_->scene().main_camera_;
+            auto cam = reg.try_get<cpnt::StandardCamera>(e_cam);
+            auto cam_view = reg.try_get<cpnt::Transform>(e_cam);
+
+            if (cam == nullptr || cam_view == nullptr) {
+                SPDLOG_WARN("Not a camera: {}", static_cast<uint32_t>(e_cam));
+                return;
+            }
+
+            const auto view_inv = glm::inverse(cam_view->make_view_mat());
+
+            auto view = reg.view<cpnt::DLight>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+            for (auto it = begin; it != end; ++it) {
+                const auto e = *it;
+                auto& light = reg.get<cpnt::DLight>(e);
+
+                auto tfrom = reg.try_get<cpnt::Transform>(e);
+                if (!tfrom) {
+                    SPDLOG_WARN(
+                        "DLight without transform: {}",
+                        static_cast<uint32_t>(e_cam)
+                    );
+                    continue;
+                }
+
+                tfrom->pos_ = cam_view->pos_;
+                light.cascades_.update(
+                    swhain_->calc_ratio(), view_inv, cam->proj_, light, *tfrom
+                );
+            }
+        }
+
+        mirinae::CosmosSimulator* cosmos_ = nullptr;
+        mirinae::Swapchain* swhain_;
+    };
+
+
+    class CompoUbuf : public mirinae::DependingTask {
+
+    public:
+        void init(
+            ::RpStatesTransp& rp_states_transp,
+            entt::registry& reg,
+            mirinae::VulkanDevice& device,
+            mirinae::RpContext& rp_ctxt
+        ) {
+            reg_ = &reg;
+            device_ = &device;
+            rp_ctxt_ = &rp_ctxt;
+            rp_states_transp_ = &rp_states_transp;
+        }
+
+        void prepare() {}
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            this->update_ubuf(*rp_states_transp_, *reg_, *rp_ctxt_, *device_);
+        }
+
+        static bool update_ubuf(
+            ::RpStatesTransp& rp_states_transp,
+            const entt::registry& reg,
+            const mirinae::RpContext& rp_ctxt,
+            mirinae::VulkanDevice& device
+        ) {
+            namespace cpnt = mirinae::cpnt;
+
+            mirinae::U_CompoMain ubuf_data;
+            ubuf_data.set_proj(rp_ctxt.proj_mat_).set_view(rp_ctxt.view_mat_);
+
+            for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                const auto& l = reg.get<cpnt::DLight>(e);
+                const auto& t = reg.get<cpnt::Transform>(e);
+                const auto& cascade = l.cascades_;
+                const auto& cascades = cascade.cascades_;
+
+                for (size_t i = 0; i < cascades.size(); ++i)
+                    ubuf_data.set_dlight_mat(i, cascades.at(i).light_mat_);
+
+                ubuf_data
+                    .set_dlight_dir(l.calc_to_light_dir(rp_ctxt.view_mat_, t))
+                    .set_dlight_color(l.color_.scaled_color())
+                    .set_dlight_cascade_depths(cascade.far_depths_);
+                break;
+            }
+
+            for (auto e : reg.view<cpnt::SLight, cpnt::Transform>()) {
+                const auto& l = reg.get<cpnt::SLight>(e);
+                const auto& t = reg.get<cpnt::Transform>(e);
+                ubuf_data.set_slight_mat(l.make_light_mat(t))
+                    .set_slight_pos(l.calc_view_space_pos(rp_ctxt.view_mat_, t))
+                    .set_slight_dir(l.calc_to_light_dir(rp_ctxt.view_mat_, t))
+                    .set_slight_color(l.color_.scaled_color())
+                    .set_slight_inner_angle(l.inner_angle_)
+                    .set_slight_outer_angle(l.outer_angle_)
+                    .set_slight_max_dist(l.max_distance_);
+                break;
+            }
+
+            size_t i = 0;
+            for (auto e : reg.view<cpnt::VPLight, cpnt::Transform>()) {
+                if (i >= 8)
+                    break;
+
+                const auto& l = reg.get<cpnt::VPLight>(e);
+                const auto& t = reg.get<cpnt::Transform>(e);
+                ubuf_data.set_vpl_color(i, l.color_.scaled_color())
+                    .set_vpl_pos(i, t.pos_);
+
+                ++i;
+            }
+
+            for (auto e : reg.view<cpnt::AtmosphereSimple>()) {
+                const auto& atm = reg.get<cpnt::AtmosphereSimple>(e);
+                ubuf_data.set_fog_color(atm.fog_color_)
+                    .set_fog_density(atm.fog_density_);
+                break;
+            }
+
+            rp_states_transp.ubufs_.at(rp_ctxt.f_index_.get())
+                .set_data(ubuf_data, device.mem_alloc());
+
+            return true;
+        }
+
+        entt::registry* reg_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
+        mirinae::RpContext* rp_ctxt_ = nullptr;
+        ::RpStatesTransp* rp_states_transp_ = nullptr;
     };
 
 
@@ -1021,21 +1359,31 @@ namespace { namespace task {
 
     public:
         RenderStage() : mirinae::StageTask("vulan renderer") {
-            init_static_.succeed(this);
-            init_skinned_.succeed(&init_static_);
-            fence_.succeed(&init_skinned_);
+            update_ren_ctxt_.succeed(this);
+            init_static_.succeed(&update_ren_ctxt_);
+            init_skinned_.succeed(&update_ren_ctxt_);
+            update_dlight_.succeed(&update_ren_ctxt_);
+            compo_ubuf_.succeed(&update_dlight_);
+            fence_.succeed(&init_static_, &init_skinned_, &compo_ubuf_);
         }
 
+    private:
         enki::ITaskSet* get_fence() override { return &fence_; }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            update_ren_ctxt_.prepare();
             init_static_.prepare();
             init_skinned_.prepare();
+            update_dlight_.prepare();
+            compo_ubuf_.prepare();
         }
 
     public:
+        UpdateRenContext update_ren_ctxt_;
         InitStaticModel init_static_;
         InitSkinnedModel init_skinned_;
+        UpdateDlight update_dlight_;
+        CompoUbuf compo_ubuf_;
 
     private:
         mirinae::FenceTask fence_;
@@ -1084,6 +1432,12 @@ namespace {
             rp_res_.shadow_maps_ = mirinae::rp::create_shadow_maps_bundle(
                 device_
             );
+
+            // Render pass context
+            {
+                ren_ctxt.rp_res_ = &rp_res_;
+                ren_ctxt.cosmos_ = cosmos_;
+            }
 
             // Render graph
             {
@@ -1269,40 +1623,45 @@ namespace {
         void register_tasks(mirinae::TaskGraph& tasks) override {
             auto stage = tasks.emplace_back<::task::RenderStage>();
 
-            stage->init_static_.init(
-                cosmos_->reg(), device_, *model_man_, desclayout_
+            stage->update_ren_ctxt_.init(
+                ren_ctxt, framesync_, cosmos_->scene(), swapchain_, cmd_buf_
             );
+
+            stage->init_static_.init(
+                cosmos_->reg(),
+                device_,
+                *model_man_,
+                ren_ctxt,
+                rp_res_,
+                desclayout_
+            );
+
             stage->init_skinned_.init(
-                cosmos_->reg(), device_, *model_man_, desclayout_
+                cosmos_->reg(),
+                device_,
+                *model_man_,
+                ren_ctxt,
+                rp_res_,
+                desclayout_
+            );
+
+            stage->update_dlight_.init(*cosmos_, swapchain_);
+
+            stage->compo_ubuf_.init(
+                rp_states_transp_, cosmos_->reg(), device_, ren_ctxt
             );
         }
 
         void do_frame() override {
-            auto& scene = cosmos_->scene();
-            auto& clock = scene.clock();
-            const auto t = clock.t();
-            const auto delta_time = clock.dt();
-
-            auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
-                cosmos_->scene().main_camera_
-            );
-            auto& cam_view = cosmos_->reg().get<mirinae::cpnt::Transform>(
-                cosmos_->scene().main_camera_
-            );
-
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
                 return;
             }
             const auto image_index = image_index_opt.value();
 
-            const auto proj_mat = cam.proj_.make_proj_mat(
-                swapchain_.width(), swapchain_.height()
+            auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
+                cosmos_->scene().main_camera_
             );
-            const auto proj_inv = glm::inverse(proj_mat);
-            const auto view_mat = cam_view.make_view_mat();
-            const auto view_inv = glm::inverse(view_mat);
-            const auto pv_mat = proj_mat * view_mat;
 
             // Update widgets
             mirinae::WidgetRenderUniData widget_ren_data;
@@ -1312,32 +1671,12 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            ren_ctxt.view_frustum_.update(proj_mat, view_mat);
-            ren_ctxt.f_index_ = framesync_.get_frame_index();
             ren_ctxt.i_index_ = image_index;
-            ren_ctxt.proj_mat_ = proj_mat;
-            ren_ctxt.view_mat_ = view_mat;
-            ren_ctxt.view_pos_ = cam_view.pos_;
-            ren_ctxt.rp_res_ = &rp_res_;
-            ren_ctxt.cosmos_ = cosmos_;
-            ren_ctxt.cmdbuf_ = cmd_buf_.at(framesync_.get_frame_index().get());
             ren_ctxt.draw_sheet_ = std::make_shared<mirinae::DrawSheet>(
                 make_draw_sheet(cosmos_->scene())
             );
 
             namespace cpnt = mirinae::cpnt;
-            auto& reg = cosmos_->reg();
-            for (auto& l : reg.view<cpnt::DLight, cpnt::Transform>()) {
-                auto& light = reg.get<cpnt::DLight>(l);
-                auto& tfrom = reg.get<cpnt::Transform>(l);
-
-                tfrom.pos_ = cam_view.pos_;
-                light.cascades_.update(
-                    swapchain_.calc_ratio(), view_inv, cam.proj_, light, tfrom
-                );
-            }
-
-            this->update_ubufs(proj_mat, view_mat);
 
             // Begin recording
             {
@@ -1373,6 +1712,11 @@ namespace {
                     rp_
                 );
             }
+            const auto& proj_mat = ren_ctxt.proj_mat_;
+            const auto& view_mat = ren_ctxt.view_mat_;
+            const auto proj_inv = glm::inverse(proj_mat);
+            const auto view_inv = glm::inverse(view_mat);
+            const auto pv_mat = proj_mat * view_mat;
             for (auto& tri : ren_ctxt.debug_ren_.tri_world_) {
                 rp_states_debug_mesh_.draw(
                     ren_ctxt.cmdbuf_,
@@ -1610,127 +1954,6 @@ namespace {
 
             framesync_.get_cur_in_flight_fence().reset(device_.logi_device());
             return image_index_opt.value();
-        }
-
-        void update_ubufs(
-            const glm::dmat4& proj_mat, const glm::dmat4& view_mat
-        ) {
-            namespace cpnt = mirinae::cpnt;
-            auto& clock = cosmos_->scene().clock();
-
-            auto& scene = cosmos_->scene();
-            auto& reg = cosmos_->reg();
-
-            // Update ubuf: U_GbufActor
-            for (const auto e : reg.view<cpnt::MdlActorStatic>()) {
-                auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
-                auto actor = mactor.get_actor<mirinae::RenderActor>();
-                if (!actor)
-                    continue;
-
-                glm::dmat4 model_mat(1);
-                if (auto tform = reg.try_get<cpnt::Transform>(e))
-                    model_mat = tform->make_model_mat();
-                const auto vm = view_mat * model_mat;
-                const auto pvm = proj_mat * vm;
-
-                mirinae::U_GbufActor udata;
-                udata.model = model_mat;
-                udata.view_model = vm;
-                udata.pvm = pvm;
-
-                actor->udpate_ubuf(
-                    framesync_.get_frame_index().get(),
-                    udata,
-                    device_.mem_alloc()
-                );
-            }
-
-            // Update ubuf: U_GbufActorSkinned
-            for (const auto e : reg.view<cpnt::MdlActorSkinned>()) {
-                auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
-                auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
-                if (!actor)
-                    continue;
-
-                glm::dmat4 model_mat(1);
-                if (auto tform = reg.try_get<cpnt::Transform>(e))
-                    model_mat = tform->make_model_mat();
-                const auto vm = view_mat * model_mat;
-                const auto pvm = proj_mat * vm;
-
-                mirinae::U_GbufActorSkinned udata;
-                udata.view_model = vm;
-                udata.pvm = pvm;
-
-                mactor.anim_state_.sample_anim(
-                    udata.joint_transforms_, mirinae::MAX_JOINTS, clock
-                );
-
-                actor->udpate_ubuf(
-                    framesync_.get_frame_index().get(),
-                    udata,
-                    device_.mem_alloc()
-                );
-            }
-
-            // Update ubuf: U_CompoMain
-            {
-                mirinae::U_CompoMain ubuf_data;
-                ubuf_data.set_proj(proj_mat).set_view(view_mat);
-
-                for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
-                    const auto& l = reg.get<cpnt::DLight>(e);
-                    const auto& t = reg.get<cpnt::Transform>(e);
-                    const auto& cascade = l.cascades_;
-                    const auto& cascades = cascade.cascades_;
-
-                    for (size_t i = 0; i < cascades.size(); ++i)
-                        ubuf_data.set_dlight_mat(i, cascades.at(i).light_mat_);
-
-                    ubuf_data.set_dlight_dir(l.calc_to_light_dir(view_mat, t))
-                        .set_dlight_color(l.color_.scaled_color())
-                        .set_dlight_cascade_depths(cascade.far_depths_);
-                    break;
-                }
-
-                for (auto e : reg.view<cpnt::SLight, cpnt::Transform>()) {
-                    const auto& l = reg.get<cpnt::SLight>(e);
-                    const auto& t = reg.get<cpnt::Transform>(e);
-                    ubuf_data.set_slight_mat(l.make_light_mat(t))
-                        .set_slight_pos(l.calc_view_space_pos(view_mat, t))
-                        .set_slight_dir(l.calc_to_light_dir(view_mat, t))
-                        .set_slight_color(l.color_.scaled_color())
-                        .set_slight_inner_angle(l.inner_angle_)
-                        .set_slight_outer_angle(l.outer_angle_)
-                        .set_slight_max_dist(l.max_distance_);
-                    break;
-                }
-
-                size_t i = 0;
-                for (auto e : reg.view<cpnt::VPLight, cpnt::Transform>()) {
-                    if (i >= 8)
-                        break;
-
-                    const auto& l = reg.get<cpnt::VPLight>(e);
-                    const auto& t = reg.get<cpnt::Transform>(e);
-                    ubuf_data.set_vpl_color(i, l.color_.scaled_color())
-                        .set_vpl_pos(i, t.pos_);
-
-                    ++i;
-                }
-
-                for (auto e : cosmos_->reg().view<cpnt::AtmosphereSimple>()) {
-                    const auto& atm =
-                        cosmos_->reg().get<cpnt::AtmosphereSimple>(e);
-                    ubuf_data.set_fog_color(atm.fog_color_)
-                        .set_fog_density(atm.fog_density_);
-                    break;
-                }
-
-                rp_states_transp_.ubufs_.at(framesync_.get_frame_index().get())
-                    .set_data(ubuf_data, device_.mem_alloc());
-            }
         }
 
         // This must be the first member variable
