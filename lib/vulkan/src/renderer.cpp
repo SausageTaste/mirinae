@@ -10,6 +10,7 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/script.hpp"
+#include "mirinae/lightweight/task.hpp"
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/cmdbuf.hpp"
@@ -859,6 +860,190 @@ namespace {
 }  // namespace
 
 
+// Tasks
+namespace { namespace task {
+
+    class InitStaticModel : public mirinae::DependingTask {
+
+    public:
+        void init(
+            entt::registry& reg,
+            mirinae::VulkanDevice& device,
+            mirinae::IModelManager& model_mgr,
+            mirinae::DesclayoutManager& desclayout
+        ) {
+            reg_ = &reg;
+            device_ = &device;
+            model_mgr_ = &model_mgr;
+            desclayout_ = &desclayout;
+        }
+
+        void prepare() {
+            this->set_size(reg_->view<mirinae::cpnt::MdlActorStatic>().size());
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            namespace cpnt = mirinae::cpnt;
+
+            auto& reg = *reg_;
+            auto view = reg.view<cpnt::MdlActorStatic>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+
+            for (auto it = begin; it != end; ++it) {
+                const auto e = *it;
+                auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
+
+                if (!mactor.model_) {
+                    std::lock_guard<std::mutex> lock(model_mtx_);
+
+                    const auto& mdl_path = mactor.model_path_;
+                    const auto res = model_mgr_->request_static(mdl_path);
+                    if (dal::ReqResult::loading == res) {
+                        continue;
+                    } else if (dal::ReqResult::ready != res) {
+                        const auto path_str = mdl_path.u8string();
+                        SPDLOG_WARN("Failed to get model: {}", path_str);
+                        mactor.model_path_ = "Sung/rickroll.dun/rickroll.dmd";
+                        continue;
+                    }
+
+                    mactor.model_ = model_mgr_->get_static(mdl_path);
+                    if (!mactor.model_) {
+                        const auto path_str = mdl_path.u8string();
+                        SPDLOG_WARN("Failed to get model: {}", path_str);
+                        continue;
+                    }
+                }
+
+                if (!mactor.actor_) {
+                    std::lock_guard<std::mutex> lock(actor_mtx_);
+
+                    auto a = std::make_shared<mirinae::RenderActor>(*device_);
+                    a->init(mirinae::MAX_FRAMES_IN_FLIGHT, *desclayout_);
+                    mactor.actor_ = a;
+                }
+            }
+
+            return;
+        }
+
+    private:
+        entt::registry* reg_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
+        mirinae::IModelManager* model_mgr_ = nullptr;
+        mirinae::DesclayoutManager* desclayout_ = nullptr;
+
+        std::mutex model_mtx_;
+        std::mutex actor_mtx_;
+    };
+
+
+    class InitSkinnedModel : public mirinae::DependingTask {
+
+    public:
+        void init(
+            entt::registry& reg,
+            mirinae::VulkanDevice& device,
+            mirinae::IModelManager& model_mgr,
+            mirinae::DesclayoutManager& desclayout
+        ) {
+            reg_ = &reg;
+            device_ = &device;
+            model_mgr_ = &model_mgr;
+            desclayout_ = &desclayout;
+        }
+
+        void prepare() {
+            this->set_size(reg_->view<mirinae::cpnt::MdlActorSkinned>().size());
+        }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            namespace cpnt = mirinae::cpnt;
+
+            auto& reg = *reg_;
+            auto view = reg.view<cpnt::MdlActorSkinned>();
+            auto begin = view.begin() + range.start;
+            auto end = view.begin() + range.end;
+
+            for (auto it = begin; it != end; ++it) {
+                const auto e = *it;
+                auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
+
+                if (!mactor.model_) {
+                    std::lock_guard<std::mutex> lock(model_mtx_);
+
+                    const auto mdl_path = mactor.model_path_;
+                    const auto res = model_mgr_->request_skinned(mdl_path);
+                    if (dal::ReqResult::loading == res) {
+                        continue;
+                    } else if (dal::ReqResult::ready != res) {
+                        const auto path_str = mdl_path.u8string();
+                        SPDLOG_WARN("Failed to get model: {}", path_str);
+                        continue;
+                    }
+
+                    auto model = model_mgr_->get_skinned(mdl_path);
+                    if (!model) {
+                        const auto path_str = mdl_path.u8string();
+                        SPDLOG_WARN("Failed to get model: {}", path_str);
+                        continue;
+                    }
+
+                    mactor.model_ = model;
+                    mactor.anim_state_.set_skel_anim(model->skel_anim_);
+                }
+
+                if (!mactor.actor_) {
+                    std::lock_guard<std::mutex> lock(actor_mtx_);
+
+                    auto a = std::make_shared<mirinae::RenderActorSkinned>(
+                        *device_
+                    );
+                    a->init(mirinae::MAX_FRAMES_IN_FLIGHT, *desclayout_);
+                    mactor.actor_ = a;
+                }
+            }
+        }
+
+    private:
+        entt::registry* reg_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
+        mirinae::IModelManager* model_mgr_ = nullptr;
+        mirinae::DesclayoutManager* desclayout_ = nullptr;
+
+        std::mutex model_mtx_;
+        std::mutex actor_mtx_;
+    };
+
+
+    class RenderStage : public mirinae::StageTask {
+
+    public:
+        RenderStage() : mirinae::StageTask("vulan renderer") {
+            init_static_.succeed(this);
+            init_skinned_.succeed(&init_static_);
+            fence_.succeed(&init_skinned_);
+        }
+
+        enki::ITaskSet* get_fence() override { return &fence_; }
+
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            init_static_.prepare();
+            init_skinned_.prepare();
+        }
+
+    public:
+        InitStaticModel init_static_;
+        InitSkinnedModel init_skinned_;
+
+    private:
+        mirinae::FenceTask fence_;
+    };
+
+}}  // namespace ::task
+
+
 // Engine
 namespace {
 
@@ -1081,6 +1266,17 @@ namespace {
             framesync_.destroy(device_.logi_device());
         }
 
+        void register_tasks(mirinae::TaskGraph& tasks) override {
+            auto stage = tasks.emplace_back<::task::RenderStage>();
+
+            stage->init_static_.init(
+                cosmos_->reg(), device_, *model_man_, desclayout_
+            );
+            stage->init_skinned_.init(
+                cosmos_->reg(), device_, *model_man_, desclayout_
+            );
+        }
+
         void do_frame() override {
             auto& scene = cosmos_->scene();
             auto& clock = scene.clock();
@@ -1093,8 +1289,6 @@ namespace {
             auto& cam_view = cosmos_->reg().get<mirinae::cpnt::Transform>(
                 cosmos_->scene().main_camera_
             );
-
-            this->update_unloaded_models();
 
             const auto image_index_opt = this->try_acquire_image();
             if (!image_index_opt) {
@@ -1416,82 +1610,6 @@ namespace {
 
             framesync_.get_cur_in_flight_fence().reset(device_.logi_device());
             return image_index_opt.value();
-        }
-
-        void update_unloaded_models() {
-            namespace cpnt = mirinae::cpnt;
-
-            auto& scene = cosmos_->scene();
-            auto& reg = cosmos_->reg();
-
-            for (auto e : reg.view<cpnt::MdlActorStatic>()) {
-                auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
-
-                if (!mactor.model_) {
-                    const auto mdl_path = mactor.model_path_;
-                    const auto res = model_man_->request_static(mdl_path);
-                    if (dal::ReqResult::loading == res) {
-                        continue;
-                    } else if (dal::ReqResult::ready != res) {
-                        const auto path_str = mdl_path.u8string();
-                        SPDLOG_WARN("Failed to get model: {}", path_str);
-                        reg.destroy(e);
-                        continue;
-                    }
-
-                    mactor.model_ = model_man_->get_static(mdl_path);
-                    if (!mactor.model_) {
-                        const auto path_str = mdl_path.u8string();
-                        SPDLOG_WARN("Failed to get model: {}", path_str);
-                        reg.destroy(e);
-                        continue;
-                    }
-                }
-
-                if (!mactor.actor_) {
-                    auto a = std::make_shared<mirinae::RenderActor>(device_);
-                    a->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                    mactor.actor_ = a;
-                }
-            }
-
-            for (auto e : reg.view<cpnt::MdlActorSkinned>()) {
-                auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
-
-                if (!mactor.model_) {
-                    const auto mdl_path = mactor.model_path_;
-                    const auto res = model_man_->request_skinned(mdl_path);
-                    if (dal::ReqResult::loading == res) {
-                        continue;
-                    } else if (dal::ReqResult::ready != res) {
-                        const auto path_str = mdl_path.u8string();
-                        SPDLOG_WARN("Failed to get model: {}", path_str);
-                        reg.destroy(e);
-                        continue;
-                    }
-
-                    auto model = model_man_->get_skinned(mdl_path);
-                    if (!model) {
-                        const auto path_str = mdl_path.u8string();
-                        SPDLOG_WARN("Failed to get model: {}", path_str);
-                        reg.destroy(e);
-                        continue;
-                    }
-
-                    mactor.model_ = model;
-                    mactor.anim_state_.set_skel_anim(model->skel_anim_);
-                }
-
-                if (!mactor.actor_) {
-                    auto a = std::make_shared<mirinae::RenderActorSkinned>(
-                        device_
-                    );
-                    a->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout_);
-                    mactor.actor_ = a;
-                }
-            }
-
-            scene.entt_without_model_.clear();
         }
 
         void update_ubufs(

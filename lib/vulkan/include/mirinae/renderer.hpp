@@ -15,11 +15,15 @@
 
 namespace mirinae {
 
+    class TaskGraph;
+
+
     class IRenderer : public IInputProcessor {
 
     public:
         virtual ~IRenderer() = default;
 
+        virtual void register_tasks(TaskGraph& tasks) = 0;
         virtual void do_frame() = 0;
         virtual void notify_window_resize(uint32_t width, uint32_t height) = 0;
 
