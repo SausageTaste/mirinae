@@ -14,6 +14,9 @@
 
 namespace {
 
+    constexpr double ENVMAP_UPDATE_INVERVAL = 10;
+
+
     struct LocalRpReg {
         std::unique_ptr<mirinae::IRenderPassBundle> base_;
         std::unique_ptr<mirinae::IRenderPassBundle> diffuse_;
@@ -1169,7 +1172,7 @@ namespace {
         }
 
         void record(const mirinae::RpContext& ctxt) override {
-            if (!timer_.check_if_elapsed(3))
+            if (!timer_.check_if_elapsed(ENVMAP_UPDATE_INVERVAL))
                 return;
 
             auto& reg = ctxt.cosmos_->reg();
