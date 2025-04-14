@@ -12,7 +12,6 @@ ROOT_DIR = utils.find_root_dir()
 ASSET_DIR = os.path.join(ROOT_DIR, "asset")
 GLSL_DIR = os.path.join(ROOT_DIR, "asset", "glsl")
 INCLUDE_DIRECTIVE = "#include"
-PROC_COUNT = 8
 
 INPUT_EXTENSIONS = {
     ".vert",
@@ -101,7 +100,7 @@ def main():
     work_count = 0
     success_count = 0
 
-    with mp.Pool(PROC_COUNT) as pool:
+    with mp.Pool() as pool:
         for result in pool.imap_unordered(__compile_one, __gen_glsl_file()):
             if result is None:
                 continue
