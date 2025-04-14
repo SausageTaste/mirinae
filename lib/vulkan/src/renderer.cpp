@@ -114,6 +114,21 @@ namespace {
     };
 
 
+    class FlagShip {
+
+    public:
+        bool need_resize() const { return need_resize_; }
+        void set_need_resize(bool flag) { need_resize_ = flag; }
+
+        bool dont_render() const { return dont_render_; }
+        void set_dont_render(bool flag) { dont_render_ = flag; }
+
+    private:
+        bool need_resize_{ false };
+        bool dont_render_{ false };
+    };
+
+
     class RpMasters {
 
     public:
@@ -868,16 +883,20 @@ namespace { namespace task {
     public:
         void init(
             mirinae::RpContext& rp_ctxt,
-            const ::FrameSync& framesync,
+            ::FrameSync& framesync,
+            ::FlagShip& flag_ship,
             const mirinae::Scene& scene,
-            const mirinae::Swapchain& swapchain,
-            const std::vector<VkCommandBuffer>& cmd_buffers
+            mirinae::Swapchain& swapchain,
+            const std::vector<VkCommandBuffer>& cmd_buffers,
+            mirinae::VulkanDevice& device
         ) {
             ren_ctxt_ = &rp_ctxt;
             framesync_ = &framesync;
+            flag_ship_ = &flag_ship;
             scene_ = &scene;
             swapchain_ = &swapchain;
             cmd_buffers_ = &cmd_buffers;
+            device_ = &device;
         }
 
         void prepare() {}
@@ -885,23 +904,46 @@ namespace { namespace task {
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             this->update(
-                *ren_ctxt_, *framesync_, *scene_, *swapchain_, *cmd_buffers_
+                *flag_ship_,
+                *framesync_,
+                *scene_,
+                *cmd_buffers_,
+                *ren_ctxt_,
+                *swapchain_,
+                *device_
             );
         }
 
         static void update(
-            mirinae::RpContext& ren_ctxt,
-            const ::FrameSync& framesync,
+            ::FlagShip& flag_ship,
+            ::FrameSync& framesync,
             const mirinae::Scene& scene,
-            const mirinae::Swapchain& swapchain,
-            const std::vector<VkCommandBuffer>& cmd_buffers
+            const std::vector<VkCommandBuffer>& cmd_buffers,
+            mirinae::RpContext& ren_ctxt,
+            mirinae::Swapchain& swapchain,
+            mirinae::VulkanDevice& device
         ) {
             namespace cpnt = mirinae::cpnt;
+
+            if (flag_ship.need_resize()) {
+                flag_ship.set_dont_render(true);
+                return;
+            }
+            const auto i_idx = try_acquire_image(framesync, swapchain, device);
+            if (!i_idx) {
+                flag_ship.set_need_resize(true);
+                flag_ship.set_dont_render(true);
+                return;
+            }
+
+            flag_ship.set_need_resize(false);
+            flag_ship.set_dont_render(false);
 
             const auto e_cam = scene.main_camera_;
             const auto cam = scene.reg_->try_get<cpnt::StandardCamera>(e_cam);
             if (!cam) {
                 SPDLOG_WARN("No camera found in scene.");
+                flag_ship.set_dont_render(true);
                 return;
             }
 
@@ -918,6 +960,7 @@ namespace { namespace task {
             }
 
             ren_ctxt.f_index_ = framesync.get_frame_index();
+            ren_ctxt.i_index_ = i_idx.value();
             ren_ctxt.cmdbuf_ = cmd_buffers.at(ren_ctxt.f_index_.get());
 
             ren_ctxt.view_frustum_.update(
@@ -925,10 +968,29 @@ namespace { namespace task {
             );
         }
 
+        static std::optional<mirinae::ShainImageIndex> try_acquire_image(
+            ::FrameSync& framesync,
+            mirinae::Swapchain& swapchain,
+            mirinae::VulkanDevice& device
+        ) {
+            framesync.get_cur_in_flight_fence().wait(device.logi_device());
+
+            const auto i_idx = swapchain.acquire_next_image(
+                framesync.get_cur_img_ava_semaph().get(), device.logi_device()
+            );
+            if (!i_idx)
+                return std::nullopt;
+
+            framesync.get_cur_in_flight_fence().reset(device.logi_device());
+            return i_idx.value();
+        }
+
+        ::FlagShip* flag_ship_ = nullptr;
+        ::FrameSync* framesync_ = nullptr;
         mirinae::RpContext* ren_ctxt_ = nullptr;
-        const ::FrameSync* framesync_ = nullptr;
+        mirinae::Swapchain* swapchain_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
         const mirinae::Scene* scene_ = nullptr;
-        const mirinae::Swapchain* swapchain_ = nullptr;
         const std::vector<VkCommandBuffer>* cmd_buffers_ = nullptr;
     };
 
@@ -1624,7 +1686,13 @@ namespace {
             auto stage = tasks.emplace_back<::task::RenderStage>();
 
             stage->update_ren_ctxt_.init(
-                ren_ctxt, framesync_, cosmos_->scene(), swapchain_, cmd_buf_
+                ren_ctxt,
+                framesync_,
+                flag_ship_,
+                cosmos_->scene(),
+                swapchain_,
+                cmd_buf_,
+                device_
             );
 
             stage->init_static_.init(
@@ -1653,11 +1721,15 @@ namespace {
         }
 
         void do_frame() override {
-            const auto image_index_opt = this->try_acquire_image();
-            if (!image_index_opt) {
+            if (flag_ship_.need_resize()) {
+                if (::is_fbuf_too_small(fbuf_width_, fbuf_height_))
+                    return;
+
+                this->resize_swapchain(fbuf_width_, fbuf_height_);
+                overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
+                flag_ship_.set_need_resize(false);
                 return;
             }
-            const auto image_index = image_index_opt.value();
 
             auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
                 cosmos_->scene().main_camera_
@@ -1671,7 +1743,6 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            ren_ctxt.i_index_ = image_index;
             ren_ctxt.draw_sheet_ = std::make_shared<mirinae::DrawSheet>(
                 make_draw_sheet(cosmos_->scene())
             );
@@ -1831,7 +1902,7 @@ namespace {
                 mirinae::PresentInfo{}
                     .add_wait_semaph(signal_semaph)
                     .add_swapchain(swapchain_.get())
-                    .add_image_index(image_index.get())
+                    .add_image_index(ren_ctxt.i_index_.get())
                     .queue_present(device_.present_queue());
             }
 
@@ -1925,42 +1996,12 @@ namespace {
             }
         }
 
-        std::optional<mirinae::ShainImageIndex> try_acquire_image() {
-            framesync_.get_cur_in_flight_fence().wait(device_.logi_device());
-
-            if (fbuf_resized_) {
-                if (::is_fbuf_too_small(fbuf_width_, fbuf_height_)) {
-                    fbuf_resized_ = true;
-                } else {
-                    fbuf_resized_ = false;
-                    this->resize_swapchain(fbuf_width_, fbuf_height_);
-                    overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
-                }
-                return std::nullopt;
-            }
-
-            const auto image_index_opt = swapchain_.acquire_next_image(
-                framesync_.get_cur_img_ava_semaph().get(), device_.logi_device()
-            );
-            if (!image_index_opt) {
-                if (::is_fbuf_too_small(fbuf_width_, fbuf_height_)) {
-                    fbuf_resized_ = true;
-                } else {
-                    fbuf_resized_ = false;
-                    this->resize_swapchain(fbuf_width_, fbuf_height_);
-                }
-                return std::nullopt;
-            }
-
-            framesync_.get_cur_in_flight_fence().reset(device_.logi_device());
-            return image_index_opt.value();
-        }
-
         // This must be the first member variable
         mirinae::VulkanDevice device_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
+        ::FlagShip flag_ship_;
         mirinae::rg::RenderGraphDef render_graph_;
         mirinae::RpResources rp_res_;
         mirinae::DesclayoutManager desclayout_;
