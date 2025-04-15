@@ -329,28 +329,11 @@ namespace mirinae {
     ) {
         auto c = std::dynamic_pointer_cast<::ThirdPersonController>(cam_ctrl_);
 
-        {
-            auto& stage = tasks.stages_.emplace_back();
-            stage.task_ = std::make_unique<TaskGlobalInit>(*this);
-        }
-
+        tasks.emplace_back<TaskGlobalInit>(*this);
         scene_.register_tasks(tasks);
-
-        {
-            auto& stage = tasks.stages_.emplace_back();
-            stage.task_ = std::make_unique<TaskControlPreSync>(
-                c, *this, action_map
-            );
-        }
-
+        tasks.emplace_back<TaskControlPreSync>(c, *this, action_map);
         phys_world_.register_tasks(tasks, *scene_.reg_);
-
-        {
-            auto& stage = tasks.stages_.emplace_back();
-            stage.task_ = std::make_unique<TaskControlPostSync>(
-                c, *this, action_map
-            );
-        }
+        tasks.emplace_back<TaskControlPostSync>(c, *this, action_map);
     }
 
     void CosmosSimulator::tick_clock() { clock_.tick(); }

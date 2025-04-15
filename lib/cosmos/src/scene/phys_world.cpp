@@ -1249,8 +1249,7 @@ namespace mirinae {
         }
 
         void register_tasks(TaskGraph& tasks, entt::registry& reg) {
-            auto& stage = tasks.stages_.emplace_back();
-            stage.task_ = std::make_unique<TaskPhysWorld>(
+            tasks.emplace_back<TaskPhysWorld>(
                 states_,
                 reg,
                 physics_system,

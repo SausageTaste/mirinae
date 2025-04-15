@@ -613,8 +613,7 @@ namespace mirinae {
     void Scene::do_frame() { clock_.tick(); }
 
     void Scene::register_tasks(TaskGraph& tasks) {
-        auto& stage = tasks.stages_.emplace_back();
-        stage.task_ = std::make_unique<::TaskEnttUpdate>(*this);
+        tasks.emplace_back<::TaskEnttUpdate>(*this);
     }
 
     entt::entity Scene::find_entt(const std::string& name) const {

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include <daltools/common/task_sys.hpp>
@@ -20,8 +22,8 @@ namespace mirinae {
             (deps_[i++].SetDependency(prev, this), ...);
         }
 
-        void set_size(uint32_t size) { m_SetSize = size; }
-        void set_size(uint64_t size) { m_SetSize = size; }
+        void set_size(uint32_t size);
+        void set_size(uint64_t size);
 
     private:
         std::vector<enki::Dependency> deps_;
@@ -29,8 +31,7 @@ namespace mirinae {
 
 
     struct FenceTask : public DependingTask {
-        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-        }
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override;
     };
 
 
@@ -53,6 +54,11 @@ namespace mirinae {
     public:
         template <typename T, typename... TArgs>
         T* emplace_back(TArgs&&... args) {
+            static_assert(
+                std::is_constructible_v<T, TArgs...>,
+                "T is not constructible with the provided arguments."
+            );
+
             auto& item = stages_.emplace_back();
             auto task = std::make_unique<T>(std::forward<TArgs>(args)...);
             auto ptr = task.get();
@@ -60,13 +66,9 @@ namespace mirinae {
             return ptr;
         }
 
-        void start() {
-            for (auto& stage : stages_) {
-                dal::tasker().AddTaskSetToPipe(stage.task_.get());
-                dal::tasker().WaitforTask(stage.task_->get_fence());
-            }
-        }
+        void start();
 
+    private:
         struct Stage {
             std::unique_ptr<StageTask> task_;
         };
