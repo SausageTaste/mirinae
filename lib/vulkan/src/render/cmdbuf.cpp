@@ -290,7 +290,8 @@ namespace mirinae {
         return *this;
     }
 
-    SubmitInfo& SubmitInfo::add_wait_semaph_color_attach_out(VkSemaphore semaph
+    SubmitInfo& SubmitInfo::add_wait_semaph_color_attach_out(
+        VkSemaphore semaph
     ) {
         return this->add_wait_semaph(
             semaph, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -299,6 +300,16 @@ namespace mirinae {
 
     SubmitInfo& SubmitInfo::add_cmdbuf(VkCommandBuffer cmdbuf) {
         cmdbufs_.push_back(cmdbuf);
+
+        info_.commandBufferCount = static_cast<uint32_t>(cmdbufs_.size());
+        info_.pCommandBuffers = cmdbufs_.data();
+        return *this;
+    }
+
+    SubmitInfo& SubmitInfo::add_cmdbuf(VkCommandBuffer* cmdbuf, size_t count) {
+        for (size_t i = 0; i < count; i++) {
+            cmdbufs_.push_back(cmdbuf[i]);
+        }
 
         info_.commandBufferCount = static_cast<uint32_t>(cmdbufs_.size());
         info_.pCommandBuffers = cmdbufs_.data();
@@ -372,6 +383,26 @@ namespace mirinae {
                 SPDLOG_WARN("Queue present failed: {}", to_str(res));
                 break;
         }
+    }
+
+}  // namespace mirinae
+
+
+namespace mirinae {
+
+    void begin_cmdbuf(VkCommandBuffer cmdbuf) {
+        VkCommandBufferBeginInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        info.flags = 0;
+        info.pInheritanceInfo = nullptr;
+
+        const auto res = vkBeginCommandBuffer(cmdbuf, &info);
+        MIRINAE_ASSERT(VK_SUCCESS == res);
+    }
+
+    void end_cmdbuf(VkCommandBuffer cmdbuf) {
+        const auto res = vkEndCommandBuffer(cmdbuf);
+        MIRINAE_ASSERT(VK_SUCCESS == res);
     }
 
 }  // namespace mirinae

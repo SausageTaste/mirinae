@@ -369,6 +369,7 @@ namespace mirinae {
         SubmitInfo& add_wait_semaph_color_attach_out(VkSemaphore semaph);
 
         SubmitInfo& add_cmdbuf(VkCommandBuffer cmdbuf);
+        SubmitInfo& add_cmdbuf(VkCommandBuffer* cmdbuf, size_t count);
         SubmitInfo& add_signal_semaph(VkSemaphore semaph);
 
         const VkSubmitInfo* get() const;
@@ -400,5 +401,9 @@ namespace mirinae {
         std::vector<VkSwapchainKHR> swapchains_;
         std::vector<uint32_t> image_indices_;
     };
+
+
+    void begin_cmdbuf(VkCommandBuffer cmdbuf);
+    void end_cmdbuf(VkCommandBuffer cmdbuf);
 
 }  // namespace mirinae
