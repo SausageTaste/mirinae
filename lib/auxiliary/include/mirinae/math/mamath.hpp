@@ -121,7 +121,13 @@ namespace mirinae {
         }
 
         glm::tmat4x4<T> make_proj_mat(T view_width, T view_height) const {
-            return make_perspective(fov_, view_width, view_height, near_, far_);
+            return make_perspective(
+                fov_,
+                std::max<T>(view_width, 1),
+                std::max<T>(view_height, 1),
+                near_,
+                far_
+            );
         }
 
         Angle fov_ = Angle::from_deg(60);

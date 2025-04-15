@@ -750,25 +750,9 @@ namespace {
             return VK_PRESENT_MODE_FIFO_KHR;
         }
 
-        VkExtent2D choose_extent(uint32_t fbuf_w, uint32_t fbuf_h) const {
-            if (caps_.currentExtent.width != UINT32_MAX) {
-                return caps_.currentExtent;
-            } else {
-                VkExtent2D actualExtent{ fbuf_w, fbuf_h };
-
-                actualExtent.width = std::clamp(
-                    actualExtent.width,
-                    caps_.minImageExtent.width,
-                    caps_.maxImageExtent.width
-                );
-                actualExtent.height = std::clamp(
-                    actualExtent.height,
-                    caps_.minImageExtent.height,
-                    caps_.maxImageExtent.height
-                );
-
-                return actualExtent;
-            }
+        VkExtent2D choose_extent() const {
+            MIRINAE_ASSERT(caps_.currentExtent.width != UINT32_MAX);
+            return caps_.currentExtent;
         }
 
         uint32_t choose_image_count() const {
@@ -1236,18 +1220,19 @@ namespace mirinae {
 // Swapchain
 namespace mirinae {
 
-    void Swapchain::init(
-        uint32_t fbuf_w, uint32_t fbuf_h, VulkanDevice& vulkan_device
-    ) {
-        this->destroy(vulkan_device.logi_device());
-
+    bool Swapchain::init(VulkanDevice& vulkan_device) {
         auto logi_device = vulkan_device.logi_device();
+        this->destroy(logi_device);
 
         ::SwapChainSupportDetails s_details;
         s_details.init(
             vulkan_device.pimpl_->surface_,
             vulkan_device.pimpl_->phys_device_.get()
         );
+
+        const auto extent = s_details.choose_extent();
+        if (extent.width == 0 || extent.height == 0)
+            return false;
 
         std::array<uint32_t, 2> queue_family_indices{
             vulkan_device.pimpl_->phys_device_.graphics_family_index().value(),
@@ -1262,7 +1247,7 @@ namespace mirinae {
             cinfo.minImageCount = s_details.choose_image_count();
             cinfo.imageFormat = s_details.choose_format().format;
             cinfo.imageColorSpace = s_details.choose_format().colorSpace;
-            cinfo.imageExtent = s_details.choose_extent(fbuf_w, fbuf_h);
+            cinfo.imageExtent = s_details.choose_extent();
             cinfo.imageArrayLayers = 1;
             cinfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
             cinfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
@@ -1282,10 +1267,11 @@ namespace mirinae {
             }
         }
 
-        MIRINAE_ASSERT(
-            VK_SUCCESS ==
-            vkCreateSwapchainKHR(logi_device, &cinfo, NULL, &swapchain_)
-        );
+        if (VK_SUCCESS !=
+            vkCreateSwapchainKHR(logi_device, &cinfo, NULL, &swapchain_)) {
+            SPDLOG_ERROR("Failed to create swapchain!");
+            return false;
+        }
 
         // Store some data
         {
@@ -1319,16 +1305,31 @@ namespace mirinae {
             iv_builder.image(images_.at(i));
             views_.push_back(iv_builder.build(vulkan_device));
         }
+
+        return true;
     }
 
     void Swapchain::destroy(VkDevice logi_device) {
         for (auto view : views_) vkDestroyImageView(logi_device, view, nullptr);
         views_.clear();
+        images_.clear();
+        format_ = VK_FORMAT_UNDEFINED;
+        extent_ = { 0, 0 };
 
         if (VK_NULL_HANDLE != swapchain_) {
             vkDestroySwapchainKHR(logi_device, swapchain_, nullptr);
             swapchain_ = VK_NULL_HANDLE;
         }
+    }
+
+    bool Swapchain::is_ready() const {
+        if (VK_NULL_HANDLE == swapchain_)
+            return false;
+        if (images_.empty())
+            return false;
+        if (views_.empty())
+            return false;
+        return true;
     }
 
     std::optional<ShainImageIndex> Swapchain::acquire_next_image(
@@ -1346,8 +1347,10 @@ namespace mirinae {
 
         switch (result) {
             case VK_SUCCESS:
-            case VK_SUBOPTIMAL_KHR:
                 return ShainImageIndex{ imageIndex };
+            case VK_SUBOPTIMAL_KHR:
+                SPDLOG_INFO("Swapchain suboptimal");
+                return std::nullopt;
             case VK_ERROR_OUT_OF_DATE_KHR:
                 SPDLOG_INFO("Swapchain out of date");
                 return std::nullopt;

@@ -1074,6 +1074,11 @@ namespace { namespace task {
                 flag_ship.set_dont_render(true);
                 return;
             }
+            if (::is_fbuf_too_small(swapchain.width(), swapchain.height())) {
+                flag_ship.set_need_resize(true);
+                flag_ship.set_dont_render(true);
+                return;
+            }
             const auto i_idx = try_acquire_image(framesync, swapchain, device);
             if (!i_idx) {
                 flag_ship.set_need_resize(true);
@@ -1471,11 +1476,13 @@ namespace { namespace task {
 
     public:
         void init(
+            ::FlagShip& flag_ship,
             ::RpStatesTransp& rp_states_transp,
             entt::registry& reg,
             mirinae::VulkanDevice& device,
             mirinae::RpContext& rp_ctxt
         ) {
+            flag_ship_ = &flag_ship;
             reg_ = &reg;
             device_ = &device;
             rp_ctxt_ = &rp_ctxt;
@@ -1486,6 +1493,9 @@ namespace { namespace task {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            if (flag_ship_->dont_render())
+                return;
+
             this->update_ubuf(*rp_states_transp_, *reg_, *rp_ctxt_, *device_);
         }
 
@@ -1555,10 +1565,39 @@ namespace { namespace task {
             return true;
         }
 
+        ::FlagShip* flag_ship_ = nullptr;
         entt::registry* reg_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
         mirinae::RpContext* rp_ctxt_ = nullptr;
         ::RpStatesTransp* rp_states_transp_ = nullptr;
+    };
+
+
+    class RenderPasses : public mirinae::DependingTask {
+
+    public:
+        void init(::FlagShip& flag_ship, std::function<bool()> resize_func) {
+            resize_func_ = resize_func;
+            flag_ship_ = &flag_ship;
+        }
+
+        void prepare() {}
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            if (flag_ship_->need_resize()) {
+                if (resize_func_) {
+                    resize_func_();
+                    flag_ship_->set_need_resize(false);
+                }
+            }
+
+            if (flag_ship_->dont_render())
+                return;
+        }
+
+        std::function<bool()> resize_func_;
+        ::FlagShip* flag_ship_ = nullptr;
     };
 
 
@@ -1571,7 +1610,8 @@ namespace { namespace task {
             init_skinned_.succeed(&update_ren_ctxt_);
             update_dlight_.succeed(&update_ren_ctxt_);
             compo_ubuf_.succeed(&update_dlight_);
-            fence_.succeed(&init_static_, &init_skinned_, &compo_ubuf_);
+            render_passes_.succeed(&init_static_, &init_skinned_, &compo_ubuf_);
+            fence_.succeed(&render_passes_);
         }
 
     private:
@@ -1583,6 +1623,7 @@ namespace { namespace task {
             init_skinned_.prepare();
             update_dlight_.prepare();
             compo_ubuf_.prepare();
+            render_passes_.prepare();
         }
 
     public:
@@ -1591,6 +1632,7 @@ namespace { namespace task {
         InitSkinnedModel init_skinned_;
         UpdateDlight update_dlight_;
         CompoUbuf compo_ubuf_;
+        RenderPasses render_passes_;
 
     private:
         mirinae::FenceTask fence_;
@@ -1703,7 +1745,7 @@ namespace {
 
             // Create swapchain and its relatives
             {
-                swapchain_.init(fbuf_width_, fbuf_height_, device_);
+                swapchain_.init(device_);
 
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                     swapchain_.width(), swapchain_.height()
@@ -1863,20 +1905,22 @@ namespace {
             stage->update_dlight_.init(*cosmos_, swapchain_);
 
             stage->compo_ubuf_.init(
-                rp_states_transp_, cosmos_->reg(), device_, ren_ctxt
+                flag_ship_, rp_states_transp_, cosmos_->reg(), device_, ren_ctxt
             );
+
+            stage->render_passes_.init(flag_ship_, [this]() {
+                if (this->resize_swapchain()) {
+                    overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
+                    return true;
+                } else {
+                    return false;
+                }
+            });
         }
 
         void do_frame() override {
-            if (flag_ship_.need_resize()) {
-                if (::is_fbuf_too_small(fbuf_width_, fbuf_height_))
-                    return;
-
-                this->resize_swapchain(fbuf_width_, fbuf_height_);
-                overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
-                flag_ship_.set_need_resize(false);
+            if (flag_ship_.dont_render())
                 return;
-            }
 
             auto& cam = cosmos_->reg().get<mirinae::cpnt::StandardCamera>(
                 cosmos_->scene().main_camera_
@@ -2103,13 +2147,8 @@ namespace {
         mirinae::IDebugRen& debug_ren() override { return ren_ctxt.debug_ren_; }
 
     private:
-        void resize_swapchain(uint32_t width, uint32_t height) {
+        bool resize_swapchain() {
             device_.wait_idle();
-            swapchain_.init(width, height, device_);
-
-            const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
-                swapchain_.width(), swapchain_.height()
-            );
 
             // Destroy
             {
@@ -2124,11 +2163,19 @@ namespace {
 
             // Create
             {
-                swapchain_.init(fbuf_width_, fbuf_height_, device_);
+                if (!swapchain_.init(device_))
+                    return false;
+                if (!swapchain_.is_ready())
+                    return false;
+
+                const auto extent = swapchain_.extent();
+                if (::is_fbuf_too_small(extent.width, extent.height))
+                    return false;
 
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                     swapchain_.width(), swapchain_.height()
                 );
+
                 rp_res_.gbuf_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     gbuf_width,
@@ -2158,6 +2205,8 @@ namespace {
             {
                 rp_states_imgui_.on_swchain_resize(swapchain_);
             }
+
+            return true;
         }
 
         // This must be the first member variable

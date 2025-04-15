@@ -82,12 +82,9 @@ namespace mirinae {
     class Swapchain {
 
     public:
-        void init(
-            uint32_t fbuf_width,
-            uint32_t fbuf_height,
-            VulkanDevice& vulkan_device
-        );
+        bool init(VulkanDevice& vulkan_device);
         void destroy(VkDevice logi_device);
+        bool is_ready() const;
 
         auto get() { return swapchain_; }
         auto format() const { return format_; }
