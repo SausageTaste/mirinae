@@ -504,11 +504,6 @@ namespace mirinae {
     struct IRpTask {
         virtual ~IRpTask() = default;
         virtual std::string_view name() const = 0;
-
-        virtual void init(
-            entt::registry&, RpResources&, const RpCtxt&, const IRpBase&
-        ) = 0;
-
         virtual void prepare() = 0;
 
         virtual enki::ITaskSet& update_task() = 0;
