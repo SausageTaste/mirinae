@@ -3,9 +3,11 @@
 #include <map>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/lightweight/debug_ren.hpp"
+#include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/renderee.hpp"
 #include "mirinae/render/texture.hpp"
 #include "mirinae/render/vkdevice.hpp"
@@ -428,5 +430,101 @@ namespace mirinae {
     };
 
     using URpStates = std::unique_ptr<IRpStates>;
+
+
+    class CamGeometry {
+
+    public:
+        void update(
+            const cpnt::StandardCamera& cam,
+            const TransformQuat<double>& tform,
+            const uint32_t width,
+            const uint32_t height
+        ) {
+            proj_mat_ = cam.proj_.make_proj_mat(width, height);
+            view_mat_ = tform.make_view_mat();
+            view_pos_ = tform.pos_;
+            fov_ = cam.proj_.fov_;
+
+            proj_inv_ = glm::inverse(proj_mat_);
+            view_inv_ = glm::inverse(view_mat_);
+
+            view_frustum_.update(proj_mat_, view_mat_);
+        }
+
+        auto& proj() const { return proj_mat_; }
+        auto& proj_inv() const { return proj_inv_; }
+        auto& view() const { return view_mat_; }
+        auto& view_inv() const { return view_inv_; }
+        auto pv() const { return proj_mat_ * view_mat_; }
+
+        auto& view_pos() const { return view_pos_; }
+        auto& fov() const { return fov_; }
+        auto& view_frustum() const { return view_frustum_; }
+
+    private:
+        ViewFrustum view_frustum_;
+        glm::dmat4 proj_mat_;
+        glm::dmat4 view_mat_;
+        glm::dmat4 proj_inv_;
+        glm::dmat4 view_inv_;
+        glm::dvec3 view_pos_;
+        sung::TAngle<double> fov_;
+    };
+
+
+    struct CamCache : public CamGeometry {
+
+    public:
+        void update(
+            const cpnt::StandardCamera& cam,
+            const TransformQuat<double>& tform,
+            const uint32_t width,
+            const uint32_t height
+        ) {
+            CamGeometry::update(cam, tform, width, height);
+
+            exposure_ = cam.exposure_;
+            gamma_ = cam.gamma_;
+        }
+
+        float exposure_ = 1;
+        float gamma_ = 1;
+    };
+
+
+    // Must be thread safe at all cost.
+    class RpCtxt {
+        CamCache main_cam_;
+        FrameIndex f_index_;
+        ShainImageIndex i_index_;
+    };
+
+
+    struct IRpTask {
+        virtual ~IRpTask() = default;
+        virtual std::string_view name() const = 0;
+
+        virtual void init(
+            entt::registry&, RpResources&, const RpCtxt&, const IRpBase&
+        ) = 0;
+
+        virtual void prepare() = 0;
+
+        virtual enki::ITaskSet& update_task() = 0;
+        virtual enki::ITaskSet& update_fence() = 0;
+        virtual enki::ITaskSet& record_task() = 0;
+        virtual enki::ITaskSet& record_fence() = 0;
+    };
+
+
+    struct IRpBase {
+        virtual ~IRpBase() = default;
+        virtual std::string_view name() const = 0;
+        virtual void render_imgui() {}
+        virtual void on_resize(uint32_t width, uint32_t height) {}
+
+        virtual std::unique_ptr<IRpTask> create_task() = 0;
+    };
 
 }  // namespace mirinae
