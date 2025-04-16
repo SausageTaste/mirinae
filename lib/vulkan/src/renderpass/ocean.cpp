@@ -2211,7 +2211,7 @@ namespace {
             fbufs_.clear();
         }
 
-        void record(mirinae::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             GET_OCEAN_ENTT(ctxt);
             auto& fd = frame_data_[ctxt.f_index_.get()];
             const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
@@ -2398,7 +2398,7 @@ namespace {
             const T y_min,
             const T y_max,
             const T height,
-            mirinae::RpContext& ctxt,
+            const mirinae::RpContext& ctxt,
             U_OceanTessPushConst& pc,
             const mirinae::PushConstInfo& pc_info,
             const glm::tmat4x4<T>& pv

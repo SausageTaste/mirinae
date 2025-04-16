@@ -451,7 +451,7 @@ namespace {
             return name;
         }
 
-        void record(mirinae::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             namespace cpnt = mirinae::cpnt;
             auto& reg = ctxt.cosmos_->reg();
             const auto cmdbuf = ctxt.cmdbuf_;
@@ -736,7 +736,7 @@ namespace {
             return name;
         }
 
-        void record(mirinae::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             namespace cpnt = mirinae::cpnt;
             auto& reg = ctxt.cosmos_->reg();
             const auto cmdbuf = ctxt.cmdbuf_;
@@ -1011,7 +1011,7 @@ namespace {
             return name;
         }
 
-        void record(mirinae::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             namespace cpnt = mirinae::cpnt;
             auto& reg = ctxt.cosmos_->reg();
             const auto cmdbuf = ctxt.cmdbuf_;

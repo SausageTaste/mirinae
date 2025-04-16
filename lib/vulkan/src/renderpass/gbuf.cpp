@@ -795,7 +795,7 @@ namespace {
             return name;
         }
 
-        void record(mirinae::RpContext& ctxt) override {
+        void record(const mirinae::RpContext& ctxt) override {
             namespace cpnt = mirinae::cpnt;
 
             const auto cmdbuf = ctxt.cmdbuf_;

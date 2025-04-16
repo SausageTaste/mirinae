@@ -425,9 +425,6 @@ namespace mirinae {
         virtual const std::string& name() const = 0;
 
         virtual void record(const RpContext& context) {}
-        virtual void record(RpContext& context) {
-            this->record(const_cast<const RpContext&>(context));
-        }
     };
 
     using URpStates = std::unique_ptr<IRpStates>;

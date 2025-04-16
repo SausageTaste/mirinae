@@ -982,7 +982,7 @@ namespace {
             ImGui_ImplVulkan_SetMinImageCount(swchain.views_count());
         }
 
-        void record(mirinae::RpContext& ctxt) {
+        void record(const mirinae::RpContext& ctxt) {
             const auto cmdbuf = ctxt.cmdbuf_;
             const auto fbuf = fbufs_.at(ctxt.i_index_.get());
             const VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 1.0f };
