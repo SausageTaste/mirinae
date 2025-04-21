@@ -117,7 +117,7 @@ namespace mirinae {
     }
 
     template <typename T>
-    glm::tmat4x4<T> ortho(const sung::AABB3<T>& aabb) {
+    glm::tmat4x4<T> ortho(const sung::Aabb3D<T>& aabb) {
         return ortho<double>(
             aabb.x_min(),
             aabb.x_max(),
@@ -133,7 +133,7 @@ namespace mirinae {
     ) const {
         const auto view_mat = tform.make_view_mat();
 
-        sung::AABB3<double> aabb;
+        sung::Aabb3D<double> aabb;
         {
             const auto v4 = view_mat * glm::dvec4(p[0], 1);
             aabb.set(v4.x, v4.y, v4.z);

@@ -12,12 +12,12 @@
 namespace {
 
     template <typename T>
-    glm::tvec2<T> get_aabb_min(const sung::AABB2<T>& aabb) {
+    glm::tvec2<T> get_aabb_min(const sung::Aabb2D<T>& aabb) {
         return glm::tvec2<T>(aabb.x_min(), aabb.y_min());
     }
 
     template <typename T>
-    glm::tvec2<T> get_aabb_dim(const sung::AABB2<T>& aabb) {
+    glm::tvec2<T> get_aabb_dim(const sung::Aabb2D<T>& aabb) {
         return glm::tvec2<T>(aabb.width(), aabb.height());
     };
 
@@ -130,7 +130,7 @@ namespace mirinae {
             .set(text_render_data_.get_desc_set(udata.frame_index_))
             .record(udata.cmd_buf_);
 
-        const sung::AABB2<double> widget_box(
+        const sung::Aabb2D<double> widget_box(
             pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y
         );
         auto x_offset = pos_.x;
@@ -147,7 +147,7 @@ namespace mirinae {
             }
 
             const auto& char_info = text_render_data_.get_char_info(c);
-            const sung::AABB2<double> char_info_box(
+            const sung::Aabb2D<double> char_info_box(
                 char_info.x0, char_info.x1, char_info.y0, char_info.y1
             );
             const auto char_info_min = ::get_aabb_min(char_info_box);
@@ -157,7 +157,7 @@ namespace mirinae {
                 text_render_data_.atlas_height()
             );
 
-            const sung::AABB2<double> glyph_box(
+            const sung::Aabb2D<double> glyph_box(
                 x_offset + char_info.xoff + scroll_.x,
                 x_offset + char_info.xoff + scroll_.x + char_info_dim.x,
                 y_offset + char_info.yoff + scroll_.y,
@@ -165,7 +165,7 @@ namespace mirinae {
             );
 
             mirinae::U_OverlayPushConst push_const;
-            sung::AABB2<double> clipped_glyph_box;
+            sung::Aabb2D<double> clipped_glyph_box;
             if (widget_box.make_intersection(glyph_box, clipped_glyph_box)) {
                 const auto clipped_glyph_area = clipped_glyph_box.area();
                 if (clipped_glyph_area <= 0.0) {

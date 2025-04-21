@@ -2375,11 +2375,11 @@ namespace {
             axes.push_back(glm::tvec3<T>(0, 0, 1));
 
             for (auto& axis : axes) {
-                sung::AABB1<T> frustum_aabb;
+                sung::Aabb1DLazyInit<T> frustum_aabb;
                 for (auto& p : frustum_points)
                     frustum_aabb.set_or_expand(glm::dot(p, axis));
 
-                sung::AABB1<T> points_aabb;
+                sung::Aabb1DLazyInit<T> points_aabb;
                 for (auto& p : points)
                     points_aabb.set_or_expand(glm::dot(p, axis));
 

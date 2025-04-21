@@ -81,8 +81,8 @@ namespace mirinae {
         void hide(bool hidden) override { hidden_ = hidden; }
         bool hidden() const override { return hidden_; }
 
-        sung::AABB2<double> aabb() const {
-            return sung::AABB2<double>(
+        sung::Aabb2D<double> aabb() const {
+            return sung::Aabb2D<double>(
                 pos_.x, pos_.x + size_.x, pos_.y, pos_.y + size_.y
             );
         }

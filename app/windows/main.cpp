@@ -194,7 +194,7 @@ namespace {
             } else {
                 glfwGetWindowPos(window_, &last_xpos_, &last_ypos_);
                 glfwGetWindowSize(window_, &last_width_, &last_height_);
-                const sung::AABB2<double> window_aabb(
+                const sung::Aabb2D<double> window_aabb(
                     last_xpos_,
                     last_xpos_ + last_width_,
                     last_ypos_,
@@ -432,7 +432,7 @@ namespace {
                 int xpos, ypos;
                 glfwGetMonitorPos(monitor, &xpos, &ypos);
 
-                const sung::AABB2<double> monitor_aabb(
+                const sung::Aabb2D<double> monitor_aabb(
                     xpos, xpos + mode->width, ypos, ypos + mode->height
                 );
                 const auto x_diff = monitor_aabb.x_mid() - x;
