@@ -26,7 +26,7 @@ namespace mirinae {
 
         void destroy(VulkanMemoryAllocator allocator);
 
-        void record_bind(VkCommandBuffer cmdbuf);
+        void record_bind(VkCommandBuffer cmdbuf) const;
 
         uint32_t vertex_count() const;
 

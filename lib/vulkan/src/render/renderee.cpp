@@ -212,11 +212,11 @@ namespace mirinae {
         desc_pool_.destroy(logi_device);
     }
 
-    VkDescriptorSet RenderUnit::get_desc_set(size_t index) {
+    VkDescriptorSet RenderUnit::get_desc_set(size_t index) const {
         return desc_sets_.at(index);
     }
 
-    void RenderUnit::record_bind_vert_buf(VkCommandBuffer cmdbuf) {
+    void RenderUnit::record_bind_vert_buf(VkCommandBuffer cmdbuf) const {
         vert_index_pair_.record_bind(cmdbuf);
     }
 
@@ -901,7 +901,7 @@ namespace mirinae {
         ubuf.set_data(&data, sizeof(U_GbufActor), mem_alloc);
     }
 
-    VkDescriptorSet RenderActor::get_desc_set(size_t index) {
+    VkDescriptorSet RenderActor::get_desc_set(size_t index) const{
         return desc_sets_.at(index);
     }
 
