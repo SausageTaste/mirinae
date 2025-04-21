@@ -497,7 +497,7 @@ namespace { namespace task {
             auto& slights = shadow_maps.slights_;
 
             uint32_t i = 0;
-            for (const auto e : reg.view<cpnt::DLight>()) {
+            for (const auto e : reg.view<cpnt::SLight>()) {
                 const auto light_idx = i++;
                 if (light_idx >= slights.size())
                     break;
@@ -536,8 +536,6 @@ namespace { namespace task {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            dal::tasker().AddTaskSetToPipe(&dlight_update_);
-            dal::tasker().AddTaskSetToPipe(&slight_update_);
         }
 
         DlightUpdate dlight_update_;
@@ -576,6 +574,8 @@ namespace { namespace task {
             draw_set_.clear();
             draw_set_.get_all_static(*reg_);
 
+            mirinae::begin_cmdbuf(cmdbuf_);
+
             this->record_dlight(
                 cmdbuf_, draw_set_, *rp_, *ctxt_, *reg_, shadow_maps_->dlights()
             );
@@ -583,6 +583,8 @@ namespace { namespace task {
             this->record_slight(
                 cmdbuf_, draw_set_, *rp_, *ctxt_, *reg_, *shadow_maps_
             );
+
+            mirinae::end_cmdbuf(cmdbuf_);
         }
 
         static void record_dlight(
@@ -1983,7 +1985,7 @@ namespace mirinae::rp {
         return std::make_shared<ShadowMapBundle>(device);
     }
 
-    URpStates create_rp_states_shadow_static(
+    std::unique_ptr<IRpBase> create_rp_states_shadow_static(
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
