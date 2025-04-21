@@ -798,16 +798,16 @@ namespace { namespace task {
             record_tasks_.prepare(cmdbuf, ctxt);
         }
 
-        enki::ITaskSet& update_task() override { return update_tasks_; }
+        enki::ITaskSet* update_task() override { return &update_tasks_; }
 
-        enki::ITaskSet& update_fence() override {
-            return update_tasks_.fence();
+        enki::ITaskSet* update_fence() override {
+            return &update_tasks_.fence();
         }
 
-        enki::ITaskSet& record_task() override { return record_tasks_; }
+        enki::ITaskSet* record_task() override { return &record_tasks_; }
 
-        enki::ITaskSet& record_fence() override {
-            return record_tasks_.fence();
+        enki::ITaskSet* record_fence() override {
+            return &record_tasks_.fence();
         }
 
     private:

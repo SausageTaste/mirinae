@@ -101,7 +101,9 @@ namespace mirinae {
         );
 
         VkImageView view_at(size_t index) { return views_.at(index); }
-        size_t views_count() const { return views_.size(); }
+        uint32_t views_count() const {
+            return static_cast<uint32_t>(views_.size());
+        }
 
     private:
         VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;

@@ -1677,20 +1677,36 @@ namespace { namespace task {
                 return;
             }
 
-            for (auto& rp : passes_) {
-                const auto cmdbuf = frame_cmdbufs_->new_cmdbuf(
-                    rp_ctxt_->f_index_, *device_
-                );
-                rp->prepare(cmdbuf, *rp_ctxt_);
+            for (auto& rp : passes_)
+                this->prepare_task(*rp, *frame_cmdbufs_, *rp_ctxt_, *device_);
+            for (auto& rp : passes_) this->try_run(rp->update_task());
+            for (auto& rp : passes_) this->try_wait(rp->update_fence());
+            for (auto& rp : passes_) this->try_run(rp->record_task());
+            for (auto& rp : passes_) this->try_wait(rp->record_fence());
+        }
+
+        static void prepare_task(
+            mirinae::IRpTask& task,
+            ::FrameCmdBufBundle& frame_cmdbufs,
+            mirinae::RpContext& rp_ctxt,
+            mirinae::VulkanDevice& device
+        ) {
+            const auto cmdbuf = frame_cmdbufs.new_cmdbuf(
+                rp_ctxt.f_index_, device
+            );
+            task.prepare(cmdbuf, rp_ctxt);
+        }
+
+        static void try_run(enki::ITaskSet* task) {
+            if (task) {
+                dal::tasker().AddTaskSetToPipe(task);
             }
-            for (auto& rp : passes_)
-                dal::tasker().AddTaskSetToPipe(&rp->update_task());
-            for (auto& rp : passes_)
-                dal::tasker().WaitforTask(&rp->update_fence());
-            for (auto& rp : passes_)
-                dal::tasker().AddTaskSetToPipe(&rp->record_task());
-            for (auto& rp : passes_)
-                dal::tasker().WaitforTask(&rp->record_fence());
+        }
+
+        static void try_wait(enki::ITaskSet* task) {
+            if (task) {
+                dal::tasker().WaitforTask(task);
+            }
         }
 
         ::FlagShip* flag_ship_ = nullptr;

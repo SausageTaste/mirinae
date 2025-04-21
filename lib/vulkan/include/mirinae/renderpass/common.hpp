@@ -515,10 +515,10 @@ namespace mirinae {
         virtual std::string_view name() const = 0;
         virtual void prepare(VkCommandBuffer, const mirinae::RpCtxt&) = 0;
 
-        virtual enki::ITaskSet& update_task() = 0;
-        virtual enki::ITaskSet& update_fence() = 0;
-        virtual enki::ITaskSet& record_task() = 0;
-        virtual enki::ITaskSet& record_fence() = 0;
+        virtual enki::ITaskSet* update_task() = 0;
+        virtual enki::ITaskSet* update_fence() = 0;
+        virtual enki::ITaskSet* record_task() = 0;
+        virtual enki::ITaskSet* record_fence() = 0;
     };
 
 
