@@ -369,7 +369,7 @@ namespace mirinae {
         SubmitInfo& add_wait_semaph_color_attach_out(VkSemaphore semaph);
 
         SubmitInfo& add_cmdbuf(VkCommandBuffer cmdbuf);
-        SubmitInfo& add_cmdbuf(VkCommandBuffer* cmdbuf, size_t count);
+        SubmitInfo& add_cmdbuf(const VkCommandBuffer* cmdbuf, size_t count);
         SubmitInfo& add_signal_semaph(VkSemaphore semaph);
 
         const VkSubmitInfo* get() const;

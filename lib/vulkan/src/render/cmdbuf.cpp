@@ -306,7 +306,9 @@ namespace mirinae {
         return *this;
     }
 
-    SubmitInfo& SubmitInfo::add_cmdbuf(VkCommandBuffer* cmdbuf, size_t count) {
+    SubmitInfo& SubmitInfo::add_cmdbuf(
+        const VkCommandBuffer* cmdbuf, size_t count
+    ) {
         for (size_t i = 0; i < count; i++) {
             cmdbufs_.push_back(cmdbuf[i]);
         }
