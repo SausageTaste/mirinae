@@ -246,6 +246,7 @@ namespace mirinae {
             virtual ~IDlightShadowMapBundle() = default;
             virtual uint32_t count() const = 0;
             virtual IDlightShadowMap& at(uint32_t index) = 0;
+            virtual const IDlightShadowMap& at(uint32_t index) const = 0;
         };
 
         virtual ~IShadowMapBundle() = default;
@@ -493,8 +494,18 @@ namespace mirinae {
     };
 
 
+    struct IRenPass {
+        virtual ~IRenPass() = default;
+        virtual VkRenderPass render_pass() const = 0;
+        virtual VkPipeline pipeline() const = 0;
+        virtual VkPipelineLayout pipe_layout() const = 0;
+        virtual const VkClearValue* clear_values() const = 0;
+        virtual uint32_t clear_value_count() const = 0;
+    };
+
+
     // Must be thread safe at all cost.
-    class RpCtxt {
+    struct RpCtxt {
         CamCache main_cam_;
         FrameIndex f_index_;
         ShainImageIndex i_index_;
@@ -504,7 +515,7 @@ namespace mirinae {
     struct IRpTask {
         virtual ~IRpTask() = default;
         virtual std::string_view name() const = 0;
-        virtual void prepare() = 0;
+        virtual void prepare(VkCommandBuffer, const mirinae::RpCtxt&) = 0;
 
         virtual enki::ITaskSet& update_task() = 0;
         virtual enki::ITaskSet& update_fence() = 0;
@@ -515,7 +526,7 @@ namespace mirinae {
 
     struct IRpBase {
         virtual ~IRpBase() = default;
-        virtual std::string_view name() const = 0;
+        virtual std::string_view name_sv() const = 0;
         virtual void render_imgui() {}
         virtual void on_resize(uint32_t width, uint32_t height) {}
 

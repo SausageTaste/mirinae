@@ -8,6 +8,7 @@ namespace mirinae::rp {
     HShadowMaps create_shadow_maps_bundle(mirinae::VulkanDevice& device);
 
     URpStates create_rp_states_shadow_static(
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device

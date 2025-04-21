@@ -321,7 +321,7 @@ namespace {
 
             rp_pre_.push_back(
                 mirinae::rp::create_rp_states_shadow_static(
-                    rp_res, desclayouts, device
+                    cosmos, rp_res, desclayouts, device
                 )
             );
 
