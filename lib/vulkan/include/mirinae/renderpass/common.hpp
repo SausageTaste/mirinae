@@ -408,31 +408,6 @@ namespace mirinae {
     };
 
 
-    struct RpContext {
-        std::shared_ptr<CosmosSimulator> cosmos_;
-        std::shared_ptr<DrawSheet> draw_sheet_;
-        RpResources* rp_res_;
-        DebugRender debug_ren_;
-        ViewFrustum view_frustum_;
-        FrameIndex f_index_;
-        ShainImageIndex i_index_;
-        glm::dmat4 proj_mat_;
-        glm::dmat4 view_mat_;
-        glm::dvec3 view_pos_;
-        VkCommandBuffer cmdbuf_;
-    };
-
-
-    struct IRpStates {
-        virtual ~IRpStates() = default;
-        virtual const std::string& name() const = 0;
-
-        virtual void record(const RpContext& context) {}
-    };
-
-    using URpStates = std::unique_ptr<IRpStates>;
-
-
     class CamGeometry {
 
     public:
@@ -494,6 +469,37 @@ namespace mirinae {
     };
 
 
+    // Must be thread safe at all cost.
+    struct RpCtxt {
+        CamCache main_cam_;
+        FrameIndex f_index_;
+        ShainImageIndex i_index_;
+    };
+
+
+    struct RpContext : public RpCtxt {
+        std::shared_ptr<CosmosSimulator> cosmos_;
+        std::shared_ptr<DrawSheet> draw_sheet_;
+        RpResources* rp_res_;
+        DebugRender debug_ren_;
+        ViewFrustum view_frustum_;
+        glm::dmat4 proj_mat_;
+        glm::dmat4 view_mat_;
+        glm::dvec3 view_pos_;
+        VkCommandBuffer cmdbuf_;
+    };
+
+
+    struct IRpStates {
+        virtual ~IRpStates() = default;
+        virtual const std::string& name() const = 0;
+
+        virtual void record(const RpContext& context) {}
+    };
+
+    using URpStates = std::unique_ptr<IRpStates>;
+
+
     struct IRenPass {
         virtual ~IRenPass() = default;
         virtual VkRenderPass render_pass() const = 0;
@@ -501,14 +507,6 @@ namespace mirinae {
         virtual VkPipelineLayout pipe_layout() const = 0;
         virtual const VkClearValue* clear_values() const = 0;
         virtual uint32_t clear_value_count() const = 0;
-    };
-
-
-    // Must be thread safe at all cost.
-    struct RpCtxt {
-        CamCache main_cam_;
-        FrameIndex f_index_;
-        ShainImageIndex i_index_;
     };
 
 
