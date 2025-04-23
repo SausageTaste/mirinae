@@ -529,6 +529,38 @@ namespace mirinae {
     };
 
 
+    template <uint32_t N>
+    class RenPassBundle : public IRenPass {
+
+    public:
+        VkRenderPass render_pass() const override { return render_pass_.get(); }
+
+        VkPipeline pipeline() const override { return pipeline_.get(); }
+
+        VkPipelineLayout pipe_layout() const override {
+            return pipe_layout_.get();
+        }
+
+        const VkClearValue* clear_values() const override {
+            return clear_values_.data();
+        }
+
+        uint32_t clear_value_count() const override { return N; }
+
+    protected:
+        void destroy_render_pass_elements(mirinae::VulkanDevice& device) {
+            render_pass_.destroy(device);
+            pipeline_.destroy(device);
+            pipe_layout_.destroy(device);
+        }
+
+        mirinae::RenderPass render_pass_;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout pipe_layout_;
+        std::array<VkClearValue, N> clear_values_;
+    };
+
+
     struct IRpTask {
         virtual ~IRpTask() = default;
         virtual std::string_view name() const = 0;

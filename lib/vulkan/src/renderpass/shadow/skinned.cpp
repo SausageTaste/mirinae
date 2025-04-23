@@ -362,7 +362,7 @@ namespace {
 
     class RpStatesShadowSkinned
         : public mirinae::IRpBase
-        , public mirinae::IRenPass {
+        , public mirinae::RenPassBundle<1> {
 
     public:
         RpStatesShadowSkinned(
@@ -438,9 +438,7 @@ namespace {
         }
 
         ~RpStatesShadowSkinned() override {
-            render_pass_.destroy(device_);
-            pipeline_.destroy(device_);
-            pipe_layout_.destroy(device_);
+            this->destroy_render_pass_elements(device_);
         }
 
         std::string_view name_sv() const override { return "shadow skinned"; }
@@ -457,27 +455,10 @@ namespace {
             return out;
         }
 
-        VkRenderPass render_pass() const override { return render_pass_.get(); }
-        VkPipeline pipeline() const override { return pipeline_.get(); }
-        VkPipelineLayout pipe_layout() const override {
-            return pipe_layout_.get();
-        }
-        const VkClearValue* clear_values() const override {
-            return clear_values_.data();
-        }
-        uint32_t clear_value_count() const override {
-            return static_cast<uint32_t>(clear_values_.size());
-        }
-
     private:
         mirinae::VulkanDevice& device_;
         mirinae::CosmosSimulator& cosmos_;
         mirinae::RpResources& rp_res_;
-
-        mirinae::RenderPass render_pass_;
-        mirinae::RpPipeline pipeline_;
-        mirinae::RpPipeLayout pipe_layout_;
-        std::array<VkClearValue, 1> clear_values_;
     };
 
 }  // namespace
