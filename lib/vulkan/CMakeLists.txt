@@ -20,7 +20,12 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/h0.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/hkt.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/ift_butterfly.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/ift_naive.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/post_ift.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/render_tess.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/bundles.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/skinned_trs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/skinned.cpp
