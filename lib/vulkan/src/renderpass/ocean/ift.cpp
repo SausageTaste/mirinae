@@ -9,6 +9,95 @@
 #include "mirinae/renderpass/ocean/common.hpp"
 
 
+namespace {
+
+    void get_all_ref_img(
+        const size_t frame_index,
+        const std::string& name,
+        std::vector<mirinae::HRpImage>& out,
+        mirinae::RpResources& rp_res
+    ) {
+        const auto prefix = "ocean_tilde_hkt:";
+
+        for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
+            const auto suffix = fmt::format("_c{}_f{}", j, frame_index);
+
+            out.push_back(rp_res.get_img_reader(
+                fmt::format("{}hkt_1{}", prefix, suffix), name
+            ));
+            MIRINAE_ASSERT(nullptr != out.back());
+            out.push_back(rp_res.get_img_reader(
+                fmt::format("{}hkt_2{}", prefix, suffix), name
+            ));
+            MIRINAE_ASSERT(nullptr != out.back());
+        }
+    }
+
+    void create_storage_img(
+        const size_t num_img,
+        const size_t frame_index,
+        const std::string& name,
+        std::vector<mirinae::HRpImage>& out,
+        mirinae::RpResources& rp_res,
+        mirinae::VulkanDevice& device
+    ) {
+        const auto i = frame_index;
+
+        // Storage images
+        {
+            mirinae::ImageCreateInfo cinfo;
+            cinfo.set_dimensions(mirinae::OCEAN_TEX_DIM)
+                .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
+                .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
+                .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
+
+            mirinae::ImageViewBuilder builder;
+            builder.format(cinfo.format())
+                .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
+
+            for (size_t j = 0; j < num_img; j++) {
+                const auto i_name = fmt::format("ppong_i{}_f{}", j, i);
+                out.push_back(rp_res.new_img(i_name, name));
+                MIRINAE_ASSERT(nullptr != out.back());
+
+                auto& img = out.back()->img_;
+                img.init(cinfo.get(), device.mem_alloc());
+                builder.image(img.image());
+
+                out.back()->view_.reset(builder, device);
+            }
+        }
+
+        // Image transitions
+        {
+            mirinae::ImageMemoryBarrier barrier;
+            barrier.set_src_access(0)
+                .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .layer_count(1)
+                .mip_count(1);
+
+            mirinae::CommandPool cmd_pool;
+            cmd_pool.init(device);
+            auto cmdbuf = cmd_pool.begin_single_time(device);
+            for (auto& ppong : out) {
+                barrier.image(ppong->img_.image());
+                barrier.record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT
+                );
+            }
+            cmd_pool.end_single_time(cmdbuf, device);
+            cmd_pool.destroy(device.logi_device());
+        }
+    }
+
+}  // namespace
+
+
 // Ocean Butterfly
 namespace {
 
@@ -125,7 +214,7 @@ namespace {
 
             // Reference images
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                this->get_all_ref_img(
+                ::get_all_ref_img(
                     i, this->name(), fdata_[i].hkt_textures_, rp_res
                 );
             }
@@ -186,7 +275,7 @@ namespace {
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& fd = fdata_[i];
 
-                this->create_storage_img(
+                ::create_storage_img(
                     fd.hkt_textures_.size(),
                     i,
                     this->name(),
@@ -384,93 +473,6 @@ namespace {
             }
         }
 
-        static void get_all_ref_img(
-            const size_t frame_index,
-            const std::string& name,
-            std::vector<mirinae::HRpImage>& out,
-            mirinae::RpResources& rp_res
-        ) {
-            const auto prefix = "ocean_tilde_hkt:";
-
-            for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
-                const auto suffix = fmt::format("_c{}_f{}", j, frame_index);
-
-                out.push_back(rp_res.get_img_reader(
-                    fmt::format("{}hkt_1{}", prefix, suffix), name
-                ));
-                MIRINAE_ASSERT(nullptr != out.back());
-                out.push_back(rp_res.get_img_reader(
-                    fmt::format("{}hkt_2{}", prefix, suffix), name
-                ));
-                MIRINAE_ASSERT(nullptr != out.back());
-            }
-        }
-
-        static void create_storage_img(
-            const size_t num_img,
-            const size_t frame_index,
-            const std::string& name,
-            std::vector<mirinae::HRpImage>& out,
-            mirinae::RpResources& rp_res,
-            mirinae::VulkanDevice& device
-        ) {
-            const auto i = frame_index;
-
-            // Storage images
-            {
-                mirinae::ImageCreateInfo cinfo;
-                cinfo
-                    .set_dimensions(
-                        mirinae::OCEAN_TEX_DIM, mirinae::OCEAN_TEX_DIM
-                    )
-                    .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
-                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
-                    .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
-
-                mirinae::ImageViewBuilder builder;
-                builder.format(cinfo.format())
-                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
-
-                for (size_t j = 0; j < num_img; j++) {
-                    const auto i_name = fmt::format("ppong_i{}_f{}", j, i);
-                    out.push_back(rp_res.new_img(i_name, name));
-                    MIRINAE_ASSERT(nullptr != out.back());
-
-                    auto& img = out.back()->img_;
-                    img.init(cinfo.get(), device.mem_alloc());
-                    builder.image(img.image());
-
-                    out.back()->view_.reset(builder, device);
-                }
-            }
-
-            // Image transitions
-            {
-                mirinae::ImageMemoryBarrier barrier;
-                barrier.set_src_access(0)
-                    .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
-                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .new_layout(VK_IMAGE_LAYOUT_GENERAL)
-                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .layer_count(1)
-                    .mip_count(1);
-
-                mirinae::CommandPool cmd_pool;
-                cmd_pool.init(device);
-                auto cmdbuf = cmd_pool.begin_single_time(device);
-                for (auto& ppong : out) {
-                    barrier.image(ppong->img_.image());
-                    barrier.record_single(
-                        cmdbuf,
-                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT
-                    );
-                }
-                cmd_pool.end_single_time(cmdbuf, device);
-                cmd_pool.destroy(device.logi_device());
-            }
-        }
-
     private:
         struct FrameData {
             std::vector<mirinae::HRpImage> hkt_textures_;
@@ -514,7 +516,7 @@ namespace {
 
             // Reference images
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                RpStatesOceanButterfly::get_all_ref_img(
+                ::get_all_ref_img(
                     i, this->name(), fdata_[i].hkt_textures_, rp_res
                 );
             }
@@ -523,7 +525,7 @@ namespace {
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& fd = fdata_[i];
 
-                RpStatesOceanButterfly::create_storage_img(
+                ::create_storage_img(
                     fd.hkt_textures_.size(),
                     i,
                     this->name(),
