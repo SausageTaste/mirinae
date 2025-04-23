@@ -30,6 +30,11 @@ namespace mirinae::cpnt {
             return dynamic_cast<T*>(ren_unit_.get());
         }
 
+        template <typename T>
+        const T* ren_unit() const {
+            return dynamic_cast<const T*>(ren_unit_.get());
+        }
+
         std::filesystem::path height_map_path_;
         std::filesystem::path albedo_map_path_;
         std::unique_ptr<ITerrainRenUnit> ren_unit_;

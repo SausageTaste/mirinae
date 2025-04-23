@@ -78,18 +78,232 @@ namespace {
         float tess_factor_;
     };
 
+}  // namespace
+
+
+// Tasks
+namespace { namespace task {
+
+    class DrawTasks : public mirinae::DependingTask {
+
+    public:
+        DrawTasks() { fence_.succeed(this); }
+
+        void init(
+            const entt::registry& reg,
+            const mirinae::IRenPass& rp,
+            const mirinae::ShadowMapBundle& shadow_maps,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            reg_ = &reg;
+            rp_ = &rp;
+            shadow_maps_ = &shadow_maps;
+            cmd_pool_ = &cmd_pool;
+            device_ = &device;
+        }
+
+        void prepare(const mirinae::RpCtxt& ctxt) { ctxt_ = &ctxt; }
+
+        enki::ITaskSet& fence() { return fence_; }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) {
+            if (VK_NULL_HANDLE != cmdbuf_) {
+                out.push_back(cmdbuf_);
+            }
+        }
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
+            if (cmdbuf_ == VK_NULL_HANDLE)
+                return;
+
+            mirinae::begin_cmdbuf(cmdbuf_);
+
+            this->record_dlight(
+                cmdbuf_, *rp_, *ctxt_, *reg_, shadow_maps_->dlights()
+            );
+
+            mirinae::end_cmdbuf(cmdbuf_);
+        }
+
+        static void record_dlight(
+            const VkCommandBuffer cmdbuf,
+            const mirinae::IRenPass& rp,
+            const mirinae::RpCtxt& ctxt,
+            const entt::registry& reg,
+            const mirinae::DlightShadowMapBundle& dlights
+        ) {
+            for (uint32_t i = 0; i < dlights.count(); ++i) {
+                auto& shadow = dlights.at(i);
+                auto dlight = reg.try_get<mirinae::cpnt::DLight>(shadow.entt());
+                if (!dlight)
+                    continue;
+
+                mirinae::ImageMemoryBarrier{}
+                    .image(shadow.img(ctxt.f_index_))
+                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_signle_mip_layer()
+                    .record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    );
+
+                mirinae::RenderPassBeginInfo{}
+                    .rp(rp.render_pass())
+                    .fbuf(shadow.fbuf(ctxt.f_index_))
+                    .wh(shadow.extent2d())
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values())
+                    .record_begin(cmdbuf);
+
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+                vkCmdSetDepthBias(cmdbuf, -20, 0, -10);
+
+                const auto half_width = shadow.width() / 2.0;
+                const auto half_height = shadow.height() / 2.0;
+                const std::array<glm::dvec2, 4> offsets{
+                    glm::dvec2{ 0, 0 },
+                    glm::dvec2{ half_width, 0 },
+                    glm::dvec2{ 0, half_height },
+                    glm::dvec2{ half_width, half_height },
+                };
+
+                mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
+
+                for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
+                    const auto& cascade = dlight->cascades_.cascades_.at(
+                        cascade_i
+                    );
+                    auto& offset = offsets.at(cascade_i);
+
+                    mirinae::Viewport{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_single(cmdbuf);
+                    mirinae::Rect2D{}
+                        .set_xy(offset)
+                        .set_wh(half_width, half_height)
+                        .record_scissor(cmdbuf);
+
+                    mirinae::PushConstInfo pc_info;
+                    pc_info.layout(rp.pipe_layout())
+                        .add_stage_vert()
+                        .add_stage_tesc()
+                        .add_stage_tese();
+
+                    for (auto e : reg.view<mirinae::cpnt::Terrain>()) {
+                        auto& terr = reg.get<mirinae::cpnt::Terrain>(e);
+
+                        auto unit = terr.ren_unit<mirinae::RenUnitTerrain>();
+                        if (!unit)
+                            continue;
+                        if (!unit->is_ready())
+                            continue;
+
+                        mirinae::DescSetBindInfo{}
+                            .layout(rp.pipe_layout())
+                            .add(unit->desc_set())
+                            .record(cmdbuf);
+
+                        glm::dmat4 model_mat(1);
+                        if (auto tf = reg.try_get<mirinae::cpnt::Transform>(e))
+                            model_mat = tf->make_model_mat();
+
+                        ::U_ShadowTerrainPushConst pc;
+                        pc.pvm(cascade.light_mat_ * model_mat)
+                            .tile_count(24, 24)
+                            .height_map_size(unit->height_map_size())
+                            .fbuf_size(half_width, half_height)
+                            .height_scale(64)
+                            .tess_factor(terr.tess_factor_);
+
+                        for (int x = 0; x < 24; ++x) {
+                            for (int y = 0; y < 24; ++y) {
+                                pc.tile_index(x, y);
+                                pc_info.record(cmdbuf, pc);
+                                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                            }
+                        }
+                    }
+                }
+
+                vkCmdEndRenderPass(cmdbuf);
+            }
+        }
+
+        mirinae::FenceTask fence_;
+        VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
+
+        const mirinae::ShadowMapBundle* shadow_maps_ = nullptr;
+        const entt::registry* reg_ = nullptr;
+        const mirinae::IRenPass* rp_ = nullptr;
+        const mirinae::RpCtxt* ctxt_ = nullptr;
+        mirinae::RpCommandPool* cmd_pool_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
+    };
+
+
+    class RpTask : public mirinae::IRpTask {
+
+    public:
+        RpTask() {}
+
+        void init(
+            const entt::registry& reg,
+            const mirinae::IRenPass& rp,
+            const mirinae::ShadowMapBundle& shadow_maps,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            record_tasks_.init(reg, rp, shadow_maps, cmd_pool, device);
+        }
+
+        std::string_view name() const override { return "shadow terrain"; }
+
+        void prepare(const mirinae::RpCtxt& ctxt) override {
+            record_tasks_.prepare(ctxt);
+        }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) override {
+            record_tasks_.collect_cmdbuf(out);
+        }
+
+        enki::ITaskSet* record_task() override { return &record_tasks_; }
+
+        enki::ITaskSet* record_fence() override {
+            return &record_tasks_.fence();
+        }
+
+    private:
+        DrawTasks record_tasks_;
+    };
+
+}}  // namespace ::task
+
+
+namespace {
 
     class RpStatesShadowTerrain
-        : public mirinae::IRpStates
+        : public mirinae::IRpBase
         , public mirinae::RenPassBundle<1> {
 
     public:
         RpStatesShadowTerrain(
+            mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), rp_res_(rp_res) {
+            : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
             auto shadow_maps = dynamic_cast<mirinae::ShadowMapBundle*>(
                 rp_res_.shadow_maps_.get()
             );
@@ -165,130 +379,23 @@ namespace {
             this->destroy_render_pass_elements(device_);
         }
 
-        const std::string& name() const override {
-            static const std::string name = "shadow_terrain";
-            return name;
-        }
+        std::string_view name() const override { return "shadow terrain"; }
 
-        void record(const mirinae::RpContext& ctxt) override {
-            namespace cpnt = mirinae::cpnt;
-
-            auto& reg = ctxt.cosmos_->reg();
-            const auto cmdbuf = ctxt.cmdbuf_;
-            const auto shadow_maps = dynamic_cast<mirinae::ShadowMapBundle*>(
+        std::unique_ptr<mirinae::IRpTask> create_task() override {
+            const auto shadow_maps = static_cast<mirinae::ShadowMapBundle*>(
                 rp_res_.shadow_maps_.get()
             );
-            MIRINAE_ASSERT(shadow_maps);
 
-            for (uint32_t i = 0; i < shadow_maps->dlights().count(); ++i) {
-                auto& shadow = shadow_maps->dlights().at(i);
-                if (shadow.entt() == entt::null)
-                    continue;
-                auto& dlight = reg.get<cpnt::DLight>(shadow.entt());
-
-                mirinae::ImageMemoryBarrier{}
-                    .image(shadow.img(ctxt.f_index_))
-                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                    .set_signle_mip_layer()
-                    .record_single(
-                        ctxt.cmdbuf_,
-                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                    );
-
-                mirinae::RenderPassBeginInfo{}
-                    .rp(render_pass_.get())
-                    .fbuf(shadow.fbuf(ctxt.f_index_))
-                    .wh(shadow.extent2d())
-                    .clear_value_count(clear_values_.size())
-                    .clear_values(clear_values_.data())
-                    .record_begin(cmdbuf);
-
-                vkCmdBindPipeline(
-                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
-                );
-                vkCmdSetDepthBias(cmdbuf, -20, 0, -10);
-
-                const auto half_width = shadow.width() / 2.0;
-                const auto half_height = shadow.height() / 2.0;
-                const std::array<glm::dvec2, 4> offsets{
-                    glm::dvec2{ 0, 0 },
-                    glm::dvec2{ half_width, 0 },
-                    glm::dvec2{ 0, half_height },
-                    glm::dvec2{ half_width, half_height },
-                };
-
-                mirinae::DescSetBindInfo descset_info{ pipe_layout_ };
-
-                for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
-                    const auto& cascade = dlight.cascades_.cascades_.at(
-                        cascade_i
-                    );
-                    auto& offset = offsets.at(cascade_i);
-
-                    mirinae::Viewport{}
-                        .set_xy(offset)
-                        .set_wh(half_width, half_height)
-                        .record_single(cmdbuf);
-                    mirinae::Rect2D{}
-                        .set_xy(offset)
-                        .set_wh(half_width, half_height)
-                        .record_scissor(cmdbuf);
-
-                    mirinae::PushConstInfo pc_info;
-                    pc_info.layout(pipe_layout_)
-                        .add_stage_vert()
-                        .add_stage_tesc()
-                        .add_stage_tese();
-
-                    for (auto e : reg.view<cpnt::Terrain>()) {
-                        auto& terr = reg.get<cpnt::Terrain>(e);
-
-                        auto unit = terr.ren_unit<mirinae::RenUnitTerrain>();
-                        if (!unit)
-                            continue;
-                        if (!unit->is_ready())
-                            continue;
-
-                        mirinae::DescSetBindInfo{}
-                            .layout(pipe_layout_)
-                            .add(unit->desc_set())
-                            .record(cmdbuf);
-
-                        glm::dmat4 model_mat(1);
-                        if (auto tform = reg.try_get<cpnt::Transform>(e))
-                            model_mat = tform->make_model_mat();
-
-                        ::U_ShadowTerrainPushConst pc;
-                        pc.pvm(cascade.light_mat_ * model_mat)
-                            .tile_count(24, 24)
-                            .height_map_size(unit->height_map_size())
-                            .fbuf_size(half_width, half_height)
-                            .height_scale(64)
-                            .tess_factor(terr.tess_factor_);
-
-                        for (int x = 0; x < 24; ++x) {
-                            for (int y = 0; y < 24; ++y) {
-                                pc.tile_index(x, y);
-                                pc_info.record(cmdbuf, pc);
-                                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
-                            }
-                        }
-                    }
-                }
-
-                vkCmdEndRenderPass(cmdbuf);
-            }
-
-            return;
+            auto out = std::make_unique<task::RpTask>();
+            out->init(
+                cosmos_.reg(), *this, *shadow_maps, rp_res_.cmd_pool_, device_
+            );
+            return out;
         }
 
     private:
         mirinae::VulkanDevice& device_;
+        mirinae::CosmosSimulator& cosmos_;
         mirinae::RpResources& rp_res_;
     };
 
@@ -297,13 +404,14 @@ namespace {
 
 namespace mirinae::rp {
 
-    URpStates create_rp_states_shadow_terrain(
+    std::unique_ptr<IRpBase> create_rp_states_shadow_terrain(
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<::RpStatesShadowTerrain>(
-            rp_res, desclayouts, device
+            cosmos, rp_res, desclayouts, device
         );
     }
 

@@ -217,12 +217,6 @@ namespace {
             );
 
             rp_pre_.push_back(
-                mirinae::rp::create_rp_states_shadow_terrain(
-                    rp_res, desclayouts, device
-                )
-            );
-
-            rp_pre_.push_back(
                 mirinae::rp::envmap::create_rp_states_envmap(
                     cosmos, rp_res, desclayouts, device
                 )
@@ -1704,6 +1698,12 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::create_rp_states_shadow_skinned(
+                        *cosmos_, rp_res_, desclayout_, device_
+                    )
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::create_rp_states_shadow_terrain(
                         *cosmos_, rp_res_, desclayout_, device_
                     )
                 );

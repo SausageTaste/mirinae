@@ -439,10 +439,10 @@ namespace { namespace task {
     };
 
 
-    class RpTaskShadowStatic : public mirinae::IRpTask {
+    class RpTask : public mirinae::IRpTask {
 
     public:
-        RpTaskShadowStatic() {}
+        RpTask() {}
 
         void init(
             const entt::registry& reg,
@@ -580,7 +580,7 @@ namespace {
                 rp_res_.shadow_maps_.get()
             );
 
-            auto out = std::make_unique<task::RpTaskShadowStatic>();
+            auto out = std::make_unique<task::RpTask>();
             out->init(
                 cosmos_.reg(), *this, *shadow_maps, rp_res_.cmd_pool_, device_
             );

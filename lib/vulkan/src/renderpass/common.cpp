@@ -360,7 +360,7 @@ namespace mirinae {
             FrameIndex f_index, uint32_t threadnum, VulkanDevice& device
         ) {
             auto& fd = this->get_fd(f_index, threadnum);
-            return fd.get(device);
+            return fd.get(f_index, threadnum, device);
         }
 
     private:
@@ -384,7 +384,9 @@ namespace mirinae {
                 cursor_ = 0;
             }
 
-            VkCommandBuffer get(VulkanDevice& device) {
+            VkCommandBuffer get(
+                FrameIndex f_index, uint32_t threadnum, VulkanDevice& device
+            ) {
                 if (cursor_ == cmd_bufs_.size()) {
                     const size_t GROW = 4;
                     const auto old_size = cmd_bufs_.size();
@@ -396,7 +398,12 @@ namespace mirinae {
                         return VK_NULL_HANDLE;
                     }
 
-                    SPDLOG_DEBUG("RP cmd pool growing: {}", cmd_bufs_.size());
+                    SPDLOG_DEBUG(
+                        "RP cmd pool growing: count={}, frame={}, thread={}",
+                        cmd_bufs_.size(),
+                        f_index.get(),
+                        threadnum
+                    );
                 } else if (cursor_ > cmd_bufs_.size()) {
                     // Since cursor_ is incremented by 1 in every get() call,
                     // this should never happen.
