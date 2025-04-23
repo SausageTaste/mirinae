@@ -1,6 +1,6 @@
 #include "mirinae/vulkan_pch.h"
 
-#include "mirinae/renderpass/shadow.hpp"
+#include "mirinae/renderpass/shadow/shadow.hpp"
 
 #include <entt/entity/registry.hpp>
 
