@@ -238,6 +238,243 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// Command buffer for render passes
+namespace {
+
+    class ResettingCommandPool {
+
+    public:
+        ~ResettingCommandPool() { MIRINAE_ASSERT(VK_NULL_HANDLE == handle_); }
+
+        void init(mirinae::VulkanDevice& device) {
+            if (handle_ != VK_NULL_HANDLE) {
+                SPDLOG_WARN("Command pool is already initialized!");
+                return;
+            }
+
+            VkCommandPoolCreateInfo cinfo{};
+            cinfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            cinfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            cinfo.queueFamilyIndex = *device.graphics_queue_family_index();
+
+            const auto res = vkCreateCommandPool(
+                device.logi_device(), &cinfo, nullptr, &handle_
+            );
+            MIRINAE_ASSERT(res == VK_SUCCESS);
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            if (VK_NULL_HANDLE != handle_) {
+                vkDestroyCommandPool(device.logi_device(), handle_, nullptr);
+                handle_ = VK_NULL_HANDLE;
+            } else {
+                SPDLOG_WARN("Command pool is already destroyed!");
+            }
+        }
+
+        void reset(mirinae::VulkanDevice& device) {
+            if (VK_NULL_HANDLE == handle_) {
+                SPDLOG_ERROR("Command pool is not initialized!");
+                return;
+            }
+
+            const auto res = vkResetCommandPool(
+                device.logi_device(), handle_, 0
+            );
+            if (res != VK_SUCCESS) {
+                SPDLOG_ERROR("Failed to reset command pool!");
+            }
+        }
+
+        VkCommandBuffer alloc(mirinae::VulkanDevice& device) {
+            VkCommandBuffer cmdbuf = VK_NULL_HANDLE;
+            if (this->alloc(&cmdbuf, 1, device))
+                return cmdbuf;
+
+            return VK_NULL_HANDLE;
+        }
+
+        bool alloc(
+            VkCommandBuffer* dst,
+            const uint32_t count,
+            VkCommandBufferLevel level,
+            mirinae::VulkanDevice& device
+        ) {
+            if (VK_NULL_HANDLE == handle_) {
+                SPDLOG_ERROR("Command pool is not initialized!");
+                return false;
+            }
+
+            VkCommandBufferAllocateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            info.commandPool = handle_;
+            info.level = level;
+            info.commandBufferCount = count;
+
+            return VK_SUCCESS ==
+                   vkAllocateCommandBuffers(device.logi_device(), &info, dst);
+        }
+
+        bool alloc(
+            VkCommandBuffer* dst,
+            const uint32_t count,
+            mirinae::VulkanDevice& device
+        ) {
+            return this->alloc(
+                dst, count, VK_COMMAND_BUFFER_LEVEL_PRIMARY, device
+            );
+        }
+
+    private:
+        VkCommandPool handle_ = VK_NULL_HANDLE;
+    };
+
+}  // namespace
+namespace mirinae {
+
+    class RpCommandPool::Impl {
+
+    public:
+        void init(VulkanDevice& device) {
+            thread_data_.resize(dal::tasker().GetNumTaskThreads());
+            for (auto& td : thread_data_) {
+                td.init(device);
+            }
+        }
+
+        void destroy(VulkanDevice& device) {
+            for (auto& td : thread_data_) {
+                td.destroy(device);
+            }
+            thread_data_.clear();
+        }
+
+        // Make sure it's called before enki task starts
+        void reset_pool(FrameIndex f_index, VulkanDevice& device) {
+            for (auto& td : thread_data_) {
+                td.get_frame_data(f_index).reset_pool(device);
+            }
+        }
+
+        VkCommandBuffer get(
+            FrameIndex f_index, uint32_t threadnum, VulkanDevice& device
+        ) {
+            auto& fd = this->get_fd(f_index, threadnum);
+            return fd.get(device);
+        }
+
+    private:
+        class FrameData {
+
+        public:
+            void init(VulkanDevice& device) {
+                pool_.init(device);
+                cmd_bufs_.clear();
+                cursor_ = 0;
+            }
+
+            void destroy(VulkanDevice& device) {
+                pool_.destroy(device);
+                cmd_bufs_.clear();
+                cursor_ = 0;
+            }
+
+            void reset_pool(VulkanDevice& device) {
+                pool_.reset(device);
+                cursor_ = 0;
+            }
+
+            VkCommandBuffer get(VulkanDevice& device) {
+                if (cursor_ == cmd_bufs_.size()) {
+                    const size_t GROW = 4;
+                    const auto old_size = cmd_bufs_.size();
+
+                    cmd_bufs_.resize(old_size + GROW);
+                    if (!pool_.alloc(&cmd_bufs_[old_size], GROW, device)) {
+                        cmd_bufs_.resize(old_size);
+                        SPDLOG_ERROR("Failed to allocate command buffer!");
+                        return VK_NULL_HANDLE;
+                    }
+
+                    SPDLOG_DEBUG("RP cmd pool growing: {}", cmd_bufs_.size());
+                } else if (cursor_ > cmd_bufs_.size()) {
+                    // Since cursor_ is incremented by 1 in every get() call,
+                    // this should never happen.
+                    SPDLOG_ERROR(
+                        "This shouldn't happen (cursor: {}, cmd_bufs size: {})",
+                        cursor_,
+                        cmd_bufs_.size()
+                    );
+                    return VK_NULL_HANDLE;
+                }
+
+                return cmd_bufs_[cursor_++];
+            }
+
+        private:
+            ResettingCommandPool pool_;
+            std::vector<VkCommandBuffer> cmd_bufs_;
+            size_t cursor_ = 0;
+        };
+
+        class ThreadData {
+
+        public:
+            void init(VulkanDevice& device) {
+                frame_data_.resize(mirinae::MAX_FRAMES_IN_FLIGHT);
+                for (auto& fd : frame_data_) {
+                    fd.init(device);
+                }
+            }
+
+            void destroy(VulkanDevice& device) {
+                for (auto& fd : frame_data_) {
+                    fd.destroy(device);
+                }
+                frame_data_.clear();
+            }
+
+            FrameData& get_frame_data(FrameIndex f_index) {
+                MIRINAE_ASSERT(f_index.get() < frame_data_.size());
+                return frame_data_[f_index.get()];
+            }
+
+        private:
+            std::vector<FrameData> frame_data_;
+        };
+
+        FrameData& get_fd(FrameIndex f_index, uint32_t threadnum) {
+            MIRINAE_ASSERT(threadnum < thread_data_.size());
+            return thread_data_[threadnum].get_frame_data(f_index);
+        }
+
+        std::vector<ThreadData> thread_data_;
+    };
+
+
+    RpCommandPool::RpCommandPool() { pimpl_ = std::make_unique<Impl>(); }
+
+    RpCommandPool::~RpCommandPool() {}
+
+    void RpCommandPool::init(VulkanDevice& device) { pimpl_->init(device); }
+
+    void RpCommandPool::destroy(VulkanDevice& device) {
+        pimpl_->destroy(device);
+    }
+
+    void RpCommandPool::reset_pool(FrameIndex f_index, VulkanDevice& device) {
+        pimpl_->reset_pool(f_index, device);
+    }
+
+    VkCommandBuffer RpCommandPool::get(
+        FrameIndex f_index, uint32_t threadnum, VulkanDevice& device
+    ) {
+        return pimpl_->get(f_index, threadnum, device);
+    }
+
+}  // namespace mirinae
+
+
 // RpResources
 namespace mirinae {
 
@@ -258,12 +495,16 @@ namespace mirinae {
 
 
     RpResources::RpResources(sung::HTaskSche task_sche, VulkanDevice& device)
-        : tex_man_(create_tex_mgr(task_sche, device)), device_(device) {}
+        : tex_man_(create_tex_mgr(task_sche, device)), device_(device) {
+        cmd_pool_.init(device);
+    }
 
     RpResources::~RpResources() {
         for (auto& [id, img] : imgs_) {
             img.destroy(device_);
         }
+
+        cmd_pool_.destroy(device_);
     }
 
     void RpResources::free_img(const str& id, const str& user_id) {

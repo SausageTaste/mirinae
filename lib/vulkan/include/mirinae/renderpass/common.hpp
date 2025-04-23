@@ -273,6 +273,24 @@ namespace mirinae {
     using HEnvmapBundle = std::shared_ptr<IEnvmapBundle>;
 
 
+    class RpCommandPool {
+
+    public:
+        RpCommandPool();
+        ~RpCommandPool();
+
+        void init(VulkanDevice& device);
+        void destroy(VulkanDevice& device);
+
+        void reset_pool(FrameIndex, VulkanDevice&);
+        VkCommandBuffer get(FrameIndex, uint32_t threadnum, VulkanDevice&);
+
+    private:
+        class Impl;
+        std::unique_ptr<Impl> pimpl_;
+    };
+
+
     class RpResources {
 
     public:
@@ -312,6 +330,7 @@ namespace mirinae {
         HShadowMaps shadow_maps_;
         HEnvmapBundle envmaps_;
         FbufImageBundle gbuf_;
+        RpCommandPool cmd_pool_;
 
     private:
         class ImageRecord;
