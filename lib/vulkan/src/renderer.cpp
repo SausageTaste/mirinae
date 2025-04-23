@@ -1,3 +1,5 @@
+#include "mirinae/vulkan_pch.h"
+
 #include "mirinae/renderer.hpp"
 
 #include <daltools/common/util.h>
@@ -8,7 +10,6 @@
 #include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
-#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/script.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/math/mamath.hpp"

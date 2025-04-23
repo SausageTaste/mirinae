@@ -1,3 +1,5 @@
+#include "mirinae/vulkan_pch.h"
+
 #include "mirinae/renderpass/shadow/bundles.hpp"
 
 #include <entt/entity/entity.hpp>

@@ -1,8 +1,9 @@
+#include "mirinae/vulkan_pch.h"
+
 #include "mirinae/overlay/overlay.hpp"
 
 #include <string_view>
 
-#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/overlay/text.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 

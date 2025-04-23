@@ -1,3 +1,5 @@
+#include "mirinae/vulkan_pch.h"
+
 #include "mirinae/renderpass/envmap.hpp"
 
 #include <set>
@@ -7,7 +9,6 @@
 #include "mirinae/cpnt/envmap.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
-#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderpass/builder.hpp"
 

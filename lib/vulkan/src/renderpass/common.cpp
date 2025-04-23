@@ -1,8 +1,8 @@
+#include "mirinae/vulkan_pch.h"
+
 #include "mirinae/renderpass/common.hpp"
 
 #include <set>
-
-#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 namespace {

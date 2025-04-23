@@ -31,6 +31,9 @@ add_library(mirinae_vulkan STATIC
 target_include_directories(mirinae_vulkan PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+target_precompile_headers(mirinae_vulkan PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/mirinae/vulkan_pch.h
+)
 target_link_libraries(mirinae_vulkan PUBLIC
     GPUOpen::VulkanMemoryAllocator
     mirinae::cosmos

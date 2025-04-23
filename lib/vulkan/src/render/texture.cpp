@@ -1,3 +1,5 @@
+#include "mirinae/vulkan_pch.h"
+
 #include "mirinae/render/texture.hpp"
 
 #include <ktxvulkan.h>
@@ -6,7 +8,6 @@
 #include <sung/basic/stringtool.hpp>
 #include <sung/basic/time.hpp>
 
-#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 

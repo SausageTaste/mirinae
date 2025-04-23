@@ -1,3 +1,5 @@
+#include "mirinae/vulkan_pch.h"
+
 #include "mirinae/render/vkdevice.hpp"
 
 #include <algorithm>
@@ -8,7 +10,6 @@
 #include <daltools/common/util.h>
 #include <sung/basic/stringtool.hpp>
 
-#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/konsts.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
