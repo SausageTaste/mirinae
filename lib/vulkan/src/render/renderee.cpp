@@ -284,11 +284,11 @@ namespace mirinae {
         desc_pool_.destroy(logi_device);
     }
 
-    VkDescriptorSet RenderUnitSkinned::get_desc_set(size_t index) {
+    VkDescriptorSet RenderUnitSkinned::get_desc_set(size_t index) const {
         return desc_sets_.at(index);
     }
 
-    void RenderUnitSkinned::record_bind_vert_buf(VkCommandBuffer cmdbuf) {
+    void RenderUnitSkinned::record_bind_vert_buf(VkCommandBuffer cmdbuf) const {
         vert_index_pair_.record_bind(cmdbuf);
     }
 
@@ -901,7 +901,7 @@ namespace mirinae {
         ubuf.set_data(&data, sizeof(U_GbufActor), mem_alloc);
     }
 
-    VkDescriptorSet RenderActor::get_desc_set(size_t index) const{
+    VkDescriptorSet RenderActor::get_desc_set(size_t index) const {
         return desc_sets_.at(index);
     }
 
@@ -955,7 +955,7 @@ namespace mirinae {
         ubuf.set_data(&data, sizeof(U_GbufActorSkinned), mem_alloc);
     }
 
-    VkDescriptorSet RenderActorSkinned::get_desc_set(size_t index) {
+    VkDescriptorSet RenderActorSkinned::get_desc_set(size_t index) const {
         return desc_sets_.at(index);
     }
 

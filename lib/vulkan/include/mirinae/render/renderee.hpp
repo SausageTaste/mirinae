@@ -65,8 +65,8 @@ namespace mirinae {
         void destroy(VulkanMemoryAllocator mem_alloc, VkDevice logi_device);
 
         const std::string& name() const { return name_; }
-        VkDescriptorSet get_desc_set(size_t index);
-        void record_bind_vert_buf(VkCommandBuffer cmdbuf);
+        VkDescriptorSet get_desc_set(size_t index) const;
+        void record_bind_vert_buf(VkCommandBuffer cmdbuf) const;
         uint32_t vertex_count() const;
 
     private:
@@ -211,7 +211,7 @@ namespace mirinae {
             const U_GbufActorSkinned& data,
             VulkanMemoryAllocator mem_alloc
         );
-        VkDescriptorSet get_desc_set(size_t index);
+        VkDescriptorSet get_desc_set(size_t index) const;
 
     private:
         DescPool desc_pool_;

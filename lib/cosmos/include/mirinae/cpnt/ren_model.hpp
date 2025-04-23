@@ -114,8 +114,18 @@ namespace mirinae::cpnt {
         }
 
         template <typename T>
+        const T* get_model() const {
+            return dynamic_cast<const T*>(model_.get());
+        }
+
+        template <typename T>
         T* get_actor() {
             return dynamic_cast<T*>(actor_.get());
+        }
+
+        template <typename T>
+        const T* get_actor() const {
+            return dynamic_cast<const T*>(actor_.get());
         }
 
     public:
