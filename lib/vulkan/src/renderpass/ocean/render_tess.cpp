@@ -1,6 +1,6 @@
 #include "mirinae/vulkan_pch.h"
 
-#include "mirinae/renderpass/ocean.hpp"
+#include "mirinae/renderpass/ocean/ocean.hpp"
 
 #include <entt/entity/registry.hpp>
 #include <sung/basic/aabb.hpp>
@@ -11,14 +11,7 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderpass/builder.hpp"
-
-#define GET_OCEAN_ENTT(ctxt)                        \
-    if (!(ctxt).draw_sheet_)                        \
-        return;                                     \
-    if (!(ctxt).draw_sheet_->ocean_)                \
-        return;                                     \
-    auto& ocean_entt = *(ctxt).draw_sheet_->ocean_; \
-    auto cmdbuf = (ctxt).cmdbuf_;
+#include "mirinae/renderpass/ocean/common.hpp"
 
 
 namespace {
@@ -26,36 +19,6 @@ namespace {
     sung::AutoCVarFlt cv_foam_sss_base{ "ocean:foam_sss_base", "", 0 };
     sung::AutoCVarFlt cv_foam_sss_scale{ "ocean:foam_sss_scale", "", 4 };
     sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
-    sung::AutoCVarFlt cv_displace_scale_x{ "ocean:displace_scale_x", "", 1 };
-    sung::AutoCVarFlt cv_displace_scale_y{ "ocean:displace_scale_y", "", 1 };
-
-
-    constexpr uint32_t CASCADE_COUNT = mirinae::cpnt::OCEAN_CASCADE_COUNT;
-    constexpr uint32_t OCEAN_TEX_DIM = 256;
-    const uint32_t OCEAN_TEX_DIM_LOG2 = std::log(OCEAN_TEX_DIM) / std::log(2);
-
-
-    VkPipeline create_compute_pipeline(
-        const dal::path& spv_path,
-        const VkPipelineLayout pipeline_layout,
-        mirinae::VulkanDevice& device
-    ) {
-        mirinae::PipelineBuilder::ShaderStagesBuilder shader_builder{ device };
-        shader_builder.add_comp(spv_path);
-
-        VkComputePipelineCreateInfo cinfo{};
-        cinfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        cinfo.layout = pipeline_layout;
-        cinfo.stage = *shader_builder.data();
-
-        VkPipeline pipeline = VK_NULL_HANDLE;
-        const auto res = vkCreateComputePipelines(
-            device.logi_device(), VK_NULL_HANDLE, 1, &cinfo, nullptr, &pipeline
-        );
-        MIRINAE_ASSERT(res == VK_SUCCESS);
-
-        return pipeline;
-    }
 
 }  // namespace
 
@@ -264,7 +227,7 @@ namespace {
         }
 
     private:
-        glm::vec4 texco_offset_rot_[CASCADE_COUNT];
+        glm::vec4 texco_offset_rot_[mirinae::CASCADE_COUNT];
         glm::vec4 dlight_color_;
         glm::vec4 dlight_dir_;
         glm::vec4 fog_color_density_;
@@ -310,7 +273,7 @@ namespace {
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& fd = frame_data_[i];
 
-                for (size_t j = 0; j < CASCADE_COUNT; j++) {
+                for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
                     const auto img_name = fmt::format(
                         "ocean_finalize:displacement_c{}_f{}", j, i
                     );
@@ -320,7 +283,7 @@ namespace {
                     MIRINAE_ASSERT(nullptr != fd.disp_map_[j]);
                 }
 
-                for (size_t j = 0; j < CASCADE_COUNT; j++) {
+                for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
                     const auto img_name = fmt::format(
                         "ocean_finalize:derivatives_c{}_f{}", j, i
                     );
@@ -330,7 +293,7 @@ namespace {
                     MIRINAE_ASSERT(nullptr != fd.deri_map_[j]);
                 }
 
-                for (size_t j = 0; j < CASCADE_COUNT; j++) {
+                for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
                     const auto img_name = fmt::format(
                         "ocean_finalize:turbulence_c{}", j
                     );
@@ -549,7 +512,7 @@ namespace {
 
         ~RpStatesOceanTess() override {
             for (auto& fd : frame_data_) {
-                for (size_t i = 0; i < CASCADE_COUNT; i++) {
+                for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++) {
                     rp_res_.free_img(fd.disp_map_[i]->id(), this->name());
                     rp_res_.free_img(fd.deri_map_[i]->id(), this->name());
                 }
@@ -558,7 +521,7 @@ namespace {
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
-            for (size_t i = 0; i < CASCADE_COUNT; i++)
+            for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
                 rp_res_.free_img(turb_map_[i]->id(), this->name());
 
             desc_pool_.destroy(device_.logi_device());
@@ -624,7 +587,7 @@ namespace {
                 .roughness(ocean_entt.roughness_)
                 .sss_base(cv_foam_sss_base.get())
                 .sss_scale(cv_foam_sss_scale.get());
-            for (size_t i = 0; i < CASCADE_COUNT; i++)
+            for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
             if (auto& atmos = ctxt.draw_sheet_->atmosphere_)
@@ -705,8 +668,8 @@ namespace {
 
     private:
         struct FrameData {
-            std::array<mirinae::HRpImage, CASCADE_COUNT> disp_map_;
-            std::array<mirinae::HRpImage, CASCADE_COUNT> deri_map_;
+            std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> disp_map_;
+            std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> deri_map_;
             mirinae::Buffer ubuf_;
             VkDescriptorSet desc_set_;
         };
@@ -904,7 +867,7 @@ namespace {
         mirinae::RpResources& rp_res_;
 
         std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
-        std::array<mirinae::HRpImage, CASCADE_COUNT> turb_map_;
+        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> turb_map_;
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
         mirinae::RenderPass render_pass_;

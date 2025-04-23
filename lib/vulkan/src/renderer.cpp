@@ -21,8 +21,8 @@
 #include "mirinae/renderpass/compo.hpp"
 #include "mirinae/renderpass/envmap.hpp"
 #include "mirinae/renderpass/gbuf.hpp"
-#include "mirinae/renderpass/ocean.hpp"
 #include "mirinae/renderpass/shadow.hpp"
+#include "mirinae/renderpass/ocean/ocean.hpp"
 #include "mirinae/renderpass/transp.hpp"
 
 

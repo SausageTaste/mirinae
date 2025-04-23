@@ -1,52 +1,12 @@
 #include "mirinae/vulkan_pch.h"
 
-#include "mirinae/renderpass/ocean.hpp"
+#include "mirinae/renderpass/ocean/ocean.hpp"
 
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderpass/builder.hpp"
-
-
-#define GET_OCEAN_ENTT(ctxt)                        \
-    if (!(ctxt).draw_sheet_)                        \
-        return;                                     \
-    if (!(ctxt).draw_sheet_->ocean_)                \
-        return;                                     \
-    auto& ocean_entt = *(ctxt).draw_sheet_->ocean_; \
-    auto cmdbuf = (ctxt).cmdbuf_;
-
-
-namespace {
-
-    constexpr uint32_t CASCADE_COUNT = mirinae::cpnt::OCEAN_CASCADE_COUNT;
-    constexpr uint32_t OCEAN_TEX_DIM = 256;
-    const uint32_t OCEAN_TEX_DIM_LOG2 = std::log(OCEAN_TEX_DIM) / std::log(2);
-
-
-    VkPipeline create_compute_pipeline(
-        const dal::path& spv_path,
-        const VkPipelineLayout pipeline_layout,
-        mirinae::VulkanDevice& device
-    ) {
-        mirinae::PipelineBuilder::ShaderStagesBuilder shader_builder{ device };
-        shader_builder.add_comp(spv_path);
-
-        VkComputePipelineCreateInfo cinfo{};
-        cinfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        cinfo.layout = pipeline_layout;
-        cinfo.stage = *shader_builder.data();
-
-        VkPipeline pipeline = VK_NULL_HANDLE;
-        const auto res = vkCreateComputePipelines(
-            device.logi_device(), VK_NULL_HANDLE, 1, &cinfo, nullptr, &pipeline
-        );
-        MIRINAE_ASSERT(res == VK_SUCCESS);
-
-        return pipeline;
-    }
-
-}  // namespace
+#include "mirinae/renderpass/ocean/common.hpp"
 
 
 // Ocean Butterfly
@@ -173,7 +133,7 @@ namespace {
             // Butterfly cache texture
             {
                 const auto bufffly_img = ::create_butterfly_cache_tex(
-                    OCEAN_TEX_DIM_LOG2, OCEAN_TEX_DIM
+                    mirinae::OCEAN_TEX_DIM_LOG2, mirinae::OCEAN_TEX_DIM
                 );
 
                 mirinae::ImageCreateInfo img_info;
@@ -309,7 +269,7 @@ namespace {
                         .build(device);
                 MIRINAE_ASSERT(VK_NULL_HANDLE != pipe_layout_);
 
-                pipeline_ = ::create_compute_pipeline(
+                pipeline_ = mirinae::create_compute_pipeline(
                     ":asset/spv/ocean_butterfly_comp.spv", pipe_layout_, device
                 );
             }
@@ -367,7 +327,7 @@ namespace {
             pc.direction_ = 0;
 
             // one dimensional FFT in horizontal direction
-            for (int stage = 0; stage < OCEAN_TEX_DIM_LOG2; stage++) {
+            for (int stage = 0; stage < mirinae::OCEAN_TEX_DIM_LOG2; stage++) {
                 pc.direction_ = 0;
                 pc.stage_ = stage;
                 pc_info.record(cmdbuf, pc);
@@ -387,15 +347,15 @@ namespace {
 
                 vkCmdDispatch(
                     cmdbuf,
-                    OCEAN_TEX_DIM / 16,
-                    OCEAN_TEX_DIM / 16,
+                    mirinae::OCEAN_TEX_DIM / 16,
+                    mirinae::OCEAN_TEX_DIM / 16,
                     fd.ppong_textures_.size()
                 );
 
                 pc.pingpong_ = !pc.pingpong_;
             }
 
-            for (int stage = 0; stage < OCEAN_TEX_DIM_LOG2; stage++) {
+            for (int stage = 0; stage < mirinae::OCEAN_TEX_DIM_LOG2; stage++) {
                 pc.direction_ = 1;
                 pc.stage_ = stage;
                 pc_info.record(cmdbuf, pc);
@@ -415,8 +375,8 @@ namespace {
 
                 vkCmdDispatch(
                     cmdbuf,
-                    OCEAN_TEX_DIM / 16,
-                    OCEAN_TEX_DIM / 16,
+                    mirinae::OCEAN_TEX_DIM / 16,
+                    mirinae::OCEAN_TEX_DIM / 16,
                     fd.ppong_textures_.size()
                 );
 
@@ -432,7 +392,7 @@ namespace {
         ) {
             const auto prefix = "ocean_tilde_hkt:";
 
-            for (size_t j = 0; j < CASCADE_COUNT; j++) {
+            for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
                 const auto suffix = fmt::format("_c{}_f{}", j, frame_index);
 
                 out.push_back(rp_res.get_img_reader(
@@ -459,7 +419,10 @@ namespace {
             // Storage images
             {
                 mirinae::ImageCreateInfo cinfo;
-                cinfo.set_dimensions(OCEAN_TEX_DIM, OCEAN_TEX_DIM)
+                cinfo
+                    .set_dimensions(
+                        mirinae::OCEAN_TEX_DIM, mirinae::OCEAN_TEX_DIM
+                    )
                     .set_format(VK_FORMAT_R32G32B32A32_SFLOAT)
                     .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
                     .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
@@ -630,7 +593,7 @@ namespace {
                     .desc(desclayouts.get(name() + ":main").layout())
                     .build(pipe_layout_, device);
 
-                pipeline_ = ::create_compute_pipeline(
+                pipeline_ = mirinae::create_compute_pipeline(
                     ":asset/spv/ocean_naive_ift_comp.spv", pipe_layout_, device
                 );
             }
@@ -692,7 +655,7 @@ namespace {
                 .record(cmdbuf);
 
             ::U_OceanNaiveIftPushConst pc;
-            pc.N_ = ::OCEAN_TEX_DIM;
+            pc.N_ = ::mirinae::OCEAN_TEX_DIM;
             pc.stage_ = 0;
 
             mirinae::PushConstInfo pc_info;
@@ -715,8 +678,8 @@ namespace {
 
             vkCmdDispatch(
                 cmdbuf,
-                OCEAN_TEX_DIM / 16,
-                OCEAN_TEX_DIM / 16,
+                mirinae::OCEAN_TEX_DIM / 16,
+                mirinae::OCEAN_TEX_DIM / 16,
                 fd.ppong_textures_.size()
             );
 
@@ -738,8 +701,8 @@ namespace {
 
             vkCmdDispatch(
                 cmdbuf,
-                OCEAN_TEX_DIM / 16,
-                OCEAN_TEX_DIM / 16,
+                mirinae::OCEAN_TEX_DIM / 16,
+                mirinae::OCEAN_TEX_DIM / 16,
                 fd.ppong_textures_.size()
             );
         }
