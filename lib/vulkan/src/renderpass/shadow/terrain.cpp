@@ -3,25 +3,87 @@
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cpnt/light.hpp"
-#include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
-#include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/renderee.hpp"
 #include "mirinae/renderee/terrain.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/shadow/bundles.hpp"
 
 
-// Shadow skinned transp
 namespace {
 
-    class RpStatesShadowSkinnedTransp : public mirinae::IRpStates {
+    class U_ShadowTerrainPushConst {
 
     public:
-        RpStatesShadowSkinnedTransp(
+        U_ShadowTerrainPushConst& pvm(const glm::mat4& pvm) {
+            pvm_ = pvm;
+            return *this;
+        }
+
+        U_ShadowTerrainPushConst& tile_index(int x, int y) {
+            tile_index_count_.x = static_cast<float>(x);
+            tile_index_count_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_ShadowTerrainPushConst& tile_count(int x, int y) {
+            tile_index_count_.z = static_cast<float>(x);
+            tile_index_count_.w = static_cast<float>(y);
+            return *this;
+        }
+
+        U_ShadowTerrainPushConst& height_map_size(uint32_t x, uint32_t y) {
+            height_map_size_fbuf_size_.x = static_cast<float>(x);
+            height_map_size_fbuf_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        U_ShadowTerrainPushConst& height_map_size(const VkExtent2D& e) {
+            height_map_size_fbuf_size_.x = static_cast<float>(e.width);
+            height_map_size_fbuf_size_.y = static_cast<float>(e.height);
+            return *this;
+        }
+
+        template <typename T>
+        U_ShadowTerrainPushConst& fbuf_size(T x, T y) {
+            height_map_size_fbuf_size_.z = static_cast<float>(x);
+            height_map_size_fbuf_size_.w = static_cast<float>(y);
+            return *this;
+        }
+
+        U_ShadowTerrainPushConst& fbuf_size(const VkExtent2D& x) {
+            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
+            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
+            return *this;
+        }
+
+        U_ShadowTerrainPushConst& height_scale(float x) {
+            height_scale_ = x;
+            return *this;
+        }
+
+        U_ShadowTerrainPushConst& tess_factor(float x) {
+            tess_factor_ = x;
+            return *this;
+        }
+
+    private:
+        glm::mat4 pvm_;
+        glm::vec4 tile_index_count_;
+        glm::vec4 height_map_size_fbuf_size_;
+        float height_scale_;
+        float tess_factor_;
+    };
+
+
+    class RpStatesShadowTerrain
+        : public mirinae::IRpStates
+        , public mirinae::RenPassBundle<1> {
+
+    public:
+        RpStatesShadowTerrain(
             mirinae::RpResources& rp_res,
             mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
@@ -52,10 +114,11 @@ namespace {
             // Pipeline layout
             {
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(desclayouts.get("gbuf:actor_skinned").layout())
-                    .desc(desclayouts.get("gbuf:model").layout())
+                    .desc(desclayouts.get("gbuf_terrain:main").layout())
                     .add_vertex_flag()
-                    .pc<mirinae::U_ShadowPushConst>()
+                    .add_tesc_flag()
+                    .add_tese_flag()
+                    .pc<U_ShadowTerrainPushConst>(0)
                     .build(pipe_layout_, device);
             }
 
@@ -64,10 +127,14 @@ namespace {
                 mirinae::PipelineBuilder builder{ device };
 
                 builder.shader_stages()
-                    .add_vert(":asset/spv/shadow_skin_vert.spv")
-                    .add_frag(":asset/spv/shadow_transp_frag.spv");
+                    .add_vert(":asset/spv/shadow_terrain_vert.spv")
+                    .add_tesc(":asset/spv/shadow_terrain_tesc.spv")
+                    .add_tese(":asset/spv/shadow_terrain_tese.spv")
+                    .add_frag(":asset/spv/shadow_basic_frag.spv");
 
-                builder.vertex_input_state().set_skinned();
+                builder.input_assembly_state().topology_patch_list();
+
+                builder.tes_state().patch_ctrl_points(4);
 
                 builder.rasterization_state()
                     .depth_clamp_enable(device.has_supp_depth_clamp())
@@ -93,19 +160,18 @@ namespace {
             return;
         }
 
-        ~RpStatesShadowSkinnedTransp() override {
-            render_pass_.destroy(device_);
-            pipeline_.destroy(device_);
-            pipe_layout_.destroy(device_);
+        ~RpStatesShadowTerrain() override {
+            this->destroy_render_pass_elements(device_);
         }
 
         const std::string& name() const override {
-            static const std::string name = "shadow_skinned_transp";
+            static const std::string name = "shadow_terrain";
             return name;
         }
 
         void record(const mirinae::RpContext& ctxt) override {
             namespace cpnt = mirinae::cpnt;
+
             auto& reg = ctxt.cosmos_->reg();
             const auto cmdbuf = ctxt.cmdbuf_;
             const auto shadow_maps = dynamic_cast<mirinae::ShadowMapBundle*>(
@@ -172,110 +238,45 @@ namespace {
                         .set_wh(half_width, half_height)
                         .record_scissor(cmdbuf);
 
-                    for (auto& pair : ctxt.draw_sheet_->skinned_trs_) {
-                        auto& unit = *pair.unit_;
-                        unit.record_bind_vert_buf(cmdbuf);
+                    mirinae::PushConstInfo pc_info;
+                    pc_info.layout(pipe_layout_)
+                        .add_stage_vert()
+                        .add_stage_tesc()
+                        .add_stage_tese();
 
-                        descset_info.first_set(1)
-                            .set(unit.get_desc_set(ctxt.f_index_.get()))
-                            .record(cmdbuf);
+                    for (auto e : reg.view<cpnt::Terrain>()) {
+                        auto& terr = reg.get<cpnt::Terrain>(e);
 
-                        for (auto& actor : pair.actors_) {
-                            descset_info.first_set(0)
-                                .set(actor.actor_->get_desc_set(
-                                    ctxt.f_index_.get()
-                                ))
-                                .record(cmdbuf);
+                        auto unit = terr.ren_unit<mirinae::RenUnitTerrain>();
+                        if (!unit)
+                            continue;
+                        if (!unit->is_ready())
+                            continue;
 
-                            mirinae::U_ShadowPushConst push_const;
-                            push_const.pvm_ = cascade.light_mat_ *
-                                              actor.model_mat_;
-
-                            mirinae::PushConstInfo{}
-                                .layout(pipe_layout_)
-                                .add_stage_vert()
-                                .record(cmdbuf, push_const);
-
-                            vkCmdDrawIndexed(
-                                cmdbuf, unit.vertex_count(), 1, 0, 0, 0
-                            );
-                        }
-                    }
-                }
-
-                vkCmdEndRenderPass(cmdbuf);
-            }
-
-            for (size_t i = 0; i < shadow_maps->slight_count(); ++i) {
-                auto& shadow = shadow_maps->slights_[i];
-                if (shadow.entt_ == entt::null)
-                    continue;
-                auto& slight = reg.get<cpnt::SLight>(shadow.entt_);
-                auto& tform = reg.get<cpnt::Transform>(shadow.entt_);
-
-                mirinae::ImageMemoryBarrier{}
-                    .image(shadow.tex_->image())
-                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                    .set_signle_mip_layer()
-                    .record_single(
-                        ctxt.cmdbuf_,
-                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                    );
-
-                const auto light_mat = slight.make_light_mat(tform);
-
-                mirinae::RenderPassBeginInfo{}
-                    .rp(render_pass_.get())
-                    .fbuf(shadow.fbuf())
-                    .wh(shadow.tex_->extent())
-                    .clear_value_count(clear_values_.size())
-                    .clear_values(clear_values_.data())
-                    .record_begin(cmdbuf);
-
-                vkCmdBindPipeline(
-                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
-                );
-                vkCmdSetDepthBias(cmdbuf, 0, 0, -6);
-
-                mirinae::Viewport{}
-                    .set_wh(shadow.width(), shadow.height())
-                    .record_single(cmdbuf);
-                mirinae::Rect2D{}
-                    .set_wh(shadow.width(), shadow.height())
-                    .record_scissor(cmdbuf);
-
-                mirinae::DescSetBindInfo descset_info{ pipe_layout_ };
-
-                for (auto& pair : ctxt.draw_sheet_->skinned_trs_) {
-                    auto& unit = *pair.unit_;
-                    auto unit_desc = unit.get_desc_set(ctxt.f_index_.get());
-                    unit.record_bind_vert_buf(cmdbuf);
-
-                    descset_info.first_set(1)
-                        .set(unit.get_desc_set(ctxt.f_index_.get()))
-                        .record(cmdbuf);
-
-                    for (auto& a : pair.actors_) {
-                        descset_info.first_set(0)
-                            .set(a.actor_->get_desc_set(ctxt.f_index_.get()))
-                            .record(cmdbuf);
-
-                        mirinae::U_ShadowPushConst push_const;
-                        push_const.pvm_ = light_mat * a.model_mat_;
-
-                        mirinae::PushConstInfo{}
+                        mirinae::DescSetBindInfo{}
                             .layout(pipe_layout_)
-                            .add_stage_vert()
-                            .record(cmdbuf, push_const);
+                            .add(unit->desc_set())
+                            .record(cmdbuf);
 
-                        vkCmdDrawIndexed(
-                            cmdbuf, unit.vertex_count(), 1, 0, 0, 0
-                        );
+                        glm::dmat4 model_mat(1);
+                        if (auto tform = reg.try_get<cpnt::Transform>(e))
+                            model_mat = tform->make_model_mat();
+
+                        ::U_ShadowTerrainPushConst pc;
+                        pc.pvm(cascade.light_mat_ * model_mat)
+                            .tile_count(24, 24)
+                            .height_map_size(unit->height_map_size())
+                            .fbuf_size(half_width, half_height)
+                            .height_scale(64)
+                            .tess_factor(terr.tess_factor_);
+
+                        for (int x = 0; x < 24; ++x) {
+                            for (int y = 0; y < 24; ++y) {
+                                pc.tile_index(x, y);
+                                pc_info.record(cmdbuf, pc);
+                                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+                            }
+                        }
                     }
                 }
 
@@ -288,11 +289,6 @@ namespace {
     private:
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
-
-        mirinae::RenderPass render_pass_;
-        mirinae::RpPipeline pipeline_;
-        mirinae::RpPipeLayout pipe_layout_;
-        std::array<VkClearValue, 1> clear_values_;
     };
 
 }  // namespace
@@ -300,16 +296,12 @@ namespace {
 
 namespace mirinae::rp {
 
-    HShadowMaps create_shadow_maps_bundle(mirinae::VulkanDevice& device) {
-        return std::make_shared<ShadowMapBundle>(device);
-    }
-
-    URpStates create_rp_states_shadow_skinned_transp(
+    URpStates create_rp_states_shadow_terrain(
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
-        return std::make_unique<::RpStatesShadowSkinnedTransp>(
+        return std::make_unique<::RpStatesShadowTerrain>(
             rp_res, desclayouts, device
         );
     }
