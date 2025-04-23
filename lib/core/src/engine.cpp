@@ -982,9 +982,7 @@ namespace {
 
             cosmos_->register_tasks(tasks_, action_mapper_);
 
-            renderer_ = mirinae::create_vk_renderer(
-                cinfo, task_sche, script_, cosmos_
-            );
+            renderer_ = mirinae::create_vk_renderer(cinfo, task_sche, cosmos_);
             renderer_->register_tasks(tasks_);
 
             cosmos_->phys_world().give_debug_ren(renderer_->debug_ren());

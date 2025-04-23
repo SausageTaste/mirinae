@@ -1565,13 +1565,11 @@ namespace {
         RendererVulkan(
             mirinae::EngineCreateInfo& cinfo,
             sung::HTaskSche task_sche,
-            std::shared_ptr<mirinae::ScriptEngine> script,
             std::shared_ptr<mirinae::CosmosSimulator> cosmos,
             int init_width,
             int init_height
         )
             : device_(cinfo)
-            , script_(script)
             , cosmos_(cosmos)
             , rp_res_(task_sche, device_)
             , desclayout_(device_)
@@ -1723,25 +1721,6 @@ namespace {
                 input_mgrs_.add(&overlay_man_);
             }
 
-            // Widget: Dev console
-            /*
-            {
-                dev_console_output_ = mirinae::create_text_blocks();
-                script->replace_output_buf(dev_console_output_);
-
-                auto w = mirinae::create_dev_console(
-                    overlay_man_.text_render_data(),
-                    desclayout_,
-                    *tex_man_,
-                    *script,
-                    device_
-                );
-                w->replace_output_buf(dev_console_output_);
-                w->hide(true);
-                overlay_man_.widgets().add_widget(std::move(w));
-            }
-            */
-
             // ImGui
             {
                 rp_states_imgui_.init(swapchain_);
@@ -1763,8 +1742,6 @@ namespace {
                 if (!ImGui_ImplVulkan_CreateFontsTexture())
                     MIRINAE_ABORT("Failed to create ImGui fonts texture");
             }
-
-            fps_timer_.set_fps_cap(120);
         }
 
         ~RendererVulkan() {
@@ -2136,9 +2113,12 @@ namespace {
 
         // This must be the first member variable
         mirinae::VulkanDevice device_;
-        std::shared_ptr<mirinae::ScriptEngine> script_;
-        std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
 
+        // External dependencies
+        std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
+        std::function<void()> imgui_new_frame_;
+
+        ::FrameSync framesync_;
         ::FlagShip flag_ship_;
         mirinae::rg::RenderGraphDef render_graph_;
         mirinae::RpResources rp_res_;
@@ -2146,28 +2126,27 @@ namespace {
         mirinae::HMdlMgr model_man_;
         mirinae::OverlayManager overlay_man_;
         mirinae::RenderPassPackage rp_;
+        mirinae::Swapchain swapchain_;
+        mirinae::RpContext ren_ctxt;
+        mirinae::InputProcesserMgr input_mgrs_;
+
+        // Command buffers
+        ::CmdBufList cmdbufs_;
+        mirinae::CommandPool cmd_pool_;
+        std::vector<VkCommandBuffer> basic_cmdbufs_;
+
+        // Render passes
         ::RpMasters rpm_;
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         ::RpStatesImgui rp_states_imgui_;
-        mirinae::Swapchain swapchain_;
-        ::FrameSync framesync_;
-        mirinae::RpContext ren_ctxt;
-        mirinae::CommandPool cmd_pool_;
-        ::CmdBufList cmdbufs_;
         std::vector<std::unique_ptr<mirinae::IRpBase>> render_passes_;
-        mirinae::InputProcesserMgr input_mgrs_;
-        dal::TimerThatCaps fps_timer_;
-        std::shared_ptr<mirinae::ITextData> dev_console_output_;
-        std::function<void()> imgui_new_frame_;
-        std::vector<VkCommandBuffer> basic_cmdbufs_;
 
+        // PODs
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;
         bool fbuf_resized_ = false;
-        bool flashlight_on_ = false;
-        bool quit_ = false;
     };
 
 }  // namespace
@@ -2178,13 +2157,12 @@ namespace mirinae {
     std::unique_ptr<IRenderer> create_vk_renderer(
         mirinae::EngineCreateInfo& cinfo,
         sung::HTaskSche task_sche,
-        std::shared_ptr<mirinae::ScriptEngine> script,
         std::shared_ptr<mirinae::CosmosSimulator> cosmos
     ) {
         const auto w = cinfo.init_width_;
         const auto h = cinfo.init_height_;
         return std::make_unique<::RendererVulkan>(
-            cinfo, task_sche, script, cosmos, w, h
+            cinfo, task_sche, cosmos, w, h
         );
     }
 
