@@ -31,6 +31,10 @@ def __is_code_file(file_path):
     loc, file_name_ext = os.path.split(file_path)
     file_name, file_ext = os.path.splitext(file_name_ext)
 
+    if "include\\tl" in loc:
+        return False
+    if "script\\install" in loc:
+        return False
     if file_ext.strip(".") in INCLUDE_EXTENSIONS:
         return True
     if file_name_ext == "CMakeLists.txt":
