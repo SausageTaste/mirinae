@@ -21,7 +21,8 @@ namespace mirinae::rp {
         mirinae::VulkanDevice& device
     );
 
-    URpStates create_rp_states_shadow_skinned_transp(
+    std::unique_ptr<IRpBase> create_rp_states_shadow_skinned_transp(
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
