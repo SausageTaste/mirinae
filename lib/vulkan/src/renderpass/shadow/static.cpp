@@ -572,7 +572,7 @@ namespace {
             this->destroy_render_pass_elements(device_);
         }
 
-        std::string_view name_sv() const override { return "shadow static"; }
+        std::string_view name() const override { return "shadow static"; }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             const auto shadow_maps = static_cast<mirinae::ShadowMapBundle*>(

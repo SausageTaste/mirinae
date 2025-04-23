@@ -576,7 +576,7 @@ namespace mirinae {
 
     struct IRpBase {
         virtual ~IRpBase() = default;
-        virtual std::string_view name_sv() const = 0;
+        virtual std::string_view name() const = 0;
         virtual void render_imgui() {}
         virtual void on_resize(uint32_t width, uint32_t height) {}
 
