@@ -58,6 +58,24 @@ namespace mirinae {
         VkCommandPool get() const { return handle_; }
 
         VkCommandBuffer alloc(VkDevice logi_device);
+
+        bool alloc(
+            VkCommandBuffer* dst,
+            const uint32_t count,
+            VkCommandBufferLevel level,
+            mirinae::VulkanDevice& device
+        );
+
+        bool alloc(
+            VkCommandBuffer* dst,
+            const uint32_t count,
+            mirinae::VulkanDevice& device
+        ) {
+            return this->alloc(
+                dst, count, VK_COMMAND_BUFFER_LEVEL_PRIMARY, device
+            );
+        }
+
         void free(VkCommandBuffer cmdbuf, VkDevice logi_device);
 
         VkCommandBuffer begin_single_time(VkDevice logi_device);

@@ -87,22 +87,30 @@ namespace { namespace task {
         void init(
             const entt::registry& reg,
             const mirinae::IRenPass& rp,
-            const mirinae::ShadowMapBundle& shadow_maps
+            const mirinae::ShadowMapBundle& shadow_maps,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
         ) {
             reg_ = &reg;
             rp_ = &rp;
             shadow_maps_ = &shadow_maps;
+            cmd_pool_ = &cmd_pool;
+            device_ = &device;
         }
 
-        void prepare(VkCommandBuffer cmdbuf, const mirinae::RpCtxt& ctxt) {
-            cmdbuf_ = cmdbuf;
-            ctxt_ = &ctxt;
-        }
+        void prepare(const mirinae::RpCtxt& ctxt) { ctxt_ = &ctxt; }
 
         enki::ITaskSet& fence() { return fence_; }
 
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) {
+            if (VK_NULL_HANDLE != cmdbuf_) {
+                out.push_back(cmdbuf_);
+            }
+        }
+
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
@@ -300,12 +308,14 @@ namespace { namespace task {
 
         mirinae::FenceTask fence_;
         DrawSet draw_set_;
+        VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
         const mirinae::ShadowMapBundle* shadow_maps_ = nullptr;
         const entt::registry* reg_ = nullptr;
         const mirinae::IRenPass* rp_ = nullptr;
         const mirinae::RpCtxt* ctxt_ = nullptr;
-        VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
+        mirinae::RpCommandPool* cmd_pool_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
     };
 
 
@@ -317,17 +327,21 @@ namespace { namespace task {
         void init(
             const entt::registry& reg,
             const mirinae::IRenPass& rp,
-            mirinae::ShadowMapBundle& shadow_maps
+            const mirinae::ShadowMapBundle& shadow_maps,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
         ) {
-            record_tasks_.init(reg, rp, shadow_maps);
+            record_tasks_.init(reg, rp, shadow_maps, cmd_pool, device);
         }
 
         std::string_view name() const override { return "shadow static"; }
 
-        void prepare(
-            VkCommandBuffer cmdbuf, const mirinae::RpCtxt& ctxt
-        ) override {
-            record_tasks_.prepare(cmdbuf, ctxt);
+        void prepare(const mirinae::RpCtxt& ctxt) override {
+            record_tasks_.prepare(ctxt);
+        }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) override {
+            record_tasks_.collect_cmdbuf(out);
         }
 
         enki::ITaskSet* record_task() override { return &record_tasks_; }
@@ -437,7 +451,9 @@ namespace {
             );
 
             auto out = std::make_unique<task::RpTaskShadowStatic>();
-            out->init(cosmos_.reg(), *this, *shadow_maps);
+            out->init(
+                cosmos_.reg(), *this, *shadow_maps, rp_res_.cmd_pool_, device_
+            );
             return out;
         }
 

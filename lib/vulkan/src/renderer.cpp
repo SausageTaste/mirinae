@@ -349,6 +349,41 @@ namespace {
     };
 
 
+    class CmdBufList {
+
+    private:
+        using FIdx = mirinae::FrameIndex;
+
+    public:
+        CmdBufList() { frame_data_.resize(mirinae::MAX_FRAMES_IN_FLIGHT); }
+
+        void clear(FIdx f_idx) { frame_data_.at(f_idx.get()).cmdbufs_.clear(); }
+
+        void add(VkCommandBuffer cmdbuf, FIdx f_idx) {
+            frame_data_.at(f_idx.get()).cmdbufs_.push_back(cmdbuf);
+        }
+
+        const VkCommandBuffer* data(FIdx f_idx) const {
+            return frame_data_.at(f_idx.get()).cmdbufs_.data();
+        }
+
+        size_t size(FIdx f_idx) const {
+            return frame_data_.at(f_idx.get()).cmdbufs_.size();
+        }
+
+        std::vector<VkCommandBuffer>& vector(FIdx f_idx) {
+            return frame_data_.at(f_idx.get()).cmdbufs_;
+        }
+
+    private:
+        struct FrameData {
+            std::vector<VkCommandBuffer> cmdbufs_;
+        };
+
+        std::vector<FrameData> frame_data_;
+    };
+
+
     class RpMasters {
 
     public:
@@ -1637,15 +1672,17 @@ namespace { namespace task {
 
         void init(
             ::FlagShip& flag_ship,
-            ::FrameCmdBufBundle& frame_cmdbufs,
+            ::CmdBufList& cmdbuf_list,
             std::vector<std::unique_ptr<mirinae::IRpBase>>& passes,
+            mirinae::RpResources& rp_res,
             mirinae::RpContext& rp_ctxt,
             mirinae::VulkanDevice& device,
             std::function<bool()> resize_func
         ) {
             resize_func_ = resize_func;
             flag_ship_ = &flag_ship;
-            frame_cmdbufs_ = &frame_cmdbufs;
+            cmdbuf_list_ = &cmdbuf_list;
+            rp_res_ = &rp_res;
             rp_ctxt_ = &rp_ctxt;
             device_ = &device;
 
@@ -1665,30 +1702,20 @@ namespace { namespace task {
                 }
             }
 
-            frame_cmdbufs_->clear(rp_ctxt_->f_index_, *device_);
-
             if (flag_ship_->dont_render()) {
                 return;
             }
 
-            for (auto& rp : passes_)
-                this->prepare_task(*rp, *frame_cmdbufs_, *rp_ctxt_, *device_);
+            rp_res_->cmd_pool_.reset_pool(rp_ctxt_->f_index_, *device_);
+            cmdbuf_list_->clear(rp_ctxt_->f_index_);
+
+            for (auto& rp : passes_) rp->prepare(*rp_ctxt_);
             for (auto& rp : passes_) this->try_run(rp->update_task());
             for (auto& rp : passes_) this->try_wait(rp->update_fence());
             for (auto& rp : passes_) this->try_run(rp->record_task());
             for (auto& rp : passes_) this->try_wait(rp->record_fence());
-        }
-
-        static void prepare_task(
-            mirinae::IRpTask& task,
-            ::FrameCmdBufBundle& frame_cmdbufs,
-            mirinae::RpContext& rp_ctxt,
-            mirinae::VulkanDevice& device
-        ) {
-            const auto cmdbuf = frame_cmdbufs.new_cmdbuf(
-                rp_ctxt.f_index_, device
-            );
-            task.prepare(cmdbuf, rp_ctxt);
+            for (auto& rp : passes_)
+                rp->collect_cmdbuf(cmdbuf_list_->vector(rp_ctxt_->f_index_));
         }
 
         static void try_run(enki::ITaskSet* task) {
@@ -1704,7 +1731,8 @@ namespace { namespace task {
         }
 
         ::FlagShip* flag_ship_ = nullptr;
-        ::FrameCmdBufBundle* frame_cmdbufs_ = nullptr;
+        ::CmdBufList* cmdbuf_list_ = nullptr;
+        mirinae::RpResources* rp_res_ = nullptr;
         mirinae::RpContext* rp_ctxt_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
         std::function<bool()> resize_func_;
@@ -1904,7 +1932,10 @@ namespace {
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
             );
-            frame_cmdbufs_.init(device_);
+            basic_cmdbufs_.resize(mirinae::MAX_FRAMES_IN_FLIGHT);
+            cmd_pool_.alloc(
+                basic_cmdbufs_.data(), basic_cmdbufs_.size(), device_
+            );
 
             {
                 input_mgrs_.add(std::make_unique<DominantCommandProc>(device_));
@@ -1989,7 +2020,6 @@ namespace {
             }
 
             swapchain_.destroy(device_.logi_device());
-            frame_cmdbufs_.destroy(device_);
             cmd_pool_.destroy(device_.logi_device());
             framesync_.destroy(device_.logi_device());
         }
@@ -2032,8 +2062,9 @@ namespace {
 
             stage->render_passes_.init(
                 flag_ship_,
-                frame_cmdbufs_,
+                cmdbufs_,
                 render_passes_,
+                rp_res_,
                 ren_ctxt,
                 device_,
                 [this]() {
@@ -2071,13 +2102,12 @@ namespace {
             namespace cpnt = mirinae::cpnt;
 
             // Begin recording
-            ren_ctxt.cmdbuf_ = frame_cmdbufs_.new_cmdbuf(f_idx, device_);
+            ren_ctxt.cmdbuf_ = basic_cmdbufs_.at(f_idx.get());
+            cmdbufs_.add(ren_ctxt.cmdbuf_, ren_ctxt.f_index_);
             mirinae::begin_cmdbuf(ren_ctxt.cmdbuf_);
-            rpm_.record_computes(ren_ctxt);
-            mirinae::end_cmdbuf(ren_ctxt.cmdbuf_);
 
-            ren_ctxt.cmdbuf_ = frame_cmdbufs_.new_cmdbuf(f_idx, device_);
-            mirinae::begin_cmdbuf(ren_ctxt.cmdbuf_);
+            rpm_.record_computes(ren_ctxt);
+
             rp_states_transp_.record_static(
                 ren_ctxt.cmdbuf_,
                 rp_res_.gbuf_.extent(),
@@ -2085,10 +2115,7 @@ namespace {
                 ren_ctxt.f_index_,
                 rp_
             );
-            mirinae::end_cmdbuf(ren_ctxt.cmdbuf_);
 
-            ren_ctxt.cmdbuf_ = frame_cmdbufs_.new_cmdbuf(f_idx, device_);
-            mirinae::begin_cmdbuf(ren_ctxt.cmdbuf_);
             rp_states_debug_mesh_.begin_record(
                 ren_ctxt.cmdbuf_, rp_res_.gbuf_.extent(), ren_ctxt.f_index_, rp_
             );
@@ -2152,11 +2179,8 @@ namespace {
                 rp_
             );
             ren_ctxt.debug_ren_.clear();
-            mirinae::end_cmdbuf(ren_ctxt.cmdbuf_);
 
             // Shader: Overlay
-            ren_ctxt.cmdbuf_ = frame_cmdbufs_.new_cmdbuf(f_idx, device_);
-            mirinae::begin_cmdbuf(ren_ctxt.cmdbuf_);
             {
                 auto& rp = rp_.get("overlay");
 
@@ -2187,11 +2211,8 @@ namespace {
 
                 vkCmdEndRenderPass(ren_ctxt.cmdbuf_);
             }
-            mirinae::end_cmdbuf(ren_ctxt.cmdbuf_);
 
             // ImGui
-            ren_ctxt.cmdbuf_ = frame_cmdbufs_.new_cmdbuf(f_idx, device_);
-            mirinae::begin_cmdbuf(ren_ctxt.cmdbuf_);
             {
                 ImGui_ImplVulkan_NewFrame();
                 imgui_new_frame_();
@@ -2205,6 +2226,7 @@ namespace {
                 ImGui::Render();
                 rp_states_imgui_.record(ren_ctxt);
             }
+
             mirinae::end_cmdbuf(ren_ctxt.cmdbuf_);
 
             // Submit and present
@@ -2217,10 +2239,7 @@ namespace {
                         framesync_.get_cur_img_ava_semaph().get()
                     )
                     .add_signal_semaph(signal_semaph)
-                    .add_cmdbuf(
-                        frame_cmdbufs_.frame_cmdbufs(f_idx),
-                        frame_cmdbufs_.frame_cmdbufs_count(f_idx)
-                    )
+                    .add_cmdbuf(cmdbufs_.data(f_idx), cmdbufs_.size(f_idx))
                     .queue_submit_single(
                         device_.graphics_queue(),
                         framesync_.get_cur_in_flight_fence().get()
@@ -2355,12 +2374,13 @@ namespace {
         ::FrameSync framesync_;
         mirinae::RpContext ren_ctxt;
         mirinae::CommandPool cmd_pool_;
-        ::FrameCmdBufBundle frame_cmdbufs_;
+        ::CmdBufList cmdbufs_;
         std::vector<std::unique_ptr<mirinae::IRpBase>> render_passes_;
         mirinae::InputProcesserMgr input_mgrs_;
         dal::TimerThatCaps fps_timer_;
         std::shared_ptr<mirinae::ITextData> dev_console_output_;
         std::function<void()> imgui_new_frame_;
+        std::vector<VkCommandBuffer> basic_cmdbufs_;
 
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;

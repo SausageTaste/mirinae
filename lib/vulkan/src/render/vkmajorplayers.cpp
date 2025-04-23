@@ -100,6 +100,27 @@ namespace mirinae {
         return commandBuffer;
     }
 
+    bool CommandPool::alloc(
+        VkCommandBuffer* dst,
+        const uint32_t count,
+        VkCommandBufferLevel level,
+        mirinae::VulkanDevice& device
+    ) {
+        if (VK_NULL_HANDLE == handle_) {
+            SPDLOG_ERROR("Command pool is not initialized!");
+            return false;
+        }
+
+        VkCommandBufferAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.commandPool = handle_;
+        info.level = level;
+        info.commandBufferCount = count;
+
+        return VK_SUCCESS ==
+               vkAllocateCommandBuffers(device.logi_device(), &info, dst);
+    }
+
     void CommandPool::free(VkCommandBuffer cmdbuf, VkDevice logi_device) {
         vkFreeCommandBuffers(logi_device, handle_, 1, &cmdbuf);
     }

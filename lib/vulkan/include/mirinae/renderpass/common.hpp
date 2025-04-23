@@ -532,7 +532,8 @@ namespace mirinae {
     struct IRpTask {
         virtual ~IRpTask() = default;
         virtual std::string_view name() const = 0;
-        virtual void prepare(VkCommandBuffer, const mirinae::RpCtxt&) = 0;
+        virtual void prepare(const mirinae::RpCtxt&) = 0;
+        virtual void collect_cmdbuf(std::vector<VkCommandBuffer>&) {}
 
         virtual enki::ITaskSet* update_task() { return nullptr; }
         virtual enki::ITaskSet* update_fence() { return nullptr; }
