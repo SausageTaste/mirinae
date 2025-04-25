@@ -2,6 +2,8 @@
 
 #include "mirinae/renderpass/ocean/ocean.hpp"
 
+#include <complex>
+
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/render/cmdbuf.hpp"
@@ -95,31 +97,16 @@ namespace {
         }
     }
 
-}  // namespace
 
+    template <typename T>
+    constexpr T reverse_bits(T num) {
+        static_assert(std::is_unsigned_v<T>);
 
-// Ocean Butterfly
-namespace {
-
-    class ComplexNum {
-
-    public:
-        ComplexNum() = default;
-
-        ComplexNum(double real, double imaginary) : re_(real), im_(imaginary) {}
-
-        double re_ = 0;
-        double im_ = 0;
-    };
-
-
-    unsigned int reverse_bits(unsigned int num) {
-        unsigned int NO_OF_BITS = sizeof(num) * 8;
-        unsigned int reverse_num = 0;
-        int i;
-        for (i = 0; i < NO_OF_BITS; i++) {
-            if ((num & (1 << i)))
-                reverse_num |= 1 << ((NO_OF_BITS - 1) - i);
+        constexpr int NO_OF_BITS = sizeof(T) * 8;
+        T reverse_num = 0;
+        for (int i = 0; i < NO_OF_BITS; ++i) {
+            if (num & (T(1) << i))
+                reverse_num |= T(1) << ((NO_OF_BITS - 1) - i);
         }
         return reverse_num;
     }
@@ -127,11 +114,13 @@ namespace {
     dal::TDataImage2D<float> create_butterfly_cache_tex(
         uint32_t width, uint32_t height
     ) {
+        static_assert(sizeof(uint32_t) == sizeof(unsigned int));
+
         std::vector<int> bit_reversed_indices(height);
         const int bits = width;
         const int right_shift = sizeof(int) * 8 - bits;
         for (uint32_t i = 0; i < height; i++) {
-            unsigned int x = reverse_bits(i);
+            const auto x = ::reverse_bits(i);
             bit_reversed_indices[i] = (x << bits) | (x >> right_shift);
         }
 
@@ -142,46 +131,42 @@ namespace {
 
         for (size_t i_x = 0; i_x < width; ++i_x) {
             for (size_t i_y = 0; i_y < height; ++i_y) {
-                glm::dvec2 x = glm::vec2(i_x, i_y);
-                auto k = std::fmod(x.y * (N / std::pow(2.0, x.x + 1.0)), N);
-                auto twiddle = ComplexNum(
+                const glm::dvec2 x(i_x, i_y);
+                const auto k = std::fmod(x.y * (N / std::pow(2, x.x + 1)), N);
+                const std::complex<double> twiddle(
                     std::cos(SUNG_TAU * k / N), std::sin(SUNG_TAU * k / N)
                 );
 
-                int butterflyspan = int(std::pow(2.0, x.x));
-                int butterflywing = 0;
-                if (std::fmod(x.y, std::pow(2.0, x.x + 1.0)) <
-                    std::pow(2.0, x.x)) {
-                    butterflywing = 1;
-                } else {
-                    butterflywing = 0;
-                }
+                const int butterflyspan = int(std::pow(2.0, x.x));
+                const auto a = std::fmod(x.y, std::pow(2.0, x.x + 1.0));
+                const auto b = std::pow(2.0, x.x);
+                const int butterfly_wing = (a < b) ? 1 : 0;
 
                 if (x.x == 0) {
-                    if (butterflywing == 1) {
+                    if (butterfly_wing == 1) {
                         auto texel = out.texel_ptr(i_x, i_y);
-                        texel[0] = twiddle.re_;
-                        texel[1] = twiddle.im_;
+                        texel[0] = twiddle.real();
+                        texel[1] = twiddle.imag();
                         texel[2] = bit_reversed_indices[i_y];
                         texel[3] = bit_reversed_indices[i_y + 1];
                     } else {
                         auto texel = out.texel_ptr(i_x, i_y);
-                        texel[0] = twiddle.re_;
-                        texel[1] = twiddle.im_;
+                        texel[0] = twiddle.real();
+                        texel[1] = twiddle.imag();
                         texel[2] = bit_reversed_indices[i_y - 1];
                         texel[3] = bit_reversed_indices[i_y];
                     }
                 } else {
-                    if (butterflywing == 1) {
+                    if (butterfly_wing == 1) {
                         auto texel = out.texel_ptr(i_x, i_y);
-                        texel[0] = twiddle.re_;
-                        texel[1] = twiddle.im_;
+                        texel[0] = twiddle.real();
+                        texel[1] = twiddle.imag();
                         texel[2] = x.y;
                         texel[3] = x.y + butterflyspan;
                     } else {
                         auto texel = out.texel_ptr(i_x, i_y);
-                        texel[0] = twiddle.re_;
-                        texel[1] = twiddle.im_;
+                        texel[0] = twiddle.real();
+                        texel[1] = twiddle.imag();
                         texel[2] = x.y - butterflyspan;
                         texel[3] = x.y;
                     }
@@ -199,6 +184,34 @@ namespace {
         int32_t direction_;
     };
 
+    struct U_OceanNaiveIftPushConst {
+        int32_t N_;
+        int32_t stage_;  // 0: hor, 1: ver
+    };
+
+
+    struct ButterFrameData {
+        std::vector<mirinae::HRpImage> hkt_textures_;
+        std::vector<mirinae::HRpImage> ppong_textures_;
+        VkDescriptorSet desc_set_;
+    };
+
+    struct NaiveFrameData {
+        std::vector<mirinae::HRpImage> hkt_textures_;
+        std::vector<mirinae::HRpImage> ppong_textures_;
+        VkDescriptorSet desc_set_;
+    };
+
+    using ButterFrameDataArr =
+        std::array<ButterFrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
+    using NaiveFrameDataArr =
+        std::array<NaiveFrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
+
+}  // namespace
+
+
+// Ocean Butterfly
+namespace {
 
     class RpStatesOceanButterfly : public mirinae::IRpStates {
 
@@ -474,16 +487,10 @@ namespace {
         }
 
     private:
-        struct FrameData {
-            std::vector<mirinae::HRpImage> hkt_textures_;
-            std::vector<mirinae::HRpImage> ppong_textures_;
-            VkDescriptorSet desc_set_;
-        };
-
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
 
-        std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
+        ::ButterFrameDataArr fdata_;
         mirinae::HRpImage butterfly_cache_;
         mirinae::DescPool desc_pool_;
         mirinae::RpPipeline pipeline_;
@@ -495,12 +502,6 @@ namespace {
 
 // Ocean Naive IFT
 namespace {
-
-    struct U_OceanNaiveIftPushConst {
-        int32_t N_;
-        int32_t stage_;  // 0: hor, 1: ver
-    };
-
 
     class RpStatesOceanNaiveIft : public mirinae::IRpStates {
 
@@ -710,16 +711,10 @@ namespace {
         }
 
     private:
-        struct FrameData {
-            std::vector<mirinae::HRpImage> hkt_textures_;
-            std::vector<mirinae::HRpImage> ppong_textures_;
-            VkDescriptorSet desc_set_;
-        };
-
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
 
-        std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
+        ::NaiveFrameDataArr fdata_;
         mirinae::DescPool desc_pool_;
         mirinae::RpPipeline pipeline_;
         mirinae::RpPipeLayout pipe_layout_;
