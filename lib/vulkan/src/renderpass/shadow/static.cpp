@@ -595,9 +595,7 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_rp_states_shadow_static(
-        RpCreateBundle& cbundle
-    ) {
+    std::unique_ptr<IRpBase> create_rp_shadow_static(RpCreateBundle& cbundle) {
         return std::make_unique<::RpStatesShadowStatic>(
             cbundle.cosmos_, cbundle.rp_res_, cbundle.device_
         );

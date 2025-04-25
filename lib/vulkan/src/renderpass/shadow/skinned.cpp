@@ -466,9 +466,7 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_rp_states_shadow_skinned(
-        RpCreateBundle& cbundle
-    ) {
+    std::unique_ptr<IRpBase> create_rp_shadow_skinned(RpCreateBundle& cbundle) {
         return std::make_unique<::RpStatesShadowSkinned>(
             cbundle.cosmos_, cbundle.rp_res_, cbundle.device_
         );

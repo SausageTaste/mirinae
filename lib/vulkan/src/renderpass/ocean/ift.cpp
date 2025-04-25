@@ -838,9 +838,9 @@ namespace {
 }  // namespace
 
 
-namespace mirinae::rp::ocean {
+namespace mirinae::rp {
 
-    std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_butterfly(
+    std::unique_ptr<mirinae::IRpBase> create_rp_ocean_butterfly(
         RpCreateBundle& bundle
     ) {
         return std::make_unique<RpStatesOceanButterfly>(
@@ -848,10 +848,10 @@ namespace mirinae::rp::ocean {
         );
     }
 
-    URpStates create_rp_states_ocean_naive_ift(RpCreateBundle& bundle) {
+    URpStates create_rp_ocean_naive_ift(RpCreateBundle& bundle) {
         return std::make_unique<RpStatesOceanNaiveIft>(
             bundle.rp_res_, bundle.rp_res_.desclays_, bundle.device_
         );
     }
 
-}  // namespace mirinae::rp::ocean
+}  // namespace mirinae::rp

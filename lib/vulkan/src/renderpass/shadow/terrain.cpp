@@ -403,9 +403,7 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_rp_states_shadow_terrain(
-        RpCreateBundle& cbundle
-    ) {
+    std::unique_ptr<IRpBase> create_rp_shadow_terrain(RpCreateBundle& cbundle) {
         return std::make_unique<::RpStatesShadowTerrain>(
             cbundle.cosmos_, cbundle.rp_res_, cbundle.device_
         );

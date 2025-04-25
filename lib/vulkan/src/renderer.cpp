@@ -224,9 +224,7 @@ namespace {
                 )
             );
 
-            rp_post_.push_back(
-                mirinae::rp::ocean::create_rp_states_ocean_tess(cbundle)
-            );
+            rp_post_.push_back(mirinae::rp::create_rp_ocean_tess(cbundle));
 
             rp_post_.push_back(
                 mirinae::rp::create_rp_states_transp_skinned(
@@ -1613,23 +1611,19 @@ namespace {
                 mirinae::RpCreateBundle cbundle{ *cosmos_, rp_res_, device_ };
 
                 render_passes_.push_back(
-                    mirinae::rp::ocean::create_rp_states_ocean_tilde_h(cbundle)
+                    mirinae::rp::create_rp_ocean_h0(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::ocean::create_rp_states_ocean_tilde_hkt(
-                        cbundle
-                    )
+                    mirinae::rp::create_rp_ocean_hkt(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::ocean::create_rp_states_ocean_butterfly(
-                        cbundle
-                    )
+                    mirinae::rp::create_rp_ocean_butterfly(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::ocean::create_rp_states_ocean_finalize(cbundle)
+                    mirinae::rp::create_rp_ocean_post_ift(cbundle)
                 );
 
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
@@ -1660,19 +1654,19 @@ namespace {
                 rp_states_imgui_.init(swapchain_);
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_states_shadow_static(cbundle)
+                    mirinae::rp::create_rp_shadow_static(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_states_shadow_skinned(cbundle)
+                    mirinae::rp::create_rp_shadow_skinned(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_states_shadow_skinned_transp(cbundle)
+                    mirinae::rp::create_rp_shadow_skinned_trs(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_states_shadow_terrain(cbundle)
+                    mirinae::rp::create_rp_shadow_terrain(cbundle)
                 );
             }
 

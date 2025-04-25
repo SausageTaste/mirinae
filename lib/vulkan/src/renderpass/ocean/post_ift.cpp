@@ -481,9 +481,9 @@ namespace {
 }  // namespace
 
 
-namespace mirinae::rp::ocean {
+namespace mirinae::rp {
 
-    std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_finalize(
+    std::unique_ptr<mirinae::IRpBase> create_rp_ocean_post_ift(
         RpCreateBundle& bundle
     ) {
         return std::make_unique<RpStatesOceanFinalize>(
@@ -491,4 +491,4 @@ namespace mirinae::rp::ocean {
         );
     }
 
-}  // namespace mirinae::rp::ocean
+}  // namespace mirinae::rp

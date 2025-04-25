@@ -880,12 +880,12 @@ namespace {
 }  // namespace
 
 
-namespace mirinae::rp::ocean {
+namespace mirinae::rp {
 
-    URpStates create_rp_states_ocean_tess(RpCreateBundle& bundle) {
+    URpStates create_rp_ocean_tess(RpCreateBundle& bundle) {
         return std::make_unique<RpStatesOceanTess>(
             bundle.cosmos_, bundle.rp_res_, bundle.device_
         );
     }
 
-}  // namespace mirinae::rp::ocean
+}  // namespace mirinae::rp

@@ -459,9 +459,9 @@ namespace {
 }  // namespace
 
 
-namespace mirinae::rp::ocean {
+namespace mirinae::rp {
 
-    std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_tilde_hkt(
+    std::unique_ptr<mirinae::IRpBase> create_rp_ocean_hkt(
         RpCreateBundle& bundle
     ) {
         return std::make_unique<RpStatesOceanTildeHkt>(
@@ -469,4 +469,4 @@ namespace mirinae::rp::ocean {
         );
     }
 
-}  // namespace mirinae::rp::ocean
+}  // namespace mirinae::rp

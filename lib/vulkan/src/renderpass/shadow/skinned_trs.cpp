@@ -558,7 +558,7 @@ namespace mirinae::rp {
         return std::make_shared<ShadowMapBundle>(device);
     }
 
-    std::unique_ptr<IRpBase> create_rp_states_shadow_skinned_transp(
+    std::unique_ptr<IRpBase> create_rp_shadow_skinned_trs(
         RpCreateBundle& cbundle
     ) {
         return std::make_unique<::RpStatesShadowSkinnedTransp>(
