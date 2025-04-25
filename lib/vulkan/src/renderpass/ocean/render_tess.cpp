@@ -21,6 +21,15 @@ namespace {
     sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
 
 
+    template <typename T>
+    const T* find_first_cpnt(const entt::registry& reg) {
+        for (auto e : reg.view<const T>()) {
+            return &reg.get<const T>(e);
+        }
+        return nullptr;
+    }
+
+
     class U_OceanTessPushConst {
 
     public:
@@ -543,8 +552,15 @@ namespace {
         }
 
         void record(const mirinae::RpContext& ctxt) override {
-            GET_OCEAN_ENTT(ctxt);
+            auto ocean = mirinae::find_ocean_cpnt(cosmos_.reg());
+            if (!ocean)
+                return;
+            auto& ocean_entt = *ocean;
+            const auto atmos =
+                ::find_first_cpnt<mirinae::cpnt::AtmosphereSimple>(cosmos_.reg()
+                );
             auto& fd = frame_data_[ctxt.f_index_.get()];
+            const auto cmdbuf = ctxt.cmdbuf_;
             const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
 
             mirinae::ImageMemoryBarrier tex_barr;
@@ -597,7 +613,7 @@ namespace {
             for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
-            if (auto& atmos = ctxt.draw_sheet_->atmosphere_)
+            if (atmos)
                 ubuf.fog_color(atmos->fog_color_)
                     .fog_density(atmos->fog_density_);
 

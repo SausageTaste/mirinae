@@ -623,11 +623,11 @@ namespace {
 
     public:
         RpStatesOceanNaiveIft(
+            mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
-            mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), rp_res_(rp_res) {
+            : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
             mirinae::CommandPool cmd_pool;
             cmd_pool.init(device);
 
@@ -668,12 +668,12 @@ namespace {
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(6)
                     .finish_binding();
-                desclayouts.add(builder, device.logi_device());
+                rp_res.desclays_.add(builder, device.logi_device());
             }
 
             // Desciptor Sets
             {
-                auto& layout = desclayouts.get(name() + ":main");
+                auto& layout = rp_res.desclays_.get(this->name() + ":main");
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -709,7 +709,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
                     .pc<U_OceanNaiveIftPushConst>()
-                    .desc(desclayouts.get(name() + ":main").layout())
+                    .desc(rp_res.desclays_.get(this->name() + ":main").layout())
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
@@ -742,8 +742,12 @@ namespace {
         }
 
         void record(const mirinae::RpContext& ctxt) override {
-            GET_OCEAN_ENTT(ctxt);
+            auto ocean = mirinae::find_ocean_cpnt(cosmos_.reg());
+            if (!ocean)
+                return;
+            auto& ocean_entt = *ocean;
             auto& fd = fdata_[ctxt.f_index_.get()];
+            auto cmdbuf = ctxt.cmdbuf_;
 
             VkMemoryBarrier mem_bar = {};
             mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
@@ -828,6 +832,7 @@ namespace {
 
     private:
         mirinae::VulkanDevice& device_;
+        mirinae::CosmosSimulator& cosmos_;
         mirinae::RpResources& rp_res_;
 
         ::NaiveFrameDataArr fdata_;
@@ -851,7 +856,7 @@ namespace mirinae::rp {
 
     URpStates create_rp_ocean_naive_ift(RpCreateBundle& bundle) {
         return std::make_unique<RpStatesOceanNaiveIft>(
-            bundle.rp_res_, bundle.rp_res_.desclays_, bundle.device_
+            bundle.cosmos_, bundle.rp_res_, bundle.device_
         );
     }
 
