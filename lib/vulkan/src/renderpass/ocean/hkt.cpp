@@ -9,17 +9,52 @@
 #include "mirinae/renderpass/ocean/common.hpp"
 
 
-// Ocean Tilde Hkt
 namespace {
 
-    struct U_OceanTildeHktPushConst {
+    class U_OceanTildeHktPushConst {
+
+    public:
+        template <typename T>
+        U_OceanTildeHktPushConst& time(T t) {
+            time_ = static_cast<float>(t);
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTildeHktPushConst& repeat_time(T t) {
+            repeat_time_ = static_cast<float>(t);
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTildeHktPushConst& depth(T d) {
+            depth_ = static_cast<float>(d);
+            return *this;
+        }
+
+        U_OceanTildeHktPushConst& L(size_t idx, int32_t value) {
+            L_.at(idx) = value;
+            return *this;
+        }
+
+        U_OceanTildeHktPushConst& N(int32_t n) {
+            N_ = n;
+            return *this;
+        }
+
+    private:
         float time_;
         float repeat_time_;
         float depth_;
-        int32_t L_[3];
+        std::array<int32_t, 3> L_;
         int32_t N_;
     };
 
+}  // namespace
+
+
+// Ocean Tilde Hkt
+namespace {
 
     class RpStatesOceanTildeHkt : public mirinae::IRpStates {
 
@@ -261,13 +296,13 @@ namespace {
                 .record(cmdbuf);
 
             ::U_OceanTildeHktPushConst pc;
-            pc.time_ = ocean_entt.time_;
-            pc.repeat_time_ = ocean_entt.repeat_time_;
-            pc.depth_ = ocean_entt.depth_;
-            pc.L_[0] = ocean_entt.cascades_[0].L_;
-            pc.L_[1] = ocean_entt.cascades_[1].L_;
-            pc.L_[2] = ocean_entt.cascades_[2].L_;
-            pc.N_ = mirinae::OCEAN_TEX_DIM;
+            pc.time(ocean_entt.time_)
+                .repeat_time(ocean_entt.repeat_time_)
+                .depth(ocean_entt.depth_)
+                .L(0, ocean_entt.cascades_[0].L_)
+                .L(1, ocean_entt.cascades_[1].L_)
+                .L(2, ocean_entt.cascades_[2].L_)
+                .N(mirinae::OCEAN_TEX_DIM);
 
             mirinae::PushConstInfo pc_info;
             pc_info.layout(pipe_layout_)
