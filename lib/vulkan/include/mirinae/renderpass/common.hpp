@@ -117,48 +117,6 @@ namespace mirinae {
     };
 
 
-    class IRenderPassBundle {
-
-    public:
-        IRenderPassBundle(mirinae::VulkanDevice& device) : device_(device) {}
-
-        virtual ~IRenderPassBundle() = default;
-        virtual void destroy() = 0;
-
-        virtual VkFramebuffer fbuf_at(uint32_t index) const = 0;
-        virtual const VkClearValue* clear_values() const = 0;
-        virtual uint32_t clear_value_count() const = 0;
-
-        VkRenderPass renderpass() const { return renderpass_; }
-        VkPipeline pipeline() const { return pipeline_; }
-        VkPipelineLayout pipeline_layout() const { return layout_; }
-
-    protected:
-        mirinae::VulkanDevice& device_;
-        mirinae::RenderPass renderpass_;
-        mirinae::RpPipeline pipeline_;
-        mirinae::RpPipeLayout layout_;
-    };
-
-
-    class IRenderPassRegistry {
-
-    public:
-        virtual ~IRenderPassRegistry() = default;
-
-        virtual void add(
-            const std::string& name, std::unique_ptr<IRenderPassBundle>&& rp
-        ) = 0;
-
-        virtual const IRenderPassBundle& get(const std::string& name) const = 0;
-
-        template <typename T, typename... Args>
-        void add(const std::string& name, Args&&... args) {
-            this->add(name, std::make_unique<T>(std::forward<Args>(args)...));
-        }
-    };
-
-
     struct IShadowMapBundle {
         struct IDlightShadowMap {
             virtual ~IDlightShadowMap() = default;
@@ -502,6 +460,48 @@ namespace mirinae {
         mirinae::RpPipeline pipeline_;
         mirinae::RpPipeLayout pipe_layout_;
         std::array<VkClearValue, N> clear_values_;
+    };
+
+
+    class IRenderPassBundle : public IRenPass {
+
+    public:
+        IRenderPassBundle(mirinae::VulkanDevice& device) : device_(device) {}
+        virtual ~IRenderPassBundle() = default;
+
+        virtual void destroy() = 0;
+        virtual VkFramebuffer fbuf_at(uint32_t index) const = 0;
+
+        VkPipeline pipeline() const override { return pipeline_; }
+        VkPipelineLayout pipe_layout() const override { return layout_; }
+        VkRenderPass render_pass() const override { return renderpass_; }
+
+        VkRenderPass renderpass() const { return renderpass_; }
+        VkPipelineLayout pipeline_layout() const { return layout_; }
+
+    protected:
+        mirinae::VulkanDevice& device_;
+        mirinae::RenderPass renderpass_;
+        mirinae::RpPipeline pipeline_;
+        mirinae::RpPipeLayout layout_;
+    };
+
+
+    class IRenderPassRegistry {
+
+    public:
+        virtual ~IRenderPassRegistry() = default;
+
+        virtual void add(
+            const std::string& name, std::unique_ptr<IRenderPassBundle>&& rp
+        ) = 0;
+
+        virtual const IRenderPassBundle& get(const std::string& name) const = 0;
+
+        template <typename T, typename... Args>
+        void add(const std::string& name, Args&&... args) {
+            this->add(name, std::make_unique<T>(std::forward<Args>(args)...));
+        }
     };
 
 
