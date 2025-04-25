@@ -23,7 +23,7 @@ namespace mirinae {
 
     RenderPass::~RenderPass() {
         if (VK_NULL_HANDLE != rp_)
-            MIRINAE_ABORT("RenderPass is not destroyed");
+            SPDLOG_ERROR("RenderPass is not destroyed");
     }
 
     RenderPass& RenderPass::operator=(VkRenderPass rp) {
@@ -62,7 +62,7 @@ namespace mirinae {
 
     RpPipeline::~RpPipeline() {
         if (VK_NULL_HANDLE != handle_)
-            MIRINAE_ABORT("Pipeline is not destroyed");
+            SPDLOG_ERROR("Pipeline is not destroyed");
     }
 
     bool RpPipeline::create(
@@ -114,7 +114,7 @@ namespace mirinae {
 
     RpPipeLayout::~RpPipeLayout() {
         if (VK_NULL_HANDLE != handle_)
-            MIRINAE_ABORT("PipelineLayout is not destroyed");
+            SPDLOG_ERROR("PipelineLayout is not destroyed");
     }
 
     RpPipeLayout& RpPipeLayout::operator=(VkPipelineLayout handle) {
