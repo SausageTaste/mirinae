@@ -596,11 +596,11 @@ namespace {
 namespace mirinae::rp {
 
     std::unique_ptr<IRpBase> create_rp_states_shadow_static(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
+        RpCreateBundle& cbundle
     ) {
-        return std::make_unique<::RpStatesShadowStatic>(cosmos, rp_res, device);
+        return std::make_unique<::RpStatesShadowStatic>(
+            cbundle.cosmos_, cbundle.rp_res_, cbundle.device_
+        );
     }
 
 }  // namespace mirinae::rp

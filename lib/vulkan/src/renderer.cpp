@@ -177,6 +177,8 @@ namespace {
         ) {
             this->destroy_std_rp();
 
+            mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
+
             rp_pre_.push_back(
                 mirinae::rp::envmap::create_rp_states_envmap(
                     cosmos, rp_res, rp_res.desclays_, device
@@ -223,9 +225,7 @@ namespace {
             );
 
             rp_post_.push_back(
-                mirinae::rp::ocean::create_rp_states_ocean_tess(
-                    cosmos, rp_res, device
-                )
+                mirinae::rp::ocean::create_rp_states_ocean_tess(cbundle)
             );
 
             rp_post_.push_back(
@@ -1610,28 +1610,26 @@ namespace {
             {
                 swapchain_.init(device_);
 
+                mirinae::RpCreateBundle cbundle{ *cosmos_, rp_res_, device_ };
+
                 render_passes_.push_back(
-                    mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
-                        *cosmos_, rp_res_, device_
-                    )
+                    mirinae::rp::ocean::create_rp_states_ocean_tilde_h(cbundle)
                 );
 
                 render_passes_.push_back(
                     mirinae::rp::ocean::create_rp_states_ocean_tilde_hkt(
-                        *cosmos_, rp_res_, device_
+                        cbundle
                     )
                 );
 
                 render_passes_.push_back(
                     mirinae::rp::ocean::create_rp_states_ocean_butterfly(
-                        *cosmos_, rp_res_, device_
+                        cbundle
                     )
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::ocean::create_rp_states_ocean_finalize(
-                        *cosmos_, rp_res_, device_
-                    )
+                    mirinae::rp::ocean::create_rp_states_ocean_finalize(cbundle)
                 );
 
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
@@ -1662,27 +1660,19 @@ namespace {
                 rp_states_imgui_.init(swapchain_);
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_states_shadow_static(
-                        *cosmos_, rp_res_, device_
-                    )
+                    mirinae::rp::create_rp_states_shadow_static(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_states_shadow_skinned(
-                        *cosmos_, rp_res_, device_
-                    )
+                    mirinae::rp::create_rp_states_shadow_skinned(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_states_shadow_skinned_transp(
-                        *cosmos_, rp_res_, device_
-                    )
+                    mirinae::rp::create_rp_states_shadow_skinned_transp(cbundle)
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_states_shadow_terrain(
-                        *cosmos_, rp_res_, device_
-                    )
+                    mirinae::rp::create_rp_states_shadow_terrain(cbundle)
                 );
             }
 

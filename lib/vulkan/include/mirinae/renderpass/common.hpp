@@ -589,4 +589,16 @@ namespace mirinae {
         virtual std::unique_ptr<IRpTask> create_task() = 0;
     };
 
+
+    struct RpCreateBundle {
+        RpCreateBundle(
+            CosmosSimulator& cosmos, RpResources& rp_res, VulkanDevice& device
+        )
+            : cosmos_(cosmos), rp_res_(rp_res), device_(device) {}
+
+        CosmosSimulator& cosmos_;
+        RpResources& rp_res_;
+        VulkanDevice& device_;
+    };
+
 }  // namespace mirinae

@@ -841,20 +841,16 @@ namespace {
 namespace mirinae::rp::ocean {
 
     std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_butterfly(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
+        RpCreateBundle& bundle
     ) {
-        return std::make_unique<RpStatesOceanButterfly>(cosmos, rp_res, device);
+        return std::make_unique<RpStatesOceanButterfly>(
+            bundle.cosmos_, bundle.rp_res_, bundle.device_
+        );
     }
 
-    URpStates create_rp_states_ocean_naive_ift(
-        mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
-        mirinae::VulkanDevice& device
-    ) {
+    URpStates create_rp_states_ocean_naive_ift(RpCreateBundle& bundle) {
         return std::make_unique<RpStatesOceanNaiveIft>(
-            rp_res, desclayouts, device
+            bundle.rp_res_, bundle.rp_res_.desclays_, bundle.device_
         );
     }
 

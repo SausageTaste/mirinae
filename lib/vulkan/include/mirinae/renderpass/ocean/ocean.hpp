@@ -6,39 +6,23 @@
 namespace mirinae::rp::ocean {
 
     std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_tilde_h(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
+        RpCreateBundle& bundle
     );
 
     std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_tilde_hkt(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
+        RpCreateBundle& bundle
     );
 
     std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_butterfly(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
+        RpCreateBundle& bundle
     );
 
-    URpStates create_rp_states_ocean_naive_ift(
-        mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
-        mirinae::VulkanDevice& device
-    );
+    URpStates create_rp_states_ocean_naive_ift(RpCreateBundle& bundle);
 
     std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_finalize(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
+        RpCreateBundle& bundle
     );
 
-    URpStates create_rp_states_ocean_tess(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
-    );
+    URpStates create_rp_states_ocean_tess(RpCreateBundle& bundle);
 
 }  // namespace mirinae::rp::ocean

@@ -559,12 +559,10 @@ namespace mirinae::rp {
     }
 
     std::unique_ptr<IRpBase> create_rp_states_shadow_skinned_transp(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
+        RpCreateBundle& cbundle
     ) {
         return std::make_unique<::RpStatesShadowSkinnedTransp>(
-            cosmos, rp_res, device
+            cbundle.cosmos_, cbundle.rp_res_, cbundle.device_
         );
     }
 

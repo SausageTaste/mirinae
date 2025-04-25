@@ -484,11 +484,11 @@ namespace {
 namespace mirinae::rp::ocean {
 
     std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_finalize(
-        mirinae::CosmosSimulator& cosmos,
-        mirinae::RpResources& rp_res,
-        mirinae::VulkanDevice& device
+        RpCreateBundle& bundle
     ) {
-        return std::make_unique<RpStatesOceanFinalize>(cosmos, rp_res, device);
+        return std::make_unique<RpStatesOceanFinalize>(
+            bundle.cosmos_, bundle.rp_res_, bundle.device_
+        );
     }
 
 }  // namespace mirinae::rp::ocean
