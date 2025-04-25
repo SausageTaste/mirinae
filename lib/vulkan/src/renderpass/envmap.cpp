@@ -9,6 +9,7 @@
 #include "mirinae/cpnt/envmap.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/draw_set.hpp"
 #include "mirinae/renderpass/builder.hpp"
@@ -17,6 +18,24 @@
 namespace {
 
     constexpr double ENVMAP_UPDATE_INVERVAL = 10;
+
+    const glm::dvec3 DVEC_ZERO{ 0, 0, 0 };
+    const glm::dvec3 DVEC_DOWN{ 0, -1, 0 };
+
+    const std::array<glm::dmat4, 6> CUBE_VIEW_MATS{
+        glm::lookAt(DVEC_ZERO, glm::dvec3(1, 0, 0), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(-1, 0, 0), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 1, 0), glm::dvec3(0, 0, 1)),
+        glm::lookAt(DVEC_ZERO, DVEC_DOWN, glm::dvec3(0, 0, -1)),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, 1), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, -1), DVEC_DOWN)
+    };
+
+
+    glm::dmat4 make_proj(double znear, double zfar) {
+        constexpr static auto ANGLE_90 = mirinae::Angle::from_deg(90.0);
+        return glm::perspectiveRH_ZO(ANGLE_90.rad(), 1.0, zfar, znear);
+    }
 
 
     struct LocalRpReg {
@@ -1051,20 +1070,278 @@ namespace {
 }  // namespace
 
 
-namespace {
+namespace { namespace task {
 
-    const glm::dvec3 DVEC_ZERO{ 0, 0, 0 };
-    const glm::dvec3 DVEC_DOWN{ 0, -1, 0 };
+    class DrawBase : public mirinae::DependingTask {
 
-    const std::array<glm::dmat4, 6> CUBE_VIEW_MATS{
-        glm::lookAt(DVEC_ZERO, glm::dvec3(1, 0, 0), DVEC_DOWN),
-        glm::lookAt(DVEC_ZERO, glm::dvec3(-1, 0, 0), DVEC_DOWN),
-        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 1, 0), glm::dvec3(0, 0, 1)),
-        glm::lookAt(DVEC_ZERO, DVEC_DOWN, glm::dvec3(0, 0, -1)),
-        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, 1), DVEC_DOWN),
-        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, -1), DVEC_DOWN)
+    public:
+        void init(
+            const entt::registry& reg,
+            const mirinae::IRenPass& rp,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            reg_ = &reg;
+            rp_ = &rp;
+            cmd_pool_ = &cmd_pool;
+            device_ = &device;
+        }
+
+        void prepare(
+            const ::EnvmapBundle::Item& env_item, const mirinae::RpCtxt& ctxt
+        ) {
+            ctxt_ = &ctxt;
+        }
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
+            if (cmdbuf_ == VK_NULL_HANDLE)
+                return;
+
+            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_);
+        }
+
+        static void record(
+            const VkCommandBuffer cmdbuf,
+            const ::EnvmapBundle::Item& env_item,
+            const entt::registry& reg,
+            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::IRenPass& rp,
+            const mirinae::RpCtxt& ctxt
+        ) {
+            namespace cpnt = mirinae::cpnt;
+
+            mirinae::RenderPassBeginInfo rp_info{};
+            rp_info.rp(rp.render_pass())
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values());
+
+            const auto proj_mat = ::make_proj(0.1, 1000);
+
+            mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
+
+            auto& cube_map = env_item.cube_map_;
+            auto& base_cube = cube_map.base();
+
+            mirinae::Viewport{}
+                .set_wh(base_cube.extent2d())
+                .record_single(cmdbuf);
+            mirinae::Rect2D{}
+                .set_wh(base_cube.extent2d())
+                .record_scissor(cmdbuf);
+            rp_info.wh(base_cube.width(), base_cube.height());
+
+            for (int i = 0; i < 6; ++i) {
+                rp_info.fbuf(cube_map.base().face_fbuf(i)).record_begin(cmdbuf);
+
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
+
+                mirinae::U_EnvmapPushConst push_const;
+                for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                    const auto& light = reg.get<cpnt::DLight>(e);
+                    const auto& tform = reg.get<cpnt::Transform>(e);
+                    push_const.dlight_dir_ = glm::vec4{
+                        light.calc_to_light_dir(glm::dmat4(1), tform), 0
+                    };
+                    push_const.dlight_color_ = glm::vec4{
+                        light.color_.scaled_color(), 0
+                    };
+                    break;
+                }
+
+                for (auto& pair : draw_sheet.static_) {
+                    auto& unit = *pair.unit_;
+                    descset_info.first_set(0)
+                        .set(unit.get_desc_set(ctxt.f_index_.get()))
+                        .record(cmdbuf);
+
+                    unit.record_bind_vert_buf(cmdbuf);
+
+                    for (auto& actor : pair.actors_) {
+                        descset_info.first_set(1)
+                            .set(actor.actor_->get_desc_set(ctxt.f_index_.get())
+                            )
+                            .record(cmdbuf);
+
+                        push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i] *
+                                                env_item.world_mat_;
+
+                        mirinae::PushConstInfo{}
+                            .layout(rp.pipe_layout())
+                            .add_stage_vert()
+                            .record(cmdbuf, push_const);
+
+                        vkCmdDrawIndexed(
+                            cmdbuf, unit.vertex_count(), 1, 0, 0, 0
+                        );
+                    }
+                }
+
+                vkCmdEndRenderPass(cmdbuf);
+            }
+
+            auto& img = cube_map.base().img_;
+            mirinae::ImageMemoryBarrier{}
+                .image(img.image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
+                .mip_base(0)
+                .mip_count(1)
+                .layer_base(0)
+                .layer_count(6)
+                .record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT
+                );
+
+            for (uint32_t i = 1; i < img.mip_levels(); ++i) {
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.image(img.image())
+                    .set_src_access(VK_ACCESS_NONE)
+                    .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_base(i)
+                    .mip_count(1)
+                    .layer_base(0)
+                    .layer_count(6);
+                barrier.record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT
+                );
+
+                mirinae::ImageBlit blit;
+                blit.set_src_offsets_full(
+                    img.width() >> (i - 1), img.height() >> (i - 1)
+                );
+                blit.set_dst_offsets_full(img.width() >> i, img.height() >> i);
+                blit.src_subres()
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_level(i - 1)
+                    .layer_base(0)
+                    .layer_count(6);
+                blit.dst_subres()
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_level(i)
+                    .layer_base(0)
+                    .layer_count(6);
+
+                vkCmdBlitImage(
+                    cmdbuf,
+                    img.image(),
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    img.image(),
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    1,
+                    &blit.get(),
+                    VK_FILTER_LINEAR
+                );
+
+                barrier.image(img.image())
+                    .set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                    .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                barrier.record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT
+                );
+            }
+
+            mirinae::ImageMemoryBarrier barrier;
+            barrier.image(img.image())
+                .set_src_access(VK_ACCESS_TRANSFER_READ_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .mip_base(0)
+                .mip_count(img.mip_levels())
+                .layer_base(0)
+                .layer_count(6);
+            barrier.record_single(
+                cmdbuf,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            );
+        }
+
+        VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
+
+        const ::EnvmapBundle::Item* env_item_ = nullptr;
+        const entt::registry* reg_ = nullptr;
+        const mirinae::IRenPass* rp_ = nullptr;
+        const mirinae::RpCtxt* ctxt_ = nullptr;
+        mirinae::RpCommandPool* cmd_pool_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
     };
 
+
+    class DrawTasks : public enki::ITaskSet {
+
+    public:
+        void prepare(const mirinae::RpCtxt& ctxt) {}
+
+        enki::ITaskSet& fence() { return fence_; }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) {}
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+
+        }
+
+        mirinae::FenceTask fence_;
+    };
+
+
+    class RpTask : public mirinae::IRpTask {
+
+    public:
+        RpTask() {}
+
+        void init(
+            const entt::registry& reg,
+            const mirinae::IRenPass& rp,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {}
+
+        std::string_view name() const override { return "envmap brdf"; }
+
+        void prepare(const mirinae::RpCtxt& ctxt) override {
+            record_tasks_.prepare(ctxt);
+        }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) override {
+            record_tasks_.collect_cmdbuf(out);
+        }
+
+        enki::ITaskSet* record_task() override { return &record_tasks_; }
+
+        enki::ITaskSet* record_fence() override {
+            return &record_tasks_.fence();
+        }
+
+    private:
+        DrawTasks record_tasks_;
+    };
+
+}}  // namespace ::task
+
+
+namespace {
 
     class EnvmapSelector {
 
@@ -1240,8 +1517,8 @@ namespace {
         }
 
         void record_base(
-            entt::entity e_env,
-            ::EnvmapBundle::Item& env_item,
+            const entt::entity e_env,
+            const ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt
         ) {
             namespace cpnt = mirinae::cpnt;
@@ -1414,8 +1691,8 @@ namespace {
         }
 
         void record_sky(
-            entt::entity e_env,
-            ::EnvmapBundle::Item& env_item,
+            const entt::entity e_env,
+            const ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt,
             const VkDescriptorSet desc_set
         ) {
@@ -1474,8 +1751,8 @@ namespace {
         }
 
         void record_diffuse(
-            entt::entity e_env,
-            ::EnvmapBundle::Item& env_item,
+            const entt::entity e_env,
+            const ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt
         ) {
             namespace cpnt = mirinae::cpnt;
@@ -1542,8 +1819,8 @@ namespace {
         }
 
         void record_specular(
-            entt::entity e_env,
-            ::EnvmapBundle::Item& env_item,
+            const entt::entity e_env,
+            const ::EnvmapBundle::Item& env_item,
             const mirinae::RpContext& ctxt
         ) {
             namespace cpnt = mirinae::cpnt;
