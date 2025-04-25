@@ -291,7 +291,7 @@ namespace mirinae {
     };
 
 
-    class RpResources {
+    class RenderTargetManager {
 
     public:
         using str = std::string;
@@ -311,8 +311,8 @@ namespace mirinae {
         using HImage = std::shared_ptr<Image>;
 
     public:
-        RpResources(sung::HTaskSche task_sche, VulkanDevice& device);
-        ~RpResources();
+        RenderTargetManager(VulkanDevice& device);
+        ~RenderTargetManager();
 
         // Remove the user from user list of the image.
         // If the user list becomes empty, the image will be freed.
@@ -326,13 +326,6 @@ namespace mirinae {
         // Returns nullptr if the image does not exist.
         HImage get_img_reader(const str& id, const str& user_id);
 
-        DesclayoutManager desclays_;
-        HTexMgr tex_man_;
-        HShadowMaps shadow_maps_;
-        HEnvmapBundle envmaps_;
-        FbufImageBundle gbuf_;
-        RpCommandPool cmd_pool_;
-
     private:
         class ImageRecord;
 
@@ -340,8 +333,26 @@ namespace mirinae {
         std::map<str, ImageRecord> imgs_;
     };
 
-    using RpImage = RpResources::Image;
+    using RpImage = RenderTargetManager::Image;
     using HRpImage = std::shared_ptr<RpImage>;
+
+
+    class RpResources {
+
+    public:
+        RpResources(sung::HTaskSche task_sche, VulkanDevice& device);
+        ~RpResources();
+
+        DesclayoutManager desclays_;
+        FbufImageBundle gbuf_;
+        HEnvmapBundle envmaps_;
+        HShadowMaps shadow_maps_;
+        HTexMgr tex_man_;
+        RenderTargetManager ren_img_;
+        RpCommandPool cmd_pool_;
+
+        VulkanDevice& device_;
+    };
 
 
     struct ViewFrustum {

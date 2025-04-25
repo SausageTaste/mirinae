@@ -236,7 +236,7 @@ namespace {
                     noise_data.data(), noise_data.size(), device_.mem_alloc()
                 );
 
-                auto img = rp_res.new_img("ocean_noise", this->names());
+                auto img = rp_res.ren_img_.new_img("ocean_noise", names());
                 MIRINAE_ASSERT(nullptr != img);
                 noise_textures_ = img;
                 img->img_.init(img_info.get(), device_.mem_alloc());
@@ -274,7 +274,7 @@ namespace {
                         const auto img_name = fmt::format(
                             "height_map_c{}_f#{}", j, i
                         );
-                        auto img = rp_res.new_img(img_name, this->names());
+                        auto img = rp_res.ren_img_.new_img(img_name, names());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
@@ -379,12 +379,12 @@ namespace {
         ~RpStatesOceanTildeH() override {
             for (auto& fd : frame_data_) {
                 for (auto& hk : fd.hk_) {
-                    rp_res_.free_img(hk->id(), this->names());
+                    rp_res_.ren_img_.free_img(hk->id(), this->names());
                 }
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
-            rp_res_.free_img(noise_textures_->id(), this->names());
+            rp_res_.ren_img_.free_img(noise_textures_->id(), this->names());
             desc_pool_.destroy(device_.logi_device());
             pipeline_.destroy(device_);
             pipe_layout_.destroy(device_);

@@ -24,11 +24,11 @@ namespace {
         for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
             const auto suffix = fmt::format("_c{}_f{}", j, frame_index);
 
-            out.push_back(rp_res.get_img_reader(
+            out.push_back(rp_res.ren_img_.get_img_reader(
                 fmt::format("{}hkt_1{}", prefix, suffix), name
             ));
             MIRINAE_ASSERT(nullptr != out.back());
-            out.push_back(rp_res.get_img_reader(
+            out.push_back(rp_res.ren_img_.get_img_reader(
                 fmt::format("{}hkt_2{}", prefix, suffix), name
             ));
             MIRINAE_ASSERT(nullptr != out.back());
@@ -59,7 +59,7 @@ namespace {
 
             for (size_t j = 0; j < num_img; j++) {
                 const auto i_name = fmt::format("ppong_i{}_f{}", j, i);
-                out.push_back(rp_res.new_img(i_name, name));
+                out.push_back(rp_res.ren_img_.new_img(i_name, name));
                 MIRINAE_ASSERT(nullptr != out.back());
 
                 auto& img = out.back()->img_;
@@ -449,7 +449,7 @@ namespace {
                     device_.mem_alloc()
                 );
 
-                butterfly_cache_ = rp_res.new_img(
+                butterfly_cache_ = rp_res.ren_img_.new_img(
                     "butterfly_cache", this->names()
                 );
                 MIRINAE_ASSERT(nullptr != butterfly_cache_);
@@ -575,14 +575,14 @@ namespace {
         ~RpStatesOceanButterfly() override {
             for (auto& fdata : fdata_) {
                 for (auto& ppong : fdata.ppong_textures_)
-                    rp_res_.free_img(ppong->id(), this->names());
+                    rp_res_.ren_img_.free_img(ppong->id(), this->names());
                 for (auto& hkt : fdata.hkt_textures_)
-                    rp_res_.free_img(hkt->id(), this->names());
+                    rp_res_.ren_img_.free_img(hkt->id(), this->names());
 
                 fdata.desc_set_ = VK_NULL_HANDLE;
             }
 
-            rp_res_.free_img(butterfly_cache_->id(), this->names());
+            rp_res_.ren_img_.free_img(butterfly_cache_->id(), this->names());
             desc_pool_.destroy(device_.logi_device());
             pipeline_.destroy(device_);
             pipe_layout_.destroy(device_);
@@ -723,9 +723,9 @@ namespace {
         ~RpStatesOceanNaiveIft() override {
             for (auto& fdata : fdata_) {
                 for (auto& ppong : fdata.ppong_textures_)
-                    rp_res_.free_img(ppong->id(), this->name());
+                    rp_res_.ren_img_.free_img(ppong->id(), this->name());
                 for (auto& hkt : fdata.hkt_textures_)
-                    rp_res_.free_img(hkt->id(), this->name());
+                    rp_res_.ren_img_.free_img(hkt->id(), this->name());
 
                 fdata.desc_set_ = VK_NULL_HANDLE;
             }

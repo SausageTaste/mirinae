@@ -272,7 +272,7 @@ namespace {
                         const auto img_name = fmt::format(
                             "hkt_1_c{}_f{}", j, i
                         );
-                        auto img = rp_res.new_img(img_name, this->names());
+                        auto img = rp_res.ren_img_.new_img(img_name, names());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
@@ -283,7 +283,7 @@ namespace {
                         const auto img_name = fmt::format(
                             "hkt_2_c{}_f{}", j, i
                         );
-                        auto img = rp_res.new_img(img_name, this->names());
+                        auto img = rp_res.ren_img_.new_img(img_name, names());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
@@ -333,7 +333,9 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_tilde_h:height_map_c{}_f#{}", j, i
                     );
-                    auto img = rp_res.get_img_reader(img_name, this->names());
+                    auto img = rp_res.ren_img_.get_img_reader(
+                        img_name, this->names()
+                    );
                     MIRINAE_ASSERT(nullptr != img);
                     frame_data_[i].hk_[j] = img;
                 }
@@ -418,9 +420,9 @@ namespace {
         ~RpStatesOceanTildeHkt() override {
             for (auto& fd : frame_data_) {
                 for (size_t i = 0; i < mirinae::CASCADE_COUNT; ++i) {
-                    rp_res_.free_img(fd.hk_[i]->id(), this->names());
-                    rp_res_.free_img(fd.hkt_1_[i]->id(), this->names());
-                    rp_res_.free_img(fd.hkt_2_[i]->id(), this->names());
+                    rp_res_.ren_img_.free_img(fd.hk_[i]->id(), names());
+                    rp_res_.ren_img_.free_img(fd.hkt_1_[i]->id(), names());
+                    rp_res_.ren_img_.free_img(fd.hkt_2_[i]->id(), names());
                 }
             }
 

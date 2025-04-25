@@ -287,7 +287,7 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_finalize:displacement_c{}_f{}", j, i
                     );
-                    fd.disp_map_[j] = rp_res.get_img_reader(
+                    fd.disp_map_[j] = rp_res.ren_img_.get_img_reader(
                         img_name, this->name()
                     );
                     MIRINAE_ASSERT(nullptr != fd.disp_map_[j]);
@@ -297,7 +297,7 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_finalize:derivatives_c{}_f{}", j, i
                     );
-                    fd.deri_map_[j] = rp_res.get_img_reader(
+                    fd.deri_map_[j] = rp_res.ren_img_.get_img_reader(
                         img_name, this->name()
                     );
                     MIRINAE_ASSERT(nullptr != fd.deri_map_[j]);
@@ -307,7 +307,7 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_finalize:turbulence_c{}", j
                     );
-                    turb_map_[j] = rp_res.get_img_reader(
+                    turb_map_[j] = rp_res.ren_img_.get_img_reader(
                         img_name, this->name()
                     );
                     MIRINAE_ASSERT(nullptr != turb_map_[j]);
@@ -523,8 +523,8 @@ namespace {
         ~RpStatesOceanTess() override {
             for (auto& fd : frame_data_) {
                 for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++) {
-                    rp_res_.free_img(fd.disp_map_[i]->id(), this->name());
-                    rp_res_.free_img(fd.deri_map_[i]->id(), this->name());
+                    rp_res_.ren_img_.free_img(fd.disp_map_[i]->id(), name());
+                    rp_res_.ren_img_.free_img(fd.deri_map_[i]->id(), name());
                 }
 
                 fd.ubuf_.destroy(device_.mem_alloc());
@@ -532,7 +532,7 @@ namespace {
             }
 
             for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
-                rp_res_.free_img(turb_map_[i]->id(), this->name());
+                rp_res_.ren_img_.free_img(turb_map_[i]->id(), this->name());
 
             desc_pool_.destroy(device_.logi_device());
             this->destroy_render_pass_elements(device_);

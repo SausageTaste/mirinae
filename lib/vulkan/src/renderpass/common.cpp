@@ -482,10 +482,10 @@ namespace mirinae {
 }  // namespace mirinae
 
 
-// RpResources
+// RenderTargetManager
 namespace mirinae {
 
-    class RpResources::ImageRecord {
+    class RenderTargetManager::ImageRecord {
 
     public:
         void destroy(VulkanDevice& device) {
@@ -501,22 +501,16 @@ namespace mirinae {
     };
 
 
-    RpResources::RpResources(sung::HTaskSche task_sche, VulkanDevice& device)
-        : desclays_(device)
-        , tex_man_(create_tex_mgr(task_sche, device))
-        , device_(device) {
-        cmd_pool_.init(device);
-    }
+    RenderTargetManager::RenderTargetManager(VulkanDevice& device)
+        : device_(device) {}
 
-    RpResources::~RpResources() {
+    RenderTargetManager::~RenderTargetManager() {
         for (auto& [id, img] : imgs_) {
             img.destroy(device_);
         }
-
-        cmd_pool_.destroy(device_);
     }
 
-    void RpResources::free_img(const str& id, const str& user_id) {
+    void RenderTargetManager::free_img(const str& id, const str& user_id) {
         auto it = imgs_.find(id);
         if (it == imgs_.end())
             return;
@@ -533,7 +527,7 @@ namespace mirinae {
         }
     }
 
-    HRpImage RpResources::new_img(const str& name, const str& user_id) {
+    HRpImage RenderTargetManager::new_img(const str& name, const str& user_id) {
         const auto id = user_id + ":" + name;
 
         auto it = imgs_.find(id);
@@ -555,7 +549,9 @@ namespace mirinae {
         return r.data_;
     }
 
-    HRpImage RpResources::get_img_reader(const str& id, const str& user_id) {
+    HRpImage RenderTargetManager::get_img_reader(
+        const str& id, const str& user_id
+    ) {
         auto it = imgs_.find(id);
         if (it == imgs_.end())
             return nullptr;
@@ -566,6 +562,22 @@ namespace mirinae {
         // SPDLOG_INFO("RpImage reader: {} <- {}", id, user_id);
         return r.data_;
     }
+
+}  // namespace mirinae
+
+
+// RpResources
+namespace mirinae {
+
+    RpResources::RpResources(sung::HTaskSche task_sche, VulkanDevice& device)
+        : desclays_(device)
+        , tex_man_(create_tex_mgr(task_sche, device))
+        , ren_img_(device)
+        , device_(device) {
+        cmd_pool_.init(device);
+    }
+
+    RpResources::~RpResources() { cmd_pool_.destroy(device_); }
 
 }  // namespace mirinae
 
