@@ -15,11 +15,6 @@ namespace {
     sung::AutoCVarFlt cv_displace_scale_x{ "ocean:displace_scale_x", "", 1 };
     sung::AutoCVarFlt cv_displace_scale_y{ "ocean:displace_scale_y", "", 1 };
 
-}  // namespace
-
-
-// Ocean Finalize
-namespace {
 
     struct U_OceanFinalizePushConst {
         glm::vec2 hor_displace_scale_;
@@ -29,15 +24,189 @@ namespace {
     };
 
 
-    class RpStatesOceanFinalize : public mirinae::IRpStates {
+    struct FrameData {
+        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> hkt_1_;
+        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> hkt_2_;
+        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> disp_;
+        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> deri_;
+        VkDescriptorSet desc_set_;
+    };
+
+    using FrameDataArr = std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
+
+}  // namespace
+
+
+// Tasks
+namespace { namespace task {
+
+    class DrawTasks : public mirinae::DependingTask {
+
+    public:
+        DrawTasks() { fence_.succeed(this); }
+
+        void init(
+            const entt::registry& reg,
+            const mirinae::IPipelinePair& rp,
+            const ::FrameDataArr& frame_data,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            reg_ = &reg;
+            rp_ = &rp;
+            frame_data_ = &frame_data;
+            cmd_pool_ = &cmd_pool;
+            device_ = &device;
+        }
+
+        void prepare(const mirinae::RpCtxt& ctxt) { ctxt_ = &ctxt; }
+
+        enki::ITaskSet& fence() { return fence_; }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) {
+            if (VK_NULL_HANDLE != cmdbuf_) {
+                out.push_back(cmdbuf_);
+            }
+        }
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
+            if (cmdbuf_ == VK_NULL_HANDLE)
+                return;
+
+            mirinae::begin_cmdbuf(cmdbuf_);
+            this->record(cmdbuf_, *rp_, *ctxt_, *reg_, *frame_data_);
+            mirinae::end_cmdbuf(cmdbuf_);
+        }
+
+        static bool record(
+            const VkCommandBuffer cmdbuf,
+            const mirinae::IPipelinePair& rp,
+            const mirinae::RpCtxt& ctxt,
+            const entt::registry& reg,
+            const ::FrameDataArr& frame_data
+        ) {
+            auto ocean = mirinae::find_ocean_cpnt(reg);
+            if (!ocean)
+                return false;
+            auto& ocean_entt = *ocean;
+            auto& fd = frame_data.at(ctxt.f_index_.get());
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, rp.pipeline()
+            );
+
+            mirinae::DescSetBindInfo{}
+                .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
+                .layout(rp.pipe_layout())
+                .add(fd.desc_set_)
+                .record(cmdbuf);
+
+            VkMemoryBarrier mem_bar = {};
+            mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+            mem_bar.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+            mem_bar.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+            vkCmdPipelineBarrier(
+                cmdbuf,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                0,
+                1,
+                &mem_bar,
+                0,
+                nullptr,
+                0,
+                nullptr
+            );
+
+            U_OceanFinalizePushConst pc;
+            pc.hor_displace_scale_.x = cv_displace_scale_x.get();
+            pc.hor_displace_scale_.y = cv_displace_scale_y.get();
+            pc.dt_ = ctxt.dt_;
+            pc.turb_time_factor_ = ocean_entt.trub_time_factor_;
+            pc.N_ = ::mirinae::OCEAN_TEX_DIM;
+
+            mirinae::PushConstInfo{}
+                .layout(rp.pipe_layout())
+                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                .record(cmdbuf, pc);
+
+            vkCmdDispatch(
+                cmdbuf,
+                mirinae::OCEAN_TEX_DIM / 16,
+                mirinae::OCEAN_TEX_DIM / 16,
+                mirinae::CASCADE_COUNT
+            );
+
+            return true;
+        }
+
+        mirinae::FenceTask fence_;
+        VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
+
+        const ::FrameDataArr* frame_data_ = nullptr;
+        const entt::registry* reg_ = nullptr;
+        const mirinae::IPipelinePair* rp_ = nullptr;
+        const mirinae::RpCtxt* ctxt_ = nullptr;
+        mirinae::RpCommandPool* cmd_pool_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
+    };
+
+
+    class RpTask : public mirinae::IRpTask {
+
+    public:
+        RpTask() {}
+
+        void init(
+            const entt::registry& reg,
+            const mirinae::IPipelinePair& rp,
+            const ::FrameDataArr& frame_data,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            record_tasks_.init(reg, rp, frame_data, cmd_pool, device);
+        }
+
+        std::string_view name() const override { return "ocean post"; }
+
+        void prepare(const mirinae::RpCtxt& ctxt) override {
+            record_tasks_.prepare(ctxt);
+        }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) override {
+            record_tasks_.collect_cmdbuf(out);
+        }
+
+        enki::ITaskSet* record_task() override { return &record_tasks_; }
+
+        enki::ITaskSet* record_fence() override {
+            return &record_tasks_.fence();
+        }
+
+    private:
+        DrawTasks record_tasks_;
+    };
+
+}}  // namespace ::task
+
+
+// Ocean Finalize
+namespace {
+
+    class RpStatesOceanFinalize
+        : public mirinae::IRpBase
+        , public mirinae::IPipelinePair {
 
     public:
         RpStatesOceanFinalize(
+            mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
-            mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), rp_res_(rp_res) {
+            : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
             mirinae::CommandPool cmd_pool;
             cmd_pool.init(device);
 
@@ -48,12 +217,12 @@ namespace {
                 for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
                     fd.hkt_1_[j] = rp_res.get_img_reader(
                         fmt::format("ocean_tilde_hkt:hkt_1_c{}_f{}", j, i),
-                        name()
+                        this->names()
                     );
                     MIRINAE_ASSERT(nullptr != fd.hkt_1_[j]);
                     fd.hkt_2_[j] = rp_res.get_img_reader(
                         fmt::format("ocean_tilde_hkt:hkt_2_c{}_f{}", j, i),
-                        name()
+                        this->names()
                     );
                     MIRINAE_ASSERT(nullptr != fd.hkt_2_[j]);
                 }
@@ -76,7 +245,7 @@ namespace {
                         const auto i_name = fmt::format(
                             "displacement_c{}_f{}", j, i
                         );
-                        auto img = rp_res.new_img(i_name, name());
+                        auto img = rp_res.new_img(i_name, this->names());
                         MIRINAE_ASSERT(nullptr != img);
 
                         cinfo.set_format(VK_FORMAT_R32G32B32A32_SFLOAT);
@@ -93,7 +262,7 @@ namespace {
                         const auto i_name = fmt::format(
                             "derivatives_c{}_f{}", j, i
                         );
-                        auto img = rp_res.new_img(i_name, name());
+                        auto img = rp_res.new_img(i_name, this->names());
                         MIRINAE_ASSERT(nullptr != img);
 
                         cinfo.set_format(VK_FORMAT_R32G32B32A32_SFLOAT);
@@ -109,7 +278,7 @@ namespace {
 
                 for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
                     const auto i_name = fmt::format("turbulence_c{}", j);
-                    auto img = rp_res.new_img(i_name, name());
+                    auto img = rp_res.new_img(i_name, this->names());
                     MIRINAE_ASSERT(nullptr != img);
 
                     cinfo.set_format(VK_FORMAT_R32G32B32A32_SFLOAT);
@@ -168,7 +337,7 @@ namespace {
 
             // Desc layouts
             {
-                mirinae::DescLayoutBuilder builder{ name() + ":main" };
+                mirinae::DescLayoutBuilder builder{ this->names() + ":main" };
                 builder
                     .new_binding()  // displacement
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
@@ -200,12 +369,12 @@ namespace {
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(3)
                     .finish_binding();
-                desclayouts.add(builder, device.logi_device());
+                rp_res.desclays_.add(builder, device.logi_device());
             }
 
             // Desciptor Sets
             {
-                auto& layout = desclayouts.get(name() + ":main");
+                auto& layout = rp_res.desclays_.get(this->names() + ":main");
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -253,7 +422,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
                     .pc<U_OceanFinalizePushConst>()
-                    .desc(desclayouts.get(name() + ":main").layout())
+                    .desc(rp_res.desclays_.get(names() + ":main").layout())
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
@@ -268,93 +437,41 @@ namespace {
         ~RpStatesOceanFinalize() override {
             for (auto& fdata : fdata_) {
                 for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++) {
-                    rp_res_.free_img(fdata.hkt_1_[i]->id(), this->name());
-                    rp_res_.free_img(fdata.hkt_2_[i]->id(), this->name());
-                    rp_res_.free_img(fdata.disp_[i]->id(), this->name());
-                    rp_res_.free_img(fdata.deri_[i]->id(), this->name());
+                    rp_res_.free_img(fdata.hkt_1_[i]->id(), this->names());
+                    rp_res_.free_img(fdata.hkt_2_[i]->id(), this->names());
+                    rp_res_.free_img(fdata.disp_[i]->id(), this->names());
+                    rp_res_.free_img(fdata.deri_[i]->id(), this->names());
                 }
 
                 fdata.desc_set_ = VK_NULL_HANDLE;
             }
 
             for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
-                rp_res_.free_img(turb_[i]->id(), this->name());
+                rp_res_.free_img(turb_[i]->id(), this->names());
 
             desc_pool_.destroy(device_.logi_device());
             pipeline_.destroy(device_);
             pipe_layout_.destroy(device_);
         }
 
-        const std::string& name() const override {
-            static const std::string name = "ocean_finalize";
-            return name;
+        std::string_view name() const override { return "ocean_finalize"; }
+        std::string names() const { return std::string(this->name()); }
+
+        std::unique_ptr<mirinae::IRpTask> create_task() override {
+            auto out = std::make_unique<task::RpTask>();
+            out->init(cosmos_.reg(), *this, fdata_, rp_res_.cmd_pool_, device_);
+            return out;
         }
 
-        void record(const mirinae::RpContext& ctxt) override {
-            GET_OCEAN_ENTT(ctxt);
-            auto& fd = fdata_[ctxt.f_index_.get()];
-
-            vkCmdBindPipeline(
-                cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_
-            );
-
-            mirinae::DescSetBindInfo{}
-                .bind_point(VK_PIPELINE_BIND_POINT_COMPUTE)
-                .layout(pipe_layout_)
-                .add(fd.desc_set_)
-                .record(cmdbuf);
-
-            VkMemoryBarrier mem_bar = {};
-            mem_bar.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            mem_bar.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-            mem_bar.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-
-            vkCmdPipelineBarrier(
-                cmdbuf,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                0,
-                1,
-                &mem_bar,
-                0,
-                nullptr,
-                0,
-                nullptr
-            );
-
-            U_OceanFinalizePushConst pc;
-            pc.hor_displace_scale_.x = cv_displace_scale_x.get();
-            pc.hor_displace_scale_.y = cv_displace_scale_y.get();
-            pc.dt_ = ctxt.cosmos_->scene().clock().dt();
-            pc.turb_time_factor_ = ocean_entt.trub_time_factor_;
-            pc.N_ = ::mirinae::OCEAN_TEX_DIM;
-
-            mirinae::PushConstInfo{}
-                .layout(pipe_layout_)
-                .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
-                .record(cmdbuf, pc);
-
-            vkCmdDispatch(
-                cmdbuf,
-                mirinae::OCEAN_TEX_DIM / 16,
-                mirinae::OCEAN_TEX_DIM / 16,
-                mirinae::CASCADE_COUNT
-            );
-        }
+        VkPipeline pipeline() const override { return pipeline_; }
+        VkPipelineLayout pipe_layout() const override { return pipe_layout_; }
 
     private:
-        struct FrameData {
-            std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> hkt_1_;
-            std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> hkt_2_;
-            std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> disp_;
-            std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> deri_;
-            VkDescriptorSet desc_set_;
-        };
-
         mirinae::VulkanDevice& device_;
+        mirinae::CosmosSimulator& cosmos_;
         mirinae::RpResources& rp_res_;
 
-        std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> fdata_;
+        ::FrameDataArr fdata_;
         std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> turb_;
         mirinae::DescPool desc_pool_;
         mirinae::RpPipeline pipeline_;
@@ -366,14 +483,12 @@ namespace {
 
 namespace mirinae::rp::ocean {
 
-    URpStates create_rp_states_ocean_finalize(
+    std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_finalize(
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
-        return std::make_unique<RpStatesOceanFinalize>(
-            rp_res, desclayouts, device
-        );
+        return std::make_unique<RpStatesOceanFinalize>(cosmos, rp_res, device);
     }
 
 }  // namespace mirinae::rp::ocean

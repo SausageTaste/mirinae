@@ -494,6 +494,7 @@ namespace mirinae {
         CamCache main_cam_;
         FrameIndex f_index_;
         ShainImageIndex i_index_;
+        double dt_;
     };
 
 

@@ -178,12 +178,6 @@ namespace {
             this->destroy_std_rp();
 
             rp_pre_.push_back(
-                mirinae::rp::ocean::create_rp_states_ocean_finalize(
-                    rp_res, rp_res.desclays_, device
-                )
-            );
-
-            rp_pre_.push_back(
                 mirinae::rp::envmap::create_rp_states_envmap(
                     cosmos, rp_res, rp_res.desclays_, device
                 )
@@ -948,6 +942,7 @@ namespace { namespace task {
 
             ren_ctxt.f_index_ = framesync.get_frame_index();
             ren_ctxt.i_index_ = i_idx.value();
+            ren_ctxt.dt_ = scene.clock().dt();
 
             ren_ctxt.view_frustum_.update(
                 ren_ctxt.proj_mat_, ren_ctxt.view_mat_
@@ -1633,6 +1628,12 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::ocean::create_rp_states_ocean_butterfly(
+                        *cosmos_, rp_res_, device_
+                    )
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::ocean::create_rp_states_ocean_finalize(
                         *cosmos_, rp_res_, device_
                     )
                 );
