@@ -519,11 +519,15 @@ namespace mirinae {
     using URpStates = std::unique_ptr<IRpStates>;
 
 
-    struct IRenPass {
-        virtual ~IRenPass() = default;
-        virtual VkRenderPass render_pass() const = 0;
+    struct IPipelinePair {
+        virtual ~IPipelinePair() = default;
         virtual VkPipeline pipeline() const = 0;
         virtual VkPipelineLayout pipe_layout() const = 0;
+    };
+
+
+    struct IRenPass : public IPipelinePair {
+        virtual VkRenderPass render_pass() const = 0;
         virtual const VkClearValue* clear_values() const = 0;
         virtual uint32_t clear_value_count() const = 0;
     };

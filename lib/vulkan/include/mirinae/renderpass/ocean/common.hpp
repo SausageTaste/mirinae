@@ -2,6 +2,8 @@
 
 #include <filesystem>
 
+#include <entt/fwd.hpp>
+
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/render/vkdevice.hpp"
 
@@ -21,6 +23,8 @@ namespace mirinae {
     constexpr uint32_t OCEAN_TEX_DIM = 256;
     const uint32_t OCEAN_TEX_DIM_LOG2 = std::log(OCEAN_TEX_DIM) / std::log(2);
 
+
+    const cpnt::Ocean* find_ocean_cpnt(const entt::registry& reg);
 
     VkPipeline create_compute_pipeline(
         const std::filesystem::path& spv_path,

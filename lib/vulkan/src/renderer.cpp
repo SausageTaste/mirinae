@@ -179,12 +179,6 @@ namespace {
             this->destroy_std_rp();
 
             rp_pre_.push_back(
-                mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
-                    rp_res, desclayouts, device
-                )
-            );
-
-            rp_pre_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tilde_hkt(
                     rp_res, desclayouts, device
                 )
@@ -1653,6 +1647,12 @@ namespace {
             // Create swapchain and its relatives
             {
                 swapchain_.init(device_);
+
+                render_passes_.push_back(
+                    mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
+                        *cosmos_, rp_res_, desclayout_, device_
+                    )
+                );
 
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                     swapchain_.width(), swapchain_.height()
