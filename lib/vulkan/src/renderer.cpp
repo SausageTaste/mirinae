@@ -224,11 +224,7 @@ namespace {
 
             rp_post_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_tess(
-                    swapchain.views_count(),
-                    cosmos,
-                    rp_res,
-                    rp_res.desclays_,
-                    device
+                    cosmos, rp_res, device
                 )
             );
 

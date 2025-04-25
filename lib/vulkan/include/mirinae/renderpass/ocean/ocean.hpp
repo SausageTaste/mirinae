@@ -36,10 +36,8 @@ namespace mirinae::rp::ocean {
     );
 
     URpStates create_rp_states_ocean_tess(
-        size_t swapchain_count,
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     );
 

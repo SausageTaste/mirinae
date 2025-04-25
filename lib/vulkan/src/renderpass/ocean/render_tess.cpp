@@ -20,11 +20,6 @@ namespace {
     sung::AutoCVarFlt cv_foam_sss_scale{ "ocean:foam_sss_scale", "", 4 };
     sung::AutoCVarFlt cv_foam_threshold{ "ocean:foam_threshold", "", 8.5 };
 
-}  // namespace
-
-
-// Ocean tessellation
-namespace {
 
     class U_OceanTessPushConst {
 
@@ -243,17 +238,32 @@ namespace {
     };
 
 
-    class RpStatesOceanTess : public mirinae::IRpStates {
+    struct FrameData {
+        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> disp_map_;
+        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> deri_map_;
+        mirinae::Buffer ubuf_;
+        VkDescriptorSet desc_set_;
+    };
+
+    using FrameDataArr = std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
+
+}  // namespace
+
+
+// Ocean tessellation
+namespace {
+
+    class RpStatesOceanTess
+        : public mirinae::IRpStates
+        , public mirinae::RenPassBundle<2> {
 
     public:
         RpStatesOceanTess(
-            size_t swapchain_count,
             mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
-            mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
-            : device_(device), rp_res_(rp_res) {
+            : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
             // Sky texture
             {
                 auto& reg = cosmos.reg();
@@ -343,20 +353,20 @@ namespace {
                     .finish_binding();
                 builder  // Sky texture
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-                desclayouts.add(builder, device.logi_device());
+                rp_res.desclays_.add(builder, device.logi_device());
             }
 
             // Desciptor Sets
             {
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    desclayouts.get(name() + ":main").size_info(),
+                    rp_res.desclays_.get(name() + ":main").size_info(),
                     device.logi_device()
                 );
 
                 auto desc_sets = desc_pool_.alloc(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    desclayouts.get(name() + ":main").layout(),
+                    rp_res.desclays_.get(name() + ":main").layout(),
                     device.logi_device()
                 );
 
@@ -446,7 +456,7 @@ namespace {
             // Pipeline layout
             {
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(desclayouts.get(name() + ":main").layout())
+                    .desc(rp_res.desclays_.get(name() + ":main").layout())
                     .add_vertex_flag()
                     .add_tesc_flag()
                     .add_tese_flag()
@@ -525,13 +535,10 @@ namespace {
                 rp_res_.free_img(turb_map_[i]->id(), this->name());
 
             desc_pool_.destroy(device_.logi_device());
-            render_pass_.destroy(device_);
-            pipeline_.destroy(device_);
-            pipe_layout_.destroy(device_);
+            this->destroy_render_pass_elements(device_);
 
-            for (auto& handle : fbufs_) {
+            for (auto& handle : fbufs_)
                 vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
-            }
             fbufs_.clear();
         }
 
@@ -667,13 +674,6 @@ namespace {
         }
 
     private:
-        struct FrameData {
-            std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> disp_map_;
-            std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> deri_map_;
-            mirinae::Buffer ubuf_;
-            VkDescriptorSet desc_set_;
-        };
-
         template <typename T>
         static bool has_separating_axis(
             const mirinae::ViewFrustum& view_frustum,
@@ -864,18 +864,15 @@ namespace {
         }
 
         mirinae::VulkanDevice& device_;
+        mirinae::CosmosSimulator& cosmos_;
         mirinae::RpResources& rp_res_;
 
-        std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT> frame_data_;
+        ::FrameDataArr frame_data_;
         std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> turb_map_;
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
-        mirinae::RenderPass render_pass_;
-        mirinae::RpPipeline pipeline_;
-        mirinae::RpPipeLayout pipe_layout_;
 
         std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
-        std::array<VkClearValue, 2> clear_values_;
         uint32_t fbuf_width_ = 0;
         uint32_t fbuf_height_ = 0;
     };
@@ -886,15 +883,11 @@ namespace {
 namespace mirinae::rp::ocean {
 
     URpStates create_rp_states_ocean_tess(
-        size_t swapchain_count,
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
-        return std::make_unique<RpStatesOceanTess>(
-            swapchain_count, cosmos, rp_res, desclayouts, device
-        );
+        return std::make_unique<RpStatesOceanTess>(cosmos, rp_res, device);
     }
 
 }  // namespace mirinae::rp::ocean
