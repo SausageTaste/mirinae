@@ -6,6 +6,7 @@
 
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/shadow/bundles.hpp"

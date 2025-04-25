@@ -4,6 +4,7 @@
 
 #include <entt/entity/registry.hpp>
 
+#include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/ocean/common.hpp"

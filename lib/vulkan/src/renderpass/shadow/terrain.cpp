@@ -7,6 +7,7 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderee/terrain.hpp"
 #include "mirinae/renderpass/builder.hpp"
