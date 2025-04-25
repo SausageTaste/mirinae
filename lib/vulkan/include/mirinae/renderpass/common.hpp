@@ -2,15 +2,17 @@
 
 #include <map>
 
-#include "mirinae/cosmos.hpp"
+#include <enkiTS/TaskScheduler.h>
+#include <entt/fwd.hpp>
+
 #include "mirinae/cpnt/camera.hpp"
 #include "mirinae/lightweight/debug_ren.hpp"
 #include "mirinae/render/renderee.hpp"
-#include "mirinae/render/texture.hpp"
 
 
 namespace mirinae {
 
+    class CosmosSimulator;
     class DrawSheet;
 
 

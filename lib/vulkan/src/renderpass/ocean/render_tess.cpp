@@ -7,6 +7,7 @@
 #include <sung/basic/cvar.hpp>
 #include <sung/basic/time.hpp>
 
+#include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/render/cmdbuf.hpp"

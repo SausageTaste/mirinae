@@ -4,6 +4,7 @@
 
 #include <entt/entity/registry.hpp>
 
+#include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
