@@ -168,7 +168,7 @@ namespace { namespace task {
             record_tasks_.init(reg, rp, frame_data, cmd_pool, device);
         }
 
-        std::string_view name() const override { return "shadow skinned"; }
+        std::string_view name() const override { return "ocean h0"; }
 
         void prepare(const mirinae::RpCtxt& ctxt) override {
             record_tasks_.prepare(ctxt);
@@ -391,6 +391,7 @@ namespace {
         }
 
         std::string_view name() const override { return "ocean_tilde_h"; }
+        std::string names() const { return std::string(this->name()); }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<task::RpTask>();
@@ -402,8 +403,6 @@ namespace {
 
         VkPipeline pipeline() const override { return pipeline_; }
         VkPipelineLayout pipe_layout() const override { return pipe_layout_; }
-
-        std::string names() const { return std::string(this->name()); }
 
     private:
         mirinae::VulkanDevice& device_;

@@ -177,12 +177,6 @@ namespace {
         ) {
             this->destroy_std_rp();
 
-            rp_pre_.push_back(
-                mirinae::rp::ocean::create_rp_states_ocean_tilde_hkt(
-                    rp_res, rp_res.desclays_, device
-                )
-            );
-
             /*/
             rp_pre_.push_back(
                 mirinae::rp::ocean::create_rp_states_ocean_naive_ift(
@@ -1641,6 +1635,12 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::ocean::create_rp_states_ocean_tilde_h(
+                        *cosmos_, rp_res_, device_
+                    )
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::ocean::create_rp_states_ocean_tilde_hkt(
                         *cosmos_, rp_res_, device_
                     )
                 );

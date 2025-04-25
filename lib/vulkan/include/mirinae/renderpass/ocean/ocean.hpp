@@ -18,9 +18,9 @@ namespace mirinae::rp::ocean {
         mirinae::VulkanDevice& device
     );
 
-    URpStates create_rp_states_ocean_tilde_hkt(
+    std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_tilde_hkt(
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     );
 
