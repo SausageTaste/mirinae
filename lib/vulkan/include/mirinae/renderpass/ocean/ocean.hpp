@@ -5,13 +5,6 @@
 
 namespace mirinae::rp::ocean {
 
-    struct RpCreateParams {
-        mirinae::VulkanDevice* device_;
-        mirinae::RpResources* rp_res_;
-        mirinae::DesclayoutManager* desclayouts_;
-    };
-
-
     std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_tilde_h(
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
@@ -24,9 +17,9 @@ namespace mirinae::rp::ocean {
         mirinae::VulkanDevice& device
     );
 
-    URpStates create_rp_states_ocean_butterfly(
+    std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_butterfly(
+        mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     );
 
