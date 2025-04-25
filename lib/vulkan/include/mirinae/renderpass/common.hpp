@@ -4,88 +4,14 @@
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/camera.hpp"
-#include "mirinae/cpnt/light.hpp"
-#include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/lightweight/debug_ren.hpp"
 #include "mirinae/render/renderee.hpp"
 #include "mirinae/render/texture.hpp"
-#include "mirinae/render/vkdevice.hpp"
 
 
 namespace mirinae {
 
-    struct DrawSheet {
-        struct StaticRenderPairs {
-            struct Actor {
-                mirinae::RenderActor* actor_;
-                glm::dmat4 model_mat_;
-            };
-
-            mirinae::RenderUnit* unit_;
-            std::vector<Actor> actors_;
-        };
-
-        struct SkinnedRenderPairs {
-            struct Actor {
-                mirinae::RenderActorSkinned* actor_;
-                glm::dmat4 model_mat_;
-            };
-
-            mirinae::RenderUnitSkinned* unit_;
-            std::vector<Actor> actors_;
-        };
-
-        StaticRenderPairs& get_static(mirinae::RenderUnit& unit) {
-            for (auto& x : static_) {
-                if (x.unit_ == &unit)
-                    return x;
-            }
-
-            auto& output = static_.emplace_back();
-            output.unit_ = &unit;
-            return output;
-        }
-
-        StaticRenderPairs& get_static_trs(mirinae::RenderUnit& unit) {
-            for (auto& x : static_trs_) {
-                if (x.unit_ == &unit)
-                    return x;
-            }
-
-            auto& output = static_trs_.emplace_back();
-            output.unit_ = &unit;
-            return output;
-        }
-
-        SkinnedRenderPairs& get_skinned(mirinae::RenderUnitSkinned& unit) {
-            for (auto& x : skinned_) {
-                if (x.unit_ == &unit)
-                    return x;
-            }
-
-            auto& output = skinned_.emplace_back();
-            output.unit_ = &unit;
-            return output;
-        }
-
-        SkinnedRenderPairs& get_skinned_trs(mirinae::RenderUnitSkinned& unit) {
-            for (auto& x : skinned_trs_) {
-                if (x.unit_ == &unit)
-                    return x;
-            }
-
-            auto& output = skinned_trs_.emplace_back();
-            output.unit_ = &unit;
-            return output;
-        }
-
-        std::vector<StaticRenderPairs> static_;
-        std::vector<StaticRenderPairs> static_trs_;
-        std::vector<SkinnedRenderPairs> skinned_;
-        std::vector<SkinnedRenderPairs> skinned_trs_;
-        cpnt::Ocean* ocean_ = nullptr;
-        cpnt::AtmosphereSimple* atmosphere_ = nullptr;
-    };
+    class DrawSheet;
 
 
     class RenderPass {

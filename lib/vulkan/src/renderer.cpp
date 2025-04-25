@@ -15,6 +15,7 @@
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/draw_set.hpp"
 #include "mirinae/render/render_graph.hpp"
 #include "mirinae/render/renderpass.hpp"
 #include "mirinae/renderpass/builder.hpp"
@@ -255,110 +256,6 @@ namespace {
         std::vector<mirinae::URpStates> rp_pre_, rp_post_;
         std::unique_ptr<mirinae::rg::IRenderGraph> rg_;
     };
-
-
-    mirinae::DrawSheet make_draw_sheet(mirinae::Scene& scene) {
-        namespace cpnt = mirinae::cpnt;
-
-        mirinae::DrawSheet sheet;
-        auto& reg = *scene.reg_;
-
-        for (const auto e : reg.view<cpnt::MdlActorStatic>()) {
-            auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
-            if (!mactor.model_)
-                continue;
-            auto renmdl = mactor.get_model<mirinae::RenderModel>();
-            if (!renmdl)
-                continue;
-            auto actor = mactor.get_actor<mirinae::RenderActor>();
-            if (!actor)
-                continue;
-
-            glm::dmat4 model_mat(1);
-            if (auto tfrom = reg.try_get<cpnt::Transform>(e))
-                model_mat = tfrom->make_model_mat();
-
-            const auto unit_count = renmdl->render_units_.size();
-            for (size_t i = 0; i < unit_count; ++i) {
-                if (!mactor.visibility_.get(i))
-                    continue;
-
-                auto& unit = renmdl->render_units_[i];
-                auto& dst = sheet.get_static(unit);
-                auto& dst_actor = dst.actors_.emplace_back();
-                dst_actor.actor_ = actor;
-                dst_actor.model_mat_ = model_mat;
-            }
-
-            const auto unit_trs_count = renmdl->render_units_alpha_.size();
-            for (size_t i = 0; i < unit_trs_count; ++i) {
-                if (!mactor.visibility_.get(i + unit_count))
-                    continue;
-
-                auto& unit = renmdl->render_units_alpha_[i];
-                auto& dst = sheet.get_static_trs(unit);
-                auto& dst_actor = dst.actors_.emplace_back();
-                dst_actor.actor_ = actor;
-                dst_actor.model_mat_ = model_mat;
-            }
-        }
-
-        for (const auto e : reg.view<cpnt::MdlActorSkinned>()) {
-            auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
-            if (!mactor.model_)
-                continue;
-            auto renmdl = mactor.get_model<mirinae::RenderModelSkinned>();
-            if (!renmdl)
-                continue;
-            auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
-            if (!actor)
-                continue;
-
-            glm::dmat4 model_mat(1);
-            if (auto tfrom = reg.try_get<cpnt::Transform>(e))
-                model_mat = tfrom->make_model_mat();
-
-            const auto unit_count = renmdl->runits_.size();
-            for (size_t i = 0; i < unit_count; ++i) {
-                if (!mactor.visibility_.get(i))
-                    continue;
-
-                auto& unit = renmdl->runits_[i];
-                auto& dst = sheet.get_skinned(unit);
-                auto& dst_actor = dst.actors_.emplace_back();
-                dst_actor.actor_ = actor;
-                dst_actor.model_mat_ = model_mat;
-            }
-
-            const auto unit_trs_count = renmdl->runits_alpha_.size();
-            for (size_t i = 0; i < unit_trs_count; ++i) {
-                if (!mactor.visibility_.get(i + unit_count))
-                    continue;
-
-                auto& unit = renmdl->runits_alpha_[i];
-                auto& dst = sheet.get_skinned_trs(unit);
-                auto& dst_actor = dst.actors_.emplace_back();
-                dst_actor.actor_ = actor;
-                dst_actor.model_mat_ = model_mat;
-            }
-        }
-
-        sheet.ocean_ = nullptr;
-        for (auto e : scene.reg_->view<cpnt::Ocean>()) {
-            // Only one ocean is allowed
-            sheet.ocean_ = &scene.reg_->get<cpnt::Ocean>(e);
-            break;
-        }
-
-        sheet.atmosphere_ = nullptr;
-        for (auto e : reg.view<cpnt::AtmosphereSimple>()) {
-            // Only one atmosphere is allowed
-            sheet.atmosphere_ = &scene.reg_->get<cpnt::AtmosphereSimple>(e);
-            break;
-        }
-
-        return sheet;
-    }
 
 }  // namespace
 
@@ -1806,9 +1703,8 @@ namespace {
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
 
-            ren_ctxt.draw_sheet_ = std::make_shared<mirinae::DrawSheet>(
-                make_draw_sheet(cosmos_->scene())
-            );
+            ren_ctxt.draw_sheet_ = std::make_shared<mirinae::DrawSheet>();
+            ren_ctxt.draw_sheet_->build(cosmos_->reg());
 
             namespace cpnt = mirinae::cpnt;
 

@@ -7,6 +7,7 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/draw_set.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
@@ -1417,7 +1418,7 @@ namespace {
             mirinae::U_CompoSkyMain pc;
             pc.proj_inv_ = glm::inverse(ctxt.proj_mat_);
             pc.view_inv_ = glm::inverse(ctxt.view_mat_);
-            if (auto& atmos = ctxt.draw_sheet_->atmosphere_)
+            if (auto atmos = ctxt.draw_sheet_->atmosphere_)
                 pc.fog_color_density_ = glm::vec4{ atmos->fog_color_,
                                                    atmos->fog_density_ };
 
