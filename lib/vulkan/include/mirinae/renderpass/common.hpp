@@ -326,6 +326,7 @@ namespace mirinae {
         // Returns nullptr if the image does not exist.
         HImage get_img_reader(const str& id, const str& user_id);
 
+        DesclayoutManager desclays_;
         HTexMgr tex_man_;
         HShadowMaps shadow_maps_;
         HEnvmapBundle envmaps_;

@@ -497,7 +497,6 @@ namespace {
         RpStatesShadowStatic(
             mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
-            mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
             : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
@@ -525,10 +524,8 @@ namespace {
 
             // Pipeline layout
             {
-                auto& desclayout = desclayouts.get("gbuf:actor");
-
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(desclayout.layout())
+                    .desc(rp_res.desclays_.get("gbuf:actor").layout())
                     .add_vertex_flag()
                     .pc<mirinae::U_ShadowPushConst>()
                     .build(pipe_layout_, device);
@@ -601,12 +598,9 @@ namespace mirinae::rp {
     std::unique_ptr<IRpBase> create_rp_states_shadow_static(
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
-        return std::make_unique<::RpStatesShadowStatic>(
-            cosmos, rp_res, desclayouts, device
-        );
+        return std::make_unique<::RpStatesShadowStatic>(cosmos, rp_res, device);
     }
 
 }  // namespace mirinae::rp

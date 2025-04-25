@@ -300,7 +300,6 @@ namespace {
         RpStatesShadowTerrain(
             mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
-            mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
             : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
@@ -329,7 +328,7 @@ namespace {
             // Pipeline layout
             {
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(desclayouts.get("gbuf_terrain:main").layout())
+                    .desc(rp_res_.desclays_.get("gbuf_terrain:main").layout())
                     .add_vertex_flag()
                     .add_tesc_flag()
                     .add_tese_flag()
@@ -407,11 +406,10 @@ namespace mirinae::rp {
     std::unique_ptr<IRpBase> create_rp_states_shadow_terrain(
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<::RpStatesShadowTerrain>(
-            cosmos, rp_res, desclayouts, device
+            cosmos, rp_res, device
         );
     }
 

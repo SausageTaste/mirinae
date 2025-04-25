@@ -502,7 +502,9 @@ namespace mirinae {
 
 
     RpResources::RpResources(sung::HTaskSche task_sche, VulkanDevice& device)
-        : tex_man_(create_tex_mgr(task_sche, device)), device_(device) {
+        : desclays_(device)
+        , tex_man_(create_tex_mgr(task_sche, device))
+        , device_(device) {
         cmd_pool_.init(device);
     }
 

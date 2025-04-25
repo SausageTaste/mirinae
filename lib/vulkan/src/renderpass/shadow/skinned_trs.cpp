@@ -454,7 +454,6 @@ namespace {
         RpStatesShadowSkinnedTransp(
             mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
-            mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
             : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
@@ -483,8 +482,8 @@ namespace {
             // Pipeline layout
             {
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(desclayouts.get("gbuf:actor_skinned").layout())
-                    .desc(desclayouts.get("gbuf:model").layout())
+                    .desc(rp_res_.desclays_.get("gbuf:actor_skinned").layout())
+                    .desc(rp_res_.desclays_.get("gbuf:model").layout())
                     .add_vertex_flag()
                     .pc<mirinae::U_ShadowPushConst>()
                     .build(pipe_layout_, device);
@@ -562,11 +561,10 @@ namespace mirinae::rp {
     std::unique_ptr<IRpBase> create_rp_states_shadow_skinned_transp(
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
         return std::make_unique<::RpStatesShadowSkinnedTransp>(
-            cosmos, rp_res, desclayouts, device
+            cosmos, rp_res, device
         );
     }
 

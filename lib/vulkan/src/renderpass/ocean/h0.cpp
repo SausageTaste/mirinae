@@ -202,7 +202,6 @@ namespace {
         RpStatesOceanTildeH(
             mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
-            mirinae::DesclayoutManager& desclayouts,
             mirinae::VulkanDevice& device
         )
             : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
@@ -323,12 +322,12 @@ namespace {
                     .set_count(3)
                     .finish_binding()
                     .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);
-                desclayouts.add(builder, device.logi_device());
+                rp_res.desclays_.add(builder, device.logi_device());
             }
 
             // Desciptor Sets
             {
-                auto& layout = desclayouts.get(names() + ":main");
+                auto& layout = rp_res.desclays_.get(names() + ":main");
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -365,7 +364,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
                     .pc<U_OceanTildeHPushConst>()
-                    .desc(desclayouts.get(names() + ":main").layout())
+                    .desc(rp_res.desclays_.get(names() + ":main").layout())
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
@@ -428,12 +427,9 @@ namespace mirinae::rp::ocean {
     std::unique_ptr<mirinae::IRpBase> create_rp_states_ocean_tilde_h(
         mirinae::CosmosSimulator& cosmos,
         mirinae::RpResources& rp_res,
-        mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
-        return std::make_unique<RpStatesOceanTildeH>(
-            cosmos, rp_res, desclayouts, device
-        );
+        return std::make_unique<RpStatesOceanTildeH>(cosmos, rp_res, device);
     }
 
 }  // namespace mirinae::rp::ocean
