@@ -358,8 +358,8 @@ namespace {
 
         VkFormat format() const override { return texture_.format(); }
 
-        VkImage image() override { return texture_.image(); }
-        VkImageView image_view() override { return texture_view_.get(); }
+        VkImage image() const override { return texture_.image(); }
+        VkImageView image_view() const override { return texture_view_.get(); }
 
         uint32_t width() const override { return texture_.width(); }
         uint32_t height() const override { return texture_.height(); }
@@ -449,8 +449,8 @@ namespace {
         }
 
         VkFormat format() const override { return data_->imageFormat; }
-        VkImage image() override { return data_->image; }
-        VkImageView image_view() override { return texture_view_.get(); }
+        VkImage image() const override { return data_->image; }
+        VkImageView image_view() const override { return texture_view_.get(); }
         uint32_t width() const override { return data_->width; }
         uint32_t height() const override { return data_->height; }
 

@@ -108,6 +108,12 @@ namespace mirinae {
         mirinae::ITexture& material(uint32_t f_index);
         mirinae::ITexture& compo(uint32_t f_index);
 
+        const mirinae::ITexture& depth(uint32_t f_index) const;
+        const mirinae::ITexture& albedo(uint32_t f_index) const;
+        const mirinae::ITexture& normal(uint32_t f_index) const;
+        const mirinae::ITexture& material(uint32_t f_index) const;
+        const mirinae::ITexture& compo(uint32_t f_index) const;
+
     private:
         std::vector<std::unique_ptr<mirinae::ITexture>> depth_;
         std::vector<std::unique_ptr<mirinae::ITexture>> albedo_;

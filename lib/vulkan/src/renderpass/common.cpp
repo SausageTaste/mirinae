@@ -237,6 +237,26 @@ namespace mirinae {
         return *compo_.at(f_index);
     }
 
+    const mirinae::ITexture& FbufImageBundle::depth(uint32_t f_index) const {
+        return *depth_.at(f_index);
+    }
+
+    const mirinae::ITexture& FbufImageBundle::albedo(uint32_t f_index) const {
+        return *albedo_.at(f_index);
+    }
+
+    const mirinae::ITexture& FbufImageBundle::normal(uint32_t f_index) const {
+        return *normal_.at(f_index);
+    }
+
+    const mirinae::ITexture& FbufImageBundle::material(uint32_t f_index) const {
+        return *material_.at(f_index);
+    }
+
+    const mirinae::ITexture& FbufImageBundle::compo(uint32_t f_index) const {
+        return *compo_.at(f_index);
+    }
+
 }  // namespace mirinae
 
 
