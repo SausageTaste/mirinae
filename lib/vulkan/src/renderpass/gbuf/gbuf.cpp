@@ -2,16 +2,6 @@
 
 #include "mirinae/renderpass/gbuf/gbuf.hpp"
 
-#include <entt/entity/registry.hpp>
-#include <sung/basic/time.hpp>
-
-#include "mirinae/cosmos.hpp"
-#include "mirinae/cpnt/terrain.hpp"
-#include "mirinae/cpnt/transform.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/draw_set.hpp"
-#include "mirinae/render/vkmajorplayers.hpp"
-#include "mirinae/renderee/terrain.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
@@ -96,6 +86,7 @@ namespace mirinae::rp::gbuf {
 }  // namespace mirinae::rp::gbuf
 
 
+/*
 namespace {
 
     class RpImplGbufStatic : public mirinae::rg::IRenderPassImpl {
@@ -200,13 +191,12 @@ namespace {
     };
 
 }  // namespace
+*/
 
 
 namespace mirinae::rp {
 
-    rg::URpImpl create_rpimpl_gbuf_static() {
-        return std::make_unique<RpImplGbufStatic>();
-    }
+    rg::URpImpl create_rpimpl_gbuf_static() { return nullptr; }
 
     rg::URpImpl create_rpimpl_gbuf_skinned() { return nullptr; }
 
