@@ -935,10 +935,9 @@ namespace {
                 cosmos_->cam_ctrl().anim_run_ = "run";
                 cosmos_->cam_ctrl().anim_sprint_ = "run";
                 cosmos_->cam_ctrl().player_model_heading_.set_deg(90);
-                mdl.model_path_ =
-                    "Sung/Character Running.dun/Character Running.dmd";
+                mdl.model_path_ = "Sung/adobe_bald_guy.dun/adobe_bald_guy.dmd";
                 mdl.anim_state_.select_anim_index(0, cosmos_->scene().clock());
-                tform.set_scale(0.14);
+                tform.set_scale(0.007);
 #endif
 
                 auto& phys = reg.emplace<mirinae::cpnt::CharacterPhys>(entt);
