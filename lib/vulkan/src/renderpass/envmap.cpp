@@ -1088,9 +1088,10 @@ namespace { namespace task {
         }
 
         void prepare(
-            const ::EnvmapBundle::Item& env_item, const mirinae::RpCtxt& ctxt
+            const mirinae::RpCtxt& ctxt, const ::EnvmapBundle::Item& env_item
         ) {
             ctxt_ = &ctxt;
+            env_item_ = &env_item;
         }
 
     private:
@@ -1099,7 +1100,11 @@ namespace { namespace task {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
+            draw_set_.clear();
+            draw_set_.fetch(*reg_);
+
             mirinae::begin_cmdbuf(cmdbuf_);
+            this->record(cmdbuf_, *env_item_, *reg_, draw_set_, *rp_, *ctxt_);
             mirinae::end_cmdbuf(cmdbuf_);
         }
 
@@ -1107,7 +1112,7 @@ namespace { namespace task {
             const VkCommandBuffer cmdbuf,
             const ::EnvmapBundle::Item& env_item,
             const entt::registry& reg,
-            const mirinae::DrawSheet& draw_sheet,
+            const mirinae::DrawSetStatic& draw_set,
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt
         ) {
@@ -1153,32 +1158,29 @@ namespace { namespace task {
                     break;
                 }
 
-                for (auto& pair : draw_sheet.static_) {
+                for (auto& pair : draw_set.opa()) {
                     auto& unit = *pair.unit_;
+                    auto& actor = *pair.actor_;
+
                     descset_info.first_set(0)
                         .set(unit.get_desc_set(ctxt.f_index_.get()))
                         .record(cmdbuf);
 
                     unit.record_bind_vert_buf(cmdbuf);
 
-                    for (auto& actor : pair.actors_) {
-                        descset_info.first_set(1)
-                            .set(actor.actor_->get_desc_set(ctxt.f_index_.get())
-                            )
-                            .record(cmdbuf);
+                    descset_info.first_set(1)
+                        .set(actor.get_desc_set(ctxt.f_index_.get()))
+                        .record(cmdbuf);
 
-                        push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i] *
-                                                env_item.world_mat_;
+                    push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i] *
+                                            env_item.world_mat_;
 
-                        mirinae::PushConstInfo{}
-                            .layout(rp.pipe_layout())
-                            .add_stage_vert()
-                            .record(cmdbuf, push_const);
+                    mirinae::PushConstInfo{}
+                        .layout(rp.pipe_layout())
+                        .add_stage_vert()
+                        .record(cmdbuf, push_const);
 
-                        vkCmdDrawIndexed(
-                            cmdbuf, unit.vertex_count(), 1, 0, 0, 0
-                        );
-                    }
+                    vkCmdDrawIndexed(cmdbuf, unit.vertex_count(), 1, 0, 0, 0);
                 }
 
                 vkCmdEndRenderPass(cmdbuf);
@@ -1277,6 +1279,7 @@ namespace { namespace task {
             );
         }
 
+        mirinae::DrawSetStatic draw_set_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
         const ::EnvmapBundle::Item* env_item_ = nullptr;
