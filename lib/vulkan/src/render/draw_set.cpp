@@ -8,6 +8,7 @@
 #include "mirinae/cpnt/transform.hpp"
 
 
+// DrawSheet
 namespace mirinae {
 
     void DrawSheet::build(entt::registry& reg) {
@@ -158,6 +159,112 @@ namespace mirinae {
         auto& output = skinned_trs_.emplace_back();
         output.unit_ = &unit;
         return output;
+    }
+
+}  // namespace mirinae
+
+
+// DrawSetStatic
+namespace mirinae {
+
+    void DrawSetStatic::fetch(const entt::registry& reg) {
+        namespace cpnt = mirinae::cpnt;
+
+        for (const auto e : reg.view<cpnt::MdlActorStatic>()) {
+            auto& mactor = reg.get<cpnt::MdlActorStatic>(e);
+            if (!mactor.model_)
+                continue;
+            auto renmdl = mactor.get_model<mirinae::RenderModel>();
+            if (!renmdl)
+                continue;
+            auto actor = mactor.get_actor<mirinae::RenderActor>();
+            if (!actor)
+                continue;
+
+            glm::dmat4 model_mat(1);
+            if (auto tfrom = reg.try_get<cpnt::Transform>(e))
+                model_mat = tfrom->make_model_mat();
+
+            const auto unit_count = renmdl->render_units_.size();
+            for (size_t i = 0; i < unit_count; ++i) {
+                if (!mactor.visibility_.get(i))
+                    continue;
+
+                auto& dst = opa_.emplace_back();
+                dst.unit_ = &renmdl->render_units_[i];
+                dst.actor_ = actor;
+                dst.model_mat_ = model_mat;
+            }
+
+            const auto unit_trs_count = renmdl->render_units_alpha_.size();
+            for (size_t i = 0; i < unit_trs_count; ++i) {
+                if (!mactor.visibility_.get(i + unit_count))
+                    continue;
+
+                auto& dst = trs_.emplace_back();
+                dst.unit_ = &renmdl->render_units_alpha_[i];
+                dst.actor_ = actor;
+                dst.model_mat_ = model_mat;
+            }
+        }
+    }
+
+    void DrawSetStatic::clear() {
+        opa_.clear();
+        trs_.clear();
+    }
+
+}  // namespace mirinae
+
+
+// DrawSetSkinned
+namespace mirinae {
+
+    void DrawSetSkinned::fetch(const entt::registry& reg) {
+        namespace cpnt = mirinae::cpnt;
+
+        for (const auto e : reg.view<cpnt::MdlActorSkinned>()) {
+            auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
+            if (!mactor.model_)
+                continue;
+            auto renmdl = mactor.get_model<mirinae::RenderModelSkinned>();
+            if (!renmdl)
+                continue;
+            auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
+            if (!actor)
+                continue;
+
+            glm::dmat4 model_mat(1);
+            if (auto tfrom = reg.try_get<cpnt::Transform>(e))
+                model_mat = tfrom->make_model_mat();
+
+            const auto unit_count = renmdl->runits_.size();
+            for (size_t i = 0; i < unit_count; ++i) {
+                if (!mactor.visibility_.get(i))
+                    continue;
+
+                auto& dst = opa_.emplace_back();
+                dst.unit_ = &renmdl->runits_[i];
+                dst.actor_ = actor;
+                dst.model_mat_ = model_mat;
+            }
+
+            const auto unit_trs_count = renmdl->runits_alpha_.size();
+            for (size_t i = 0; i < unit_trs_count; ++i) {
+                if (!mactor.visibility_.get(i + unit_count))
+                    continue;
+
+                auto& dst = trs_.emplace_back();
+                dst.unit_ = &renmdl->runits_alpha_[i];
+                dst.actor_ = actor;
+                dst.model_mat_ = model_mat;
+            }
+        }
+    }
+
+    void DrawSetSkinned::clear() {
+        opa_.clear();
+        trs_.clear();
     }
 
 }  // namespace mirinae

@@ -9,7 +9,7 @@
 
 namespace mirinae {
 
-    struct DrawSheet {
+    class DrawSheet {
 
     public:
         struct StaticRenderPairs {
@@ -48,6 +48,48 @@ namespace mirinae {
         std::vector<SkinnedRenderPairs> skinned_trs_;
         cpnt::Ocean* ocean_ = nullptr;
         cpnt::AtmosphereSimple* atmosphere_ = nullptr;
+    };
+
+
+    class DrawSetStatic {
+
+    public:
+        struct StaticActor {
+            const mirinae::RenderUnit* unit_ = nullptr;
+            const mirinae::RenderActor* actor_ = nullptr;
+            glm::dmat4 model_mat_{ 1 };
+        };
+
+        void fetch(const entt::registry& reg);
+        void clear();
+
+        const std::vector<StaticActor>& opa() const { return opa_; }
+        const std::vector<StaticActor>& trs() const { return trs_; }
+
+    private:
+        std::vector<StaticActor> opa_;
+        std::vector<StaticActor> trs_;
+    };
+
+
+    class DrawSetSkinned {
+
+    public:
+        struct SkinnedActor {
+            const mirinae::RenderUnitSkinned* unit_ = nullptr;
+            const mirinae::RenderActorSkinned* actor_ = nullptr;
+            glm::dmat4 model_mat_{ 1 };
+        };
+
+        void fetch(const entt::registry& reg);
+        void clear();
+
+        const std::vector<SkinnedActor>& opa() const { return opa_; }
+        const std::vector<SkinnedActor>& trs() const { return trs_; }
+
+    private:
+        std::vector<SkinnedActor> opa_;
+        std::vector<SkinnedActor> trs_;
     };
 
 }  // namespace mirinae

@@ -9,74 +9,9 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/draw_set.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/shadow/bundles.hpp"
-
-
-namespace {
-
-    class DrawSet {
-
-    public:
-        struct SkinnedActor {
-            const mirinae::RenderUnitSkinned* unit_ = nullptr;
-            const mirinae::RenderActorSkinned* actor_ = nullptr;
-            glm::dmat4 model_mat_{ 1 };
-        };
-
-        void get_all_skinned(const entt::registry& reg) {
-            namespace cpnt = mirinae::cpnt;
-
-            for (const auto e : reg.view<cpnt::MdlActorSkinned>()) {
-                auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
-                if (!mactor.model_)
-                    continue;
-                auto renmdl = mactor.get_model<mirinae::RenderModelSkinned>();
-                if (!renmdl)
-                    continue;
-                auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
-                if (!actor)
-                    continue;
-
-                glm::dmat4 model_mat(1);
-                if (auto tfrom = reg.try_get<cpnt::Transform>(e))
-                    model_mat = tfrom->make_model_mat();
-
-                const auto unit_count = renmdl->runits_.size();
-                for (size_t i = 0; i < unit_count; ++i) {
-                    if (!mactor.visibility_.get(i))
-                        continue;
-
-                    auto& dst = skinned_.emplace_back();
-                    dst.unit_ = &renmdl->runits_[i];
-                    dst.actor_ = actor;
-                    dst.model_mat_ = model_mat;
-                }
-
-                const auto unit_trs_count = renmdl->runits_alpha_.size();
-                for (size_t i = 0; i < unit_trs_count; ++i) {
-                    if (!mactor.visibility_.get(i + unit_count))
-                        continue;
-
-                    auto& dst = skinned_trs_.emplace_back();
-                    dst.unit_ = &renmdl->runits_alpha_[i];
-                    dst.actor_ = actor;
-                    dst.model_mat_ = model_mat;
-                }
-            }
-        }
-
-        void clear() {
-            skinned_.clear();
-            skinned_trs_.clear();
-        }
-
-    public:
-        std::vector<SkinnedActor> skinned_;
-        std::vector<SkinnedActor> skinned_trs_;
-    };
-
-}  // namespace
 
 
 // Tasks
@@ -118,7 +53,7 @@ namespace { namespace task {
                 return;
 
             draw_set_.clear();
-            draw_set_.get_all_skinned(*reg_);
+            draw_set_.fetch(*reg_);
 
             mirinae::begin_cmdbuf(cmdbuf_);
 
@@ -135,7 +70,7 @@ namespace { namespace task {
 
         static void record_dlight(
             const VkCommandBuffer cmdbuf,
-            const DrawSet& draw_set,
+            const mirinae::DrawSetSkinned& draw_set,
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt,
             const entt::registry& reg,
@@ -200,7 +135,7 @@ namespace { namespace task {
                         .set_wh(half_width, half_height)
                         .record_scissor(cmdbuf);
 
-                    for (auto& pair : draw_set.skinned_) {
+                    for (auto& pair : draw_set.opa()) {
                         auto& unit = *pair.unit_;
                         auto& actor = *pair.actor_;
 
@@ -230,7 +165,7 @@ namespace { namespace task {
 
         static void record_slight(
             const VkCommandBuffer cmdbuf,
-            const DrawSet& draw_set,
+            const mirinae::DrawSetSkinned& draw_set,
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt,
             const entt::registry& reg,
@@ -285,7 +220,7 @@ namespace { namespace task {
 
                 mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
 
-                for (auto& pair : draw_set.skinned_) {
+                for (auto& pair : draw_set.opa()) {
                     auto& unit = *pair.unit_;
                     auto& actor = *pair.actor_;
 
@@ -310,7 +245,7 @@ namespace { namespace task {
         }
 
         mirinae::FenceTask fence_;
-        DrawSet draw_set_;
+        mirinae::DrawSetSkinned draw_set_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
         const mirinae::ShadowMapBundle* shadow_maps_ = nullptr;
