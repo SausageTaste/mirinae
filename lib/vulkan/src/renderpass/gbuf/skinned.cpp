@@ -313,20 +313,7 @@ namespace {
 
             pipeline_ = ::create_pipeline(render_pass_, pipe_layout_, device);
 
-            for (int i = 0; i < fdata_.size(); ++i) {
-                auto& fd = fdata_.at(i);
-
-                mirinae::FbufCinfo fbuf_cinfo;
-                fbuf_cinfo.set_rp(render_pass_)
-                    .add_attach(rp_res.gbuf_.depth(i).image_view())
-                    .add_attach(rp_res.gbuf_.albedo(i).image_view())
-                    .add_attach(rp_res.gbuf_.normal(i).image_view())
-                    .add_attach(rp_res.gbuf_.material(i).image_view())
-                    .set_dim(rp_res.gbuf_.extent());
-
-                fd.fbuf_.init(fbuf_cinfo.get(), device.logi_device());
-                fd.fbuf_size_ = rp_res.gbuf_.extent();
-            }
+            this->recreate_fbuf(fdata_);
         }
 
         ~RpBase() {
@@ -338,6 +325,10 @@ namespace {
         }
 
         std::string_view name() const { return "gbuf skinned"; }
+
+        void on_resize(uint32_t width, uint32_t height) override {
+            this->recreate_fbuf(fdata_);
+        }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto task = std::make_unique<RpTask>();
@@ -353,6 +344,23 @@ namespace {
         }
 
     private:
+        void recreate_fbuf(::FrameDataArr& fdata) const {
+            for (int i = 0; i < fdata.size(); ++i) {
+                auto& fd = fdata.at(i);
+
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(render_pass_)
+                    .add_attach(rp_res_.gbuf_.depth(i).image_view())
+                    .add_attach(rp_res_.gbuf_.albedo(i).image_view())
+                    .add_attach(rp_res_.gbuf_.normal(i).image_view())
+                    .add_attach(rp_res_.gbuf_.material(i).image_view())
+                    .set_dim(rp_res_.gbuf_.extent());
+
+                fd.fbuf_.init(fbuf_cinfo.get(), device_.logi_device());
+                fd.fbuf_size_ = rp_res_.gbuf_.extent();
+            }
+        }
+
         ::FrameDataArr fdata_;
 
         mirinae::CosmosSimulator& cosmos_;
