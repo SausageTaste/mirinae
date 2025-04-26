@@ -11,6 +11,8 @@ namespace mirinae::rp::gbuf {
     );
 
 
+    std::unique_ptr<IRpBase> create_rp_gbuf_static(RpCreateBundle& cbundle);
+
     URpStates create_rp_states_gbuf(
         RpResources& rp_res,
         DesclayoutManager& desclayouts,
@@ -36,4 +38,4 @@ namespace mirinae::rp {
 
     rg::URpImpl create_rpimpl_gbuf_terrain();
 
-}
+}  // namespace mirinae::rp

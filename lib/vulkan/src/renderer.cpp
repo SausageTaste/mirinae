@@ -21,7 +21,7 @@
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/compo.hpp"
 #include "mirinae/renderpass/envmap/envmap.hpp"
-#include "mirinae/renderpass/gbuf.hpp"
+#include "mirinae/renderpass/gbuf/gbuf.hpp"
 #include "mirinae/renderpass/ocean/ocean.hpp"
 #include "mirinae/renderpass/shadow/shadow.hpp"
 #include "mirinae/renderpass/transp.hpp"
@@ -179,9 +179,6 @@ namespace {
             this->destroy_std_rp();
 
             mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
-
-            // rg_ = rg_def.build(rp_res, rp_res.desclays_, swapchain,
-            // device);
 
             rp_post_.push_back(
                 mirinae::rp::gbuf::create_rp_states_gbuf(
@@ -1563,6 +1560,10 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::create_rp_shadow_terrain(cbundle)
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::gbuf::create_rp_gbuf_static(cbundle)
                 );
             }
 

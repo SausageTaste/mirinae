@@ -1,6 +1,6 @@
 #include "mirinae/vulkan_pch.h"
 
-#include "mirinae/renderpass/gbuf.hpp"
+#include "mirinae/renderpass/gbuf/gbuf.hpp"
 
 #include <entt/entity/registry.hpp>
 #include <sung/basic/time.hpp>
@@ -618,10 +618,6 @@ namespace {
 
         void record(const mirinae::RpContext& ctxt) override {
             auto& gbufs = ctxt.rp_res_->gbuf_;
-
-            this->record_static(
-                ctxt.cmdbuf_, gbufs.extent(), *ctxt.draw_sheet_, ctxt.f_index_
-            );
 
             mirinae::ImageMemoryBarrier{}
                 .image(gbufs.depth(ctxt.f_index_.get()).image())
