@@ -1,6 +1,6 @@
 #include "mirinae/vulkan_pch.h"
 
-#include "mirinae/renderpass/envmap.hpp"
+#include "mirinae/renderpass/envmap/envmap.hpp"
 
 #include <set>
 

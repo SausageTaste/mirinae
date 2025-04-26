@@ -20,7 +20,7 @@
 #include "mirinae/render/renderpass.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/compo.hpp"
-#include "mirinae/renderpass/envmap.hpp"
+#include "mirinae/renderpass/envmap/envmap.hpp"
 #include "mirinae/renderpass/gbuf.hpp"
 #include "mirinae/renderpass/ocean/ocean.hpp"
 #include "mirinae/renderpass/shadow/shadow.hpp"
