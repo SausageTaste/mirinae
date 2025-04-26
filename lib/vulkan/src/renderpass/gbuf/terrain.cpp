@@ -493,7 +493,7 @@ namespace {
             this->destroy_render_pass_elements(device_);
         }
 
-        std::string_view name() const { return "gbuf terrain"; }
+        std::string_view name() const override { return "gbuf terrain"; }
 
         void on_resize(uint32_t width, uint32_t height) override {
             this->recreate_fbuf(fdata_);
