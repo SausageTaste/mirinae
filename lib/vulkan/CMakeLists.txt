@@ -29,6 +29,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/gbuf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/skinned.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/static.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/h0.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/hkt.cpp

@@ -181,12 +181,6 @@ namespace {
             mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
 
             rp_post_.push_back(
-                mirinae::rp::gbuf::create_rp_states_gbuf_terrain(
-                    rp_res, rp_res.desclays_, swapchain, device
-                )
-            );
-
-            rp_post_.push_back(
                 mirinae::rp::compo::create_rps_dlight(
                     cosmos, rp_res, rp_res.desclays_, device
                 )
@@ -811,6 +805,9 @@ namespace { namespace task {
             if (auto tform = scene.reg_->try_get<cpnt::Transform>(e_cam)) {
                 ren_ctxt.view_mat_ = tform->make_view_mat();
                 ren_ctxt.view_pos_ = tform->pos_;
+                ren_ctxt.main_cam_.update(
+                    *cam, *tform, swapchain.width(), swapchain.height()
+                );
             } else {
                 ren_ctxt.view_mat_ = glm::dmat4(1);
                 ren_ctxt.view_pos_ = glm::dvec3(0);
@@ -1562,6 +1559,10 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::gbuf::create_rp_gbuf_skinned(cbundle)
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::gbuf::create_rp_gbuf_terrain(cbundle)
                 );
             }
 
