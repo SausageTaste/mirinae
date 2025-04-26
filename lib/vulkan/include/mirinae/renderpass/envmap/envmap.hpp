@@ -4,13 +4,8 @@
 #include "mirinae/renderpass/common.hpp"
 
 
-namespace mirinae::rp::envmap {
+namespace mirinae::rp {
 
-    URpStates create_rp_states_envmap(
-        CosmosSimulator& cosmos,
-        RpResources& rp_res,
-        DesclayoutManager& desclayouts,
-        VulkanDevice& device
-    );
+    std::unique_ptr<IRpBase> create_rp_envmap(RpCreateBundle& cbundle);
 
-}  // namespace mirinae::rp::envmap
+}  // namespace mirinae::rp

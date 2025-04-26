@@ -8,7 +8,9 @@ namespace mirinae {
     struct IEnvmapRpBundle {
         virtual ~IEnvmapRpBundle() = default;
         virtual const IRenPass& rp_base() const = 0;
+        virtual const IRenPass& rp_sky() const = 0;
         virtual const IRenPass& rp_diffuse() const = 0;
+        virtual const IRenPass& rp_specular() const = 0;
         virtual const IRenPass& rp_brdf_lut() const = 0;
     };
 

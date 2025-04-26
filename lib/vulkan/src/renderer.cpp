@@ -180,12 +180,6 @@ namespace {
 
             mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
 
-            rp_pre_.push_back(
-                mirinae::rp::envmap::create_rp_states_envmap(
-                    cosmos, rp_res, rp_res.desclays_, device
-                )
-            );
-
             // rg_ = rg_def.build(rp_res, rp_res.desclays_, swapchain,
             // device);
 
@@ -1503,6 +1497,10 @@ namespace {
 
             // Create swapchain and its relatives
             {
+                mirinae::rp::gbuf::create_desc_layouts(
+                    rp_res_.desclays_, device_
+                );
+
                 swapchain_.init(device_);
 
                 mirinae::RpCreateBundle cbundle{ *cosmos_, rp_res_, device_ };
@@ -1523,6 +1521,10 @@ namespace {
                     mirinae::rp::create_rp_ocean_post_ift(cbundle)
                 );
 
+                render_passes_.push_back(
+                    mirinae::rp::create_rp_envmap(cbundle)
+                );
+
                 const auto [gbuf_width, gbuf_height] = ::calc_scaled_dimensions(
                     swapchain_.width(), swapchain_.height()
                 );
@@ -1534,9 +1536,6 @@ namespace {
                     device_
                 );
 
-                mirinae::rp::gbuf::create_desc_layouts(
-                    rp_res_.desclays_, device_
-                );
                 rpm_.create_std_rp(
                     *cosmos_, render_graph_, rp_res_, swapchain_, device_
                 );
