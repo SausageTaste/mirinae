@@ -21,6 +21,11 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/cubemap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/envmap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_base.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_brdf_lut.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_diffuse.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_sky.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_specular.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/h0.cpp
