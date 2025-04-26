@@ -181,12 +181,6 @@ namespace {
             mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
 
             rp_post_.push_back(
-                mirinae::rp::gbuf::create_rp_states_gbuf(
-                    rp_res, rp_res.desclays_, swapchain, device
-                )
-            );
-
-            rp_post_.push_back(
                 mirinae::rp::gbuf::create_rp_states_gbuf_terrain(
                     rp_res, rp_res.desclays_, swapchain, device
                 )
@@ -1564,6 +1558,10 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::gbuf::create_rp_gbuf_static(cbundle)
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::gbuf::create_rp_gbuf_skinned(cbundle)
                 );
             }
 

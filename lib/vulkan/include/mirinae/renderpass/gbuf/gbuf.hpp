@@ -12,13 +12,7 @@ namespace mirinae::rp::gbuf {
 
 
     std::unique_ptr<IRpBase> create_rp_gbuf_static(RpCreateBundle& cbundle);
-
-    URpStates create_rp_states_gbuf(
-        RpResources& rp_res,
-        DesclayoutManager& desclayouts,
-        Swapchain& swapchain,
-        VulkanDevice& device
-    );
+    std::unique_ptr<IRpBase> create_rp_gbuf_skinned(RpCreateBundle& cbundle);
 
     URpStates create_rp_states_gbuf_terrain(
         RpResources& rp_res,
