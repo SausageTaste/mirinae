@@ -416,22 +416,10 @@ namespace mirinae {
         class BufferInfoView {
 
         public:
-            BufferInfoView(VkDescriptorBufferInfo& info) : info_(&info) {}
-
-            BufferInfoView& set_buffer(VkBuffer buffer) {
-                this->info().buffer = buffer;
-                return *this;
-            }
-
-            BufferInfoView& set_range(VkDeviceSize range) {
-                this->info().range = range;
-                return *this;
-            }
-
-            BufferInfoView& set_offset(VkDeviceSize offset) {
-                this->info().offset = offset;
-                return *this;
-            }
+            BufferInfoView(VkDescriptorBufferInfo& info);
+            BufferInfoView& set_buffer(VkBuffer buffer);
+            BufferInfoView& set_range(VkDeviceSize range);
+            BufferInfoView& set_offset(VkDeviceSize offset);
 
         private:
             VkDescriptorBufferInfo& info() { return *info_; }
@@ -442,22 +430,10 @@ namespace mirinae {
         class ImageInfoView {
 
         public:
-            ImageInfoView(VkDescriptorImageInfo& info) : info_(&info) {}
-
-            ImageInfoView& set_img_view(VkImageView img_view) {
-                this->info().imageView = img_view;
-                return *this;
-            }
-
-            ImageInfoView& set_sampler(VkSampler sam) {
-                this->info().sampler = sam;
-                return *this;
-            }
-
-            ImageInfoView& set_layout(VkImageLayout layout) {
-                this->info().imageLayout = layout;
-                return *this;
-            }
+            ImageInfoView(VkDescriptorImageInfo& info);
+            ImageInfoView& set_img_view(VkImageView img_view);
+            ImageInfoView& set_sampler(VkSampler sam);
+            ImageInfoView& set_layout(VkImageLayout layout);
 
         private:
             VkDescriptorImageInfo& info() { return *info_; }
@@ -465,96 +441,18 @@ namespace mirinae {
             VkDescriptorImageInfo* info_;
         };
 
-        BufferInfoView add_buf_info() {
-            if (buffer_info_.empty())
-                buffer_info_.emplace_back();
+        BufferInfoView add_buf_info();
+        DescWriter& add_buf_info(mirinae::Buffer& buffer);
 
-            return BufferInfoView(buffer_info_.back().emplace_back());
-        }
+        ImageInfoView add_img_info();
+        DescWriter& add_storage_img_info(VkImageView img_view);
 
-        DescWriter& add_buf_info(mirinae::Buffer& buffer) {
-            this->add_buf_info()
-                .set_buffer(buffer.get())
-                .set_range(buffer.size())
-                .set_offset(0);
-            return *this;
-        }
+        DescWriter& add_buf_write(VkDescriptorSet, uint32_t binding);
 
-        ImageInfoView add_img_info() {
-            if (img_info_.empty())
-                img_info_.emplace_back();
+        DescWriter& add_sampled_img_write(VkDescriptorSet, uint32_t binding);
+        DescWriter& add_storage_img_write(VkDescriptorSet, uint32_t binding);
 
-            return ImageInfoView(img_info_.back().emplace_back());
-        }
-
-        DescWriter& add_storage_img_info(VkImageView img_view) {
-            this->add_img_info()
-                .set_img_view(img_view)
-                .set_layout(VK_IMAGE_LAYOUT_GENERAL)
-                .set_sampler(VK_NULL_HANDLE);
-            return *this;
-        }
-
-        DescWriter& add_buf_write(VkDescriptorSet descset, uint32_t binding) {
-            const auto& buf_info = buffer_info_.back();
-            buffer_info_.emplace_back();
-
-            auto& write = write_info_.emplace_back();
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = descset;
-            write.dstBinding = binding;
-            write.dstArrayElement = 0;
-            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            write.descriptorCount = buf_info.size();
-            write.pImageInfo = nullptr;
-            write.pBufferInfo = buf_info.data();
-
-            return *this;
-        }
-
-        DescWriter& add_sampled_img_write(
-            VkDescriptorSet descset, uint32_t binding
-        ) {
-            const auto& img_info = img_info_.back();
-            img_info_.emplace_back();
-
-            auto& write = write_info_.emplace_back();
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = descset;
-            write.dstBinding = binding;
-            write.dstArrayElement = 0;
-            write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            write.descriptorCount = img_info.size();
-            write.pImageInfo = img_info.data();
-            write.pBufferInfo = nullptr;
-
-            return *this;
-        }
-
-        DescWriter& add_storage_img_write(
-            VkDescriptorSet descset, uint32_t binding
-        ) {
-            const auto& img_info = img_info_.back();
-            img_info_.emplace_back();
-
-            auto& write = write_info_.emplace_back();
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = descset;
-            write.dstBinding = binding;
-            write.dstArrayElement = 0;
-            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            write.descriptorCount = img_info.size();
-            write.pImageInfo = img_info.data();
-            write.pBufferInfo = nullptr;
-
-            return *this;
-        }
-
-        void apply_all(VkDevice logi_device) const {
-            vkUpdateDescriptorSets(
-                logi_device, write_info_.size(), write_info_.data(), 0, nullptr
-            );
-        }
+        void apply_all(VkDevice logi_device) const;
 
     private:
         std::vector<VkWriteDescriptorSet> write_info_;
