@@ -64,53 +64,53 @@ namespace {
 
     public:
         U_CompoSlightPushConst& set_light_mat(const glm::mat4& v) {
-            light_mat = v;
+            light_mat_ = v;
             return *this;
         }
 
         U_CompoSlightPushConst& set_pos(const glm::dvec3& v) {
-            pos_n_inner_angle.x = static_cast<float>(v.x);
-            pos_n_inner_angle.y = static_cast<float>(v.y);
-            pos_n_inner_angle.z = static_cast<float>(v.z);
+            pos_n_inner_angle_.x = static_cast<float>(v.x);
+            pos_n_inner_angle_.y = static_cast<float>(v.y);
+            pos_n_inner_angle_.z = static_cast<float>(v.z);
             return *this;
         }
 
         U_CompoSlightPushConst& set_direc(const glm::dvec3& v) {
-            dir_n_outer_angle.x = static_cast<float>(v.x);
-            dir_n_outer_angle.y = static_cast<float>(v.y);
-            dir_n_outer_angle.z = static_cast<float>(v.z);
+            dir_n_outer_angle_.x = static_cast<float>(v.x);
+            dir_n_outer_angle_.y = static_cast<float>(v.y);
+            dir_n_outer_angle_.z = static_cast<float>(v.z);
             return *this;
         }
 
         U_CompoSlightPushConst& set_color(const glm::vec3& v) {
-            color_n_max_dist.x = static_cast<float>(v.x);
-            color_n_max_dist.y = static_cast<float>(v.y);
-            color_n_max_dist.z = static_cast<float>(v.z);
+            color_n_max_dist_.x = static_cast<float>(v.x);
+            color_n_max_dist_.y = static_cast<float>(v.y);
+            color_n_max_dist_.z = static_cast<float>(v.z);
             return *this;
         }
 
         U_CompoSlightPushConst& set_inner_angle(sung::TAngle<double> angle) {
             const auto v = std::cos(angle.rad());
-            pos_n_inner_angle.w = static_cast<float>(v);
+            pos_n_inner_angle_.w = static_cast<float>(v);
             return *this;
         }
 
         U_CompoSlightPushConst& set_outer_angle(sung::TAngle<double> angle) {
             const auto v = std::cos(angle.rad());
-            dir_n_outer_angle.w = static_cast<float>(v);
+            dir_n_outer_angle_.w = static_cast<float>(v);
             return *this;
         }
 
         U_CompoSlightPushConst& set_max_dist(double max_dist) {
-            color_n_max_dist.w = static_cast<float>(max_dist);
+            color_n_max_dist_.w = static_cast<float>(max_dist);
             return *this;
         }
 
     private:
-        glm::mat4 light_mat;
-        glm::vec4 pos_n_inner_angle;
-        glm::vec4 dir_n_outer_angle;
-        glm::vec4 color_n_max_dist;
+        glm::mat4 light_mat_;
+        glm::vec4 pos_n_inner_angle_;
+        glm::vec4 dir_n_outer_angle_;
+        glm::vec4 color_n_max_dist_;
     };
 
     static_assert(sizeof(U_CompoSlightPushConst) < 128);

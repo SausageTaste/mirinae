@@ -13,10 +13,35 @@
 // Compo Envmap
 namespace {
 
-    struct U_CompoEnvmapPushConst {
+    class U_CompoEnvmapPushConst {
+
+    public:
+        U_CompoEnvmapPushConst& set_proj_inv(const glm::mat4& m) {
+            proj_inv_ = m;
+            return *this;
+        }
+
+        U_CompoEnvmapPushConst& set_view_inv(const glm::mat4& m) {
+            view_inv_ = m;
+            return *this;
+        }
+
+        U_CompoEnvmapPushConst& set_fog_color(const glm::vec3& v) {
+            fog_color_density_.x = v.r;
+            fog_color_density_.y = v.g;
+            fog_color_density_.z = v.b;
+            return *this;
+        }
+
+        U_CompoEnvmapPushConst& set_fog_density(float density) {
+            fog_color_density_.w = density;
+            return *this;
+        }
+
+    private:
         glm::mat4 view_inv_;
         glm::mat4 proj_inv_;
-        glm::vec4 fog_color_density_;
+        glm::vec4 fog_color_density_{ 0 };
     };
 
 
@@ -270,13 +295,12 @@ namespace {
                 .record(cmdbuf);
 
             U_CompoEnvmapPushConst pc;
-            pc.proj_inv_ = glm::inverse(ctxt.proj_mat_);
-            pc.view_inv_ = glm::inverse(ctxt.view_mat_);
+            pc.set_proj_inv(ctxt.main_cam_.proj_inv())
+                .set_view_inv(ctxt.main_cam_.view_inv());
             for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
                 auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
-                pc.fog_color_density_ = glm::vec4(
-                    atmos.fog_color_, atmos.fog_density_
-                );
+                pc.set_fog_color(atmos.fog_color_)
+                    .set_fog_density(atmos.fog_density_);
                 break;
             }
 
