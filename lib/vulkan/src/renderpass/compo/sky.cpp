@@ -7,7 +7,6 @@
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/draw_set.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
@@ -29,11 +28,11 @@ namespace {
 
             // Sky texture
             {
-                auto e = this->select_atmos_simple(cosmos.reg());
-                auto& atmos = cosmos.reg().get<cpnt::AtmosphereSimple>(e);
+                auto atmos = this->select_atmos_simple(cosmos.reg());
+                MIRINAE_ASSERT(nullptr != atmos);
                 auto& tex = *rp_res.tex_man_;
-                if (tex.request_blck(atmos.sky_tex_path_, false)) {
-                    sky_tex_ = tex.get(atmos.sky_tex_path_);
+                if (tex.request_blck(atmos->sky_tex_path_, false)) {
+                    sky_tex_ = tex.get(atmos->sky_tex_path_);
                 } else {
                     sky_tex_ = tex.missing_tex();
                 }
@@ -221,7 +220,7 @@ namespace {
             mirinae::U_CompoSkyMain pc;
             pc.proj_inv_ = glm::inverse(ctxt.proj_mat_);
             pc.view_inv_ = glm::inverse(ctxt.view_mat_);
-            if (auto atmos = ctxt.draw_sheet_->atmosphere_)
+            if (auto atmos = this->select_atmos_simple(ctxt.cosmos_->reg()))
                 pc.fog_color_density_ = glm::vec4{ atmos->fog_color_,
                                                    atmos->fog_density_ };
 
@@ -241,11 +240,16 @@ namespace {
             VkFramebuffer fbuf_;
         };
 
-        static entt::entity select_atmos_simple(entt::registry& reg) {
-            for (auto entity : reg.view<mirinae::cpnt::AtmosphereSimple>())
-                return entity;
+        static const mirinae::cpnt::AtmosphereSimple* select_atmos_simple(
+            const entt::registry& reg
+        ) {
+            using Atmos = mirinae::cpnt::AtmosphereSimple;
 
-            return entt::null;
+            for (auto entity : reg.view<Atmos>()) {
+                return &reg.get<Atmos>(entity);
+            }
+
+            return nullptr;
         }
 
         mirinae::VulkanDevice& device_;
