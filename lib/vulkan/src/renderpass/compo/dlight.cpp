@@ -538,7 +538,7 @@ namespace {
         std::string_view name() const override { return "compo_dlight"; }
         std::string names() const { return std::string(name()); }
 
-        virtual void on_resize(uint32_t width, uint32_t height) {
+        void on_resize(uint32_t width, uint32_t height) override {
             this->recreate_desc_sets(frame_data_, desc_pool_, device_);
             this->recreate_render_pass(render_pass_, device_);
             this->recreate_pipeline(pipeline_, device_);
