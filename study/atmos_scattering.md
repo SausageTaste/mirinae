@@ -68,6 +68,6 @@ $$T(\textbf{x}, \textbf{x}_o) = exp( -\int_{\textbf{x}}^{\textbf{x}_o} \sum_{i \
 
 ### Radiance of light reflected at $\textbf{x}_o$
 
-$$I[L](\textbf{x}_o, \textbf{s}) = \frac{\alpha(\textbf{x}_o)}{\pi} \int_{2\pi} L(\textbf{x}_o, \omega, \textbf{s})\omega.\mathbf{n}(\mathbf{x}_o)d\omega$$
+$$\mathcal{I}[L](\textbf{x}_o, \textbf{s}) = \frac{\alpha(\textbf{x}_o)}{\pi} \int_{2\pi} L(\textbf{x}_o, \omega, \textbf{s})\omega.\mathbf{n}(\mathbf{x}_o)d\omega$$
 
 or 0.
