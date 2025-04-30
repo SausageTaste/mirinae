@@ -113,6 +113,7 @@ namespace {
     };
 
     using FrameDataArr = std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
+    using Dlights = mirinae::IShadowMapBundle::IDlightShadowMapBundle;
 
 }  // namespace
 
@@ -126,21 +127,21 @@ namespace { namespace task {
         DrawTasks() { fence_.succeed(this); }
 
         void init(
+            const ::Dlights& dlights,
             const entt::registry& reg,
             const mirinae::FbufImageBundle& gbufs,
             const mirinae::IRenPass& rp,
-            const mirinae::IShadowMapBundle& shadow_maps,
             ::FrameDataArr& fdata,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
             cmd_pool_ = &cmd_pool;
             device_ = &device;
+            dlights_ = &dlights;
             fdata_ = &fdata;
             gbufs_ = &gbufs;
             reg_ = &reg;
             rp_ = &rp;
-            shadow_maps_ = &shadow_maps;
         }
 
         void prepare(const mirinae::RpCtxt& ctxt) { ctxt_ = &ctxt; }
@@ -160,14 +161,14 @@ namespace { namespace task {
                 return;
 
             auto& fd = fdata_->at(ctxt_->f_index_.get());
-            auto& dlights = shadow_maps_->dlights();
+            const auto gbuf_ext = gbufs_->extent();
 
             mirinae::begin_cmdbuf(cmdbuf_);
             this->update_ubuf(*reg_, *ctxt_, fd, *device_);
-            this->update_ubuf_shadow(*reg_, dlights, *ctxt_, fd, *device_);
+            this->update_ubuf_shadow(*dlights_, *reg_, *ctxt_, fd, *device_);
             this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
-            this->record_barriers_shadow(cmdbuf_, dlights, *ctxt_);
-            this->record(cmdbuf_, fd, *rp_, dlights, *ctxt_, gbufs_->extent());
+            this->record_barriers_shadow(cmdbuf_, *dlights_, *ctxt_);
+            this->record(cmdbuf_, *dlights_, fd, *rp_, *ctxt_, gbuf_ext);
             mirinae::end_cmdbuf(cmdbuf_);
         }
 
@@ -191,8 +192,8 @@ namespace { namespace task {
         }
 
         static void update_ubuf_shadow(
+            const ::Dlights& dlights,
             const entt::registry& reg,
-            const mirinae::IShadowMapBundle::IDlightShadowMapBundle& dlights,
             const mirinae::RpCtxt& ctxt,
             ::FrameData& fd,
             mirinae::VulkanDevice& device
@@ -278,7 +279,7 @@ namespace { namespace task {
 
         static void record_barriers_shadow(
             const VkCommandBuffer cmdbuf,
-            const mirinae::IShadowMapBundle::IDlightShadowMapBundle& dlights,
+            const ::Dlights& dlights,
             const mirinae::RpCtxt& ctxt
         ) {
             for (uint32_t i = 0; i < dlights.count(); ++i) {
@@ -306,9 +307,9 @@ namespace { namespace task {
 
         static void record(
             const VkCommandBuffer cmdbuf,
+            const ::Dlights& dlights,
             const ::FrameData& fd,
             const mirinae::IRenPass& rp,
-            const mirinae::IShadowMapBundle::IDlightShadowMapBundle& dlights,
             const mirinae::RpCtxt& ctxt,
             const VkExtent2D& fbuf_ext
         ) {
@@ -356,10 +357,10 @@ namespace { namespace task {
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
+        const ::Dlights* dlights_ = nullptr;
         const entt::registry* reg_ = nullptr;
         const mirinae::FbufImageBundle* gbufs_ = nullptr;
         const mirinae::IRenPass* rp_ = nullptr;
-        const mirinae::IShadowMapBundle* shadow_maps_ = nullptr;
         const mirinae::RpCtxt* ctxt_ = nullptr;
         ::FrameDataArr* fdata_ = nullptr;
         mirinae::RpCommandPool* cmd_pool_ = nullptr;
@@ -371,16 +372,16 @@ namespace { namespace task {
 
     public:
         void init(
+            const ::Dlights& dlights,
             const entt::registry& reg,
             const mirinae::FbufImageBundle& gbufs,
             const mirinae::IRenPass& rp,
-            const mirinae::IShadowMapBundle& shadow_maps,
             ::FrameDataArr& fdata,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
             record_tasks_.init(
-                reg, gbufs, rp, shadow_maps, fdata, cmd_pool, device
+                dlights, reg, gbufs, rp, fdata, cmd_pool, device
             );
         }
 
@@ -548,10 +549,10 @@ namespace {
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<task::RpTask>();
             out->init(
+                rp_res_.shadow_maps_->dlights(),
                 cosmos_.reg(),
                 rp_res_.gbuf_,
                 *this,
-                *rp_res_.shadow_maps_,
                 frame_data_,
                 rp_res_.cmd_pool_,
                 device_
