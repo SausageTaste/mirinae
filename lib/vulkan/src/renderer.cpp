@@ -1512,6 +1512,10 @@ namespace {
                 );
 
                 render_passes_.push_back(
+                    mirinae::rp::create_rp_states_transp_static(cbundle)
+                );
+
+                render_passes_.push_back(
                     mirinae::rp::create_rp_states_transp_skinned(cbundle)
                 );
             }
@@ -1660,14 +1664,6 @@ namespace {
             ren_ctxt.cmdbuf_ = basic_cmdbufs_.at(f_idx.get());
             cmdbufs_.add(ren_ctxt.cmdbuf_, ren_ctxt.f_index_);
             mirinae::begin_cmdbuf(ren_ctxt.cmdbuf_);
-
-            rp_states_transp_.record_static(
-                ren_ctxt.cmdbuf_,
-                rp_res_.gbuf_.extent(),
-                *ren_ctxt.draw_sheet_,
-                ren_ctxt.f_index_,
-                rp_
-            );
 
             rp_states_debug_mesh_.begin_record(
                 ren_ctxt.cmdbuf_, rp_res_.gbuf_.extent(), ren_ctxt.f_index_, rp_

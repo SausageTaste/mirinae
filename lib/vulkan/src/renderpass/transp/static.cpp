@@ -15,56 +15,140 @@
 
 namespace {
 
-    class U_TranspSkinnedFrame {
+    class U_TranspFrame {
 
     public:
-        U_TranspSkinnedFrame& set_proj(const glm::dmat4& v) {
-            proj_ = v;
-            proj_inv_ = glm::inverse(v);
-            return *this;
-        }
-
-        U_TranspSkinnedFrame& set_view(const glm::dmat4& v) {
-            view_ = v;
-            view_inv_ = glm::inverse(v);
-            return *this;
-        }
-
-        // Dlights
-
-        U_TranspSkinnedFrame& set_dlight_mat(size_t idx, const glm::mat4& m) {
-            dlight_mats_[idx] = m;
+        template <typename T>
+        U_TranspFrame& set_proj(const glm::tmat4x4<T>& m) {
+            proj_ = m;
+            proj_inv_ = glm::inverse(m);
             return *this;
         }
 
         template <typename T>
-        U_TranspSkinnedFrame& set_dlight_cascade_depths(const T* arr) {
-            dlight_cascade_depths_.x = static_cast<float>(arr[0]);
-            dlight_cascade_depths_.y = static_cast<float>(arr[1]);
-            dlight_cascade_depths_.z = static_cast<float>(arr[2]);
-            dlight_cascade_depths_.w = static_cast<float>(arr[3]);
+        U_TranspFrame& set_view(const glm::tmat4x4<T>& m) {
+            view_ = m;
+            view_inv_ = glm::inverse(m);
             return *this;
         }
-
-        U_TranspSkinnedFrame& set_dlight_dir(const glm::dvec3& v) {
-            dlight_dir_.x = static_cast<float>(v.x);
-            dlight_dir_.y = static_cast<float>(v.y);
-            dlight_dir_.z = static_cast<float>(v.z);
-            return *this;
-        }
-
-        U_TranspSkinnedFrame& set_dlight_color(const glm::vec3& v) {
-            dlight_color_.x = v.r;
-            dlight_color_.y = v.g;
-            dlight_color_.z = v.b;
-            return *this;
-        }
-
-        // Misc
 
         template <typename T>
-        U_TranspSkinnedFrame& set_mie_anisotropy(T v) {
-            mie_anisotropy_ = static_cast<float>(v);
+        U_TranspFrame& set_dlight_mat(size_t index, const glm::tmat4x4<T>& m) {
+            dlight_mats_[index] = m;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_dlight_dir(const glm::tvec3<T>& x) {
+            dlight_dir_.x = x.x;
+            dlight_dir_.y = x.y;
+            dlight_dir_.z = x.z;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_dlight_color(T r, T g, T b) {
+            dlight_color_.x = r;
+            dlight_color_.y = g;
+            dlight_color_.z = b;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_dlight_color(const glm::tvec3<T>& dlight_color) {
+            dlight_color_.x = dlight_color.r;
+            dlight_color_.y = dlight_color.g;
+            dlight_color_.z = dlight_color.b;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_dlight_cascade_depths(
+            const std::array<T, 4>& depths
+        ) {
+            for (size_t i = 0; i < depths.size(); ++i)
+                dlight_cascade_depths_[i] = depths[i];
+
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_slight_mat(const glm::tmat4x4<T>& m) {
+            slight_mat_ = m;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_slight_pos(const glm::tvec3<T>& pos) {
+            slight_pos_n_inner_angle.x = pos.x;
+            slight_pos_n_inner_angle.y = pos.y;
+            slight_pos_n_inner_angle.z = pos.z;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_slight_dir(const glm::tvec3<T>& x) {
+            slight_dir_n_outer_angle.x = x.x;
+            slight_dir_n_outer_angle.y = x.y;
+            slight_dir_n_outer_angle.z = x.z;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_slight_color(const glm::tvec3<T>& v) {
+            slight_color_n_max_dist.x = v.r;
+            slight_color_n_max_dist.y = v.g;
+            slight_color_n_max_dist.z = v.b;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_slight_inner_angle(sung::TAngle<T> angle) {
+            const auto v = std::cos(angle.rad());
+            slight_pos_n_inner_angle.w = static_cast<float>(v);
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_slight_outer_angle(sung::TAngle<T> angle) {
+            const auto v = std::cos(angle.rad());
+            slight_dir_n_outer_angle.w = static_cast<float>(v);
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_slight_max_dist(T max_dist) {
+            slight_color_n_max_dist.w = max_dist;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_vpl_pos(size_t i, const glm::tvec3<T>& pos) {
+            vpl_pos_n_radius[i].x = pos.x;
+            vpl_pos_n_radius[i].y = pos.y;
+            vpl_pos_n_radius[i].z = pos.z;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_vpl_color(size_t i, const glm::tvec3<T>& v) {
+            vpl_color_n_intensity[i].x = v.r;
+            vpl_color_n_intensity[i].y = v.g;
+            vpl_color_n_intensity[i].z = v.b;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_fog_color(const glm::tvec3<T>& v) {
+            fog_color_density_.x = v.r;
+            fog_color_density_.y = v.g;
+            fog_color_density_.z = v.b;
+            return *this;
+        }
+
+        template <typename T>
+        U_TranspFrame& set_fog_density(T density) {
+            fog_color_density_.w = density;
             return *this;
         }
 
@@ -80,7 +164,17 @@ namespace {
         glm::vec4 dlight_color_;
         glm::vec4 dlight_cascade_depths_;
 
-        float mie_anisotropy_;
+        // Spotlight
+        glm::mat4 slight_mat_;
+        glm::vec4 slight_pos_n_inner_angle;
+        glm::vec4 slight_dir_n_outer_angle;
+        glm::vec4 slight_color_n_max_dist;
+
+        // Volumetric Point Light
+        std::array<glm::vec4, 8> vpl_pos_n_radius;
+        std::array<glm::vec4, 8> vpl_color_n_intensity;
+
+        glm::vec4 fog_color_density_;
     };
 
 
@@ -106,7 +200,6 @@ namespace {
             const entt::registry& reg,
             const mirinae::FbufImageBundle& gbufs,
             const mirinae::IRenPass& rp,
-            const mirinae::IShadowMapBundle& shadows,
             ::FrameDataArr& frame_data,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
@@ -117,7 +210,6 @@ namespace {
             gbufs_ = &gbufs;
             reg_ = &reg;
             rp_ = &rp;
-            shadows_ = &shadows;
         }
 
         void prepare(const mirinae::RpCtxt& ctxt) { ctxt_ = &ctxt; }
@@ -143,99 +235,80 @@ namespace {
             draw_set_.fetch(*reg_);
 
             mirinae::begin_cmdbuf(cmdbuf_);
-            this->update_ubuf(*reg_, *shadows_, *ctxt_, fd, *device_);
-            this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
+            this->update_ubuf(*reg_, *ctxt_, fd, *device_);
             this->record(cmdbuf_, fd, draw_set_, *rp_, *ctxt_, fbuf_ext);
             mirinae::end_cmdbuf(cmdbuf_);
         }
 
         static void update_ubuf(
             const entt::registry& reg,
-            const mirinae::IShadowMapBundle& shadows,
             const mirinae::RpCtxt& ctxt,
             ::FrameData& fd,
             mirinae::VulkanDevice& device
         ) {
             namespace cpnt = mirinae::cpnt;
 
+            auto& proj_mat = ctxt.main_cam_.proj();
             auto& view_mat = ctxt.main_cam_.view();
-            auto& view_inv = ctxt.main_cam_.view_inv();
 
-            U_TranspSkinnedFrame ubuf;
-            ubuf.set_proj(ctxt.main_cam_.proj())
-                .set_view(ctxt.main_cam_.view());
+            ::U_TranspFrame ubuf_data;
+            ubuf_data.set_proj(proj_mat).set_view(view_mat);
+
+            for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                const auto& l = reg.get<cpnt::DLight>(e);
+                const auto& t = reg.get<cpnt::Transform>(e);
+                const auto& cascade = l.cascades_;
+                const auto& cascades = cascade.cascades_;
+
+                for (size_t i = 0; i < cascades.size(); ++i)
+                    ubuf_data.set_dlight_mat(i, cascades.at(i).light_mat_);
+
+                ubuf_data.set_dlight_dir(l.calc_to_light_dir(view_mat, t))
+                    .set_dlight_color(l.color_.scaled_color())
+                    .set_dlight_cascade_depths(cascade.far_depths_);
+                break;
+            }
+
+            for (auto e : reg.view<cpnt::SLight, cpnt::Transform>()) {
+                const auto& l = reg.get<cpnt::SLight>(e);
+                const auto& t = reg.get<cpnt::Transform>(e);
+                ubuf_data.set_slight_mat(l.make_light_mat(t))
+                    .set_slight_pos(l.calc_view_space_pos(view_mat, t))
+                    .set_slight_dir(l.calc_to_light_dir(view_mat, t))
+                    .set_slight_color(l.color_.scaled_color())
+                    .set_slight_inner_angle(l.inner_angle_)
+                    .set_slight_outer_angle(l.outer_angle_)
+                    .set_slight_max_dist(l.max_distance_);
+                break;
+            }
+
+            size_t i = 0;
+            for (auto e : reg.view<cpnt::VPLight, cpnt::Transform>()) {
+                if (i >= 8)
+                    break;
+
+                const auto& l = reg.get<cpnt::VPLight>(e);
+                const auto& t = reg.get<cpnt::Transform>(e);
+                ubuf_data.set_vpl_color(i, l.color_.scaled_color())
+                    .set_vpl_pos(i, t.pos_);
+
+                ++i;
+            }
 
             for (auto e : reg.view<cpnt::AtmosphereSimple>()) {
-                auto& atmos = reg.get<cpnt::AtmosphereSimple>(e);
-                ubuf.set_mie_anisotropy(atmos.mie_anisotropy_);
+                const auto& atm = reg.get<cpnt::AtmosphereSimple>(e);
+                ubuf_data.set_fog_color(atm.fog_color_)
+                    .set_fog_density(atm.fog_density_);
                 break;
             }
 
-            for (uint32_t i = 0; i < shadows.dlights().count(); ++i) {
-                auto& dlight = shadows.dlights().at(i);
-                if (entt::null == dlight.entt())
-                    continue;
-
-                auto dlit = reg.try_get<cpnt::DLight>(dlight.entt());
-                if (!dlit)
-                    continue;
-
-                const auto& light = reg.get<cpnt::DLight>(dlight.entt());
-                const auto& tform = reg.get<cpnt::Transform>(dlight.entt());
-                const auto& cascades = light.cascades_;
-                const auto& casc_arr = cascades.cascades_;
-
-                ubuf.set_dlight_mat(0, casc_arr[0].light_mat_ * view_inv)
-                    .set_dlight_mat(1, casc_arr[1].light_mat_ * view_inv)
-                    .set_dlight_mat(2, casc_arr[2].light_mat_ * view_inv)
-                    .set_dlight_mat(3, casc_arr[3].light_mat_ * view_inv)
-                    .set_dlight_cascade_depths(cascades.far_depths_.data())
-                    .set_dlight_dir(light.calc_to_light_dir(view_mat, tform))
-                    .set_dlight_color(light.color_.scaled_color());
-                break;
-            }
-
-            fd.ubuf_.set_data(ubuf, device.mem_alloc());
-        }
-
-        static void record_barriers(
-            const VkCommandBuffer cmdbuf,
-            const mirinae::FbufImageBundle& gbufs,
-            const mirinae::RpCtxt& ctxt
-        ) {
-            mirinae::ImageMemoryBarrier{}
-                .image(gbufs.depth(ctxt.f_index_.get()).image())
-                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                .old_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                .new_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                .add_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
-                .add_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
-                .set_signle_mip_layer()
-                .record_single(
-                    cmdbuf,
-                    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                );
-
-            mirinae::ImageMemoryBarrier{}
-                .image(gbufs.compo(ctxt.f_index_.get()).image())
-                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-                .new_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-                .add_src_acc(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
-                .add_dst_acc(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT)
-                .set_signle_mip_layer()
-                .record_single(
-                    cmdbuf,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                );
+            fd.ubuf_.set_data(ubuf_data, device.mem_alloc());
         }
 
         static void record(
             const VkCommandBuffer cmdbuf,
             const ::FrameData& fd,
-            const mirinae::DrawSetSkinned& draw_set,
+            const mirinae::DrawSetStatic& draw_set,
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt,
             const VkExtent2D& fbuf_ext
@@ -262,11 +335,11 @@ namespace {
                 auto& unit = *pair.unit_;
                 auto& actor = *pair.actor_;
 
+                unit.record_bind_vert_buf(cmdbuf);
+
                 descset_info.first_set(1)
                     .set(unit.get_desc_set(ctxt.f_index_.get()))
                     .record(cmdbuf);
-
-                unit.record_bind_vert_buf(cmdbuf);
 
                 descset_info.first_set(2)
                     .set(actor.get_desc_set(ctxt.f_index_.get()))
@@ -279,13 +352,12 @@ namespace {
         }
 
         mirinae::FenceTask fence_;
-        mirinae::DrawSetSkinned draw_set_;
+        mirinae::DrawSetStatic draw_set_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
         const entt::registry* reg_ = nullptr;
         const mirinae::FbufImageBundle* gbufs_ = nullptr;
         const mirinae::IRenPass* rp_ = nullptr;
-        const mirinae::IShadowMapBundle* shadows_ = nullptr;
         const mirinae::RpCtxt* ctxt_ = nullptr;
         ::FrameDataArr* frame_data_ = nullptr;
         mirinae::RpCommandPool* cmd_pool_ = nullptr;
@@ -300,17 +372,14 @@ namespace {
             const entt::registry& reg,
             const mirinae::FbufImageBundle& gbufs,
             const mirinae::IRenPass& rp,
-            const mirinae::IShadowMapBundle& shadows,
             ::FrameDataArr& frame_data,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
-            record_tasks_.init(
-                reg, gbufs, rp, shadows, frame_data, cmd_pool, device
-            );
+            record_tasks_.init(reg, gbufs, rp, frame_data, cmd_pool, device);
         }
 
-        std::string_view name() const override { return "gbuf skinned"; }
+        std::string_view name() const override { return "transp skinned"; }
 
         void prepare(const mirinae::RpCtxt& ctxt) override {
             record_tasks_.prepare(ctxt);
@@ -335,12 +404,12 @@ namespace {
 
 namespace {
 
-    class RpMasterTranspSkinned
+    class RpMasterTranspStatic
         : public mirinae::IRpBase
         , public mirinae::RenPassBundle<2> {
 
     public:
-        RpMasterTranspSkinned(
+        RpMasterTranspStatic(
             mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
             mirinae::VulkanDevice& device
@@ -352,9 +421,9 @@ namespace {
             {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":frame" };
                 builder
-                    .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_CompoMain
-                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+                    .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_TranspFrame
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // dlight
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // slight
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env diffuse
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env specular
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // env lut
@@ -362,84 +431,49 @@ namespace {
             }
 
             // Ubuf
-            {
-                for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
-                    auto& fd = frame_data_.at(i);
-                    fd.ubuf_.init_ubuf<::U_TranspSkinnedFrame>(device.mem_alloc(
-                    ));
-                }
+            for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                auto& fd = frame_data_.at(i);
+                fd.ubuf_.init_ubuf<::U_TranspFrame>(device.mem_alloc());
             }
 
             // Desc sets
             {
-                auto& layout = desclays.get(name_s() + ":frame");
-                auto& shadow = *rp_res.shadow_maps_;
-                auto& dlights = shadow.dlights();
-                const auto slight_count = shadow.slight_count();
+                auto& desclayout = rp_res.desclays_.get(name_s() + ":frame");
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    layout.size_info(),
+                    desclayout.size_info(),
                     device.logi_device()
                 );
 
                 const auto desc_sets = desc_pool_.alloc(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    layout.layout(),
+                    desclayout.layout(),
                     device.logi_device()
                 );
 
-                mirinae::DescWriter w;
-                for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                const auto sam_nea = device.samplers().get_nearest();
+                const auto sam_lin = device.samplers().get_linear();
+                const auto sam_cube = device.samplers().get_cubemap();
+                auto& shadows = *rp_res.shadow_maps_;
+                auto& dlights = shadows.dlights();
+                auto& envmaps = *rp_res.envmaps_;
+
+                mirinae::DescWriteInfoBuilder builder;
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     const mirinae::FrameIndex f_idx(i);
-                    auto& fd = frame_data_[i];
+                    auto& fd = frame_data_.at(i);
                     fd.desc_ = desc_sets[i];
 
-                    // Ubuf
-                    w.add_buf_info(fd.ubuf_).add_buf_write(fd.desc_, 0);
-                    // Dlight shadow maps
-                    for (uint32_t i_dl = 0; i_dl < dlights.count(); ++i_dl) {
-                        constexpr auto LAYOUT =
-                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                        w.add_img_info()
-                            .set_img_view(dlights.at(i_dl).view(f_idx))
-                            .set_layout(LAYOUT)
-                            .set_sampler(device.samplers().get_shadow());
-                        break;
-                    }
-                    w.add_sampled_img_write(fd.desc_, 1);
-                    // Slight shadow maps
-                    for (uint32_t i_sl = 0; i_sl < slight_count; ++i_sl) {
-                        constexpr auto LAYOUT =
-                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                        const auto view = shadow.slight_view_at(i_sl);
-                        w.add_img_info()
-                            .set_img_view(view)
-                            .set_layout(LAYOUT)
-                            .set_sampler(device.samplers().get_shadow());
-                        break;
-                    }
-                    w.add_sampled_img_write(fd.desc_, 2);
-                    // Env diffuse
-                    w.add_img_info()
-                        .set_img_view(rp_res.envmaps_->diffuse_at(0))
-                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .set_sampler(device.samplers().get_cubemap());
-                    w.add_sampled_img_write(fd.desc_, 3);
-                    // Env specular
-                    w.add_img_info()
-                        .set_img_view(rp_res.envmaps_->specular_at(0))
-                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .set_sampler(device.samplers().get_cubemap());
-                    w.add_sampled_img_write(fd.desc_, 4);
-                    // Env lut
-                    w.add_img_info()
-                        .set_img_view(rp_res.envmaps_->brdf_lut())
-                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .set_sampler(device.samplers().get_linear());
-                    w.add_sampled_img_write(fd.desc_, 5);
+                    builder.set_descset(fd.desc_)
+                        .add_ubuf(fd.ubuf_)
+                        .add_img_sampler(dlights.at(0).view(f_idx), sam_nea)
+                        .add_img_sampler(shadows.slight_view_at(0), sam_nea)
+                        .add_img_sampler(envmaps.diffuse_at(0), sam_cube)
+                        .add_img_sampler(envmaps.specular_at(0), sam_cube)
+                        .add_img_sampler(envmaps.brdf_lut(), sam_lin);
                 }
-                w.apply_all(device.logi_device());
+                builder.apply_all(device.logi_device());
             }
 
             // Pipeline layout
@@ -447,7 +481,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .desc(desclays.get(name_s() + ":frame").layout())
                     .desc(desclays.get("gbuf:model").layout())
-                    .desc(desclays.get("gbuf:actor_skinned").layout())
+                    .desc(desclays.get("gbuf:actor").layout())
                     .build(pipe_layout_, device_);
             }
 
@@ -461,7 +495,7 @@ namespace {
             }
         }
 
-        ~RpMasterTranspSkinned() {
+        ~RpMasterTranspStatic() {
             for (auto& fd : frame_data_) {
                 fd.fbuf_.destroy(device_.logi_device());
                 fd.ubuf_.destroy(device_.mem_alloc());
@@ -471,7 +505,7 @@ namespace {
             this->destroy_render_pass_elements(device_);
         }
 
-        std::string_view name() const override { return "transp skinned"; }
+        std::string_view name() const override { return "transp static"; }
 
         void on_resize(uint32_t width, uint32_t height) override {
             auto& gbufs = rp_res_.gbuf_;
@@ -492,7 +526,7 @@ namespace {
                     .op_pair_load_store();
 
                 builder.depth_attach_ref().set(0);
-                builder.color_attach_ref().add_color_attach(1);  // compo
+                builder.color_attach_ref().add_color_attach(1);
 
                 builder.subpass_dep().add().preset_single();
 
@@ -506,10 +540,10 @@ namespace {
                 mirinae::PipelineBuilder builder{ device_ };
 
                 builder.shader_stages()
-                    .add_vert(":asset/spv/transp_skin_vert.spv")
-                    .add_frag(":asset/spv/transp_basic_frag.spv");
+                    .add_vert(":asset/spv/transp_vert.spv")
+                    .add_frag(":asset/spv/transp_frag.spv");
 
-                builder.vertex_input_state().set_skinned();
+                builder.vertex_input_state().set_static();
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
@@ -528,7 +562,7 @@ namespace {
             {
                 mirinae::FbufCinfo cinfo;
                 cinfo.set_rp(render_pass_)
-                    .set_dim(rp_res_.gbuf_.width(), rp_res_.gbuf_.height())
+                    .set_dim(rp_res_.gbuf_.extent())
                     .set_layers(1);
 
                 for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -548,7 +582,6 @@ namespace {
                 cosmos_.reg(),
                 rp_res_.gbuf_,
                 *this,
-                *rp_res_.shadow_maps_,
                 frame_data_,
                 rp_res_.cmd_pool_,
                 device_
@@ -570,10 +603,10 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_rp_states_transp_skinned(
+    std::unique_ptr<IRpBase> create_rp_states_transp_static(
         RpCreateBundle& cbundle
     ) {
-        return std::make_unique<::RpMasterTranspSkinned>(
+        return std::make_unique<::RpMasterTranspStatic>(
             cbundle.cosmos_, cbundle.rp_res_, cbundle.device_
         );
     }
