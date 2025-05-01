@@ -233,13 +233,6 @@ namespace mirinae {
     };
 
 
-    struct U_CompoSkyMain {
-        glm::mat4 proj_inv_;
-        glm::mat4 view_inv_;
-        glm::vec4 fog_color_density_;
-    };
-
-
     using U_TranspFrame = U_CompoMain;
 
 

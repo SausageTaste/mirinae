@@ -180,12 +180,6 @@ namespace {
 
             mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
 
-            rp_post_.push_back(
-                mirinae::rp::compo::create_rps_sky(
-                    cosmos, rp_res, rp_res.desclays_, device
-                )
-            );
-
             rp_post_.push_back(mirinae::rp::create_rp_ocean_tess(cbundle));
 
             rp_post_.push_back(
@@ -1557,6 +1551,10 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::compo::create_rps_envmap(cbundle)
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::compo::create_rps_sky(cbundle)
                 );
             }
 
