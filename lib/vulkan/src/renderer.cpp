@@ -165,45 +165,6 @@ namespace {
         std::vector<FrameData> frame_data_;
     };
 
-
-    class RpMasters {
-
-    public:
-        void create_std_rp(
-            mirinae::CosmosSimulator& cosmos,
-            mirinae::rg::RenderGraphDef& rg_def,
-            mirinae::RpResources& rp_res,
-            mirinae::Swapchain& swapchain,
-            mirinae::VulkanDevice& device
-        ) {
-            this->destroy_std_rp();
-
-            mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
-        }
-
-        void destroy_std_rp() {
-            rp_pre_.clear();
-            rg_.reset();
-            rp_post_.clear();
-        }
-
-        void record_computes(mirinae::RpContext& ctxt) {
-            for (auto& rp : rp_pre_) {
-                rp->record(ctxt);
-            }
-
-            // rg_->record(ctxt);
-
-            for (auto& rp : rp_post_) {
-                rp->record(ctxt);
-            }
-        }
-
-    private:
-        std::vector<mirinae::URpStates> rp_pre_, rp_post_;
-        std::unique_ptr<mirinae::rg::IRenderGraph> rg_;
-    };
-
 }  // namespace
 
 
@@ -1492,9 +1453,6 @@ namespace {
                     mirinae::rp::create_rp_envmap(cbundle)
                 );
 
-                rpm_.create_std_rp(
-                    *cosmos_, render_graph_, rp_res_, swapchain_, device_
-                );
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );
@@ -1618,7 +1576,6 @@ namespace {
 
             // Destroy swapchain's relatives
             {
-                rpm_.destroy_std_rp();
                 rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
                 rp_states_debug_mesh_.destroy(device_);
@@ -1703,8 +1660,6 @@ namespace {
             ren_ctxt.cmdbuf_ = basic_cmdbufs_.at(f_idx.get());
             cmdbufs_.add(ren_ctxt.cmdbuf_, ren_ctxt.f_index_);
             mirinae::begin_cmdbuf(ren_ctxt.cmdbuf_);
-
-            rpm_.record_computes(ren_ctxt);
 
             rp_states_transp_.record_static(
                 ren_ctxt.cmdbuf_,
@@ -1888,7 +1843,6 @@ namespace {
 
             // Destroy
             {
-                rpm_.destroy_std_rp();
                 // rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
                 rp_states_debug_mesh_.destroy(device_);
@@ -1922,9 +1876,6 @@ namespace {
 
                 mirinae::rp::gbuf::create_desc_layouts(
                     rp_res_.desclays_, device_
-                );
-                rpm_.create_std_rp(
-                    *cosmos_, render_graph_, rp_res_, swapchain_, device_
                 );
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
@@ -1974,7 +1925,6 @@ namespace {
         std::vector<VkCommandBuffer> basic_cmdbufs_;
 
         // Render passes
-        ::RpMasters rpm_;
         ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
