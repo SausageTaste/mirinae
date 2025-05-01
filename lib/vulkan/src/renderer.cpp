@@ -24,7 +24,7 @@
 #include "mirinae/renderpass/gbuf/gbuf.hpp"
 #include "mirinae/renderpass/ocean/ocean.hpp"
 #include "mirinae/renderpass/shadow/shadow.hpp"
-#include "mirinae/renderpass/transp.hpp"
+#include "mirinae/renderpass/transp/transp.hpp"
 
 
 namespace {
@@ -179,12 +179,6 @@ namespace {
             this->destroy_std_rp();
 
             mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
-
-            rp_post_.push_back(
-                mirinae::rp::create_rp_states_transp_skinned(
-                    rp_res, rp_res.desclays_, device
-                )
-            );
         }
 
         void destroy_std_rp() {
@@ -1557,6 +1551,10 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::create_rp_ocean_tess(cbundle)
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::create_rp_states_transp_skinned(cbundle)
                 );
             }
 
