@@ -171,163 +171,6 @@ namespace {
 // Render pass states
 namespace {
 
-    class RpStatesTransp {
-
-    public:
-        void init(mirinae::RpResources& rp_res, mirinae::VulkanDevice& device) {
-            auto& desclayout = rp_res.desclays_.get("transp:frame");
-            desc_pool_.init(
-                mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayout.size_info(),
-                device.logi_device()
-            );
-            desc_sets_ = desc_pool_.alloc(
-                mirinae::MAX_FRAMES_IN_FLIGHT,
-                desclayout.layout(),
-                device.logi_device()
-            );
-
-            const auto sam_nea = device.samplers().get_nearest();
-            const auto sam_lin = device.samplers().get_linear();
-            const auto sam_cube = device.samplers().get_cubemap();
-            auto& shadow_maps = *rp_res.shadow_maps_;
-
-            mirinae::DescWriteInfoBuilder builder;
-            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                const mirinae::FrameIndex f_idx(i);
-
-                auto& ubuf = ubufs_.emplace_back();
-                ubuf.init_ubuf(
-                    sizeof(mirinae::U_TranspFrame), device.mem_alloc()
-                );
-
-                builder.set_descset(desc_sets_.at(i))
-                    .add_ubuf(ubuf)
-                    .add_img_sampler(
-                        shadow_maps.dlights().at(0).view(f_idx), sam_nea
-                    )
-                    .add_img_sampler(shadow_maps.slight_view_at(0), sam_nea)
-                    .add_img_sampler(rp_res.envmaps_->diffuse_at(0), sam_cube)
-                    .add_img_sampler(rp_res.envmaps_->specular_at(0), sam_cube)
-                    .add_img_sampler(rp_res.envmaps_->brdf_lut(), sam_lin);
-            }
-            builder.apply_all(device.logi_device());
-        }
-
-        void destroy(mirinae::VulkanDevice& device) {
-            desc_pool_.destroy(device.logi_device());
-
-            for (auto& ubuf : ubufs_) ubuf.destroy(device.mem_alloc());
-            ubufs_.clear();
-        }
-
-        void record_static(
-            const VkCommandBuffer cur_cmd_buf,
-            const VkExtent2D& fbuf_ext,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::RenderPassPackage& rp_pkg
-        ) {
-            auto& rp = rp_pkg.get("transp");
-
-            mirinae::RenderPassBeginInfo{}
-                .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(frame_index.get()))
-                .wh(fbuf_ext)
-                .clear_value_count(rp.clear_value_count())
-                .clear_values(rp.clear_values())
-                .record_begin(cur_cmd_buf);
-
-            vkCmdBindPipeline(
-                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-            );
-
-            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
-            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
-
-            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
-            descset_info.first_set(0)
-                .set(desc_sets_.at(frame_index.get()))
-                .record(cur_cmd_buf);
-
-            for (auto& pair : draw_sheet.static_trs_) {
-                auto& unit = *pair.unit_;
-                descset_info.first_set(1)
-                    .set(unit.get_desc_set(frame_index.get()))
-                    .record(cur_cmd_buf);
-                unit.record_bind_vert_buf(cur_cmd_buf);
-
-                for (auto& actor : pair.actors_) {
-                    descset_info.first_set(2)
-                        .set(actor.actor_->get_desc_set(frame_index.get()))
-                        .record(cur_cmd_buf);
-
-                    vkCmdDrawIndexed(
-                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                    );
-                }
-            }
-
-            vkCmdEndRenderPass(cur_cmd_buf);
-        }
-
-        void record_skinned(
-            const VkCommandBuffer cur_cmd_buf,
-            const VkExtent2D& fbuf_ext,
-            const mirinae::DrawSheet& draw_sheet,
-            const mirinae::FrameIndex frame_index,
-            const mirinae::RenderPassPackage& rp_pkg
-        ) {
-            auto& rp = rp_pkg.get("transp_skin");
-
-            mirinae::RenderPassBeginInfo{}
-                .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(frame_index.get()))
-                .wh(fbuf_ext)
-                .clear_value_count(rp.clear_value_count())
-                .clear_values(rp.clear_values())
-                .record_begin(cur_cmd_buf);
-
-            vkCmdBindPipeline(
-                cur_cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-            );
-
-            mirinae::Viewport{ fbuf_ext }.record_single(cur_cmd_buf);
-            mirinae::Rect2D{ fbuf_ext }.record_scissor(cur_cmd_buf);
-
-            mirinae::DescSetBindInfo descset_info{ rp.pipeline_layout() };
-            descset_info.first_set(0)
-                .set(desc_sets_.at(frame_index.get()))
-                .record(cur_cmd_buf);
-
-            for (auto& pair : draw_sheet.skinned_trs_) {
-                auto& unit = *pair.unit_;
-                descset_info.first_set(1)
-                    .set(unit.get_desc_set(frame_index.get()))
-                    .record(cur_cmd_buf);
-
-                unit.record_bind_vert_buf(cur_cmd_buf);
-
-                for (auto& actor : pair.actors_) {
-                    descset_info.first_set(2)
-                        .set(actor.actor_->get_desc_set(frame_index.get()))
-                        .record(cur_cmd_buf);
-
-                    vkCmdDrawIndexed(
-                        cur_cmd_buf, unit.vertex_count(), 1, 0, 0, 0
-                    );
-                }
-            }
-
-            vkCmdEndRenderPass(cur_cmd_buf);
-        }
-
-        mirinae::DescPool desc_pool_;
-        std::vector<VkDescriptorSet> desc_sets_;
-        std::vector<mirinae::Buffer> ubufs_;
-    };
-
-
     class RpStatesDebugMesh {
 
     public:
@@ -1098,107 +941,6 @@ namespace { namespace task {
     };
 
 
-    class CompoUbuf : public mirinae::DependingTask {
-
-    public:
-        void init(
-            ::FlagShip& flag_ship,
-            ::RpStatesTransp& rp_states_transp,
-            entt::registry& reg,
-            mirinae::VulkanDevice& device,
-            mirinae::RpContext& rp_ctxt
-        ) {
-            flag_ship_ = &flag_ship;
-            reg_ = &reg;
-            device_ = &device;
-            rp_ctxt_ = &rp_ctxt;
-            rp_states_transp_ = &rp_states_transp;
-        }
-
-        void prepare() {}
-
-    private:
-        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            if (flag_ship_->dont_render())
-                return;
-
-            this->update_ubuf(*rp_states_transp_, *reg_, *rp_ctxt_, *device_);
-        }
-
-        static bool update_ubuf(
-            ::RpStatesTransp& rp_states_transp,
-            const entt::registry& reg,
-            const mirinae::RpContext& rp_ctxt,
-            mirinae::VulkanDevice& device
-        ) {
-            namespace cpnt = mirinae::cpnt;
-
-            mirinae::U_CompoMain ubuf_data;
-            ubuf_data.set_proj(rp_ctxt.proj_mat_).set_view(rp_ctxt.view_mat_);
-
-            for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
-                const auto& l = reg.get<cpnt::DLight>(e);
-                const auto& t = reg.get<cpnt::Transform>(e);
-                const auto& cascade = l.cascades_;
-                const auto& cascades = cascade.cascades_;
-
-                for (size_t i = 0; i < cascades.size(); ++i)
-                    ubuf_data.set_dlight_mat(i, cascades.at(i).light_mat_);
-
-                ubuf_data
-                    .set_dlight_dir(l.calc_to_light_dir(rp_ctxt.view_mat_, t))
-                    .set_dlight_color(l.color_.scaled_color())
-                    .set_dlight_cascade_depths(cascade.far_depths_);
-                break;
-            }
-
-            for (auto e : reg.view<cpnt::SLight, cpnt::Transform>()) {
-                const auto& l = reg.get<cpnt::SLight>(e);
-                const auto& t = reg.get<cpnt::Transform>(e);
-                ubuf_data.set_slight_mat(l.make_light_mat(t))
-                    .set_slight_pos(l.calc_view_space_pos(rp_ctxt.view_mat_, t))
-                    .set_slight_dir(l.calc_to_light_dir(rp_ctxt.view_mat_, t))
-                    .set_slight_color(l.color_.scaled_color())
-                    .set_slight_inner_angle(l.inner_angle_)
-                    .set_slight_outer_angle(l.outer_angle_)
-                    .set_slight_max_dist(l.max_distance_);
-                break;
-            }
-
-            size_t i = 0;
-            for (auto e : reg.view<cpnt::VPLight, cpnt::Transform>()) {
-                if (i >= 8)
-                    break;
-
-                const auto& l = reg.get<cpnt::VPLight>(e);
-                const auto& t = reg.get<cpnt::Transform>(e);
-                ubuf_data.set_vpl_color(i, l.color_.scaled_color())
-                    .set_vpl_pos(i, t.pos_);
-
-                ++i;
-            }
-
-            for (auto e : reg.view<cpnt::AtmosphereSimple>()) {
-                const auto& atm = reg.get<cpnt::AtmosphereSimple>(e);
-                ubuf_data.set_fog_color(atm.fog_color_)
-                    .set_fog_density(atm.fog_density_);
-                break;
-            }
-
-            rp_states_transp.ubufs_.at(rp_ctxt.f_index_.get())
-                .set_data(ubuf_data, device.mem_alloc());
-
-            return true;
-        }
-
-        ::FlagShip* flag_ship_ = nullptr;
-        entt::registry* reg_ = nullptr;
-        mirinae::VulkanDevice* device_ = nullptr;
-        mirinae::RpContext* rp_ctxt_ = nullptr;
-        ::RpStatesTransp* rp_states_transp_ = nullptr;
-    };
-
-
     class RenderPasses : public mirinae::DependingTask {
 
     public:
@@ -1283,8 +1025,9 @@ namespace { namespace task {
             init_static_.succeed(&update_ren_ctxt_);
             init_skinned_.succeed(&update_ren_ctxt_);
             update_dlight_.succeed(&update_ren_ctxt_);
-            compo_ubuf_.succeed(&update_dlight_);
-            render_passes_.succeed(&init_static_, &init_skinned_, &compo_ubuf_);
+            render_passes_.succeed(
+                &init_static_, &init_skinned_, &update_dlight_
+            );
             fence_.succeed(&render_passes_);
         }
 
@@ -1296,7 +1039,6 @@ namespace { namespace task {
             init_static_.prepare();
             init_skinned_.prepare();
             update_dlight_.prepare();
-            compo_ubuf_.prepare();
             render_passes_.prepare();
         }
 
@@ -1305,7 +1047,6 @@ namespace { namespace task {
         InitStaticModel init_static_;
         InitSkinnedModel init_skinned_;
         UpdateDlight update_dlight_;
-        CompoUbuf compo_ubuf_;
         RenderPasses render_passes_;
 
     private:
@@ -1456,7 +1197,6 @@ namespace {
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );
-                rp_states_transp_.init(rp_res_, device_);
                 rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(
                     rp_res_.desclays_, rp_res_.gbuf_, device_
@@ -1583,7 +1323,6 @@ namespace {
                 rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
                 rp_states_debug_mesh_.destroy(device_);
-                rp_states_transp_.destroy(device_);
 
                 rp_.destroy();
                 render_passes_.clear();
@@ -1615,10 +1354,6 @@ namespace {
             );
 
             stage->update_dlight_.init(*cosmos_, swapchain_);
-
-            stage->compo_ubuf_.init(
-                flag_ship_, rp_states_transp_, cosmos_->reg(), device_, ren_ctxt
-            );
 
             stage->render_passes_.init(
                 flag_ship_,
@@ -1842,7 +1577,6 @@ namespace {
                 // rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
                 rp_states_debug_mesh_.destroy(device_);
-                rp_states_transp_.destroy(device_);
 
                 rp_.destroy();
             }
@@ -1876,7 +1610,6 @@ namespace {
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );
-                rp_states_transp_.init(rp_res_, device_);
                 rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(
                     rp_res_.desclays_, rp_res_.gbuf_, device_
@@ -1921,7 +1654,6 @@ namespace {
         std::vector<VkCommandBuffer> basic_cmdbufs_;
 
         // Render passes
-        ::RpStatesTransp rp_states_transp_;
         ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         ::RpStatesImgui rp_states_imgui_;
