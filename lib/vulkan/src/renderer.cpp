@@ -630,7 +630,7 @@ namespace { namespace task {
             entt::registry& reg,
             mirinae::VulkanDevice& device,
             mirinae::IModelManager& model_mgr,
-            mirinae::RpContext& rp_ctxt,
+            mirinae::RpCtxt& rp_ctxt,
             mirinae::RpResources& rp_res
         ) {
             reg_ = &reg;
@@ -719,7 +719,7 @@ namespace { namespace task {
             const entt::entity e,
             mirinae::cpnt::MdlActorStatic& mactor,
             const entt::registry& reg,
-            const mirinae::RpContext& rp_ctxt,
+            const mirinae::RpCtxt& rp_ctxt,
             mirinae::VulkanDevice& device
         ) {
             auto actor = mactor.get_actor<mirinae::RenderActor>();
@@ -727,8 +727,8 @@ namespace { namespace task {
             glm::dmat4 model_mat(1);
             if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e))
                 model_mat = tform->make_model_mat();
-            const auto vm = rp_ctxt.view_mat_ * model_mat;
-            const auto pvm = rp_ctxt.proj_mat_ * vm;
+            const auto vm = rp_ctxt.main_cam_.view() * model_mat;
+            const auto pvm = rp_ctxt.main_cam_.proj() * vm;
 
             mirinae::U_GbufActor udata;
             udata.model = model_mat;
@@ -745,7 +745,7 @@ namespace { namespace task {
         entt::registry* reg_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
         mirinae::IModelManager* model_mgr_ = nullptr;
-        mirinae::RpContext* rp_ctxt_ = nullptr;
+        mirinae::RpCtxt* rp_ctxt_ = nullptr;
         mirinae::RpResources* rp_res_ = nullptr;
     };
 
@@ -757,7 +757,7 @@ namespace { namespace task {
             mirinae::Scene& scene,
             mirinae::VulkanDevice& device,
             mirinae::IModelManager& model_mgr,
-            mirinae::RpContext& rp_ctxt,
+            mirinae::RpCtxt& rp_ctxt,
             mirinae::RpResources& rp_res
         ) {
             scene_ = &scene;
@@ -848,7 +848,7 @@ namespace { namespace task {
             const entt::entity e,
             mirinae::cpnt::MdlActorSkinned& mactor,
             const mirinae::Scene& scene,
-            const mirinae::RpContext& rp_ctxt,
+            const mirinae::RpCtxt& rp_ctxt,
             mirinae::VulkanDevice& device
         ) {
             auto& reg = *scene.reg_;
@@ -857,8 +857,8 @@ namespace { namespace task {
             glm::dmat4 model_mat(1);
             if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e))
                 model_mat = tform->make_model_mat();
-            const auto vm = rp_ctxt.view_mat_ * model_mat;
-            const auto pvm = rp_ctxt.proj_mat_ * vm;
+            const auto vm = rp_ctxt.main_cam_.view() * model_mat;
+            const auto pvm = rp_ctxt.main_cam_.proj() * vm;
 
             mirinae::U_GbufActorSkinned udata;
             udata.view_model = vm;
@@ -878,7 +878,7 @@ namespace { namespace task {
         mirinae::Scene* scene_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
         mirinae::IModelManager* model_mgr_ = nullptr;
-        mirinae::RpContext* rp_ctxt_ = nullptr;
+        mirinae::RpCtxt* rp_ctxt_ = nullptr;
         mirinae::RpResources* rp_res_ = nullptr;
     };
 
@@ -952,7 +952,7 @@ namespace { namespace task {
             ::CmdBufList& cmdbuf_list,
             std::vector<std::unique_ptr<mirinae::IRpBase>>& passes,
             mirinae::RpResources& rp_res,
-            mirinae::RpContext& rp_ctxt,
+            mirinae::RpCtxt& rp_ctxt,
             mirinae::VulkanDevice& device,
             std::function<bool()> resize_func
         ) {
@@ -1010,7 +1010,7 @@ namespace { namespace task {
         ::FlagShip* flag_ship_ = nullptr;
         ::CmdBufList* cmdbuf_list_ = nullptr;
         mirinae::RpResources* rp_res_ = nullptr;
-        mirinae::RpContext* rp_ctxt_ = nullptr;
+        mirinae::RpCtxt* rp_ctxt_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
         std::function<bool()> resize_func_;
 
