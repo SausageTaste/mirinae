@@ -274,7 +274,7 @@ namespace {
                         const auto img_name = fmt::format(
                             "hkt_1_c{}_f{}", j, i
                         );
-                        auto img = rp_res.ren_img_.new_img(img_name, names());
+                        auto img = rp_res.ren_img_.new_img(img_name, name_s());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
@@ -285,7 +285,7 @@ namespace {
                         const auto img_name = fmt::format(
                             "hkt_2_c{}_f{}", j, i
                         );
-                        auto img = rp_res.ren_img_.new_img(img_name, names());
+                        auto img = rp_res.ren_img_.new_img(img_name, name_s());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
@@ -336,7 +336,7 @@ namespace {
                         "ocean_tilde_h:height_map_c{}_f#{}", j, i
                     );
                     auto img = rp_res.ren_img_.get_img_reader(
-                        img_name, this->names()
+                        img_name, name_s()
                     );
                     MIRINAE_ASSERT(nullptr != img);
                     frame_data_[i].hk_[j] = img;
@@ -345,7 +345,7 @@ namespace {
 
             // Desc layouts
             {
-                mirinae::DescLayoutBuilder builder{ this->names() + ":main" };
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
                 builder
                     .new_binding()  // hkt_1
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
@@ -367,7 +367,7 @@ namespace {
 
             // Desciptor Sets
             {
-                auto& layout = rp_res.desclays_.get(this->names() + ":main");
+                auto& layout = rp_res.desclays_.get(name_s() + ":main");
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -407,7 +407,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
                     .pc<U_OceanTildeHktPushConst>()
-                    .desc(rp_res.desclays_.get(names() + ":main").layout())
+                    .desc(rp_res.desclays_.get(name_s() + ":main").layout())
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
@@ -422,9 +422,9 @@ namespace {
         ~RpStatesOceanTildeHkt() override {
             for (auto& fd : frame_data_) {
                 for (size_t i = 0; i < mirinae::CASCADE_COUNT; ++i) {
-                    rp_res_.ren_img_.free_img(fd.hk_[i]->id(), names());
-                    rp_res_.ren_img_.free_img(fd.hkt_1_[i]->id(), names());
-                    rp_res_.ren_img_.free_img(fd.hkt_2_[i]->id(), names());
+                    rp_res_.ren_img_.free_img(fd.hk_[i]->id(), name_s());
+                    rp_res_.ren_img_.free_img(fd.hkt_1_[i]->id(), name_s());
+                    rp_res_.ren_img_.free_img(fd.hkt_2_[i]->id(), name_s());
                 }
             }
 
@@ -434,7 +434,6 @@ namespace {
         }
 
         std::string_view name() const override { return "ocean_tilde_hkt"; }
-        std::string names() const { return std::string(this->name()); }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<task::RpTask>();

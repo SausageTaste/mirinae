@@ -253,14 +253,14 @@ namespace {
 
             // Descriptor layout
             {
-                mirinae::DescLayoutBuilder builder{ this->names() + ":main" };
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
                 builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
                 desclays.add(builder, device.logi_device());
             }
 
             // Desciptor Sets
             {
-                auto& desc_layout = desclays.get(names() + ":main");
+                auto& desc_layout = desclays.get(name_s() + ":main");
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -290,7 +290,7 @@ namespace {
 
             // Pipeline layout
             {
-                auto& desc_layout = desclays.get(names() + ":main");
+                auto& desc_layout = desclays.get(name_s() + ":main");
 
                 mirinae::PipelineLayoutBuilder{}
                     .desc(desc_layout.layout())
@@ -328,7 +328,6 @@ namespace {
         }
 
         std::string_view name() const override { return "compo_sky"; }
-        std::string names() const { return std::string(name()); }
 
         void on_resize(uint32_t width, uint32_t height) override {
             this->recreate_render_pass(render_pass_, device_);

@@ -768,7 +768,7 @@ namespace {
                         "ocean_finalize:displacement_c{}_f{}", j, i
                     );
                     fd.disp_map_[j] = rp_res.ren_img_.get_img_reader(
-                        img_name, this->names()
+                        img_name, name_s()
                     );
                     MIRINAE_ASSERT(nullptr != fd.disp_map_[j]);
                 }
@@ -778,7 +778,7 @@ namespace {
                         "ocean_finalize:derivatives_c{}_f{}", j, i
                     );
                     fd.deri_map_[j] = rp_res.ren_img_.get_img_reader(
-                        img_name, this->names()
+                        img_name, name_s()
                     );
                     MIRINAE_ASSERT(nullptr != fd.deri_map_[j]);
                 }
@@ -788,7 +788,7 @@ namespace {
                         "ocean_finalize:turbulence_c{}", j
                     );
                     auto img = rp_res.ren_img_.get_img_reader(
-                        img_name, this->names()
+                        img_name, name_s()
                     );
                     for (auto& fd : frame_data_) {
                         fd.turb_map_[j] = img;
@@ -805,7 +805,7 @@ namespace {
 
             // Descriptor layout
             {
-                mirinae::DescLayoutBuilder builder{ this->names() + ":main" };
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
                 builder
                     .new_binding()  // U_OceanTessParams
                     .set_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
@@ -843,13 +843,13 @@ namespace {
             {
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    rp_res.desclays_.get(names() + ":main").size_info(),
+                    rp_res.desclays_.get(name_s() + ":main").size_info(),
                     device.logi_device()
                 );
 
                 auto desc_sets = desc_pool_.alloc(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    rp_res.desclays_.get(names() + ":main").layout(),
+                    rp_res.desclays_.get(name_s() + ":main").layout(),
                     device.logi_device()
                 );
 
@@ -916,7 +916,7 @@ namespace {
             // Pipeline layout
             {
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(rp_res.desclays_.get(names() + ":main").layout())
+                    .desc(rp_res.desclays_.get(name_s() + ":main").layout())
                     .add_vertex_flag()
                     .add_tesc_flag()
                     .add_tese_flag()
@@ -946,9 +946,9 @@ namespace {
         ~RpStatesOceanTess() override {
             for (auto& fd : frame_data_) {
                 for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++) {
-                    rp_res_.ren_img_.free_img(fd.disp_map_[i]->id(), names());
-                    rp_res_.ren_img_.free_img(fd.deri_map_[i]->id(), names());
-                    rp_res_.ren_img_.free_img(fd.turb_map_[i]->id(), names());
+                    rp_res_.ren_img_.free_img(fd.disp_map_[i]->id(), name_s());
+                    rp_res_.ren_img_.free_img(fd.deri_map_[i]->id(), name_s());
+                    rp_res_.ren_img_.free_img(fd.turb_map_[i]->id(), name_s());
                 }
 
                 fd.ubuf_.destroy(device_.mem_alloc());
@@ -961,7 +961,6 @@ namespace {
         }
 
         std::string_view name() const override { return "ocean_tess"; }
-        std::string names() const { return std::string(name()); }
 
         void on_resize(uint32_t width, uint32_t height) override {
             this->recreate_render_pass(render_pass_, device_);

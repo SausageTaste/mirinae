@@ -238,7 +238,7 @@ namespace {
                     noise_data.data(), noise_data.size(), device_.mem_alloc()
                 );
 
-                auto img = rp_res.ren_img_.new_img("ocean_noise", names());
+                auto img = rp_res.ren_img_.new_img("ocean_noise", name_s());
                 MIRINAE_ASSERT(nullptr != img);
                 noise_textures_ = img;
                 img->img_.init(img_info.get(), device_.mem_alloc());
@@ -276,7 +276,7 @@ namespace {
                         const auto img_name = fmt::format(
                             "height_map_c{}_f#{}", j, i
                         );
-                        auto img = rp_res.ren_img_.new_img(img_name, names());
+                        auto img = rp_res.ren_img_.new_img(img_name, name_s());
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
@@ -315,7 +315,7 @@ namespace {
 
             // Desc layouts
             {
-                mirinae::DescLayoutBuilder builder{ names() + ":main" };
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
                 builder
                     .new_binding()  // Cascade 0, 1, 2
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
@@ -329,7 +329,7 @@ namespace {
 
             // Desciptor Sets
             {
-                auto& layout = rp_res.desclays_.get(names() + ":main");
+                auto& layout = rp_res.desclays_.get(name_s() + ":main");
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -366,7 +366,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
                     .pc<U_OceanTildeHPushConst>()
-                    .desc(rp_res.desclays_.get(names() + ":main").layout())
+                    .desc(rp_res.desclays_.get(name_s() + ":main").layout())
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
@@ -381,19 +381,18 @@ namespace {
         ~RpStatesOceanTildeH() override {
             for (auto& fd : frame_data_) {
                 for (auto& hk : fd.hk_) {
-                    rp_res_.ren_img_.free_img(hk->id(), this->names());
+                    rp_res_.ren_img_.free_img(hk->id(), name_s());
                 }
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
-            rp_res_.ren_img_.free_img(noise_textures_->id(), this->names());
+            rp_res_.ren_img_.free_img(noise_textures_->id(), name_s());
             desc_pool_.destroy(device_.logi_device());
             pipeline_.destroy(device_);
             pipe_layout_.destroy(device_);
         }
 
         std::string_view name() const override { return "ocean_tilde_h"; }
-        std::string names() const { return std::string(this->name()); }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<task::RpTask>();

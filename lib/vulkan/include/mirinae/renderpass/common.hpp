@@ -531,6 +531,9 @@ namespace mirinae {
         virtual void on_resize(uint32_t width, uint32_t height) {}
 
         virtual std::unique_ptr<IRpTask> create_task() = 0;
+
+        // Get name as string.
+        std::string name_s() const { return std::string(name()); }
     };
 
 

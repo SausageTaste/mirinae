@@ -421,9 +421,7 @@ namespace {
 
             // Reference images
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                ::get_all_ref_img(
-                    i, this->names(), fdata_[i].hkt_textures_, rp_res
-                );
+                ::get_all_ref_img(i, name_s(), fdata_[i].hkt_textures_, rp_res);
             }
 
             // Butterfly cache texture
@@ -452,7 +450,7 @@ namespace {
                 );
 
                 butterfly_cache_ = rp_res.ren_img_.new_img(
-                    "butterfly_cache", this->names()
+                    "butterfly_cache", name_s()
                 );
                 MIRINAE_ASSERT(nullptr != butterfly_cache_);
                 butterfly_cache_->img_.init(
@@ -485,7 +483,7 @@ namespace {
                 ::create_storage_img(
                     fd.hkt_textures_.size(),
                     i,
-                    this->names(),
+                    name_s(),
                     fd.ppong_textures_,
                     rp_res,
                     device
@@ -496,7 +494,7 @@ namespace {
             {
                 MIRINAE_ASSERT(6 == fdata_[0].ppong_textures_.size());
 
-                mirinae::DescLayoutBuilder builder{ names() + ":main" };
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
                 builder
                     .new_binding(0)  // Pingpong images
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
@@ -518,7 +516,7 @@ namespace {
 
             // Desciptor Sets
             {
-                auto& layout = rp_res.desclays_.get(names() + ":main");
+                auto& layout = rp_res.desclays_.get(name_s() + ":main");
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
@@ -561,7 +559,7 @@ namespace {
                     mirinae::PipelineLayoutBuilder{}
                         .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
                         .pc<U_OceanButterflyPushConst>()
-                        .desc(rp_res.desclays_.get(names() + ":main").layout())
+                        .desc(rp_res.desclays_.get(name_s() + ":main").layout())
                         .build(device);
                 MIRINAE_ASSERT(VK_NULL_HANDLE != pipe_layout_);
 
@@ -577,21 +575,20 @@ namespace {
         ~RpStatesOceanButterfly() override {
             for (auto& fdata : fdata_) {
                 for (auto& ppong : fdata.ppong_textures_)
-                    rp_res_.ren_img_.free_img(ppong->id(), this->names());
+                    rp_res_.ren_img_.free_img(ppong->id(), name_s());
                 for (auto& hkt : fdata.hkt_textures_)
-                    rp_res_.ren_img_.free_img(hkt->id(), this->names());
+                    rp_res_.ren_img_.free_img(hkt->id(), name_s());
 
                 fdata.desc_set_ = VK_NULL_HANDLE;
             }
 
-            rp_res_.ren_img_.free_img(butterfly_cache_->id(), this->names());
+            rp_res_.ren_img_.free_img(butterfly_cache_->id(), name_s());
             desc_pool_.destroy(device_.logi_device());
             pipeline_.destroy(device_);
             pipe_layout_.destroy(device_);
         }
 
         std::string_view name() const override { return "ocean_butterfly"; }
-        std::string names() const { return std::string(this->name()); }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<task::butterfly::RpTask>();

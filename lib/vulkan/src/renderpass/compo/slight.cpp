@@ -372,7 +372,7 @@ namespace {
 
             // Desc layout: main
             {
-                mirinae::DescLayoutBuilder builder{ names() + ":main" };
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
                 builder
                     .add_img_frag(1)    // depth
                     .add_img_frag(1)    // albedo
@@ -384,7 +384,7 @@ namespace {
 
             // Desc layout: shadow map
             {
-                mirinae::DescLayoutBuilder builder{ names() + ":shadow_map" };
+                mirinae::DescLayoutBuilder builder{ name_s() + ":shadow_map" };
                 builder.add_img_frag(1);  // shadow map
                 desclays.add(builder, device.logi_device());
             }
@@ -395,7 +395,7 @@ namespace {
             // Desc sets: shadow map
             {
                 const auto sh_count = rp_res.shadow_maps_->slight_count();
-                auto& desc_layout = desclays.get(names() + ":shadow_map");
+                auto& desc_layout = desclays.get(name_s() + ":shadow_map");
 
                 desc_pool_sh_.init(
                     sh_count, desc_layout.size_info(), device.logi_device()
@@ -427,8 +427,8 @@ namespace {
             // Pipeline layout
             {
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(desclays.get(names() + ":main").layout())
-                    .desc(desclays.get(names() + ":shadow_map").layout())
+                    .desc(desclays.get(name_s() + ":main").layout())
+                    .desc(desclays.get(name_s() + ":shadow_map").layout())
                     .add_frag_flag()
                     .pc<U_CompoSlightPushConst>()
                     .build(pipe_layout_, device);
@@ -463,7 +463,6 @@ namespace {
         }
 
         std::string_view name() const override { return "compo_slight"; }
-        std::string names() const { return std::string(name()); }
 
         void on_resize(uint32_t width, uint32_t height) override {
             this->recreate_desc_sets(frame_data_, desc_pool_, device_);
@@ -501,7 +500,7 @@ namespace {
         ) const {
             auto& gbufs = rp_res_.gbuf_;
             auto& desclays = rp_res_.desclays_;
-            auto& desc_layout = desclays.get(names() + ":main");
+            auto& desc_layout = desclays.get(name_s() + ":main");
 
             desc_pool.init(
                 mirinae::MAX_FRAMES_IN_FLIGHT,
