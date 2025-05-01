@@ -89,9 +89,9 @@ namespace mirinae {
         const DlightShadowMapBundle& dlights() const override;
 
         uint32_t slight_count() const override;
-        entt::entity slight_entt_at(size_t idx) override;
-        VkImage slight_img_at(size_t idx) override;
-        VkImageView slight_view_at(size_t idx) override;
+        entt::entity slight_entt_at(size_t idx) const override;
+        VkImage slight_img_at(size_t idx) const override;
+        VkImageView slight_view_at(size_t idx) const override;
 
         void recreate_fbufs(const VkRenderPass rp, VulkanDevice& device);
 

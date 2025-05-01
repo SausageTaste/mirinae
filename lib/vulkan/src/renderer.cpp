@@ -181,12 +181,6 @@ namespace {
             mirinae::RpCreateBundle cbundle(cosmos, rp_res, device);
 
             rp_post_.push_back(
-                mirinae::rp::compo::create_rps_slight(
-                    cosmos, rp_res, rp_res.desclays_, device
-                )
-            );
-
-            rp_post_.push_back(
                 mirinae::rp::compo::create_rps_envmap(
                     cosmos, rp_res, rp_res.desclays_, device
                 )
@@ -1561,6 +1555,10 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::compo::create_rps_dlight(cbundle)
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::compo::create_rps_slight(cbundle)
                 );
             }
 

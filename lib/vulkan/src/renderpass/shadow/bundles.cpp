@@ -197,15 +197,15 @@ namespace mirinae {
         return static_cast<uint32_t>(slights_.size());
     }
 
-    entt::entity ShadowMapBundle::slight_entt_at(size_t idx) {
+    entt::entity ShadowMapBundle::slight_entt_at(size_t idx) const {
         return slights_.at(idx).entt_;
     }
 
-    VkImage ShadowMapBundle::slight_img_at(size_t idx) {
+    VkImage ShadowMapBundle::slight_img_at(size_t idx) const {
         return slights_.at(idx).tex_->image();
     }
 
-    VkImageView ShadowMapBundle::slight_view_at(size_t idx) {
+    VkImageView ShadowMapBundle::slight_view_at(size_t idx) const {
         return slights_.at(idx).tex_->image_view();
     }
 
