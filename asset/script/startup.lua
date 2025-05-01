@@ -6,6 +6,13 @@ do
 end
 
 do
+    local e = scene.create_static_actor("Sung/transp_pic.dun/transp_pic.dmd")
+    e:get_transform():set_pos(-60, 15, -10)
+    e:get_transform():set_scale(10)
+    print("Static actor created:", e:get_id(), e:get_respath())
+end
+
+do
     local e = scene.create_static_actor("Sung/bistro.dun/Bistro_v5_2.dmd")
     e:get_transform():set_pos(-100, 2, -39)
     print("Static actor created:", e:get_id(), e:get_respath())
