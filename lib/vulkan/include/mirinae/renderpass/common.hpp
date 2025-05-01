@@ -401,9 +401,6 @@ namespace mirinae {
 
 
     struct RpContext : public RpCtxt {
-        std::shared_ptr<CosmosSimulator> cosmos_;
-        std::shared_ptr<DrawSheet> draw_sheet_;
-        RpResources* rp_res_;
         DebugRender debug_ren_;
         ViewFrustum view_frustum_;
         glm::dmat4 proj_mat_;

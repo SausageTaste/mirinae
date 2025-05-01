@@ -754,13 +754,13 @@ namespace { namespace task {
 
     public:
         void init(
-            entt::registry& reg,
+            mirinae::Scene& scene,
             mirinae::VulkanDevice& device,
             mirinae::IModelManager& model_mgr,
             mirinae::RpContext& rp_ctxt,
             mirinae::RpResources& rp_res
         ) {
-            reg_ = &reg;
+            scene_ = &scene;
             device_ = &device;
             model_mgr_ = &model_mgr;
             rp_ctxt_ = &rp_ctxt;
@@ -768,14 +768,16 @@ namespace { namespace task {
         }
 
         void prepare() {
-            this->set_size(reg_->view<mirinae::cpnt::MdlActorSkinned>().size());
+            this->set_size(
+                scene_->reg_->view<mirinae::cpnt::MdlActorSkinned>().size()
+            );
         }
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             namespace cpnt = mirinae::cpnt;
 
-            auto& reg = *reg_;
+            auto& reg = *scene_->reg_;
             auto view = reg.view<cpnt::MdlActorSkinned>();
             auto begin = view.begin() + range.start;
             auto end = view.begin() + range.end;
@@ -790,7 +792,7 @@ namespace { namespace task {
                 if (!this->create_actor(mactor, rp_res_->desclays_, *device_))
                     continue;
 
-                this->update_ubuf(e, mactor, reg, *rp_ctxt_, *device_);
+                this->update_ubuf(e, mactor, *scene_, *rp_ctxt_, *device_);
             }
         }
 
@@ -845,10 +847,11 @@ namespace { namespace task {
         static bool update_ubuf(
             const entt::entity e,
             mirinae::cpnt::MdlActorSkinned& mactor,
-            const entt::registry& reg,
+            const mirinae::Scene& scene,
             const mirinae::RpContext& rp_ctxt,
             mirinae::VulkanDevice& device
         ) {
+            auto& reg = *scene.reg_;
             auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
 
             glm::dmat4 model_mat(1);
@@ -862,9 +865,7 @@ namespace { namespace task {
             udata.pvm = pvm;
 
             mactor.anim_state_.sample_anim(
-                udata.joint_transforms_,
-                mirinae::MAX_JOINTS,
-                rp_ctxt.cosmos_->clock()
+                udata.joint_transforms_, mirinae::MAX_JOINTS, scene.clock()
             );
 
             actor->udpate_ubuf(
@@ -874,7 +875,7 @@ namespace { namespace task {
             return true;
         }
 
-        entt::registry* reg_ = nullptr;
+        mirinae::Scene* scene_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
         mirinae::IModelManager* model_mgr_ = nullptr;
         mirinae::RpContext* rp_ctxt_ = nullptr;
@@ -1091,12 +1092,6 @@ namespace {
             model_man_ = mirinae::create_model_mgr(
                 task_sche, rp_res_.tex_man_, rp_res_.desclays_, device_
             );
-
-            // Render pass context
-            {
-                ren_ctxt.rp_res_ = &rp_res_;
-                ren_ctxt.cosmos_ = cosmos_;
-            }
 
             // Render graph
             {
@@ -1350,7 +1345,7 @@ namespace {
             );
 
             stage->init_skinned_.init(
-                cosmos_->reg(), device_, *model_man_, ren_ctxt, rp_res_
+                cosmos_->scene(), device_, *model_man_, ren_ctxt, rp_res_
             );
 
             stage->update_dlight_.init(*cosmos_, swapchain_);
@@ -1389,9 +1384,6 @@ namespace {
             widget_ren_data.cmd_buf_ = VK_NULL_HANDLE;
             widget_ren_data.pipe_layout_ = VK_NULL_HANDLE;
             overlay_man_.widgets().tick(widget_ren_data);
-
-            ren_ctxt.draw_sheet_ = std::make_shared<mirinae::DrawSheet>();
-            ren_ctxt.draw_sheet_->build(cosmos_->reg());
 
             namespace cpnt = mirinae::cpnt;
 
