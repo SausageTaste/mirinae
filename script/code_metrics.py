@@ -43,6 +43,19 @@ def __is_code_file(file_path):
     return False
 
 
+def __count_lines(lines: list[str]) -> int:
+    count = 0
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        count += 1
+
+    return count
+
+
 def main():
     db = []
 
@@ -58,7 +71,7 @@ def main():
 
             with open(file_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
-            db.append((len(lines), file_path))
+            db.append((__count_lines(lines), file_path))
 
     db.sort(key=lambda x: x[0], reverse=False)
     for line_count, file_path in db:
