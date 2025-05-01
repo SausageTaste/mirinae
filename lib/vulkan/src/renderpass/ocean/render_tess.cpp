@@ -10,6 +10,7 @@
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/ocean/common.hpp"
@@ -251,8 +252,10 @@ namespace {
     struct FrameData {
         std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> disp_map_;
         std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> deri_map_;
+        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> turb_map_;
         mirinae::Buffer ubuf_;
-        VkDescriptorSet desc_set_;
+        mirinae::Fbuf fbuf_;
+        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
     using FrameDataArr = std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
@@ -260,11 +263,478 @@ namespace {
 }  // namespace
 
 
+namespace {
+
+    template <typename T>
+    bool has_separating_axis(
+        const mirinae::ViewFrustum& view_frustum,
+        const std::array<glm::tvec3<T>, 4>& points
+    ) {
+        const auto to_patch = glm::tmat4x4<T>(view_frustum.view_inv_);
+        const auto to_patch3 = glm::tmat3x3<T>(to_patch);
+
+        MIRINAE_ASSERT(view_frustum.vtx_.size() == 8);
+        std::array<glm::tvec3<T>, 8> frustum_points;
+        for (size_t i = 0; i < 8; ++i) {
+            const auto& p = glm::tvec4<T>(view_frustum.vtx_[i], 1);
+            frustum_points[i] = glm::tvec3<T>(to_patch * p);
+        }
+
+        std::vector<glm::tvec3<T>> axes;
+        axes.reserve(view_frustum.axes_.size() + 3);
+        for (auto& v : view_frustum.axes_) {
+            axes.push_back(to_patch3 * v);
+        }
+        axes.push_back(glm::tvec3<T>(1, 0, 0));
+        axes.push_back(glm::tvec3<T>(0, 1, 0));
+        axes.push_back(glm::tvec3<T>(0, 0, 1));
+
+        for (auto& axis : axes) {
+            sung::Aabb1DLazyInit<T> frustum_aabb;
+            for (auto& p : frustum_points)
+                frustum_aabb.set_or_expand(glm::dot(p, axis));
+
+            sung::Aabb1DLazyInit<T> points_aabb;
+            for (auto& p : points) points_aabb.set_or_expand(glm::dot(p, axis));
+
+            if (!frustum_aabb.is_intersecting_cl(points_aabb))
+                return true;
+        }
+
+        return false;
+    }
+
+
+    template <typename T>
+    void traverse_quad_tree(
+        const VkCommandBuffer cmdbuf,
+        const int depth,
+        const T x_min,
+        const T x_max,
+        const T y_min,
+        const T y_max,
+        const T height,
+        const mirinae::RpCtxt& ctxt,
+        U_OceanTessPushConst& pc,
+        const mirinae::PushConstInfo& pc_info,
+        const glm::tmat4x4<T>& pv,
+        const glm::tvec2<T>& fbuf_size
+    ) {
+        using Vec2 = glm::tvec2<T>;
+        using Vec3 = glm::tvec3<T>;
+        using Vec4 = glm::tvec4<T>;
+
+        constexpr T HALF = 0.5;
+        constexpr T MARGIN = 1;
+
+        const auto x_margin = MARGIN;
+        const auto y_margin = MARGIN;
+        const std::array<Vec3, 4> points{
+            Vec3(x_min - x_margin, height, y_min - y_margin),
+            Vec3(x_min - x_margin, height, y_max + y_margin),
+            Vec3(x_max + x_margin, height, y_max + y_margin),
+            Vec3(x_max + x_margin, height, y_min - y_margin),
+        };
+
+        // Check frustum
+        if (::has_separating_axis<T>(ctxt.main_cam_.view_frustum(), points)) {
+            /*
+            auto& dbg = ctxt.debug_ren_;
+            dbg.add_tri(
+                pv * Vec4(points[0], 1),
+                pv * Vec4(points[1], 1),
+                pv * Vec4(points[2], 1),
+                glm::vec4(1, 0, 0, 0.1)
+            );
+            dbg.add_tri(
+                pv * Vec4(points[0], 1),
+                pv * Vec4(points[2], 1),
+                pv * Vec4(points[3], 1),
+                glm::vec4(1, 0, 0, 0.1)
+            );
+            */
+            return;
+        }
+
+        std::array<Vec3, 4> ndc_points;
+        for (size_t i = 0; i < 4; ++i) {
+            auto ndc4 = pv * Vec4(points[i], 1);
+            ndc4 /= ndc4.w;
+            ndc_points[i] = Vec3(ndc4);
+        }
+
+        if (depth > 8) {
+            pc.patch_offset(x_min - x_margin, y_min - y_margin)
+                .patch_scale(
+                    x_max - x_min + x_margin + x_margin,
+                    y_max - y_min + y_margin + y_margin
+                );
+            pc_info.record(cmdbuf, pc);
+            vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+            return;
+        }
+
+        T longest_edge = 0;
+        for (size_t i = 0; i < 4; ++i) {
+            const auto next_idx = (i + 1) % ndc_points.size();
+            const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
+            const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
+            const auto edge = (p1 - p0) * fbuf_size;
+            const auto len = glm::length(edge);
+            longest_edge = (std::max<T>)(longest_edge, len);
+        }
+        for (size_t i = 0; i < 2; ++i) {
+            const auto next_idx = (i + 2) % ndc_points.size();
+            const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
+            const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
+            const auto edge = (p1 - p0) * fbuf_size;
+            const auto len = glm::length(edge);
+            longest_edge = (std::max<T>)(longest_edge, len);
+        }
+
+        if (glm::length(longest_edge) > 1000) {
+            const auto x_mid = (x_min + x_max) * 0.5;
+            const auto y_mid = (y_min + y_max) * 0.5;
+            ::traverse_quad_tree<T>(
+                cmdbuf,
+                depth + 1,
+                x_min,
+                x_mid,
+                y_min,
+                y_mid,
+                height,
+                ctxt,
+                pc,
+                pc_info,
+                pv,
+                fbuf_size
+            );
+            ::traverse_quad_tree<T>(
+                cmdbuf,
+                depth + 1,
+                x_min,
+                x_mid,
+                y_mid,
+                y_max,
+                height,
+                ctxt,
+                pc,
+                pc_info,
+                pv,
+                fbuf_size
+            );
+            ::traverse_quad_tree<T>(
+                cmdbuf,
+                depth + 1,
+                x_mid,
+                x_max,
+                y_mid,
+                y_max,
+                height,
+                ctxt,
+                pc,
+                pc_info,
+                pv,
+                fbuf_size
+            );
+            ::traverse_quad_tree<T>(
+                cmdbuf,
+                depth + 1,
+                x_mid,
+                x_max,
+                y_min,
+                y_mid,
+                height,
+                ctxt,
+                pc,
+                pc_info,
+                pv,
+                fbuf_size
+            );
+        } else {
+            pc.patch_offset(x_min - x_margin, y_min - y_margin)
+                .patch_scale(
+                    x_max - x_min + x_margin + x_margin,
+                    y_max - y_min + y_margin + y_margin
+                );
+            pc_info.record(cmdbuf, pc);
+            vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+            return;
+        }
+    }
+
+}  // namespace
+
+
+// Tasks
+namespace { namespace task {
+
+    class DrawTasks : public mirinae::DependingTask {
+
+    public:
+        DrawTasks() { fence_.succeed(this); }
+
+        void init(
+            const entt::registry& reg,
+            const mirinae::FbufImageBundle& gbufs,
+            const mirinae::IRenPass& rp,
+            ::FrameDataArr& fdata,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            cmd_pool_ = &cmd_pool;
+            device_ = &device;
+            fdata_ = &fdata;
+            gbufs_ = &gbufs;
+            reg_ = &reg;
+            rp_ = &rp;
+        }
+
+        void prepare(const mirinae::RpCtxt& ctxt) { ctxt_ = &ctxt; }
+
+        enki::ITaskSet& fence() { return fence_; }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) {
+            if (VK_NULL_HANDLE != cmdbuf_) {
+                out.push_back(cmdbuf_);
+            }
+        }
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            auto ocean = ::find_first_cpnt<mirinae::cpnt::Ocean>(*reg_);
+            if (!ocean) {
+                cmdbuf_ = VK_NULL_HANDLE;
+                return;
+            }
+
+            cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
+            if (cmdbuf_ == VK_NULL_HANDLE)
+                return;
+
+            auto& fd = fdata_->at(ctxt_->f_index_.get());
+            const auto gbuf_ext = gbufs_->extent();
+            const auto atmos =
+                ::find_first_cpnt<mirinae::cpnt::AtmosphereSimple>(*reg_);
+
+            mirinae::begin_cmdbuf(cmdbuf_);
+            this->update_ubuf(*reg_, atmos, *ocean, *ctxt_, fd, *device_);
+            this->record_barriers(cmdbuf_, fd, *gbufs_, *ctxt_);
+            this->record(cmdbuf_, fd, *ocean, *rp_, *ctxt_, gbuf_ext);
+            mirinae::end_cmdbuf(cmdbuf_);
+        }
+
+        static void update_ubuf(
+            const entt::registry& reg,
+            const mirinae::cpnt::AtmosphereSimple* atmos,
+            const mirinae::cpnt::Ocean& ocean_entt,
+            const mirinae::RpCtxt& ctxt,
+            ::FrameData& fd,
+            mirinae::VulkanDevice& device
+        ) {
+            namespace cpnt = mirinae::cpnt;
+
+            const auto view_mat = ctxt.main_cam_.view();
+
+            U_OceanTessParams ubuf;
+            ubuf.foam_bias(ocean_entt.foam_bias_)
+                .foam_scale(ocean_entt.foam_scale_)
+                .foam_threshold(cv_foam_threshold.get())
+                .jacobian_scale(0, ocean_entt.cascades_[0].jacobian_scale_)
+                .jacobian_scale(1, ocean_entt.cascades_[1].jacobian_scale_)
+                .jacobian_scale(2, ocean_entt.cascades_[2].jacobian_scale_)
+                .len_scale(0, ocean_entt.cascades_[0].lod_scale_)
+                .len_scale(1, ocean_entt.cascades_[1].lod_scale_)
+                .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
+                .lod_scale(ocean_entt.lod_scale_)
+                .ocean_color(ocean_entt.ocean_color_)
+                .roughness(ocean_entt.roughness_)
+                .sss_base(cv_foam_sss_base.get())
+                .sss_scale(cv_foam_sss_scale.get());
+            for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
+                ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
+                    .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
+            if (atmos)
+                ubuf.fog_color(atmos->fog_color_)
+                    .fog_density(atmos->fog_density_);
+
+            for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
+                auto& light = reg.get<cpnt::DLight>(e);
+                auto& tform = reg.get<cpnt::Transform>(e);
+                ubuf.dlight_color(light.color_.scaled_color())
+                    .dlight_dir(light.calc_to_light_dir(view_mat, tform));
+                break;
+            }
+
+            fd.ubuf_.set_data(ubuf, device.mem_alloc());
+        }
+
+        static void record_barriers(
+            const VkCommandBuffer cmdbuf,
+            const ::FrameData& fd,
+            const mirinae::FbufImageBundle& gbufs,
+            const mirinae::RpCtxt& ctxt
+        ) {
+            mirinae::ImageMemoryBarrier tex_barr;
+            tex_barr.set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .set_src_acc(VK_ACCESS_SHADER_WRITE_BIT)
+                .set_dst_acc(VK_ACCESS_SHADER_READ_BIT)
+                .set_signle_mip_layer();
+
+            for (auto& img : fd.disp_map_) {
+                tex_barr.image(img->img_.image())
+                    .record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+                    );
+            }
+            for (auto& img : fd.deri_map_) {
+                tex_barr.image(img->img_.image())
+                    .record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                    );
+            }
+            for (auto& img : fd.turb_map_) {
+                tex_barr.image(img->img_.image())
+                    .record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                    );
+            }
+        }
+
+        static void record(
+            const VkCommandBuffer cmdbuf,
+            const ::FrameData& fd,
+            const mirinae::cpnt::Ocean& ocean_entt,
+            const mirinae::IRenPass& rp,
+            const mirinae::RpCtxt& ctxt,
+            const VkExtent2D& fbuf_ext
+        ) {
+            const auto& proj_mat = ctxt.main_cam_.proj();
+            const auto& view_mat = ctxt.main_cam_.view();
+            const auto& view_inv = ctxt.main_cam_.view_inv();
+            const auto& view_pos = ctxt.main_cam_.view_pos();
+
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.render_pass())
+                .fbuf(fd.fbuf_.get())
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cmdbuf);
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
+
+            mirinae::Viewport{ fbuf_ext }.record_single(cmdbuf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cmdbuf);
+
+            mirinae::DescSetBindInfo{}
+                .layout(rp.pipe_layout())
+                .add(fd.desc_set_)
+                .record(cmdbuf);
+
+            mirinae::PushConstInfo pc_info;
+            pc_info.layout(rp.pipe_layout())
+                .add_stage_vert()
+                .add_stage_tesc()
+                .add_stage_tese()
+                .add_stage_frag();
+
+            U_OceanTessPushConst pc;
+            pc.fbuf_size(fbuf_ext)
+                .tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
+                .tile_dimensions(ocean_entt.tile_size_)
+                .pvm(proj_mat, view_mat, glm::dmat4(1))
+                .patch_height(ocean_entt.height_);
+
+            const auto z_far = proj_mat[3][2] / proj_mat[2][2];
+            const auto scale = z_far * 1.25;
+            const auto pv = proj_mat * view_mat;
+            const auto cam_x = std::round(view_pos.x * 0.1) * 10;
+            const auto cam_z = std::round(view_pos.z * 0.1) * 10;
+
+            ::traverse_quad_tree<double>(
+                cmdbuf,
+                0,
+                cam_x - scale,
+                cam_x + scale,
+                cam_z - scale,
+                cam_z + scale,
+                ocean_entt.height_,
+                ctxt,
+                pc,
+                pc_info,
+                pv,
+                glm::dvec2(fbuf_ext.width, fbuf_ext.height)
+            );
+
+            vkCmdEndRenderPass(cmdbuf);
+        }
+
+        mirinae::FenceTask fence_;
+        VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
+
+        const entt::registry* reg_ = nullptr;
+        const mirinae::FbufImageBundle* gbufs_ = nullptr;
+        const mirinae::IRenPass* rp_ = nullptr;
+        const mirinae::RpCtxt* ctxt_ = nullptr;
+        ::FrameDataArr* fdata_ = nullptr;
+        mirinae::RpCommandPool* cmd_pool_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
+    };
+
+
+    class RpTask : public mirinae::IRpTask {
+
+    public:
+        void init(
+            const entt::registry& reg,
+            const mirinae::FbufImageBundle& gbufs,
+            const mirinae::IRenPass& rp,
+            ::FrameDataArr& fdata,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            record_tasks_.init(reg, gbufs, rp, fdata, cmd_pool, device);
+        }
+
+        std::string_view name() const override { return "composition dlights"; }
+
+        void prepare(const mirinae::RpCtxt& ctxt) override {
+            record_tasks_.prepare(ctxt);
+        }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) override {
+            record_tasks_.collect_cmdbuf(out);
+        }
+
+        enki::ITaskSet* record_task() override { return &record_tasks_; }
+
+        enki::ITaskSet* record_fence() override {
+            return &record_tasks_.fence();
+        }
+
+    private:
+        DrawTasks record_tasks_;
+    };
+
+}}  // namespace ::task
+
+
 // Ocean tessellation
 namespace {
 
     class RpStatesOceanTess
-        : public mirinae::IRpStates
+        : public mirinae::IRpBase
         , public mirinae::RenPassBundle<2> {
 
     public:
@@ -298,7 +768,7 @@ namespace {
                         "ocean_finalize:displacement_c{}_f{}", j, i
                     );
                     fd.disp_map_[j] = rp_res.ren_img_.get_img_reader(
-                        img_name, this->name()
+                        img_name, this->names()
                     );
                     MIRINAE_ASSERT(nullptr != fd.disp_map_[j]);
                 }
@@ -308,7 +778,7 @@ namespace {
                         "ocean_finalize:derivatives_c{}_f{}", j, i
                     );
                     fd.deri_map_[j] = rp_res.ren_img_.get_img_reader(
-                        img_name, this->name()
+                        img_name, this->names()
                     );
                     MIRINAE_ASSERT(nullptr != fd.deri_map_[j]);
                 }
@@ -317,10 +787,13 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_finalize:turbulence_c{}", j
                     );
-                    turb_map_[j] = rp_res.ren_img_.get_img_reader(
-                        img_name, this->name()
+                    auto img = rp_res.ren_img_.get_img_reader(
+                        img_name, this->names()
                     );
-                    MIRINAE_ASSERT(nullptr != turb_map_[j]);
+                    for (auto& fd : frame_data_) {
+                        fd.turb_map_[j] = img;
+                    }
+                    MIRINAE_ASSERT(nullptr != img);
                 }
             }
 
@@ -332,7 +805,7 @@ namespace {
 
             // Descriptor layout
             {
-                mirinae::DescLayoutBuilder builder{ this->name() + ":main" };
+                mirinae::DescLayoutBuilder builder{ this->names() + ":main" };
                 builder
                     .new_binding()  // U_OceanTessParams
                     .set_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
@@ -370,13 +843,13 @@ namespace {
             {
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    rp_res.desclays_.get(name() + ":main").size_info(),
+                    rp_res.desclays_.get(names() + ":main").size_info(),
                     device.logi_device()
                 );
 
                 auto desc_sets = desc_pool_.alloc(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    rp_res.desclays_.get(name() + ":main").layout(),
+                    rp_res.desclays_.get(names() + ":main").layout(),
                     device.logi_device()
                 );
 
@@ -418,15 +891,15 @@ namespace {
                     writer.add_sampled_img_write(fd.desc_set_, 2);
                     writer  // Turbulance maps
                         .add_img_info()
-                        .set_img_view(turb_map_[0]->view_.get())
+                        .set_img_view(fd.turb_map_[0]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
-                        .set_img_view(turb_map_[1]->view_.get())
+                        .set_img_view(fd.turb_map_[1]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
-                        .set_img_view(turb_map_[2]->view_.get())
+                        .set_img_view(fd.turb_map_[2]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 3);
@@ -440,33 +913,10 @@ namespace {
                 writer.apply_all(device.logi_device());
             }
 
-            // Render pass
-            {
-                mirinae::RenderPassBuilder builder;
-
-                builder.attach_desc()
-                    .add(rp_res.gbuf_.compo_format())
-                    .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-                    .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-                    .op_pair_load_store();
-                builder.attach_desc()
-                    .add(rp_res.gbuf_.depth_format())
-                    .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .op_pair_load_store();
-
-                builder.color_attach_ref().add_color_attach(0);
-                builder.depth_attach_ref().set(1);
-
-                builder.subpass_dep().add().preset_single();
-
-                render_pass_ = builder.build(device.logi_device());
-            }
-
             // Pipeline layout
             {
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(rp_res.desclays_.get(name() + ":main").layout())
+                    .desc(rp_res.desclays_.get(names() + ":main").layout())
                     .add_vertex_flag()
                     .add_tesc_flag()
                     .add_tese_flag()
@@ -475,51 +925,14 @@ namespace {
                     .build(pipe_layout_, device);
             }
 
+            // Render pass
+            this->recreate_render_pass(render_pass_, device);
+
             // Pipeline
-            {
-                mirinae::PipelineBuilder builder{ device };
-
-                builder.shader_stages()
-                    .add_vert(":asset/spv/ocean_tess_vert.spv")
-                    .add_tesc(":asset/spv/ocean_tess_tesc.spv")
-                    .add_tese(":asset/spv/ocean_tess_tese.spv")
-                    .add_frag(":asset/spv/ocean_tess_frag.spv");
-
-                builder.input_assembly_state().topology_patch_list();
-
-                builder.tes_state().patch_ctrl_points(4);
-
-                builder.rasterization_state().cull_mode_back();
-                // builder.rasterization_state().polygon_mode_line();
-
-                builder.depth_stencil_state()
-                    .depth_test_enable(true)
-                    .depth_write_enable(true);
-
-                builder.color_blend_state().add(false, 1);
-
-                builder.dynamic_state()
-                    .add(VK_DYNAMIC_STATE_LINE_WIDTH)
-                    .add_viewport()
-                    .add_scissor();
-
-                pipeline_ = builder.build(render_pass_, pipe_layout_);
-            }
+            this->recreate_pipeline(pipeline_, device);
 
             // Framebuffers
-            {
-                fbuf_width_ = rp_res.gbuf_.width();
-                fbuf_height_ = rp_res.gbuf_.height();
-
-                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
-                    mirinae::FbufCinfo cinfo;
-                    cinfo.set_rp(render_pass_)
-                        .add_attach(rp_res.gbuf_.compo(i).image_view())
-                        .add_attach(rp_res.gbuf_.depth(i).image_view())
-                        .set_dim(fbuf_width_, fbuf_height_);
-                    fbufs_.push_back(cinfo.build(device));
-                }
-            }
+            this->recreate_fbufs(frame_data_, device);
 
             // Misc
             {
@@ -533,350 +946,111 @@ namespace {
         ~RpStatesOceanTess() override {
             for (auto& fd : frame_data_) {
                 for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++) {
-                    rp_res_.ren_img_.free_img(fd.disp_map_[i]->id(), name());
-                    rp_res_.ren_img_.free_img(fd.deri_map_[i]->id(), name());
+                    rp_res_.ren_img_.free_img(fd.disp_map_[i]->id(), names());
+                    rp_res_.ren_img_.free_img(fd.deri_map_[i]->id(), names());
+                    rp_res_.ren_img_.free_img(fd.turb_map_[i]->id(), names());
                 }
 
                 fd.ubuf_.destroy(device_.mem_alloc());
+                fd.fbuf_.destroy(device_.logi_device());
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
-            for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
-                rp_res_.ren_img_.free_img(turb_map_[i]->id(), this->name());
-
             desc_pool_.destroy(device_.logi_device());
             this->destroy_render_pass_elements(device_);
-
-            for (auto& handle : fbufs_)
-                vkDestroyFramebuffer(device_.logi_device(), handle, nullptr);
-            fbufs_.clear();
         }
 
-        void record(const mirinae::RpContext& ctxt) override {
-            auto ocean = mirinae::find_ocean_cpnt(cosmos_.reg());
-            if (!ocean)
-                return;
-            auto& ocean_entt = *ocean;
-            const auto atmos =
-                ::find_first_cpnt<mirinae::cpnt::AtmosphereSimple>(cosmos_.reg()
-                );
-            auto& fd = frame_data_[ctxt.f_index_.get()];
-            const auto cmdbuf = ctxt.cmdbuf_;
-            const VkExtent2D fbuf_exd{ fbuf_width_, fbuf_height_ };
+        std::string_view name() const override { return "ocean_tess"; }
+        std::string names() const { return std::string(name()); }
 
-            mirinae::ImageMemoryBarrier tex_barr;
-            tex_barr.set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .old_layout(VK_IMAGE_LAYOUT_GENERAL)
-                .new_layout(VK_IMAGE_LAYOUT_GENERAL)
-                .set_src_acc(VK_ACCESS_SHADER_WRITE_BIT)
-                .set_dst_acc(VK_ACCESS_SHADER_READ_BIT)
-                .set_signle_mip_layer();
-            for (auto& img : fd.disp_map_) {
-                tex_barr.image(img->img_.image())
-                    .record_single(
-                        ctxt.cmdbuf_,
-                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                        VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-                    );
-            }
-            for (auto& img : fd.deri_map_) {
-                tex_barr.image(img->img_.image())
-                    .record_single(
-                        ctxt.cmdbuf_,
-                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-                    );
-            }
-            for (auto& img : turb_map_) {
-                tex_barr.image(img->img_.image())
-                    .record_single(
-                        ctxt.cmdbuf_,
-                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-                    );
-            }
-
-            U_OceanTessParams ubuf;
-            ubuf.foam_bias(ocean_entt.foam_bias_)
-                .foam_scale(ocean_entt.foam_scale_)
-                .foam_threshold(cv_foam_threshold.get())
-                .jacobian_scale(0, ocean_entt.cascades_[0].jacobian_scale_)
-                .jacobian_scale(1, ocean_entt.cascades_[1].jacobian_scale_)
-                .jacobian_scale(2, ocean_entt.cascades_[2].jacobian_scale_)
-                .len_scale(0, ocean_entt.cascades_[0].lod_scale_)
-                .len_scale(1, ocean_entt.cascades_[1].lod_scale_)
-                .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
-                .lod_scale(ocean_entt.lod_scale_)
-                .ocean_color(ocean_entt.ocean_color_)
-                .roughness(ocean_entt.roughness_)
-                .sss_base(cv_foam_sss_base.get())
-                .sss_scale(cv_foam_sss_scale.get());
-            for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
-                ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
-                    .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
-            if (atmos)
-                ubuf.fog_color(atmos->fog_color_)
-                    .fog_density(atmos->fog_density_);
-
-            namespace cpnt = mirinae::cpnt;
-            auto& reg = ctxt.cosmos_->reg();
-            for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
-                auto& light = reg.get<cpnt::DLight>(e);
-                auto& tform = reg.get<cpnt::Transform>(e);
-                ubuf.dlight_color(light.color_.scaled_color());
-                ubuf.dlight_dir(light.calc_to_light_dir(ctxt.view_mat_, tform));
-                break;
-            }
-
-            fd.ubuf_.set_data(ubuf, device_.mem_alloc());
-
-            mirinae::RenderPassBeginInfo{}
-                .rp(render_pass_)
-                .fbuf(fbufs_.at(ctxt.f_index_.get()))
-                .wh(fbuf_width_, fbuf_height_)
-                .clear_value_count(clear_values_.size())
-                .clear_values(clear_values_.data())
-                .record_begin(cmdbuf);
-
-            vkCmdBindPipeline(
-                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_
-            );
-
-            mirinae::Viewport{ fbuf_exd }.record_single(cmdbuf);
-            mirinae::Rect2D{ fbuf_exd }.record_scissor(cmdbuf);
-
-            mirinae::DescSetBindInfo{}
-                .layout(pipe_layout_)
-                .add(fd.desc_set_)
-                .record(cmdbuf);
-
-            mirinae::PushConstInfo pc_info;
-            pc_info.layout(pipe_layout_)
-                .add_stage_vert()
-                .add_stage_tesc()
-                .add_stage_tese()
-                .add_stage_frag();
-
-            U_OceanTessPushConst pc;
-            pc.fbuf_size(fbuf_exd)
-                .tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
-                .tile_dimensions(ocean_entt.tile_size_)
-                .pvm(ctxt.proj_mat_, ctxt.view_mat_, glm::dmat4(1))
-                .patch_height(ocean_entt.height_);
-
-            const auto z_far = ctxt.proj_mat_[3][2] / ctxt.proj_mat_[2][2];
-            const auto scale = z_far * 1.25;
-            const auto pv = ctxt.proj_mat_ * ctxt.view_mat_;
-            const auto cam_x = std::round(ctxt.view_pos_.x * 0.1) * 10;
-            const auto cam_z = std::round(ctxt.view_pos_.z * 0.1) * 10;
-            this->traverse_quad_tree<double>(
-                0,
-                cam_x - scale,
-                cam_x + scale,
-                cam_z - scale,
-                cam_z + scale,
-                ocean_entt.height_,
-                ctxt,
-                pc,
-                pc_info,
-                pv
-            );
-
-            vkCmdEndRenderPass(cmdbuf);
+        void on_resize(uint32_t width, uint32_t height) override {
+            this->recreate_render_pass(render_pass_, device_);
+            this->recreate_pipeline(pipeline_, device_);
+            this->recreate_fbufs(frame_data_, device_);
         }
 
-        const std::string& name() const override {
-            static const std::string name = "ocean_tess";
-            return name;
+        std::unique_ptr<mirinae::IRpTask> create_task() override {
+            auto out = std::make_unique<task::RpTask>();
+            out->init(
+                cosmos_.reg(),
+                rp_res_.gbuf_,
+                *this,
+                frame_data_,
+                rp_res_.cmd_pool_,
+                device_
+            );
+            return out;
         }
 
     private:
-        template <typename T>
-        static bool has_separating_axis(
-            const mirinae::ViewFrustum& view_frustum,
-            const std::array<glm::tvec3<T>, 4>& points
-        ) {
-            const auto to_patch = glm::tmat4x4<T>(view_frustum.view_inv_);
-            const auto to_patch3 = glm::tmat3x3<T>(to_patch);
+        void recreate_render_pass(
+            mirinae::RenderPass& render_pass, mirinae::VulkanDevice& device
+        ) const {
+            mirinae::RenderPassBuilder builder;
 
-            MIRINAE_ASSERT(view_frustum.vtx_.size() == 8);
-            std::array<glm::tvec3<T>, 8> frustum_points;
-            for (size_t i = 0; i < 8; ++i) {
-                const auto& p = glm::tvec4<T>(view_frustum.vtx_[i], 1);
-                frustum_points[i] = glm::tvec3<T>(to_patch * p);
-            }
+            builder.attach_desc()
+                .add(rp_res_.gbuf_.compo_format())
+                .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .op_pair_load_store();
+            builder.attach_desc()
+                .add(rp_res_.gbuf_.depth_format())
+                .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .op_pair_load_store();
 
-            std::vector<glm::tvec3<T>> axes;
-            axes.reserve(view_frustum.axes_.size() + 3);
-            for (auto& v : view_frustum.axes_) {
-                axes.push_back(to_patch3 * v);
-            }
-            axes.push_back(glm::tvec3<T>(1, 0, 0));
-            axes.push_back(glm::tvec3<T>(0, 1, 0));
-            axes.push_back(glm::tvec3<T>(0, 0, 1));
+            builder.color_attach_ref().add_color_attach(0);
+            builder.depth_attach_ref().set(1);
 
-            for (auto& axis : axes) {
-                sung::Aabb1DLazyInit<T> frustum_aabb;
-                for (auto& p : frustum_points)
-                    frustum_aabb.set_or_expand(glm::dot(p, axis));
+            builder.subpass_dep().add().preset_single();
 
-                sung::Aabb1DLazyInit<T> points_aabb;
-                for (auto& p : points)
-                    points_aabb.set_or_expand(glm::dot(p, axis));
-
-                if (!frustum_aabb.is_intersecting_cl(points_aabb))
-                    return true;
-            }
-
-            return false;
+            render_pass.reset(builder.build(device.logi_device()), device);
         }
 
-        template <typename T>
-        void traverse_quad_tree(
-            const int depth,
-            const T x_min,
-            const T x_max,
-            const T y_min,
-            const T y_max,
-            const T height,
-            const mirinae::RpContext& ctxt,
-            U_OceanTessPushConst& pc,
-            const mirinae::PushConstInfo& pc_info,
-            const glm::tmat4x4<T>& pv
-        ) {
-            using Vec2 = glm::tvec2<T>;
-            using Vec3 = glm::tvec3<T>;
-            using Vec4 = glm::tvec4<T>;
+        void recreate_pipeline(
+            mirinae::RpPipeline& pipeline, mirinae::VulkanDevice& device
+        ) const {
+            mirinae::PipelineBuilder builder{ device };
 
-            constexpr T HALF = 0.5;
-            constexpr T MARGIN = 1;
+            builder.shader_stages()
+                .add_vert(":asset/spv/ocean_tess_vert.spv")
+                .add_tesc(":asset/spv/ocean_tess_tesc.spv")
+                .add_tese(":asset/spv/ocean_tess_tese.spv")
+                .add_frag(":asset/spv/ocean_tess_frag.spv");
 
-            const auto x_margin = MARGIN;
-            const auto y_margin = MARGIN;
-            const std::array<Vec3, 4> points{
-                Vec3(x_min - x_margin, height, y_min - y_margin),
-                Vec3(x_min - x_margin, height, y_max + y_margin),
-                Vec3(x_max + x_margin, height, y_max + y_margin),
-                Vec3(x_max + x_margin, height, y_min - y_margin),
-            };
+            builder.input_assembly_state().topology_patch_list();
 
-            // Check frustum
-            if (this->has_separating_axis<T>(ctxt.view_frustum_, points)) {
-                /*
-                auto& dbg = ctxt.debug_ren_;
-                dbg.add_tri(
-                    pv * Vec4(points[0], 1),
-                    pv * Vec4(points[1], 1),
-                    pv * Vec4(points[2], 1),
-                    glm::vec4(1, 0, 0, 0.1)
+            builder.tes_state().patch_ctrl_points(4);
+
+            builder.rasterization_state().cull_mode_back();
+            // builder.rasterization_state().polygon_mode_line();
+
+            builder.depth_stencil_state()
+                .depth_test_enable(true)
+                .depth_write_enable(true);
+
+            builder.color_blend_state().add(false, 1);
+
+            builder.dynamic_state()
+                .add(VK_DYNAMIC_STATE_LINE_WIDTH)
+                .add_viewport()
+                .add_scissor();
+
+            pipeline.reset(builder.build(render_pass_, pipe_layout_), device);
+        }
+
+        void recreate_fbufs(
+            ::FrameDataArr& fdata, mirinae::VulkanDevice& device
+        ) const {
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(render_pass_)
+                    .set_dim(rp_res_.gbuf_.width(), rp_res_.gbuf_.height())
+                    .add_attach(rp_res_.gbuf_.compo(i).image_view())
+                    .add_attach(rp_res_.gbuf_.depth(i).image_view());
+                fdata.at(i).fbuf_.reset(
+                    fbuf_cinfo.build(device), device.logi_device()
                 );
-                dbg.add_tri(
-                    pv * Vec4(points[0], 1),
-                    pv * Vec4(points[2], 1),
-                    pv * Vec4(points[3], 1),
-                    glm::vec4(1, 0, 0, 0.1)
-                );
-                */
-                return;
-            }
-
-            std::array<Vec3, 4> ndc_points;
-            for (size_t i = 0; i < 4; ++i) {
-                auto ndc4 = pv * Vec4(points[i], 1);
-                ndc4 /= ndc4.w;
-                ndc_points[i] = Vec3(ndc4);
-            }
-
-            if (depth > 8) {
-                pc.patch_offset(x_min - x_margin, y_min - y_margin)
-                    .patch_scale(
-                        x_max - x_min + x_margin + x_margin,
-                        y_max - y_min + y_margin + y_margin
-                    );
-                pc_info.record(ctxt.cmdbuf_, pc);
-                vkCmdDraw(ctxt.cmdbuf_, 4, 1, 0, 0);
-                return;
-            }
-
-            T longest_edge = 0;
-            const Vec2 fbuf_size(fbuf_width_, fbuf_height_);
-            for (size_t i = 0; i < 4; ++i) {
-                const auto next_idx = (i + 1) % ndc_points.size();
-                const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
-                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
-                const auto edge = (p1 - p0) * fbuf_size;
-                const auto len = glm::length(edge);
-                longest_edge = (std::max<T>)(longest_edge, len);
-            }
-            for (size_t i = 0; i < 2; ++i) {
-                const auto next_idx = (i + 2) % ndc_points.size();
-                const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
-                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
-                const auto edge = (p1 - p0) * fbuf_size;
-                const auto len = glm::length(edge);
-                longest_edge = (std::max<T>)(longest_edge, len);
-            }
-
-            if (glm::length(longest_edge) > 1000) {
-                const auto x_mid = (x_min + x_max) * 0.5;
-                const auto y_mid = (y_min + y_max) * 0.5;
-                this->traverse_quad_tree<T>(
-                    depth + 1,
-                    x_min,
-                    x_mid,
-                    y_min,
-                    y_mid,
-                    height,
-                    ctxt,
-                    pc,
-                    pc_info,
-                    pv
-                );
-                this->traverse_quad_tree<T>(
-                    depth + 1,
-                    x_min,
-                    x_mid,
-                    y_mid,
-                    y_max,
-                    height,
-                    ctxt,
-                    pc,
-                    pc_info,
-                    pv
-                );
-                this->traverse_quad_tree<T>(
-                    depth + 1,
-                    x_mid,
-                    x_max,
-                    y_mid,
-                    y_max,
-                    height,
-                    ctxt,
-                    pc,
-                    pc_info,
-                    pv
-                );
-                this->traverse_quad_tree<T>(
-                    depth + 1,
-                    x_mid,
-                    x_max,
-                    y_min,
-                    y_mid,
-                    height,
-                    ctxt,
-                    pc,
-                    pc_info,
-                    pv
-                );
-            } else {
-                pc.patch_offset(x_min - x_margin, y_min - y_margin)
-                    .patch_scale(
-                        x_max - x_min + x_margin + x_margin,
-                        y_max - y_min + y_margin + y_margin
-                    );
-                pc_info.record(ctxt.cmdbuf_, pc);
-                vkCmdDraw(ctxt.cmdbuf_, 4, 1, 0, 0);
-                return;
             }
         }
 
@@ -885,13 +1059,8 @@ namespace {
         mirinae::RpResources& rp_res_;
 
         ::FrameDataArr frame_data_;
-        std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> turb_map_;
         std::shared_ptr<mirinae::ITexture> sky_tex_;
         mirinae::DescPool desc_pool_;
-
-        std::vector<VkFramebuffer> fbufs_;  // As many as swapchain images
-        uint32_t fbuf_width_ = 0;
-        uint32_t fbuf_height_ = 0;
     };
 
 }  // namespace
@@ -899,7 +1068,9 @@ namespace {
 
 namespace mirinae::rp {
 
-    URpStates create_rp_ocean_tess(RpCreateBundle& bundle) {
+    std::unique_ptr<mirinae::IRpBase> create_rp_ocean_tess(
+        RpCreateBundle& bundle
+    ) {
         return std::make_unique<RpStatesOceanTess>(
             bundle.cosmos_, bundle.rp_res_, bundle.device_
         );

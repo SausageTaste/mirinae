@@ -23,6 +23,8 @@ namespace mirinae::rp {
         RpCreateBundle& bundle
     );
 
-    URpStates create_rp_ocean_tess(RpCreateBundle& bundle);
+    std::unique_ptr<mirinae::IRpBase> create_rp_ocean_tess(
+        RpCreateBundle& bundle
+    );
 
 }  // namespace mirinae::rp
