@@ -3,7 +3,7 @@
 #include <cstdarg>
 #include <thread>
 
-// #define MIRINAE_JOLT_DEBUG_RENDERER
+#define MIRINAE_JOLT_DEBUG_RENDERER
 
 #include <Jolt/Jolt.h>
 #include <daltools/img/img2d.hpp>
@@ -1029,11 +1029,13 @@ namespace {
     public:
         void init(
             ::PhysWorldStates& states,
+            JPH::DebugRenderer& debug_ren,
             JPH::PhysicsSystem& phys_sys,
             JPH::JobSystem& job_sys,
             JPH::TempAllocatorImpl& temp_alloc
         ) {
             states_ = &states;
+            debug_ren_ = &debug_ren;
             phys_sys_ = &phys_sys;
             job_sys_ = &job_sys;
             temp_alloc_ = &temp_alloc;
@@ -1046,14 +1048,17 @@ namespace {
                 return;
 
             const auto res = phys_sys_->Update(dt_, 1, temp_alloc_, job_sys_);
+            phys_sys_->DrawBodies(debug_ren_settings_, debug_ren_);
         }
 
     private:
         constexpr static double DESIRED_DT = 1.0 / 60.0;
+        JPH::BodyManager::DrawSettings debug_ren_settings_;
 
         ::PhysWorldStates* states_ = nullptr;
-        JPH::PhysicsSystem* phys_sys_ = nullptr;
+        JPH::DebugRenderer* debug_ren_ = nullptr;
         JPH::JobSystem* job_sys_ = nullptr;
+        JPH::PhysicsSystem* phys_sys_ = nullptr;
         JPH::TempAllocatorImpl* temp_alloc_ = nullptr;
         double dt_ = 1.0 / 60.0;
     };
@@ -1147,6 +1152,7 @@ namespace {
             ::PhysWorldStates& states,
             entt::registry& reg,
             JPH::PhysicsSystem& phys_sys,
+            JPH::DebugRenderer& debug_ren,
             JPH::BodyInterface& body_interf,
             JPH::JobSystem& job_sys,
             JPH::TempAllocatorImpl& temp_alloc
@@ -1170,14 +1176,12 @@ namespace {
             // Fence
             fence_.succeed(&post_phys_body_, &post_player_);
 
-            pre_mesh_.init(*states_, *reg_, *bodies_);
-            pre_height_.init(*states_, *reg_, *bodies_);
-            pre_player_.init(
-                *states_, *reg_, *phys_sys_, *bodies_, *temp_alloc_
-            );
-            update_.init(*states_, *phys_sys_, *job_sys_, *temp_alloc_);
-            post_phys_body_.init(*states_, *reg_, *bodies_);
-            post_player_.init(*states_, *reg_);
+            pre_mesh_.init(states, reg, *bodies_);
+            pre_height_.init(states, reg, *bodies_);
+            pre_player_.init(states, reg, phys_sys, *bodies_, temp_alloc);
+            update_.init(states, debug_ren, phys_sys, job_sys, temp_alloc);
+            post_phys_body_.init(states, reg, *bodies_);
+            post_player_.init(states, reg);
         }
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
@@ -1253,6 +1257,7 @@ namespace mirinae {
                 states_,
                 reg,
                 physics_system,
+                debug_ren_,
                 this->body_interf(),
                 *job_sys_,
                 temp_alloc_
