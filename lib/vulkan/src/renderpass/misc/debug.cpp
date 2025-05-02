@@ -348,6 +348,7 @@ namespace {
         ~RenderPassDebug() {
             for (auto& fd : fdata_) {
                 fd.fbuf_.destroy(device_.logi_device());
+                fd.vertex_buf_.destroy(device_);
             }
 
             this->destroy_render_pass_elements(device_);
