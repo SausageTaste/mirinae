@@ -22,6 +22,7 @@
 #include "mirinae/renderpass/compo.hpp"
 #include "mirinae/renderpass/envmap/envmap.hpp"
 #include "mirinae/renderpass/gbuf/gbuf.hpp"
+#include "mirinae/renderpass/misc/misc.hpp"
 #include "mirinae/renderpass/ocean/ocean.hpp"
 #include "mirinae/renderpass/shadow/shadow.hpp"
 #include "mirinae/renderpass/transp/transp.hpp"
@@ -170,66 +171,6 @@ namespace {
 
 // Render pass states
 namespace {
-
-    class RpStatesDebugMesh {
-
-    public:
-        void init(mirinae::VulkanDevice& device) {}
-
-        void destroy(mirinae::VulkanDevice& device) {}
-
-        void begin_record(
-            const VkCommandBuffer cmdbuf,
-            const VkExtent2D& fbuf_ext,
-            const mirinae::FrameIndex f_index,
-            const mirinae::RenderPassPackage& rp_pkg
-        ) {
-            auto& rp = rp_pkg.get("debug_mesh");
-
-            mirinae::RenderPassBeginInfo{}
-                .rp(rp.renderpass())
-                .fbuf(rp.fbuf_at(f_index.get()))
-                .wh(fbuf_ext)
-                .clear_value_count(rp.clear_value_count())
-                .clear_values(rp.clear_values())
-                .record_begin(cmdbuf);
-
-            vkCmdBindPipeline(
-                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-            );
-
-            mirinae::Viewport{ fbuf_ext }.record_single(cmdbuf);
-            mirinae::Rect2D{ fbuf_ext }.record_scissor(cmdbuf);
-        }
-
-        void draw(
-            const VkCommandBuffer cmdbuf,
-            const glm::vec4& p0,
-            const glm::vec4& p1,
-            const glm::vec4& p2,
-            const glm::vec4& color,
-            const mirinae::RenderPassPackage& rp_pkg
-        ) {
-            mirinae::U_DebugMeshPushConst pc;
-            pc.vertices_[0] = p0;
-            pc.vertices_[1] = p1;
-            pc.vertices_[2] = p2;
-            pc.color_ = color;
-
-            mirinae::PushConstInfo{}
-                .layout(rp_pkg.get("debug_mesh").pipeline_layout())
-                .add_stage_vert()
-                .add_stage_frag()
-                .record(cmdbuf, pc);
-
-            vkCmdDraw(cmdbuf, 3, 1, 0, 0);
-        }
-
-        void end_record(const VkCommandBuffer cmdbuf) {
-            vkCmdEndRenderPass(cmdbuf);
-        }
-    };
-
 
     class RpStatesFillscreen {
 
@@ -1192,7 +1133,6 @@ namespace {
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );
-                rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(
                     rp_res_.desclays_, rp_res_.gbuf_, device_
                 );
@@ -1252,6 +1192,10 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::create_rp_states_transp_skinned(cbundle)
+                );
+
+                render_passes_.push_back(
+                    mirinae::rp::create_rp_debug(cbundle, ren_ctxt.debug_ren_)
                 );
             }
 
@@ -1317,7 +1261,6 @@ namespace {
             {
                 rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
-                rp_states_debug_mesh_.destroy(device_);
 
                 rp_.destroy();
                 render_passes_.clear();
@@ -1392,59 +1335,6 @@ namespace {
             cmdbufs_.add(ren_ctxt.cmdbuf_, ren_ctxt.f_index_);
             mirinae::begin_cmdbuf(ren_ctxt.cmdbuf_);
 
-            rp_states_debug_mesh_.begin_record(
-                ren_ctxt.cmdbuf_, rp_res_.gbuf_.extent(), ren_ctxt.f_index_, rp_
-            );
-            for (auto& tri : ren_ctxt.debug_ren_.tri_) {
-                rp_states_debug_mesh_.draw(
-                    ren_ctxt.cmdbuf_,
-                    tri.vertices_[0],
-                    tri.vertices_[1],
-                    tri.vertices_[2],
-                    tri.color_,
-                    rp_
-                );
-            }
-            const auto& proj_mat = ren_ctxt.proj_mat_;
-            const auto& view_mat = ren_ctxt.view_mat_;
-            const auto proj_inv = glm::inverse(proj_mat);
-            const auto view_inv = glm::inverse(view_mat);
-            const auto pv_mat = proj_mat * view_mat;
-            for (auto& tri : ren_ctxt.debug_ren_.tri_world_) {
-                rp_states_debug_mesh_.draw(
-                    ren_ctxt.cmdbuf_,
-                    pv_mat * glm::dvec4(tri.vertices_[0], 1),
-                    pv_mat * glm::dvec4(tri.vertices_[1], 1),
-                    pv_mat * glm::dvec4(tri.vertices_[2], 1),
-                    tri.color_,
-                    rp_
-                );
-            }
-            for (auto& mactor : ren_ctxt.debug_ren_.meshes_) {
-                auto& mesh = *mactor.mesh_;
-                const auto tri_count = mesh.idx_.size() / 3;
-                const auto pvm = glm::mat4(pv_mat * mactor.model_mat_);
-
-                for (size_t i = 0; i < tri_count; ++i) {
-                    const auto i0 = mesh.idx_[3 * i + 0];
-                    const auto i1 = mesh.idx_[3 * i + 1];
-                    const auto i2 = mesh.idx_[3 * i + 2];
-
-                    const auto& v0 = mesh.vtx_[i0];
-                    const auto& v1 = mesh.vtx_[i1];
-                    const auto& v2 = mesh.vtx_[i2];
-
-                    rp_states_debug_mesh_.draw(
-                        ren_ctxt.cmdbuf_,
-                        pvm * glm::vec4(v0.pos_, 1),
-                        pvm * glm::vec4(v1.pos_, 1),
-                        pvm * glm::vec4(v2.pos_, 1),
-                        v0.color_,
-                        rp_
-                    );
-                }
-            }
-            rp_states_debug_mesh_.end_record(ren_ctxt.cmdbuf_);
             rp_states_fillscreen_.record(
                 ren_ctxt.cmdbuf_,
                 swapchain_.extent(),
@@ -1454,7 +1344,6 @@ namespace {
                 rp_res_.gbuf_,
                 rp_
             );
-            ren_ctxt.debug_ren_.clear();
 
             // Shader: Overlay
             {
@@ -1504,6 +1393,7 @@ namespace {
             }
 
             mirinae::end_cmdbuf(ren_ctxt.cmdbuf_);
+            ren_ctxt.debug_ren_.clear();
 
             // Submit and present
             {
@@ -1568,7 +1458,6 @@ namespace {
             {
                 // rp_states_imgui_.destroy();
                 rp_states_fillscreen_.destroy(device_);
-                rp_states_debug_mesh_.destroy(device_);
 
                 rp_.destroy();
             }
@@ -1602,7 +1491,6 @@ namespace {
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );
-                rp_states_debug_mesh_.init(device_);
                 rp_states_fillscreen_.init(
                     rp_res_.desclays_, rp_res_.gbuf_, device_
                 );
@@ -1646,7 +1534,6 @@ namespace {
         std::vector<VkCommandBuffer> basic_cmdbufs_;
 
         // Render passes
-        ::RpStatesDebugMesh rp_states_debug_mesh_;
         ::RpStatesFillscreen rp_states_fillscreen_;
         ::RpStatesImgui rp_states_imgui_;
         std::vector<std::unique_ptr<mirinae::IRpBase>> render_passes_;
