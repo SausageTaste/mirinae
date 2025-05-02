@@ -1,12 +1,12 @@
 #version 450
 
+layout(location = 0) in vec4 i_pos;
+layout(location = 1) in vec4 i_color;
 
-layout(push_constant) uniform U_DebugMeshPushConst {
-    vec4 vertices[3];
-    vec4 color;
-} u_pc;
+layout(location = 0) out vec4 v_color;
 
 
 void main() {
-    gl_Position = u_pc.vertices[gl_VertexIndex];
+    gl_Position = i_pos;
+    v_color = i_color;
 }

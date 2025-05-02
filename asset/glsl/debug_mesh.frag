@@ -1,14 +1,12 @@
 #version 450
 
 
-layout(location = 0) out vec4 f_color;
+layout(location = 0) in vec4 v_color;
 
-layout(push_constant) uniform U_DebugMeshPushConst {
-    vec4 vertices[3];
-    vec4 color;
-} u_pc;
+layout(location = 0) out vec4 f_color;
 
 
 void main() {
-    f_color = u_pc.color;
+    f_color = v_color;
+    f_color.a *= 0.5;
 }

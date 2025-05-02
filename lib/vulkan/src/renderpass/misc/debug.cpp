@@ -9,7 +9,86 @@
 
 namespace {
 
+    struct DebugVertex {
+        glm::vec4 pos_;
+        glm::vec4 color_;
+    };
+
+
+    class VertexArray {
+
+    public:
+        void add(const glm::vec4& pos, const glm::vec4& color) {
+            auto& v = data_.emplace_back();
+            v.pos_ = pos;
+            v.color_ = color;
+        }
+
+        void clear() { data_.clear(); }
+
+        const ::DebugVertex* data() const {
+            if (data_.empty())
+                return nullptr;
+            else
+                return data_.data();
+        }
+
+        size_t size() const { return data_.size(); }
+
+    private:
+        std::vector<::DebugVertex> data_;
+    };
+
+
+    class DebugVertexBuffer {
+
+    public:
+        void set_data(
+            const DebugVertex* vertices,
+            size_t vertex_count,
+            mirinae::VulkanDevice& device
+        ) {
+            const auto buf_size = vertex_count * sizeof(::DebugVertex);
+
+            if (0 == buf_size) {
+                vertex_count_ = 0;
+                return;
+            }
+
+            if (buf_.size() < buf_size) {
+                mirinae::BufferCreateInfo cinfo{ device.mem_alloc() };
+                cinfo.set_size(buf_size)
+                    .add_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT)
+                    .add_usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+                    .add_alloc_flag_host_access_seq_write();
+                buf_.init(cinfo);
+            }
+
+            buf_.set_data(vertices, buf_size, device.mem_alloc());
+            vertex_count_ = vertex_count;
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            buf_.destroy(device.mem_alloc());
+        }
+
+        void record_bind(VkCommandBuffer cmdbuf) const {
+            VkBuffer vertex_buffers[] = { buf_.buffer() };
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(cmdbuf, 0, 1, vertex_buffers, offsets);
+        }
+
+        size_t vertex_count() const { return vertex_count_; }
+
+    private:
+        mirinae::Buffer buf_;
+        size_t vertex_count_ = 0;
+    };
+
+
     struct FrameData {
+        ::DebugVertexBuffer vertex_buf_;
+        ::VertexArray vertices_;
         mirinae::Fbuf fbuf_;
     };
 
@@ -26,7 +105,7 @@ namespace {
         DrawTasks() { fence_.succeed(this); }
 
         void init(
-            const ::FrameDataArr& frame_data,
+            ::FrameDataArr& frame_data,
             const mirinae::DebugRender& debug_ren,
             const mirinae::FbufImageBundle& gbufs,
             const mirinae::IRenPass& rp,
@@ -59,15 +138,21 @@ namespace {
 
             mirinae::begin_cmdbuf(cmdbuf_);
             this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
-            this->record(
+            const auto res = this->record(
                 cmdbuf_,
-                frame_data_->at(ctxt_->f_index_.get()),
                 *debug_ren_,
                 *rp_,
                 *ctxt_,
-                gbufs_->extent()
+                gbufs_->extent(),
+                frame_data_->at(ctxt_->f_index_.get()),
+                *device_
             );
             mirinae::end_cmdbuf(cmdbuf_);
+
+            if (!res) {
+                cmdbuf_ = VK_NULL_HANDLE;
+                return;
+            }
         }
 
         static void record_barriers(
@@ -104,20 +189,61 @@ namespace {
                 );
         }
 
-        static void record(
+        static bool record(
             const VkCommandBuffer cmdbuf,
-            const ::FrameData& fd,
             const mirinae::DebugRender& debug_ren,
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt,
-            const VkExtent2D& fbuf_ext
+            const VkExtent2D& fbuf_ext,
+            ::FrameData& fd,
+            mirinae::VulkanDevice& device
         ) {
-            mirinae::U_DebugMeshPushConst pc;
-            mirinae::PushConstInfo pc_info{};
-            pc_info.layout(rp.pipe_layout())
-                .add_stage_vert()
-                .add_stage_frag()
-                .record(cmdbuf, pc);
+            auto& vertices = fd.vertices_;
+            vertices.clear();
+
+            for (auto& tri : debug_ren.tri_) {
+                vertices.add(tri.vertices_[0], tri.color_);
+                vertices.add(tri.vertices_[1], tri.color_);
+                vertices.add(tri.vertices_[2], tri.color_);
+            }
+
+            const auto& proj_mat = ctxt.main_cam_.proj();
+            const auto& view_mat = ctxt.main_cam_.view();
+            const auto proj_inv = ctxt.main_cam_.proj_inv();
+            const auto view_inv = ctxt.main_cam_.view_inv();
+            const auto pv = proj_mat * view_mat;
+
+            for (auto& tri : debug_ren.tri_world_) {
+                vertices.add(pv * glm::dvec4(tri.vertices_[0], 1), tri.color_);
+                vertices.add(pv * glm::dvec4(tri.vertices_[1], 1), tri.color_);
+                vertices.add(pv * glm::dvec4(tri.vertices_[2], 1), tri.color_);
+            }
+
+            for (auto& mactor : debug_ren.meshes_) {
+                auto& mesh = *mactor.mesh_;
+                const auto tri_count = mesh.idx_.size() / 3;
+                const auto pvm = glm::mat4(pv * mactor.model_mat_);
+
+                for (size_t i = 0; i < tri_count; ++i) {
+                    const auto i0 = mesh.idx_[3 * i + 0];
+                    const auto i1 = mesh.idx_[3 * i + 1];
+                    const auto i2 = mesh.idx_[3 * i + 2];
+
+                    const auto& v0 = mesh.vtx_[i0];
+                    const auto& v1 = mesh.vtx_[i1];
+                    const auto& v2 = mesh.vtx_[i2];
+
+                    vertices.add(pvm * glm::vec4(v0.pos_, 1), v0.color_);
+                    vertices.add(pvm * glm::vec4(v1.pos_, 1), v1.color_);
+                    vertices.add(pvm * glm::vec4(v2.pos_, 1), v2.color_);
+                }
+            }
+
+            if (vertices.size() == 0) {
+                return false;
+            }
+
+            fd.vertex_buf_.set_data(vertices.data(), vertices.size(), device);
 
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.render_pass())
@@ -134,64 +260,22 @@ namespace {
             mirinae::Viewport{ fbuf_ext }.record_single(cmdbuf);
             mirinae::Rect2D{ fbuf_ext }.record_scissor(cmdbuf);
 
-            for (auto& tri : debug_ren.tri_) {
-                pc.vertices_[0] = tri.vertices_[0];
-                pc.vertices_[1] = tri.vertices_[1];
-                pc.vertices_[2] = tri.vertices_[2];
-                pc.color_ = tri.color_;
-                pc_info.record(cmdbuf, pc);
-                vkCmdDraw(cmdbuf, 3, 1, 0, 0);
-            }
-
-            const auto& proj_mat = ctxt.main_cam_.proj();
-            const auto& view_mat = ctxt.main_cam_.view();
-            const auto proj_inv = ctxt.main_cam_.proj_inv();
-            const auto view_inv = ctxt.main_cam_.view_inv();
-            const auto pv_mat = proj_mat * view_mat;
-
-            for (auto& tri : debug_ren.tri_world_) {
-                pc.vertices_[0] = pv_mat * glm::dvec4(tri.vertices_[0], 1);
-                pc.vertices_[1] = pv_mat * glm::dvec4(tri.vertices_[1], 1);
-                pc.vertices_[2] = pv_mat * glm::dvec4(tri.vertices_[2], 1);
-                pc.color_ = tri.color_;
-                pc_info.record(cmdbuf, pc);
-                vkCmdDraw(cmdbuf, 3, 1, 0, 0);
-            }
-
-            for (auto& mactor : debug_ren.meshes_) {
-                auto& mesh = *mactor.mesh_;
-                const auto tri_count = mesh.idx_.size() / 3;
-                const auto pvm = glm::mat4(pv_mat * mactor.model_mat_);
-
-                for (size_t i = 0; i < tri_count; ++i) {
-                    const auto i0 = mesh.idx_[3 * i + 0];
-                    const auto i1 = mesh.idx_[3 * i + 1];
-                    const auto i2 = mesh.idx_[3 * i + 2];
-
-                    const auto& v0 = mesh.vtx_[i0];
-                    const auto& v1 = mesh.vtx_[i1];
-                    const auto& v2 = mesh.vtx_[i2];
-
-                    pc.vertices_[0] = pvm * glm::vec4(v0.pos_, 1);
-                    pc.vertices_[1] = pvm * glm::vec4(v1.pos_, 1);
-                    pc.vertices_[2] = pvm * glm::vec4(v2.pos_, 1);
-                    pc.color_ = v0.color_;
-                    pc_info.record(cmdbuf, pc);
-                    vkCmdDraw(cmdbuf, 3, 1, 0, 0);
-                }
-            }
+            fd.vertex_buf_.record_bind(cmdbuf);
+            vkCmdDraw(cmdbuf, fd.vertex_buf_.vertex_count(), 1, 0, 0);
 
             vkCmdEndRenderPass(cmdbuf);
+            return true;
         }
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
+        ::VertexArray vertices_;
 
-        const ::FrameDataArr* frame_data_ = nullptr;
         const mirinae::DebugRender* debug_ren_ = nullptr;
         const mirinae::FbufImageBundle* gbufs_ = nullptr;
         const mirinae::IRenPass* rp_ = nullptr;
         const mirinae::RpCtxt* ctxt_ = nullptr;
+        ::FrameDataArr* frame_data_ = nullptr;
         mirinae::RpCommandPool* cmd_pool_ = nullptr;
         mirinae::VulkanDevice* device_ = nullptr;
     };
@@ -201,7 +285,7 @@ namespace {
 
     public:
         void init(
-            const ::FrameDataArr& frame_data,
+            ::FrameDataArr& frame_data,
             const mirinae::DebugRender& debug_ren,
             const mirinae::FbufImageBundle& gbufs,
             const mirinae::IRenPass& rp,
@@ -255,11 +339,7 @@ namespace {
             , device_(device) {
             // Pipeline layout
             {
-                mirinae::PipelineLayoutBuilder{}
-                    .add_vertex_flag()
-                    .add_frag_flag()
-                    .pc(0, sizeof(mirinae::U_DebugMeshPushConst))
-                    .build(pipe_layout_, device_);
+                mirinae::PipelineLayoutBuilder{}.build(pipe_layout_, device_);
             }
 
             this->on_resize(rp_res_.gbuf_.width(), rp_res_.gbuf_.height());
@@ -311,11 +391,17 @@ namespace {
                     .add_vert(":asset/spv/debug_mesh_vert.spv")
                     .add_frag(":asset/spv/debug_mesh_frag.spv");
 
-                builder.rasterization_state().cull_mode_back();
+                builder.vertex_input_state()
+                    .add_binding<::DebugVertex>()
+                    .add_attrib_vec4(offsetof(DebugVertex, pos_))
+                    .add_attrib_vec4(offsetof(DebugVertex, color_));
+
+                builder.rasterization_state().polygon_mode_line();
 
                 builder.depth_stencil_state()
                     .depth_test_enable(true)
-                    .depth_write_enable(false);
+                    .depth_write_enable(false)
+                    .depth_compare_op(VK_COMPARE_OP_GREATER_OR_EQUAL);
 
                 builder.color_blend_state().add(true, 1);
 
