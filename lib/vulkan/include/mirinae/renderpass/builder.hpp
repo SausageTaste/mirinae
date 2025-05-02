@@ -236,24 +236,28 @@ namespace mirinae {
         class VertexInputStateBuilder {
 
         public:
+            VertexInputStateBuilder& clear_bindings();
+            VertexInputStateBuilder& clear_attribs();
+
+            VertexInputStateBuilder& add_binding(uint32_t, VkVertexInputRate);
+            VertexInputStateBuilder& add_binding(uint32_t stride);
+            template <typename T>
+            VertexInputStateBuilder& add_binding() {
+                return this->add_binding(sizeof(T));
+            }
+
+            VertexInputStateBuilder& add_attrib(VkFormat, uint32_t offset);
+            VertexInputStateBuilder& add_attrib_vec2(uint32_t offset);
+            VertexInputStateBuilder& add_attrib_vec3(uint32_t offset);
+            VertexInputStateBuilder& add_attrib_vec4(uint32_t offset);
+            VertexInputStateBuilder& add_attrib_ivec4(uint32_t offset);
+
             VertexInputStateBuilder& set_static();
             VertexInputStateBuilder& set_skinned();
 
             VkPipelineVertexInputStateCreateInfo build() const;
 
         private:
-            void add_attrib(VkFormat format, uint32_t offset);
-
-            void add_attrib_vec2(uint32_t offset);
-            void add_attrib_vec3(uint32_t offset);
-            void add_attrib_vec4(uint32_t offset);
-            void add_attrib_ivec4(uint32_t offset);
-
-            void set_binding_static();
-            void set_binding_skinned();
-            void set_attrib_static();
-            void set_attrib_skinned();
-
             std::vector<VkVertexInputBindingDescription> bindings_;
             std::vector<VkVertexInputAttributeDescription> attribs_;
         };

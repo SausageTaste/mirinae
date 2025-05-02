@@ -341,103 +341,6 @@ namespace {
     };
 
 
-    class VertexInputStateBuilder {
-
-    public:
-        VkPipelineVertexInputStateCreateInfo build() const {
-            VkPipelineVertexInputStateCreateInfo output{};
-            output.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            output.vertexBindingDescriptionCount = (uint32_t)bindings_.size();
-            output.pVertexBindingDescriptions = bindings_.data();
-            output.vertexAttributeDescriptionCount = (uint32_t)attribs_.size();
-            output.pVertexAttributeDescriptions = attribs_.data();
-            return output;
-        }
-
-        VertexInputStateBuilder& set_static() {
-            this->set_binding_static();
-            this->set_attrib_static();
-            return *this;
-        }
-
-        VertexInputStateBuilder& set_skinned() {
-            this->set_binding_skinned();
-            this->set_attrib_skinned();
-            return *this;
-        }
-
-    private:
-        void add_attrib(VkFormat format, uint32_t offset) {
-            const auto location = static_cast<uint32_t>(attribs_.size());
-
-            auto& one = attribs_.emplace_back();
-            one.binding = 0;
-            one.location = location;
-            one.format = format;
-            one.offset = offset;
-        }
-
-        void add_attrib_vec2(uint32_t offset) {
-            this->add_attrib(VK_FORMAT_R32G32_SFLOAT, offset);
-        }
-
-        void add_attrib_vec3(uint32_t offset) {
-            this->add_attrib(VK_FORMAT_R32G32B32_SFLOAT, offset);
-        }
-
-        void add_attrib_vec4(uint32_t offset) {
-            this->add_attrib(VK_FORMAT_R32G32B32A32_SFLOAT, offset);
-        }
-
-        void add_attrib_ivec4(uint32_t offset) {
-            this->add_attrib(VK_FORMAT_R32G32B32A32_SINT, offset);
-        }
-
-        void set_binding_static() {
-            bindings_.clear();
-            auto& one = bindings_.emplace_back();
-
-            one.binding = 0;
-            one.stride = sizeof(mirinae::VertexStatic);
-            one.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        }
-
-        void set_binding_skinned() {
-            bindings_.clear();
-            auto& one = bindings_.emplace_back();
-
-            one.binding = 0;
-            one.stride = sizeof(mirinae::VertexSkinned);
-            one.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        }
-
-        void set_attrib_static() {
-            attribs_.clear();
-
-            this->add_attrib_vec3(offsetof(mirinae::VertexStatic, pos_));
-            this->add_attrib_vec3(offsetof(mirinae::VertexStatic, normal_));
-            this->add_attrib_vec3(offsetof(mirinae::VertexStatic, tangent_));
-            this->add_attrib_vec2(offsetof(mirinae::VertexStatic, texcoord_));
-        }
-
-        void set_attrib_skinned() {
-            using Vertex = mirinae::VertexSkinned;
-            attribs_.clear();
-
-            this->add_attrib_vec3(offsetof(Vertex, pos_));
-            this->add_attrib_vec3(offsetof(Vertex, normal_));
-            this->add_attrib_vec3(offsetof(Vertex, tangent_));
-            this->add_attrib_vec2(offsetof(Vertex, uv_));
-            this->add_attrib_vec4(offsetof(Vertex, joint_weights_));
-            this->add_attrib_ivec4(offsetof(Vertex, joint_indices_));
-        }
-
-        std::vector<VkVertexInputBindingDescription> bindings_;
-        std::vector<VkVertexInputAttributeDescription> attribs_;
-    };
-
-
     class ColorBlendStateBuilder {
 
     public:
@@ -632,7 +535,7 @@ namespace { namespace fillscreen {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        ::VertexInputStateBuilder vinput_builder;
+        mirinae::PipelineBuilder::VertexInputStateBuilder vinput_builder;
         const auto vertex_input_info = vinput_builder.build();
 
         const auto input_assembly = ::create_info_input_assembly();
@@ -804,7 +707,7 @@ namespace { namespace overlay {
             dynamic_states.data(), dynamic_states.size()
         );
 
-        ::VertexInputStateBuilder vinput_builder;
+        mirinae::PipelineBuilder::VertexInputStateBuilder vinput_builder;
         const auto vertex_input_info = vinput_builder.build();
 
         const auto input_assembly = ::create_info_input_assembly();

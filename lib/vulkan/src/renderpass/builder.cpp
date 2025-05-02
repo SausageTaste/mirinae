@@ -258,16 +258,81 @@ namespace mirinae {
 
 #define CLS PipelineBuilder::VertexInputStateBuilder
 
-    CLS& CLS::set_static() {
-        this->set_binding_static();
-        this->set_attrib_static();
+    CLS& CLS::clear_bindings() {
+        bindings_.clear();
         return *this;
     }
 
-    CLS& CLS::set_skinned() {
-        this->set_binding_skinned();
-        this->set_attrib_skinned();
+    CLS& CLS::clear_attribs() {
+        attribs_.clear();
         return *this;
+    }
+
+    CLS& CLS::add_binding(uint32_t stride, VkVertexInputRate rate) {
+        const auto binding = static_cast<uint32_t>(bindings_.size());
+
+        auto& added = bindings_.emplace_back();
+        added.binding = binding;
+        added.stride = stride;
+        added.inputRate = rate;
+        return *this;
+    }
+
+    CLS& CLS::add_binding(uint32_t stride) {
+        return this->add_binding(stride, VK_VERTEX_INPUT_RATE_VERTEX);
+    }
+
+    CLS& CLS::add_attrib(VkFormat format, uint32_t offset) {
+        MIRINAE_ASSERT(!bindings_.empty());
+        const auto location = static_cast<uint32_t>(attribs_.size());
+
+        auto& one = attribs_.emplace_back();
+        one.binding = bindings_.back().binding;
+        one.location = location;
+        one.format = format;
+        one.offset = offset;
+
+        return *this;
+    }
+
+    CLS& CLS::add_attrib_vec2(uint32_t offset) {
+        return this->add_attrib(VK_FORMAT_R32G32_SFLOAT, offset);
+    }
+
+    CLS& CLS::add_attrib_vec3(uint32_t offset) {
+        return this->add_attrib(VK_FORMAT_R32G32B32_SFLOAT, offset);
+    }
+
+    CLS& CLS::add_attrib_vec4(uint32_t offset) {
+        return this->add_attrib(VK_FORMAT_R32G32B32A32_SFLOAT, offset);
+    }
+
+    CLS& CLS::add_attrib_ivec4(uint32_t offset) {
+        return this->add_attrib(VK_FORMAT_R32G32B32A32_SINT, offset);
+    }
+
+    CLS& CLS::set_static() {
+        return this->clear_bindings()
+            .clear_attribs()
+            .add_binding<mirinae::VertexStatic>()
+            .add_attrib_vec3(offsetof(mirinae::VertexStatic, pos_))
+            .add_attrib_vec3(offsetof(mirinae::VertexStatic, normal_))
+            .add_attrib_vec3(offsetof(mirinae::VertexStatic, tangent_))
+            .add_attrib_vec2(offsetof(mirinae::VertexStatic, texcoord_));
+    }
+
+    CLS& CLS::set_skinned() {
+        using Vertex = mirinae::VertexSkinned;
+
+        return this->clear_bindings()
+            .clear_attribs()
+            .add_binding<mirinae::VertexSkinned>()
+            .add_attrib_vec3(offsetof(Vertex, pos_))
+            .add_attrib_vec3(offsetof(Vertex, normal_))
+            .add_attrib_vec3(offsetof(Vertex, tangent_))
+            .add_attrib_vec2(offsetof(Vertex, uv_))
+            .add_attrib_vec4(offsetof(Vertex, joint_weights_))
+            .add_attrib_ivec4(offsetof(Vertex, joint_indices_));
     }
 
     VkPipelineVertexInputStateCreateInfo CLS::build() const {
@@ -282,71 +347,6 @@ namespace mirinae {
         );
         out.pVertexAttributeDescriptions = attribs_.data();
         return out;
-    }
-
-    void CLS::add_attrib(VkFormat format, uint32_t offset) {
-        const auto location = static_cast<uint32_t>(attribs_.size());
-
-        auto& one = attribs_.emplace_back();
-        one.binding = 0;
-        one.location = location;
-        one.format = format;
-        one.offset = offset;
-    }
-
-    void CLS::add_attrib_vec2(uint32_t offset) {
-        this->add_attrib(VK_FORMAT_R32G32_SFLOAT, offset);
-    }
-
-    void CLS::add_attrib_vec3(uint32_t offset) {
-        this->add_attrib(VK_FORMAT_R32G32B32_SFLOAT, offset);
-    }
-
-    void CLS::add_attrib_vec4(uint32_t offset) {
-        this->add_attrib(VK_FORMAT_R32G32B32A32_SFLOAT, offset);
-    }
-
-    void CLS::add_attrib_ivec4(uint32_t offset) {
-        this->add_attrib(VK_FORMAT_R32G32B32A32_SINT, offset);
-    }
-
-    void CLS::set_binding_static() {
-        bindings_.clear();
-        auto& one = bindings_.emplace_back();
-
-        one.binding = 0;
-        one.stride = sizeof(mirinae::VertexStatic);
-        one.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    }
-
-    void CLS::set_binding_skinned() {
-        bindings_.clear();
-        auto& one = bindings_.emplace_back();
-
-        one.binding = 0;
-        one.stride = sizeof(mirinae::VertexSkinned);
-        one.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    }
-
-    void CLS::set_attrib_static() {
-        attribs_.clear();
-
-        this->add_attrib_vec3(offsetof(mirinae::VertexStatic, pos_));
-        this->add_attrib_vec3(offsetof(mirinae::VertexStatic, normal_));
-        this->add_attrib_vec3(offsetof(mirinae::VertexStatic, tangent_));
-        this->add_attrib_vec2(offsetof(mirinae::VertexStatic, texcoord_));
-    }
-
-    void CLS::set_attrib_skinned() {
-        using Vertex = mirinae::VertexSkinned;
-        attribs_.clear();
-
-        this->add_attrib_vec3(offsetof(Vertex, pos_));
-        this->add_attrib_vec3(offsetof(Vertex, normal_));
-        this->add_attrib_vec3(offsetof(Vertex, tangent_));
-        this->add_attrib_vec2(offsetof(Vertex, uv_));
-        this->add_attrib_vec4(offsetof(Vertex, joint_weights_));
-        this->add_attrib_ivec4(offsetof(Vertex, joint_indices_));
     }
 
 #undef CLS
@@ -708,39 +708,40 @@ namespace mirinae {
 
 #define CLS PipelineLayoutBuilder
 
-    PipelineLayoutBuilder& CLS::reset_stage_flags() {
+    CLS& CLS::reset_stage_flags() {
         pc_stage_flags_ = 0;
         return *this;
     }
 
-    PipelineLayoutBuilder& CLS::set_stage_flags(VkShaderStageFlags flags) {
+    CLS& CLS::set_stage_flags(VkShaderStageFlags flags) {
         pc_stage_flags_ = flags;
         return *this;
     }
 
-    PipelineLayoutBuilder& CLS::add_stage_flags(VkShaderStageFlags flags) {
+    CLS& CLS::add_stage_flags(VkShaderStageFlags flags) {
         pc_stage_flags_ |= flags;
         return *this;
     }
 
-    PipelineLayoutBuilder& CLS::add_vertex_flag() {
+    CLS& CLS::add_vertex_flag() {
         return this->add_stage_flags(VK_SHADER_STAGE_VERTEX_BIT);
     }
 
-    PipelineLayoutBuilder& CLS::add_tesc_flag() {
+    CLS& CLS::add_tesc_flag() {
         return this->add_stage_flags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
     }
 
-    PipelineLayoutBuilder& CLS::add_tese_flag() {
-        return this->add_stage_flags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
+    CLS& CLS::add_tese_flag() {
+        return this->add_stage_flags(
+            VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
         );
     }
 
-    PipelineLayoutBuilder& CLS::add_frag_flag() {
+    CLS& CLS::add_frag_flag() {
         return this->add_stage_flags(VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
-    PipelineLayoutBuilder& CLS::pc(uint32_t offset, uint32_t size) {
+    CLS& CLS::pc(uint32_t offset, uint32_t size) {
         auto& added = pc_ranges_.emplace_back();
         added.stageFlags = pc_stage_flags_;
         added.offset = offset;
@@ -748,7 +749,7 @@ namespace mirinae {
         return *this;
     }
 
-    PipelineLayoutBuilder& CLS::desc(VkDescriptorSetLayout layout) {
+    CLS& CLS::desc(VkDescriptorSetLayout layout) {
         desclayouts_.push_back(layout);
         return *this;
     }
