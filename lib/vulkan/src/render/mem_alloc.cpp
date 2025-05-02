@@ -73,7 +73,10 @@ namespace mirinae {
 // BufferCreateInfo
 namespace mirinae {
 
-    BufferCreateInfo::BufferCreateInfo() { this->reset(); }
+    BufferCreateInfo::BufferCreateInfo(VulkanMemoryAllocator allocator)
+        : allocator_(allocator) {
+        this->reset();
+    }
 
     BufferCreateInfo& BufferCreateInfo::reset() {
         buffer_ = {};
@@ -95,62 +98,45 @@ namespace mirinae {
         return *this;
     }
 
-    BufferCreateInfo& BufferCreateInfo::preset_staging(VkDeviceSize size) {
-        this->reset();
-
-        buffer_.size = size;
-        buffer_.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
-        alloc_.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
+    BufferCreateInfo& BufferCreateInfo::add_alloc_flag_host_access_seq_write() {
+        alloc_.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
         return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::preset_staging(VkDeviceSize size) {
+        return this->reset()
+            .set_size(size)
+            .add_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+            .add_alloc_flag_host_access_seq_write();
     }
 
     BufferCreateInfo& BufferCreateInfo::preset_ubuf(VkDeviceSize size) {
-        this->reset();
-
-        buffer_.size = size;
-        buffer_.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
-        alloc_.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-        return *this;
+        return this->reset()
+            .set_size(size)
+            .add_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT)
+            .add_usage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+            .add_alloc_flag_host_access_seq_write();
     }
 
     BufferCreateInfo& BufferCreateInfo::preset_vertices(VkDeviceSize size) {
-        this->reset();
-
-        buffer_.size = size;
-        buffer_.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
-        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
-
-        return *this;
+        return this->reset()
+            .set_size(size)
+            .add_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT)
+            .add_usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     }
 
     BufferCreateInfo& BufferCreateInfo::preset_indices(VkDeviceSize size) {
-        this->reset();
-
-        buffer_.size = size;
-        buffer_.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                        VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-
-        alloc_.usage = VMA_MEMORY_USAGE_AUTO;
-
-        return *this;
+        return this->reset()
+            .set_size(size)
+            .add_usage(VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+            .add_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     }
 
     bool BufferCreateInfo::build(
-        VkBuffer& out_buffer,
-        VmaAllocation& out_alloc,
-        VulkanMemoryAllocator allocator
+        VkBuffer& out_buffer, VmaAllocation& out_alloc
     ) const {
         const auto res = vmaCreateBuffer(
-            allocator->get(),
+            allocator_->get(),
             &buffer_,
             &alloc_,
             &out_buffer,
@@ -173,66 +159,64 @@ namespace mirinae {
     }
 
     Buffer::Buffer(Buffer&& rhs) noexcept {
-        std::swap(cinfo_, rhs.cinfo_);
         std::swap(buffer_, rhs.buffer_);
         std::swap(allocation_, rhs.allocation_);
+        std::swap(size_, rhs.size_);
     }
 
     Buffer& Buffer::operator=(Buffer&& rhs) noexcept {
-        std::swap(cinfo_, rhs.cinfo_);
         std::swap(buffer_, rhs.buffer_);
         std::swap(allocation_, rhs.allocation_);
+        std::swap(size_, rhs.size_);
         return *this;
+    }
+
+    void Buffer::init(const BufferCreateInfo& cinfo) {
+        this->destroy(cinfo.allocator());
+
+        if (!cinfo.build(buffer_, allocation_))
+            MIRINAE_ABORT("failed to init a VMA buffer");
+        size_ = cinfo.size();
     }
 
     void Buffer::init_staging(
         VkDeviceSize size, VulkanMemoryAllocator allocator
     ) {
-        this->destroy(allocator);
-        cinfo_.preset_staging(size);
-
-        if (!cinfo_.build(buffer_, allocation_, allocator))
-            MIRINAE_ABORT("failed to create VMA buffer as staging buffer");
+        BufferCreateInfo cinfo{ allocator };
+        cinfo.preset_staging(size);
+        this->init(cinfo);
     }
 
     void Buffer::init_ubuf(VkDeviceSize size, VulkanMemoryAllocator allocator) {
-        this->destroy(allocator);
-        cinfo_.preset_ubuf(size);
-
-        if (!cinfo_.build(buffer_, allocation_, allocator))
-            MIRINAE_ABORT("failed to create VMA buffer as uniform buffer");
+        BufferCreateInfo cinfo{ allocator };
+        cinfo.preset_ubuf(size);
+        this->init(cinfo);
     }
 
     void Buffer::init_vertices(
         VkDeviceSize size, VulkanMemoryAllocator allocator
     ) {
-        this->destroy(allocator);
-        cinfo_.preset_vertices(size);
-
-        if (!cinfo_.build(buffer_, allocation_, allocator))
-            MIRINAE_ABORT("failed to create VMA buffer as vertex buffer");
+        BufferCreateInfo cinfo{ allocator };
+        cinfo.preset_vertices(size);
+        this->init(cinfo);
     }
 
     void Buffer::init_indices(
         VkDeviceSize size, VulkanMemoryAllocator allocator
     ) {
-        this->destroy(allocator);
-        cinfo_.preset_indices(size);
-
-        if (!cinfo_.build(buffer_, allocation_, allocator))
-            MIRINAE_ABORT("failed to create VMA buffer as index buffer");
+        BufferCreateInfo cinfo{ allocator };
+        cinfo.preset_indices(size);
+        this->init(cinfo);
     }
 
     void Buffer::destroy(VulkanMemoryAllocator allocator) {
-        cinfo_.reset();
-
         if (buffer_ != VK_NULL_HANDLE) {
             vmaDestroyBuffer(allocator->get(), buffer_, allocation_);
             buffer_ = VK_NULL_HANDLE;
         }
     }
 
-    VkDeviceSize Buffer::size() const { return cinfo_.size(); }
+    VkDeviceSize Buffer::size() const { return size_; }
 
     void Buffer::set_data(
         const void* data, size_t size, VulkanMemoryAllocator allocator

@@ -31,29 +31,30 @@ namespace mirinae {
     class BufferCreateInfo {
 
     public:
-        BufferCreateInfo();
+        BufferCreateInfo(VulkanMemoryAllocator allocator);
 
         BufferCreateInfo& reset();
 
         BufferCreateInfo& set_size(VkDeviceSize size);
         BufferCreateInfo& add_usage(VkBufferUsageFlags usage);
 
+        // VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+        BufferCreateInfo& add_alloc_flag_host_access_seq_write();
+
         BufferCreateInfo& preset_staging(VkDeviceSize size);
         BufferCreateInfo& preset_ubuf(VkDeviceSize size);
         BufferCreateInfo& preset_vertices(VkDeviceSize size);
         BufferCreateInfo& preset_indices(VkDeviceSize size);
 
-        bool build(
-            VkBuffer& out_buffer,
-            VmaAllocation& out_alloc,
-            VulkanMemoryAllocator allocator
-        ) const;
+        bool build(VkBuffer& out_buffer, VmaAllocation& out_alloc) const;
 
+        VulkanMemoryAllocator allocator() const { return allocator_; }
         VkDeviceSize size() const { return buffer_.size; }
 
     private:
         VkBufferCreateInfo buffer_ = {};
         VmaAllocationCreateInfo alloc_ = {};
+        VulkanMemoryAllocator allocator_ = nullptr;
     };
 
 
@@ -66,6 +67,7 @@ namespace mirinae {
         Buffer(Buffer&& rhs) noexcept;
         Buffer& operator=(Buffer&& rhs) noexcept;
 
+        void init(const BufferCreateInfo& cinfo);
         void init_staging(VkDeviceSize size, VulkanMemoryAllocator allocator);
         void init_ubuf(VkDeviceSize size, VulkanMemoryAllocator allocator);
         void init_vertices(VkDeviceSize size, VulkanMemoryAllocator allocator);
@@ -96,9 +98,9 @@ namespace mirinae {
         );
 
     private:
-        BufferCreateInfo cinfo_;
         VkBuffer buffer_ = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;
+        VkDeviceSize size_ = 0;
     };
 
 
