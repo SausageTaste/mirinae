@@ -21,6 +21,8 @@
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>
+#include <Jolt/Physics/SoftBody/SoftBodySharedSettings.h>
 #include <Jolt/RegisterTypes.h>
 
 #ifdef MIRINAE_JOLT_DEBUG_RENDERER
@@ -85,6 +87,88 @@ namespace {
             ::conv_vec(m.GetColumn4(1)),
             ::conv_vec(m.GetColumn4(2)),
             ::conv_vec(m.GetColumn4(3))
+        );
+    }
+
+
+    JPH::Ref<JPH::SoftBodySharedSettings> CreateCloth(
+        JPH::uint inGridSizeX,
+        JPH::uint inGridSizeZ,
+        float inGridSpacing,
+        const std::function<float(JPH::uint, JPH::uint)>& inVertexGetInvMass,
+        const std::function<JPH::Vec3(JPH::uint, JPH::uint)>&
+            inVertexPerturbation,
+        JPH::SoftBodySharedSettings::EBendType inBendType,
+        const JPH::SoftBodySharedSettings::VertexAttributes& inVertexAttributes
+    ) {
+        const float cOffsetX = -0.5f * inGridSpacing * (inGridSizeX - 1);
+        const float cOffsetZ = -0.5f * inGridSpacing * (inGridSizeZ - 1);
+
+        // Create settings
+        JPH::SoftBodySharedSettings* settings = new JPH::SoftBodySharedSettings;
+        for (JPH::uint z = 0; z < inGridSizeZ; ++z)
+            for (JPH::uint x = 0; x < inGridSizeX; ++x) {
+                JPH::SoftBodySharedSettings::Vertex v;
+                JPH::Vec3 position = inVertexPerturbation(x, z) +
+                                     JPH::Vec3(
+                                         cOffsetX + x * inGridSpacing,
+                                         0.0f,
+                                         cOffsetZ + z * inGridSpacing
+                                     );
+                position.StoreFloat3(&v.mPosition);
+                v.mInvMass = inVertexGetInvMass(x, z);
+                settings->mVertices.push_back(v);
+            }
+
+        // Function to get the vertex index of a point on the cloth
+        auto vertex_index = [inGridSizeX](
+                                JPH::uint inX, JPH::uint inY
+                            ) -> JPH::uint { return inX + inY * inGridSizeX; };
+
+        // Create faces
+        for (JPH::uint z = 0; z < inGridSizeZ - 1; ++z)
+            for (JPH::uint x = 0; x < inGridSizeX - 1; ++x) {
+                JPH::SoftBodySharedSettings::Face f;
+                f.mVertex[0] = vertex_index(x, z);
+                f.mVertex[1] = vertex_index(x, z + 1);
+                f.mVertex[2] = vertex_index(x + 1, z + 1);
+                settings->AddFace(f);
+
+                f.mVertex[1] = vertex_index(x + 1, z + 1);
+                f.mVertex[2] = vertex_index(x + 1, z);
+                settings->AddFace(f);
+            }
+
+        // Create constraints
+        settings->CreateConstraints(&inVertexAttributes, 1, inBendType);
+
+        // Optimize the settings
+        settings->Optimize();
+
+        return settings;
+    }
+
+    JPH::Ref<JPH::SoftBodySharedSettings> CreateClothWithFixatedCorners(
+        JPH::uint inGridSizeX, JPH::uint inGridSizeZ, float inGridSpacing
+    ) {
+        auto inv_mass = [inGridSizeX,
+                         inGridSizeZ](JPH::uint inX, JPH::uint inZ) {
+            return (inX == 0 && inZ == 0) ||
+                           (inX == inGridSizeX - 1 && inZ == 0) ||
+                           (inX == 0 && inZ == inGridSizeZ - 1) ||
+                           (inX == inGridSizeX - 1 && inZ == inGridSizeZ - 1)
+                       ? 0.0f
+                       : 1.0f;
+        };
+
+        return ::CreateCloth(
+            inGridSizeX,
+            inGridSizeZ,
+            inGridSpacing,
+            inv_mass,
+            [](JPH::uint, JPH::uint) { return JPH::Vec3::sZero(); },
+            JPH::SoftBodySharedSettings::EBendType::None,
+            { 1.0e-5f, 1.0e-5f, 1.0e-5f }
         );
     }
 
@@ -1246,6 +1330,39 @@ namespace mirinae {
             auto& body_interf = this->body_interf();
             // floor_.init(body_interf);
             // body_interf.AddBody(floor_.id(), JPH::EActivation::DontActivate);
+
+            auto inv_mass = [](JPH::uint, JPH::uint inZ) {
+                return inZ < 2 ? 0.0f : 1.0f;
+            };
+            auto perturbation = [](JPH::uint, JPH::uint inZ) {
+                return JPH::Vec3(0, (inZ & 1) ? 0.1f : -0.1f, 0);
+            };
+
+            JPH::SoftBodyCreationSettings cloth(
+                ::CreateCloth(
+                    10,
+                    10,
+                    0.1,
+                    inv_mass,
+                    perturbation,
+                    JPH::SoftBodySharedSettings::EBendType::None,
+                    { 1.0e-5f, 1.0e-5f, 1.0e-5f }
+                ),
+                JPH::RVec3(-66.80, 5.0f, -1.18),
+                JPH::Quat::sIdentity(),
+                Layers::MOVING
+            );
+            body_interf.CreateAndAddSoftBody(cloth, JPH::EActivation::Activate);
+
+            JPH::SoftBodyCreationSettings cloth2(
+                ::CreateClothWithFixatedCorners(50, 50, 0.5),
+                JPH::RVec3(-36.80, 20.0f, 10.18),
+                JPH::Quat::sIdentity(),
+                Layers::MOVING
+            );
+            body_interf.CreateAndAddSoftBody(
+                cloth2, JPH::EActivation::Activate
+            );
 
 #ifdef MIRINAE_JOLT_DEBUG_RENDERER
             JPH::DebugRenderer::sInstance = &debug_ren_;
