@@ -172,6 +172,66 @@ namespace {
         );
     }
 
+    JPH::Ref<JPH::SoftBodySharedSettings> create_cloth_cylinder(
+        const JPH::SoftBodySharedSettings::EBendType inBendType,
+        const JPH::SoftBodySharedSettings::VertexAttributes& inVertexAttributes,
+        const double radius,
+        const double height,
+        const int x_count,
+        const int y_count
+    ) {
+        MIRINAE_ASSERT(x_count >= 3);
+        MIRINAE_ASSERT(y_count >= 2);
+
+        const auto half_height = height * 0.5;
+        auto settings = std::make_unique<JPH::SoftBodySharedSettings>();
+
+        for (int y = 0; y < y_count; ++y) {
+            const auto y_pos = height * y / (y_count - 1) - half_height;
+            for (int x = 0; x < x_count; ++x) {
+                JPH::SoftBodySharedSettings::Vertex v;
+                const auto theta = SUNG_TAU * x / x_count;
+                const JPH::Vec3 pos(
+                    radius * std::cos(theta), y_pos, radius * std::sin(theta)
+                );
+
+                if (y >= y_count - 1)
+                    v.mInvMass = 0;
+                else
+                    v.mInvMass = 1;
+
+                pos.StoreFloat3(&v.mPosition);
+                settings->mVertices.push_back(v);
+            }
+        }
+
+        // Function to get the vertex index of a point on the cloth
+        auto vertex_index = [x_count,
+                             y_count](JPH::uint x, JPH::uint y) -> JPH::uint {
+            x = x % x_count;
+            y = y % y_count;
+            return x + y * x_count;
+        };
+
+        for (int y = 0; y < y_count - 1; ++y) {
+            for (int x = 0; x < x_count; ++x) {
+                JPH::SoftBodySharedSettings::Face f;
+                f.mVertex[0] = vertex_index(x, y);
+                f.mVertex[1] = vertex_index(x, y + 1);
+                f.mVertex[2] = vertex_index(x + 1, y + 1);
+                settings->AddFace(f);
+
+                f.mVertex[1] = vertex_index(x + 1, y + 1);
+                f.mVertex[2] = vertex_index(x + 1, y);
+                settings->AddFace(f);
+            }
+        }
+
+        settings->CreateConstraints(&inVertexAttributes, 1, inBendType);
+        settings->Optimize();
+        return settings.release();
+    }
+
 }  // namespace
 
 
