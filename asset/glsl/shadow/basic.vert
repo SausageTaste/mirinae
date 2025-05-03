@@ -5,6 +5,8 @@ layout(location = 1) in vec3 i_normal;
 layout(location = 2) in vec3 i_tangent;
 layout(location = 3) in vec2 i_texcoord;
 
+layout(location = 0) out vec2 v_uv;
+
 
 layout(push_constant) uniform U_ShadowPushConst {
     mat4 pvm;
@@ -19,4 +21,5 @@ layout(set = 0, binding = 0) uniform U_GbufActor {
 
 void main() {
     gl_Position = u_push_const.pvm * vec4(i_pos, 1);
+    v_uv = i_texcoord;
 }
