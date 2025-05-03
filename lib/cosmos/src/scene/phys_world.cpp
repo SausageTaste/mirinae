@@ -3,7 +3,7 @@
 #include <cstdarg>
 #include <thread>
 
-#define MIRINAE_JOLT_DEBUG_RENDERER
+// #define MIRINAE_JOLT_DEBUG_RENDERER
 
 #include <Jolt/Jolt.h>
 #include <daltools/img/img2d.hpp>
@@ -1173,13 +1173,13 @@ namespace {
     public:
         void init(
             ::PhysWorldStates& states,
-            JPH::DebugRenderer& debug_ren,
+            JPH::DebugRenderer* debug_ren,
             JPH::PhysicsSystem& phys_sys,
             JPH::JobSystem& job_sys,
             JPH::TempAllocatorImpl& temp_alloc
         ) {
             states_ = &states;
-            debug_ren_ = &debug_ren;
+            debug_ren_ = debug_ren;
             phys_sys_ = &phys_sys;
             job_sys_ = &job_sys;
             temp_alloc_ = &temp_alloc;
@@ -1192,7 +1192,9 @@ namespace {
                 return;
 
             const auto res = phys_sys_->Update(dt_, 1, temp_alloc_, job_sys_);
-            phys_sys_->DrawBodies(debug_ren_settings_, debug_ren_);
+
+            if (debug_ren_)
+                phys_sys_->DrawBodies(debug_ren_settings_, debug_ren_);
         }
 
     private:
@@ -1296,7 +1298,7 @@ namespace {
             ::PhysWorldStates& states,
             entt::registry& reg,
             JPH::PhysicsSystem& phys_sys,
-            JPH::DebugRenderer& debug_ren,
+            JPH::DebugRenderer* debug_ren,
             JPH::BodyInterface& body_interf,
             JPH::JobSystem& job_sys,
             JPH::TempAllocatorImpl& temp_alloc
@@ -1434,7 +1436,11 @@ namespace mirinae {
                 states_,
                 reg,
                 physics_system,
+#ifdef MIRINAE_JOLT_DEBUG_RENDERER
                 debug_ren_,
+#else
+                nullptr,
+#endif
                 this->body_interf(),
                 *job_sys_,
                 temp_alloc_
