@@ -109,7 +109,7 @@ void main() {
     const float metallic = u_model.metallic;
 
     vec3 normal = normalize(v_tbn * (normal_texel.xyz * 2 - 1));
-    if (normal.z < 0)
+    if (dot(normal, normalize(-frag_pos)) < 0)
         normal = -normal;
 
     const vec3 world_pos = (u_main.view_inv * vec4(frag_pos, 1)).xyz;

@@ -353,8 +353,8 @@ namespace {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":frame" };
                 builder
                     .add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, 1)  // U_CompoMain
-                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // dlight
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // slight
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env diffuse
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env specular
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // env lut
