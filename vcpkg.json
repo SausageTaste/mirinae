@@ -20,6 +20,7 @@
             "name": "imgui",
             "features": [
                 "glfw-binding",
+                "sdl3-binding",
                 "vulkan-binding"
             ]
         },
@@ -31,6 +32,12 @@
         },
         {
             "name": "ktx",
+            "features": [
+                "vulkan"
+            ]
+        },
+        {
+            "name": "sdl3",
             "features": [
                 "vulkan"
             ]
