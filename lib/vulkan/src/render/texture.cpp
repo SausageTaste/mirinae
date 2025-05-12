@@ -9,6 +9,7 @@
 #include <sung/basic/time.hpp>
 
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/enum_str.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
 

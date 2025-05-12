@@ -4,6 +4,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/cmdbuf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/draw_set.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/enum_str.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/mem_alloc.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/meshdata.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/render_graph.cpp

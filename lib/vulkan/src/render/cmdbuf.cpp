@@ -2,6 +2,7 @@
 
 #include "mirinae/render/cmdbuf.hpp"
 
+#include "mirinae/render/enum_str.hpp"
 #include "mirinae/render/mem_alloc.hpp"
 #include "mirinae/render/vkdevice.hpp"
 
