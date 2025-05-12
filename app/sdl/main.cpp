@@ -107,17 +107,21 @@ namespace {
             window_ = nullptr;
         }
 
-        bool get_win_size(int& width, int& height) {
+        bool get_win_size(int& width, int& height) const {
             SDL_GetWindowSize(window_, &width, &height);
             return true;
         }
 
-        void fill_vulkan_extensions(std::vector<std::string>& extensions) {
+        void fill_vulkan_extensions(std::vector<std::string>& out) const {
             Uint32 count = 0;
             const auto list = SDL_Vulkan_GetInstanceExtensions(&count);
             for (Uint32 i = 0; i < count; ++i) {
-                extensions.push_back(list[i]);
+                out.push_back(list[i]);
             }
+        }
+
+        bool rel_mouse_mode() const {
+            return SDL_GetWindowRelativeMouseMode(window_);
         }
 
         // IOsIoFunctions
@@ -129,7 +133,17 @@ namespace {
         }
 
         bool set_hidden_mouse_mode(bool hidden) override {
-            SDL_SetWindowRelativeMouseMode(window_, hidden);
+            if (SDL_SetWindowRelativeMouseMode(window_, hidden)) {
+                if (hidden) {
+                    SPDLOG_DEBUG("Enable relative mouse mode");
+                } else {
+                    SPDLOG_DEBUG("Disable relative mouse mode");
+                }
+            } else {
+                SPDLOG_ERROR(
+                    "Failed to set relative mouse mode: {}", SDL_GetError()
+                );
+            }
             return true;
         }
 
@@ -162,6 +176,7 @@ namespace {
     public:
         CombinedEngine() {
             system("chcp 65001");
+            spdlog::set_level(spdlog::level::level_enum::trace);
 
             mirinae::EngineCreateInfo cinfo;
 
@@ -185,6 +200,7 @@ namespace {
 
         void do_frame() { engine_->do_frame(); }
 
+        auto& Window() { return window_; }
         auto& engine() { return *engine_; }
 
     private:
@@ -221,12 +237,14 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* e) {
         ke.action_type = mirinae::key::ActionType::down;
         ke.scancode_ = e->key.scancode;
         ke.keycode_ = e->key.key;
+        SPDLOG_INFO("Key down: {}", ke.scancode_);
         engine.on_key_event(ke);
     } else if (e->type == SDL_EVENT_KEY_UP) {
         mirinae::key::Event ke;
         ke.action_type = mirinae::key::ActionType::up;
         ke.scancode_ = e->key.scancode;
         ke.keycode_ = e->key.key;
+        SPDLOG_INFO("Key up: {}", ke.scancode_);
         engine.on_key_event(ke);
     } else if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
         mirinae::mouse::Event me;
@@ -234,6 +252,12 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* e) {
         me.button_ = mirinae::mouse::ButtonCode::right;
         me.xpos_ = e->button.x;
         me.ypos_ = e->button.y;
+        SPDLOG_INFO(
+            "Mouse button down: ({}, {}), btn={}",
+            e->button.x,
+            e->button.y,
+            e->button.button
+        );
         engine.on_mouse_event(me);
     } else if (e->type == SDL_EVENT_MOUSE_BUTTON_UP) {
         mirinae::mouse::Event me;
@@ -241,6 +265,12 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* e) {
         me.button_ = mirinae::mouse::ButtonCode::right;
         me.xpos_ = e->button.x;
         me.ypos_ = e->button.y;
+        SPDLOG_INFO(
+            "Mouse button up: ({}, {}), btn={}",
+            e->button.x,
+            e->button.y,
+            e->button.button
+        );
         engine.on_mouse_event(me);
     } else if (e->type == SDL_EVENT_MOUSE_MOTION) {
         mirinae::mouse::Event me;
@@ -248,7 +278,13 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* e) {
         me.button_ = mirinae::mouse::ButtonCode::eoe;
         me.xpos_ = e->button.x;
         me.ypos_ = e->button.y;
+        if (app->Window().rel_mouse_mode())
+            SPDLOG_INFO("Rel motion: ({}, {})", e->motion.xrel, e->motion.yrel);
+        else
+            SPDLOG_INFO("Abs motion: ({}, {})", e->button.x, e->button.y);
         engine.on_mouse_event(me);
+    } else {
+        SPDLOG_WARN("Unhandled event: {}", e->type);
     }
 
     return SDL_AppResult::SDL_APP_CONTINUE;
