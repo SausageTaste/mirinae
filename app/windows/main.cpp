@@ -11,6 +11,7 @@
 #include <imgui_impl_vulkan.h>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
+#include "mirinae/render/platform_func.hpp"
 
 #ifdef SUNG_OS_WINDOWS
     #include "dump.hpp"
@@ -108,7 +109,9 @@ namespace {
     } g_imgui_ctxt_raii;
 
 
-    class GlfwWindow {
+    class GlfwWindow
+        : public mirinae::IOsIoFunctions
+        , public mirinae::VulkanPlatformFunctions {
 
     public:
         GlfwWindow(int width, int height, const char* title) {
@@ -147,19 +150,6 @@ namespace {
 
         bool is_ongoing() const { return !glfwWindowShouldClose(window_); }
 
-        VkSurfaceKHR create_surface(const VkInstance instance) {
-            VkSurfaceKHR surface = VK_NULL_HANDLE;
-            const auto result = glfwCreateWindowSurface(
-                instance, window_, nullptr, &surface
-            );
-
-            if (VK_SUCCESS != result) {
-                SPDLOG_ERROR("Failed to create window surface");
-                return VK_NULL_HANDLE;
-            }
-            return surface;
-        }
-
         std::pair<int, int> get_fbuf_size() const {
             std::pair<int, int> output{ 0, 0 };
             if (nullptr == window_)
@@ -179,7 +169,9 @@ namespace {
 
         void set_userdata(void* ptr) { glfwSetWindowUserPointer(window_, ptr); }
 
-        bool toggle_fullscreen() {
+        // IOsIoFunctions
+
+        bool toggle_fullscreen() override {
             if (auto cur_monitor = glfwGetWindowMonitor(window_)) {
                 glfwSetWindowMonitor(
                     window_,
@@ -221,15 +213,16 @@ namespace {
             }
         }
 
-        void set_hidden_mouse_mode(bool hidden) {
-            if (hidden) {
-                glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            } else {
-                glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            }
+        bool set_hidden_mouse_mode(bool hidden) override {
+            glfwSetInputMode(
+                window_,
+                GLFW_CURSOR,
+                hidden ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL
+            );
+            return true;
         }
 
-        std::optional<std::string> get_clipboard() const {
+        std::optional<std::string> get_clipboard() override {
             if (auto text = glfwGetClipboardString(window_)) {
                 return text;
             } else {
@@ -237,9 +230,23 @@ namespace {
             }
         }
 
-        void set_clipboard(const std::string& text) {
+        bool set_clipboard(const std::string& text) override {
             glfwSetClipboardString(window_, text.c_str());
+            return true;
         }
+
+        // VulkanPlatformFunctions
+
+        VkSurfaceKHR create_surface(VkInstance instance) override {
+            VkSurfaceKHR surface = VK_NULL_HANDLE;
+            const auto result = glfwCreateWindowSurface(
+                instance, window_, nullptr, &surface
+            );
+            MIRINAE_ASSERT(surface != VK_NULL_HANDLE);
+            return surface;
+        }
+
+        void imgui_new_frame() override { ImGui_ImplGlfw_NewFrame(); }
 
     private:
         static void callback_fbuf_size(
@@ -455,35 +462,6 @@ namespace {
     };
 
 
-    class OsInputOutput : public mirinae::IOsIoFunctions {
-
-    public:
-        OsInputOutput(GlfwWindow& window) : window_(window) {}
-
-        bool toggle_fullscreen() override {
-            window_.toggle_fullscreen();
-            return true;
-        }
-
-        bool set_hidden_mouse_mode(bool hidden) override {
-            window_.set_hidden_mouse_mode(hidden);
-            return true;
-        }
-
-        std::optional<std::string> get_clipboard() override {
-            return window_.get_clipboard();
-        }
-
-        bool set_clipboard(const std::string& text) override {
-            window_.set_clipboard(text);
-            return true;
-        }
-
-    private:
-        GlfwWindow& window_;
-    };
-
-
     class CombinedEngine {
 
     public:
@@ -500,15 +478,9 @@ namespace {
                 dal::create_filesubsys_std("", ::get_documents_path("Mirinapp"))
             );
 
-            create_info.osio_ = std::make_shared<OsInputOutput>(window_);
             create_info.instance_extensions_ = ::get_glfw_extensions();
-            create_info.surface_creator_ = [this](void* instance) -> uint64_t {
-                auto surface = this->window_.create_surface(
-                    reinterpret_cast<VkInstance>(instance)
-                );
-                return *reinterpret_cast<uint64_t*>(&surface);
-            };
-            create_info.imgui_new_frame_ = []() { ImGui_ImplGlfw_NewFrame(); };
+            create_info.osio_ = &window_;
+            create_info.vulkan_os_ = &window_;
             create_info.ui_scale_ = window_.content_scale();
             create_info.enable_validation_layers_ = true;
             create_info.init_width_ = INIT_WIDTH;

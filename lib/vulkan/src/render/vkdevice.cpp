@@ -12,6 +12,7 @@
 
 #include "mirinae/lightweight/konsts.hpp"
 #include "mirinae/render/enum_str.hpp"
+#include "mirinae/render/platform_func.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
 
@@ -1081,25 +1082,19 @@ namespace mirinae {
     public:
         Pimpl(mirinae::EngineCreateInfo& create_info)
             : create_info_(create_info) {
-            // Check engine creation info
-            if (!create_info_.filesys_)
-                MIRINAE_ABORT("Filesystem is not set");
-
             ::InstanceFactory instance_factory;
-            if (create_info_.enable_validation_layers_) {
+            if (create_info.enable_validation_layers_) {
                 instance_factory.enable_validation_layer();
                 instance_factory.ext_layers_.add_validation();
             }
             instance_factory.ext_layers_.extensions_.insert(
                 instance_factory.ext_layers_.extensions_.end(),
-                create_info_.instance_extensions_.begin(),
-                create_info_.instance_extensions_.end()
+                create_info.instance_extensions_.begin(),
+                create_info.instance_extensions_.end()
             );
 
             instance_.init(instance_factory);
-            surface_ = ::surface_cast(
-                create_info_.surface_creator_(instance_.get())
-            );
+            surface_ = create_info.vulkan_os_->create_surface(instance_.get());
             phys_device_.set(instance_.select_phys_device(surface_), surface_);
             SPDLOG_INFO(
                 "Physical device selected: {}\n{}",
@@ -1154,8 +1149,8 @@ namespace mirinae {
         ::LogiDevice logi_device_;
         ::SamplerManager samplers_;
         ::ImageFormats img_formats_;
-        mirinae::VulkanMemoryAllocator mem_allocator_;
-        mirinae::EngineCreateInfo create_info_;
+        EngineCreateInfo create_info_;
+        VulkanMemoryAllocator mem_allocator_;
         VkSurfaceKHR surface_ = VK_NULL_HANDLE;
     };
 

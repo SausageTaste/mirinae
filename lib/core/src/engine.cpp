@@ -628,11 +628,11 @@ namespace {
 
     public:
         Engine(mirinae::EngineCreateInfo&& cinfo) {
-            win_width_ = cinfo.init_width_;
-            win_height_ = cinfo.init_height_;
+            ecinfo_ = std::move(cinfo);
+            win_width_ = ecinfo_.init_width_;
+            win_height_ = ecinfo_.init_height_;
 
-            filesys_ = cinfo.filesys_;
-            action_mapper_.give_osio(cinfo.osio_);
+            action_mapper_.give_osio(*ecinfo_.osio_);
 
             sung::HTaskSche task_sche = sung::create_task_scheduler();
             // client_ = mirinae::create_client();
@@ -964,7 +964,7 @@ namespace {
 
             // Script
             {
-                const auto contents = filesys_->read_file(
+                const auto contents = ecinfo_.filesys_->read_file(
                     ":asset/script/startup.lua"
                 );
                 if (contents) {
@@ -975,13 +975,17 @@ namespace {
 
             // ImGui Widgets
             {
-                imgui_main_ = std::make_shared<ImGuiMainWin>(cosmos_, filesys_);
+                imgui_main_ = std::make_shared<ImGuiMainWin>(
+                    cosmos_, ecinfo_.filesys_
+                );
                 cosmos_->imgui_.push_back(imgui_main_);
             }
 
             cosmos_->register_tasks(tasks_, action_mapper_);
 
-            renderer_ = mirinae::create_vk_renderer(cinfo, task_sche, cosmos_);
+            renderer_ = mirinae::create_vk_renderer(
+                ecinfo_, task_sche, cosmos_
+            );
             renderer_->register_tasks(tasks_);
 
             cosmos_->phys_world().give_debug_ren(renderer_->debug_ren());
@@ -1124,7 +1128,8 @@ namespace {
         }
 
     private:
-        std::shared_ptr<dal::Filesystem> filesys_;
+        mirinae::EngineCreateInfo ecinfo_;
+
         // std::unique_ptr<mirinae::INetworkClient> client_;
         std::shared_ptr<mirinae::ScriptEngine> script_;
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;

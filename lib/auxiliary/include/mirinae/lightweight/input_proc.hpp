@@ -112,7 +112,7 @@ namespace mirinae {
 
         InputActionMapper();
 
-        void give_osio(std::shared_ptr<IOsIoFunctions> osio) { osio_ = osio; }
+        void give_osio(IOsIoFunctions& osio) { osio_ = &osio; }
 
         bool on_key_event(const key::Event& e) override;
         bool on_text_event(char32_t c) override;
@@ -144,7 +144,7 @@ namespace mirinae {
             glm::dvec2 consumed_pos_{ 0, 0 };
         };
 
-        std::shared_ptr<mirinae::IOsIoFunctions> osio_;
+        IOsIoFunctions* osio_ = nullptr;
         std::unordered_map<key::KeyCode, ActionType> key_map_;
         std::unordered_map<ActionType, double> action_values_;
         PointerState mouse_state_;

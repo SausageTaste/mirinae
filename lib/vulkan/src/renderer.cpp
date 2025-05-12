@@ -16,6 +16,7 @@
 #include "mirinae/overlay/overlay.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/draw_set.hpp"
+#include "mirinae/render/platform_func.hpp"
 #include "mirinae/render/render_graph.hpp"
 #include "mirinae/render/renderpass.hpp"
 #include "mirinae/renderpass/builder.hpp"
@@ -1013,6 +1014,7 @@ namespace {
         )
             : device_(cinfo)
             , cosmos_(cosmos)
+            , ecinfo_(cinfo)
             , rp_res_(task_sche, device_)
             , overlay_man_(
                   init_width,
@@ -1022,7 +1024,6 @@ namespace {
                   device_
               )
             , rp_states_imgui_(device_)
-            , imgui_new_frame_(cinfo.imgui_new_frame_)
             , fbuf_width_(init_width)
             , fbuf_height_(init_height) {
             framesync_.init(device_.logi_device());
@@ -1384,7 +1385,7 @@ namespace {
             // ImGui
             {
                 ImGui_ImplVulkan_NewFrame();
-                imgui_new_frame_();
+                ecinfo_.vulkan_os_->imgui_new_frame();
                 ImGui::NewFrame();
                 // ImGui::ShowDemoWindow();
 
@@ -1519,7 +1520,7 @@ namespace {
 
         // External dependencies
         std::shared_ptr<mirinae::CosmosSimulator> cosmos_;
-        std::function<void()> imgui_new_frame_;
+        mirinae::EngineCreateInfo& ecinfo_;
 
         ::FrameSync framesync_;
         ::FlagShip flag_ship_;
