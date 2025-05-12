@@ -3,6 +3,7 @@
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_vulkan.h>
 
 #include <imgui_impl_sdl3.h>
@@ -127,7 +128,10 @@ namespace {
             return SDL_SetWindowFullscreen(window_, !fullscreen);
         }
 
-        bool set_hidden_mouse_mode(bool hidden) override { return false; }
+        bool set_hidden_mouse_mode(bool hidden) override {
+            SDL_SetWindowRelativeMouseMode(window_, hidden);
+            return true;
+        }
 
         std::optional<std::string> get_clipboard() override {
             return std::nullopt;
@@ -224,6 +228,27 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* e) {
         ke.scancode_ = e->key.scancode;
         ke.keycode_ = e->key.key;
         engine.on_key_event(ke);
+    } else if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+        mirinae::mouse::Event me;
+        me.action_ = mirinae::mouse::ActionType::down;
+        me.button_ = mirinae::mouse::ButtonCode::right;
+        me.xpos_ = e->button.x;
+        me.ypos_ = e->button.y;
+        engine.on_mouse_event(me);
+    } else if (e->type == SDL_EVENT_MOUSE_BUTTON_UP) {
+        mirinae::mouse::Event me;
+        me.action_ = mirinae::mouse::ActionType::up;
+        me.button_ = mirinae::mouse::ButtonCode::right;
+        me.xpos_ = e->button.x;
+        me.ypos_ = e->button.y;
+        engine.on_mouse_event(me);
+    } else if (e->type == SDL_EVENT_MOUSE_MOTION) {
+        mirinae::mouse::Event me;
+        me.action_ = mirinae::mouse::ActionType::move;
+        me.button_ = mirinae::mouse::ButtonCode::eoe;
+        me.xpos_ = e->button.x;
+        me.ypos_ = e->button.y;
+        engine.on_mouse_event(me);
     }
 
     return SDL_AppResult::SDL_APP_CONTINUE;
