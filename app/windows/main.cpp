@@ -24,6 +24,42 @@
 
 namespace {
 
+#ifdef SUNG_OS_LINUX
+
+    std::filesystem::path get_home_path() {
+        const char* homedir;
+        if ((homedir = getenv("HOME")) == NULL) {
+            homedir = getpwuid(getuid())->pw_dir;
+        }
+        return std::filesystem::path(homedir);
+    }
+
+#endif
+
+    std::filesystem::path get_documents_path(const char* app_name) {
+#ifdef SUNG_OS_WINDOWS
+        if (auto pPath = getenv("USERPROFILE")) {
+            auto path = std::filesystem::path(pPath) / "Documents" / app_name;
+
+            if (!std::filesystem::is_directory(path)) {
+                if (!std::filesystem::create_directories(path)) {
+                    MIRINAE_ABORT("Failed to create directory");
+                }
+            }
+
+            return path;
+        }
+        MIRINAE_ABORT("Failed to get user profile path");
+#elif defined(SUNG_OS_LINUX)
+        return ::get_home_path() / "Documents" / app_name;
+#endif
+    }
+
+}  // namespace
+
+
+namespace {
+
     constexpr uint32_t INIT_WIDTH = 1280;
     constexpr uint32_t INIT_HEIGHT = 720;
 
@@ -42,36 +78,6 @@ namespace {
         MIRINAE_ABORT("Failed to find asset path");
         return "";
     }
-
-#ifdef SUNG_OS_WINDOWS
-    std::filesystem::path get_documents_path(const char* app_name) {
-        if (auto pPath = getenv("USERPROFILE")) {
-            auto path = std::filesystem::path(pPath) / "Documents" / app_name;
-
-            if (!std::filesystem::is_directory(path)) {
-                if (!std::filesystem::create_directories(path)) {
-                    MIRINAE_ABORT("Failed to create directory");
-                }
-            }
-
-            return path;
-        }
-
-        MIRINAE_ABORT("Failed to get user profile path");
-    }
-#elif defined(SUNG_OS_LINUX)
-    std::filesystem::path get_home_path() {
-        const char* homedir;
-        if ((homedir = getenv("HOME")) == NULL) {
-            homedir = getpwuid(getuid())->pw_dir;
-        }
-        return std::filesystem::path(homedir);
-    }
-
-    std::filesystem::path get_documents_path(const char* app_name) {
-        return ::get_home_path() / "Documents" / app_name;
-    }
-#endif
 
     auto get_glfw_extensions() {
         uint32_t glfwExtensionCount = 0;
