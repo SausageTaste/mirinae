@@ -2,6 +2,7 @@
 
 #include <deque>
 
+#include <SDL3/SDL_scancode.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <spdlog/sinks/base_sink.h>
@@ -1034,7 +1035,7 @@ namespace {
         }
 
         bool on_key_event(const mirinae::key::Event& e) override {
-            if (e.key == mirinae::key::KeyCode::f) {
+            if (e.scancode_ == SDL_SCANCODE_F) {
                 auto& reg = cosmos_->reg();
                 auto& slight = reg.get<mirinae::cpnt::SLight>(flashlight_);
                 if (e.action_type == mirinae::key::ActionType::down) {
@@ -1044,7 +1045,7 @@ namespace {
                         slight.color_.intensity() = 0;
                 }
                 return true;
-            } else if (e.key == mirinae::key::KeyCode::backquote) {
+            } else if (e.scancode_ == SDL_SCANCODE_GRAVE) {
                 if (e.action_type == mirinae::key::ActionType::up)
                     imgui_main_->show_ = !imgui_main_->show_;
                 return true;

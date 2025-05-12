@@ -3,6 +3,7 @@
 #include "mirinae/overlay/text.hpp"
 
 #define STB_TRUETYPE_IMPLEMENTATION
+#include <SDL3/SDL_scancode.h>
 #include <stb_truetype.h>
 
 #include <sstream>
@@ -24,8 +25,8 @@ namespace {
 
 
     bool is_ctrl_modifier_on(const mirinae::key::EventAnalyzer& states) {
-        return states.is_pressed(mirinae::key::KeyCode::lctrl) ||
-               states.is_pressed(mirinae::key::KeyCode::rctrl);
+        return states.is_pressed(SDL_SCANCODE_LCTRL) ||
+               states.is_pressed(SDL_SCANCODE_RCTRL);
     }
 
     bool is_ctrl_modifier_on(const mirinae::key::Event& e) {
@@ -219,16 +220,15 @@ namespace mirinae {
             return true;
 
         using mirinae::key::ActionType;
-        using mirinae::key::KeyCode;
 
         if (e.action_type == ActionType::down) {
             if (::is_ctrl_modifier_on(e)) {
-                if (e.key == KeyCode::c) {
+                if (e.scancode_ == SDL_SCANCODE_C) {
                     if (osio_)
                         osio_->set_clipboard(this->make_str());
                     else
                         SPDLOG_ERROR("OsIo was not given");
-                } else if (e.key == KeyCode::v) {
+                } else if (e.scancode_ == SDL_SCANCODE_V) {
                     if (osio_) {
                         if (const auto str = osio_->get_clipboard())
                             this->add_text(str.value());
@@ -239,9 +239,9 @@ namespace mirinae {
                     }
                 }
             } else {
-                if (e.key == KeyCode::backspace) {
+                if (e.scancode_ == SDL_SCANCODE_BACKSPACE) {
                     this->remove_one_char();
-                } else if (e.key == KeyCode::enter) {
+                } else if (e.scancode_ == SDL_SCANCODE_RETURN) {
                     this->add_text('\n');
                 }
             }

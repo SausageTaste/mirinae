@@ -2,6 +2,7 @@
 
 #include "mirinae/renderer.hpp"
 
+#include <SDL3/SDL_scancode.h>
 #include <daltools/common/util.h>
 #include <entt/entity/registry.hpp>
 #include <sung/basic/time.hpp>
@@ -57,8 +58,8 @@ namespace {
         bool on_key_event(const mirinae::key::Event& e) override {
             keys_.notify(e);
 
-            if (e.key == mirinae::key::KeyCode::enter) {
-                if (keys_.is_pressed(mirinae::key::KeyCode::lalt)) {
+            if (e.scancode_ == SDL_SCANCODE_RETURN) {
+                if (keys_.is_pressed(SDL_SCANCODE_LALT)) {
                     if (e.action_type == mirinae::key::ActionType::up) {
                         device_.osio().toggle_fullscreen();
                     }

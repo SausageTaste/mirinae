@@ -1,27 +1,29 @@
 #include "mirinae/lightweight/input_proc.hpp"
 
+#include <SDL3/SDL_scancode.h>
+
 
 // InputActionMapper
 namespace mirinae {
 
     InputActionMapper::InputActionMapper() {
-        key_map_.emplace(key::KeyCode::w, ActionType::move_forward);
-        key_map_.emplace(key::KeyCode::s, ActionType::move_backward);
-        key_map_.emplace(key::KeyCode::a, ActionType::move_left);
-        key_map_.emplace(key::KeyCode::d, ActionType::move_right);
+        key_map_.emplace(SDL_SCANCODE_W, ActionType::move_forward);
+        key_map_.emplace(SDL_SCANCODE_S, ActionType::move_backward);
+        key_map_.emplace(SDL_SCANCODE_A, ActionType::move_left);
+        key_map_.emplace(SDL_SCANCODE_D, ActionType::move_right);
 
-        key_map_.emplace(key::KeyCode::up, ActionType::look_up);
-        key_map_.emplace(key::KeyCode::down, ActionType::look_down);
-        key_map_.emplace(key::KeyCode::left, ActionType::look_left);
-        key_map_.emplace(key::KeyCode::right, ActionType::look_right);
+        key_map_.emplace(SDL_SCANCODE_UP, ActionType::look_up);
+        key_map_.emplace(SDL_SCANCODE_DOWN, ActionType::look_down);
+        key_map_.emplace(SDL_SCANCODE_LEFT, ActionType::look_left);
+        key_map_.emplace(SDL_SCANCODE_RIGHT, ActionType::look_right);
 
-        key_map_.emplace(key::KeyCode::space, ActionType::translate_up);
-        key_map_.emplace(key::KeyCode::lalt, ActionType::translate_down);
-        key_map_.emplace(key::KeyCode::lshfit, ActionType::sprint);
+        key_map_.emplace(SDL_SCANCODE_SPACE, ActionType::translate_up);
+        key_map_.emplace(SDL_SCANCODE_LALT, ActionType::translate_down);
+        key_map_.emplace(SDL_SCANCODE_LSHIFT, ActionType::sprint);
     }
 
     bool InputActionMapper::on_key_event(const key::Event& e) {
-        const auto it = key_map_.find(e.key);
+        const auto it = key_map_.find(e.scancode_);
         if (it == key_map_.end())
             return false;
 

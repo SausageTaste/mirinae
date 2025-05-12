@@ -2,6 +2,7 @@
 
 #include "mirinae/overlay/overlay.hpp"
 
+#include <SDL3/SDL_scancode.h>
 #include <string_view>
 
 #include "mirinae/overlay/text.hpp"
@@ -207,10 +208,9 @@ namespace {
 
         bool on_key_event(const mirinae::key::Event& e) override {
             using mirinae::key::ActionType;
-            using mirinae::key::KeyCode;
 
             if (e.action_type == ActionType::up) {
-                if (e.key == KeyCode::backquote) {
+                if (e.scancode_ == SDL_SCANCODE_GRAVE) {
                     if (this->hidden()) {
                         this->hide(false);
                         this->set_focus(true);
@@ -226,7 +226,7 @@ namespace {
             if (hidden_)
                 return false;
 
-            if (e.key == KeyCode::enter) {
+            if (e.scancode_ == SDL_SCANCODE_RETURN) {
                 if (e.action_type == ActionType::down) {
                     auto line_edit = widgets_.find_by_type<LineEdit>();
                     const auto line = line_edit->flush_str();
@@ -269,7 +269,8 @@ namespace {
 
         bool focused() const override { return widgets_.focused(); }
 
-        void replace_output_buf(std::shared_ptr<mirinae::ITextData>& texts
+        void replace_output_buf(
+            std::shared_ptr<mirinae::ITextData>& texts
         ) override {
             if (auto tb = widgets_.find_by_type<mirinae::TextBox>())
                 tb->replace_text_buffer(texts);
@@ -348,9 +349,11 @@ namespace mirinae {
         mirinae::ITextureManager& tex_man,
         mirinae::VulkanDevice& device
     )
-        : pimpl_(std::make_unique<Impl>(
-              win_width, win_height, desclayout, tex_man, device
-          )) {}
+        : pimpl_(
+              std::make_unique<Impl>(
+                  win_width, win_height, desclayout, tex_man, device
+              )
+          ) {}
 
     OverlayManager::~OverlayManager() = default;
 

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <chrono>
+#include <map>
 #include <optional>
 
 
@@ -13,36 +14,13 @@ namespace mirinae::key {
 
     enum class ActionType { down, up };
 
-    // clang-format off
-
-    enum class KeyCode {
-        /* Alphabets */
-        a, b, c, d, e, f, g, h, i, j, k, l, m,
-        n, o, p, q, r, s, t, u, v, w, x, y, z,
-        /* Horizontal numbers */
-        n0, n1, n2, n3, n4, n5, n6, n7, n8, n9,
-        /* Misc in keyboard main area */
-        backquote, minus, equal, lbracket, rbracket, backslash, semicolon,
-        quote, comma, period, slash,
-        /* Special characters */
-        space, enter, backspace, tab,
-        /* Numpad */
-        np0, np1, np2, np3, np4, np5, np6, np7, np8, np9,
-        np_mul, np_add, np_sub, np_dot, np_div, num_enter,
-        /* No characters */
-        escape, lshfit, rshfit, lctrl, rctrl, lalt, ralt, up, down, left, right,
-        /* End Of Enum, just for calculating number of elements of Enum class */
-        eoe
-    };
-
-    // clang-format on
-
 
     // TODO: Rename this to KeyActionType.
     struct Event {
         Clock_t::time_point timepoint = Clock_t::now();
         ActionType action_type = ActionType::down;
-        KeyCode key = KeyCode::eoe;
+        int scancode_ = 0;
+        int keycode_ = 0;
         const EventAnalyzer* states_ = nullptr;
     };
 
@@ -57,38 +35,43 @@ namespace mirinae::key {
 
     public:
         void notify(const Event& e) {
-            const auto index = static_cast<size_t>(e.key);
-            if (index >= this->states.size())
-                return;
-
-            this->states[index].timepoint = e.timepoint;
-            this->states[index].pressed =
-                (e.action_type == key::ActionType::down);
+            auto& state = this->get_state(e.scancode_);
+            state.timepoint = e.timepoint;
+            state.pressed = (e.action_type == key::ActionType::down);
         }
 
-        bool is_pressed(KeyCode key) const {
-            const auto index = static_cast<size_t>(key);
-            if (index >= this->states.size())
-                return false;
-
-            return this->states[index].pressed;
+        bool is_pressed(int scancode) const {
+            if (auto state = this->try_get_state(scancode))
+                return state->pressed;
+            return false;
         }
 
-        std::optional<Clock_t::time_point> get_timepoint(KeyCode key) const {
-            const auto index = static_cast<size_t>(key);
-            if (index >= this->states.size())
-                return std::nullopt;
-
-            return this->states[index].timepoint;
+        std::optional<Clock_t::time_point> get_timepoint(int scancode) const {
+            if (auto state = this->try_get_state(scancode))
+                return state->timepoint;
+            return std::nullopt;
         }
 
     private:
-        static size_t convert_key_to_index(const KeyCode key) {
-            return static_cast<size_t>(key);
+        KeyState& get_state(int key) {
+            auto it = states_.find(key);
+            if (it != states_.end()) {
+                return it->second;
+            }
+
+            return states_.insert({ key, KeyState() }).first->second;
         }
 
-        static constexpr auto KEYSPEC_SIZE = (unsigned)(KeyCode::eoe);
-        std::array<KeyState, KEYSPEC_SIZE> states;
+        const KeyState* try_get_state(int key) const {
+            auto it = states_.find(key);
+            if (it != states_.end()) {
+                return &it->second;
+            }
+
+            return nullptr;
+        }
+
+        std::map<int, KeyState> states_;
     };
 
 }  // namespace mirinae::key

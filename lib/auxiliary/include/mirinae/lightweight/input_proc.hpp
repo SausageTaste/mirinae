@@ -145,7 +145,7 @@ namespace mirinae {
         };
 
         IOsIoFunctions* osio_ = nullptr;
-        std::unordered_map<key::KeyCode, ActionType> key_map_;
+        std::unordered_map<int, ActionType> key_map_;
         std::unordered_map<ActionType, double> action_values_;
         PointerState mouse_state_;
         PointerState* move_pointer_ = nullptr;

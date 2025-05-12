@@ -121,7 +121,11 @@ namespace {
 
         // IOsIoFunctions
 
-        bool toggle_fullscreen() override { return false; }
+        bool toggle_fullscreen() override {
+            const auto fullscreen = SDL_GetWindowFlags(window_) &
+                                    SDL_WINDOW_FULLSCREEN;
+            return SDL_SetWindowFullscreen(window_, !fullscreen);
+        }
 
         bool set_hidden_mouse_mode(bool hidden) override { return false; }
 
@@ -147,6 +151,7 @@ namespace {
     private:
         SDL_Window* window_ = nullptr;
     };
+
 
     class CombinedEngine {
 
@@ -176,6 +181,8 @@ namespace {
 
         void do_frame() { engine_->do_frame(); }
 
+        auto& engine() { return *engine_; }
+
     private:
         WindowSDL window_;
         std::unique_ptr<mirinae::IEngine> engine_;
@@ -198,9 +205,26 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 }
 
 
-SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
-    if (event->type == SDL_EVENT_QUIT)
+SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* e) {
+    if (e->type == SDL_EVENT_QUIT)
         return SDL_AppResult::SDL_APP_SUCCESS;
+
+    auto app = static_cast<::CombinedEngine*>(appstate);
+    auto& engine = app->engine();
+
+    if (e->type == SDL_EVENT_KEY_DOWN) {
+        mirinae::key::Event ke;
+        ke.action_type = mirinae::key::ActionType::down;
+        ke.scancode_ = e->key.scancode;
+        ke.keycode_ = e->key.key;
+        engine.on_key_event(ke);
+    } else if (e->type == SDL_EVENT_KEY_UP) {
+        mirinae::key::Event ke;
+        ke.action_type = mirinae::key::ActionType::up;
+        ke.scancode_ = e->key.scancode;
+        ke.keycode_ = e->key.key;
+        engine.on_key_event(ke);
+    }
 
     return SDL_AppResult::SDL_APP_CONTINUE;
 }
