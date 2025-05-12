@@ -8,6 +8,7 @@
 #include <sstream>
 
 #include <daltools/common/util.h>
+#include <fmt/ranges.h>
 #include <sung/basic/stringtool.hpp>
 
 #include "mirinae/lightweight/konsts.hpp"
@@ -1091,6 +1092,11 @@ namespace mirinae {
                 instance_factory.ext_layers_.extensions_.end(),
                 create_info.instance_extensions_.begin(),
                 create_info.instance_extensions_.end()
+            );
+
+            SPDLOG_DEBUG(
+                "Vulkan instance extensions: {}",
+                fmt::join(instance_factory.ext_layers_.extensions_, ", ")
             );
 
             instance_.init(instance_factory);
