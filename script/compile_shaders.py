@@ -93,7 +93,13 @@ def __compile_one(file_path):
 
     cmd = f'{COMPILER_PATH} "{file_path}" -o "{output_path}"'
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    return 0 == os.system(cmd)
+    if 0 != os.system(cmd):
+        return False
+
+    if 0 != os.system(f'spirv-opt -Os --strip-debug "{output_path}" -o "{output_path}"'):
+        return False
+
+    return True
 
 
 def main():
