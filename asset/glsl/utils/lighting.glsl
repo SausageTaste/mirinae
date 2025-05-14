@@ -160,3 +160,17 @@ float get_dither_value() {
     const int j = int(gl_FragCoord.y) % 4;
     return dither_pattern[4 * i + j];
 }
+
+
+vec3 calc_frag_pos(float depth, vec2 uv, mat4 proj_inv) {
+    vec4 clip_pos = vec4(uv * 2 - 1, depth, 1);
+    vec4 frag_pos = proj_inv * clip_pos;
+    frag_pos /= frag_pos.w;
+    return frag_pos.xyz;
+}
+
+
+float calc_depth(vec3 frag_pos_v, mat4 proj_mat) {
+    const vec4 clip_pos = proj_mat * vec4(frag_pos_v, 1);
+    return clip_pos.z / clip_pos.w;
+}

@@ -31,20 +31,6 @@ layout (push_constant) uniform U_CompoSlightPushConst {
 } u_pc;
 
 
-vec3 calc_frag_pos(float depth) {
-    vec4 clip_pos = vec4(v_uv_coord * 2 - 1, depth, 1);
-    vec4 frag_pos = u_main.proj_inv * clip_pos;
-    frag_pos /= frag_pos.w;
-    return frag_pos.xyz;
-}
-
-
-float calc_depth(vec3 frag_pos_v) {
-    const vec4 clip_pos = u_main.proj * vec4(frag_pos_v, 1);
-    return clip_pos.z / clip_pos.w;
-}
-
-
 vec3 make_shadow_texco(const vec3 frag_pos_v) {
     const vec4 frag_pos_in_dlight = u_pc.light_mat * vec4(frag_pos_v, 1);
     const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
@@ -59,7 +45,7 @@ void main() {
     const vec4 normal_texel = texture(u_normal_map, v_uv_coord);
     const vec4 material_texel = texture(u_material_map, v_uv_coord);
 
-    const vec3 frag_pos = calc_frag_pos(depth_texel);
+    const vec3 frag_pos = calc_frag_pos(depth_texel, v_uv_coord, u_main.proj_inv);
     const vec3 albedo = albedo_texel.rgb;
     const vec3 normal = normalize(normal_texel.xyz * 2 - 1);
     const float roughness = material_texel.y;

@@ -41,23 +41,6 @@ layout(set = 1, binding = 2) uniform sampler2D u_normal_map;
 layout(set = 1, binding = 3) uniform sampler2D u_orm_map;
 
 
-float calc_depth(vec3 frag_pos_v) {
-    const vec4 clip_pos = u_main.proj * vec4(frag_pos_v, 1);
-    return clip_pos.z / clip_pos.w;
-}
-
-
-uint select_cascade(float depth) {
-    for (uint i = 0; i < 3; ++i) {
-        if (u_main.dlight_cascade_depths[i] < depth) {
-            return i;
-        }
-    }
-
-    return 3;
-}
-
-
 vec3 make_shadow_texco(const vec3 frag_pos_v, const uint selected_cascade) {
     const vec4 frag_pos_in_dlight = u_main.dlight_mats[selected_cascade] * vec4(frag_pos_v, 1);
     const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
@@ -144,8 +127,8 @@ void main() {
         for (int i = 0; i < SAMPLE_COUNT; ++i) {
             const float sample_factor = float(i + 0.5) * dither_value;
             const vec3 sample_pos = frag_pos + vec_step * sample_factor;
-            const float sample_depth = calc_depth(sample_pos);
-            const uint selected_dlight = select_cascade(sample_depth);
+            const float sample_depth = calc_depth(sample_pos, u_main.proj);
+            const uint selected_dlight = select_cascade(sample_depth, u_main.dlight_cascade_depths);
             const vec3 texco = make_shadow_texco(sample_pos, selected_dlight);
             const float lit = texture(u_dlight_shadow_maps[0], texco);
             light += u_main.dlight_color.rgb * (dlight_factor * lit);
@@ -154,7 +137,7 @@ void main() {
 
     // Directional light
     {
-        const uint selected_dlight = select_cascade(depth);
+        const uint selected_dlight = select_cascade(depth, u_main.dlight_cascade_depths);
         const vec3 texco = make_shadow_texco(frag_pos, selected_dlight);
         const float lit = texture(u_dlight_shadow_maps[0], texco);
 

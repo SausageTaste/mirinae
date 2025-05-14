@@ -1,6 +1,7 @@
 #version 450
 
 #include "../utils/lighting.glsl"
+#include "../utils/shadow.glsl"
 
 layout (location = 0) in vec2 v_uv_coord;
 
@@ -31,36 +32,6 @@ layout (set = 1, binding = 1) uniform U_CompoDlightShadowMap {
 } ubuf_sh;
 
 
-const vec2 CASCADE_OFFSETS[4] = vec2[](
-    vec2(0, 0), vec2(0.5, 0), vec2(0, 0.5), vec2(0.5, 0.5)
-);
-
-
-vec3 calc_frag_pos(float depth) {
-    vec4 clip_pos = vec4(v_uv_coord * 2 - 1, depth, 1);
-    vec4 frag_pos = u_main.proj_inv * clip_pos;
-    frag_pos /= frag_pos.w;
-    return frag_pos.xyz;
-}
-
-
-float calc_depth(vec3 frag_pos_v) {
-    const vec4 clip_pos = u_main.proj * vec4(frag_pos_v, 1);
-    return clip_pos.z / clip_pos.w;
-}
-
-
-uint select_cascade(float depth) {
-    for (uint i = 0; i < 3; ++i) {
-        if (ubuf_sh.cascade_depths[i] < depth) {
-            return i;
-        }
-    }
-
-    return 3;
-}
-
-
 vec3 make_shadow_texco(const vec3 frag_pos_v, const uint selected_cascade) {
     const vec4 frag_pos_in_dlight = ubuf_sh.light_mats[selected_cascade] * vec4(frag_pos_v, 1);
     const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
@@ -75,7 +46,7 @@ void main() {
     const vec4 normal_texel = texture(u_normal_map, v_uv_coord);
     const vec4 material_texel = texture(u_material_map, v_uv_coord);
 
-    const vec3 frag_pos = calc_frag_pos(depth_texel);
+    const vec3 frag_pos = calc_frag_pos(depth_texel, v_uv_coord, u_main.proj_inv);
     const vec3 albedo = albedo_texel.rgb;
     const vec3 normal = normalize(normal_texel.xyz * 2 - 1);
     const float roughness = material_texel.y;
@@ -104,8 +75,8 @@ void main() {
         for (int i = 0; i < SAMPLE_COUNT; ++i) {
             const float sample_factor = float(i + 0.5) * dither_value;
             const vec3 sample_pos = frag_pos + vec_step * sample_factor;
-            const float sample_depth = calc_depth(sample_pos);
-            const uint selected_dlight = select_cascade(sample_depth);
+            const float sample_depth = calc_depth(sample_pos, u_main.proj);
+            const uint selected_dlight = select_cascade(sample_depth, ubuf_sh.cascade_depths);
             const vec3 texco = make_shadow_texco(sample_pos, selected_dlight);
             const float lit = texture(u_shadow_map, texco);
             light += ubuf_sh.dlight_color.rgb * (dlight_factor * lit);
@@ -114,7 +85,7 @@ void main() {
 
     // Directional light
     {
-        const uint selected_dlight = select_cascade(depth_texel);
+        const uint selected_dlight = select_cascade(depth_texel, ubuf_sh.cascade_depths);
         const vec3 texco = make_shadow_texco(frag_pos, selected_dlight);
         const float lit = texture(u_shadow_map, texco);
 

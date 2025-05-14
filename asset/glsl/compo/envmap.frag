@@ -24,14 +24,6 @@ layout (push_constant) uniform U_CompoEnvmapPushConst {
 } u_pc;
 
 
-vec3 calc_frag_pos(float depth) {
-    vec4 clip_pos = vec4(v_uv_coord * 2 - 1, depth, 1);
-    vec4 frag_pos = u_pc.proj_inv * clip_pos;
-    frag_pos /= frag_pos.w;
-    return frag_pos.xyz;
-}
-
-
 vec3 ibl(
     const vec3 normal,
     const vec3 view_direc,
@@ -70,7 +62,7 @@ void main() {
     const vec4 normal_texel = texture(u_normal_map, v_uv_coord);
     const vec4 material_texel = texture(u_material_map, v_uv_coord);
 
-    const vec3 frag_pos = calc_frag_pos(depth_texel);
+    const vec3 frag_pos = calc_frag_pos(depth_texel, v_uv_coord, u_pc.proj_inv);
     const vec3 albedo = albedo_texel.rgb;
     const vec3 normal = normalize(normal_texel.xyz * 2 - 1);
     const float roughness = material_texel.y;

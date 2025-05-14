@@ -4,6 +4,17 @@ const vec2 CASCADE_OFFSETS[4] = vec2[](
 );
 
 
+uint select_cascade(float depth, vec4 cascade_depths) {
+    for (uint i = 0; i < 3; ++i) {
+        if (cascade_depths[i] < depth) {
+            return i;
+        }
+    }
+
+    return 3;
+}
+
+
 float how_much_not_in_shadow_pcf_bilinear(const vec3 world_pos, const mat4 light_mat, sampler2D depth_map) {
     const vec4 frag_pos_in_dlight = light_mat * vec4(world_pos, 1);
     const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
