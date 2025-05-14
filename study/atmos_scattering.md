@@ -70,4 +70,33 @@ $$T(\textbf{x}, \textbf{x}_o) = exp( -\int_{\textbf{x}}^{\textbf{x}_o} \sum_{i \
 
 $$\mathcal{I}[L](\textbf{x}_o, \textbf{s}) = \frac{\alpha(\textbf{x}_o)}{\pi} \int_{2\pi} L(\textbf{x}_o, \omega, \textbf{s})\omega.\mathbf{n}(\mathbf{x}_o)d\omega$$
 
-or 0.
+$\mathcal{I}$ is null on the top of atmosphere.
+
+### Radiance of light scattered at $y$ in direction $-v$
+
+$$\mathcal{J}[L](y, v, s) = \int_{4pi}
+ \sum_{i} \beta^S_i(y) \ ... $$
+
+### Light reflected at x_o and attenuated before reaching x
+
+$$\mathcal{R}[L](\textbf{x}, \textbf{v}, \textbf{s}) = T(\textbf{x}, \textbf{x}_o) \mathcal{I}[L] (\textbf{x}_o,\textbf{s})$$
+
+### Inscattered light
+
+$$\mathcal{S}[L](\textbf{x}, \textbf{v}, \textbf{s})$$
+
+The light scattered towards x between x and x_o
+
+### Direct sunlight attenuated before reaching $x$ by $T$
+
+$$L_0(\textbf{x}, \textbf{v}, \textbf{s}) = T(\textbf{x}, \textbf{x}_o)L_{sun}, \ or \ 0$$
+
+It's $0$ if $\textbf{v} \neq \textbf{s}$.
+
+### Rendering equation
+
+$$L(\textbf{x}, \textbf{v}, \textbf{s}) = (L_0 + \mathcal{R}[L] + \mathcal{s}[L])(\textbf{x}, \textbf{v}, \textbf{s})$$
+
+Ignoring multiple scattering results in following
+
+$$L = L_0 + \mathcal{R}[L_0] + \mathcal{s}[L_0]$$
