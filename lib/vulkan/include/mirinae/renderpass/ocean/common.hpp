@@ -26,10 +26,4 @@ namespace mirinae {
 
     const cpnt::Ocean* find_ocean_cpnt(const entt::registry& reg);
 
-    VkPipeline create_compute_pipeline(
-        const std::filesystem::path& spv_path,
-        const VkPipelineLayout pipeline_layout,
-        mirinae::VulkanDevice& device
-    );
-
 }  // namespace mirinae

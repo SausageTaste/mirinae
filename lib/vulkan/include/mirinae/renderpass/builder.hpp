@@ -446,4 +446,11 @@ namespace mirinae {
         VkShaderStageFlags pc_stage_flags_ = 0;
     };
 
+
+    VkPipeline create_compute_pipeline(
+        const std::filesystem::path& spv_path,
+        const VkPipelineLayout pipeline_layout,
+        VulkanDevice& device
+    );
+
 }  // namespace mirinae
