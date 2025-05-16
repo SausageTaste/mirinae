@@ -267,6 +267,20 @@ namespace mirinae {
         return *this;
     }
 
+    ImageCreateInfo& ImageCreateInfo::set_dim3(
+        uint32_t x, uint32_t y, uint32_t z
+    ) {
+        info_.extent.width = x;
+        info_.extent.height = y;
+        info_.extent.depth = z;
+        return *this;
+    }
+
+    ImageCreateInfo& ImageCreateInfo::set_type(VkImageType type) {
+        info_.imageType = type;
+        return *this;
+    }
+
     ImageCreateInfo& ImageCreateInfo::set_format(VkFormat format) {
         info_.format = format;
         return *this;

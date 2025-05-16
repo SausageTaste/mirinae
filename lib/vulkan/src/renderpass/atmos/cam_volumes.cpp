@@ -15,10 +15,10 @@ namespace {
     constexpr int32_t TEX_RES = 32;
 
 
-    class U_AtmosMultiScatPushConst {
+    class U_AtmosCamVolPushConst {
 
     public:
-        U_AtmosMultiScatPushConst& pv_inv(const glm::mat4& x) {
+        U_AtmosCamVolPushConst& pv_inv(const glm::mat4& x) {
             pv_inv_ = x;
             return *this;
         }
@@ -32,6 +32,7 @@ namespace {
     struct FrameData {
         mirinae::HRpImage trans_lut_;
         mirinae::HRpImage multi_scat_;
+        mirinae::HRpImage cam_vol_;
         VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
@@ -101,7 +102,7 @@ namespace {
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
-            ::U_AtmosMultiScatPushConst pc;
+            ::U_AtmosCamVolPushConst pc;
             pc.pv_inv(glm::inverse(ctxt.main_cam_.pv()));
 
             mirinae::PushConstInfo{}
@@ -109,17 +110,7 @@ namespace {
                 .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .record(cmdbuf, pc);
 
-            vkCmdDispatch(cmdbuf, ::TEX_RES, ::TEX_RES, 1);
-
-            mirinae::ImageMemoryBarrier{}
-                .image(fd.multi_scat_->img_.image())
-                .set_src_access(VK_ACCESS_SHADER_WRITE_BIT)
-                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
-                .old_layout(VK_IMAGE_LAYOUT_GENERAL)
-                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .set_signle_mip_layer();
-
+            vkCmdDispatch(cmdbuf, ::TEX_RES, ::TEX_RES, ::TEX_RES);
             return true;
         }
 
@@ -192,20 +183,22 @@ namespace {
             // Storage images
             {
                 mirinae::ImageCreateInfo cinfo;
-                cinfo.set_dimensions(::TEX_RES, ::TEX_RES)
+                cinfo.set_dim3(::TEX_RES, ::TEX_RES, ::TEX_RES)
+                    .set_type(VK_IMAGE_TYPE_3D)
                     .set_format(VK_FORMAT_R16G16B16A16_SFLOAT)
                     .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
                     .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
 
                 mirinae::ImageViewBuilder builder;
                 builder.format(cinfo.format())
+                    .view_type(VK_IMAGE_VIEW_TYPE_3D)
                     .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
 
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                    const auto img_name = fmt::format("multi_scat_f#{}", i);
+                    const auto img_name = fmt::format("cam_vol_f#{}", i);
                     auto img = rp_res.ren_img_.new_img(img_name, name_s());
                     img->img_.init(cinfo.get(), device.mem_alloc());
-                    frame_data_.at(i).multi_scat_ = img;
+                    frame_data_.at(i).cam_vol_ = img;
 
                     builder.image(img->img_.image());
                     img->view_.reset(builder, device);
@@ -227,7 +220,7 @@ namespace {
                 cmd_pool.init(device);
                 auto cmdbuf = cmd_pool.begin_single_time(device);
                 for (auto& fd : frame_data_) {
-                    barrier.image(fd.multi_scat_->img_.image());
+                    barrier.image(fd.cam_vol_->img_.image());
                     barrier.record_single(
                         cmdbuf,
                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -244,6 +237,10 @@ namespace {
                 fd.trans_lut_ = rp_res.ren_img_.get_img_reader(
                     fmt::format("atmos trans LUT:trans_lut_f#{}", i), name_s()
                 );
+                fd.multi_scat_ = rp_res.ren_img_.get_img_reader(
+                    fmt::format("multi scattering CS:multi_scat_f#{}", i),
+                    name_s()
+                );
                 MIRINAE_ASSERT(fd.trans_lut_ != nullptr);
             }
 
@@ -255,7 +252,8 @@ namespace {
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(1)
                     .finish_binding();
-                builder.add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);
+                builder.add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1)
+                    .add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);
                 rp_res.desclays_.add(builder, device.logi_device());
             }
 
@@ -280,13 +278,18 @@ namespace {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
-                    writer.add_storage_img_info(fd.multi_scat_->view_.get())
+                    writer.add_storage_img_info(fd.cam_vol_->view_.get())
                         .add_storage_img_write(fd.desc_set_, 0);
                     writer.add_img_info()
                         .set_img_view(fd.trans_lut_->view_.get())
                         .set_sampler(device.samplers().get_cubemap())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 1);
+                    writer.add_img_info()
+                        .set_img_view(fd.multi_scat_->view_.get())
+                        .set_sampler(device.samplers().get_cubemap())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 2);
                 }
                 writer.apply_all(device.logi_device());
             }
@@ -295,12 +298,12 @@ namespace {
             {
                 mirinae::PipelineLayoutBuilder{}
                     .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .pc<U_AtmosMultiScatPushConst>()
+                    .pc<U_AtmosCamVolPushConst>()
                     .desc(layout.layout())
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/atmos_multi_scat_comp.spv", pipe_layout_, device
+                    ":asset/spv/atmos_cam_volume_comp.spv", pipe_layout_, device
                 );
             }
 
@@ -311,6 +314,7 @@ namespace {
             for (auto& fd : frame_data_) {
                 rp_res_.ren_img_.free_img(fd.trans_lut_->id(), name_s());
                 rp_res_.ren_img_.free_img(fd.multi_scat_->id(), name_s());
+                rp_res_.ren_img_.free_img(fd.cam_vol_->id(), name_s());
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
@@ -319,7 +323,7 @@ namespace {
             pipe_layout_.destroy(device_);
         }
 
-        std::string_view name() const override { return "multi scattering CS"; }
+        std::string_view name() const override { return "atmos cam volume"; }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<::RpTask>();
@@ -348,9 +352,7 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_rp_atmos_multi_scat(
-        RpCreateBundle& bundle
-    ) {
+    std::unique_ptr<IRpBase> create_rp_atmos_cam_vol(RpCreateBundle& bundle) {
         return std::make_unique<RpStates>(
             bundle.cosmos_, bundle.rp_res_, bundle.device_
         );

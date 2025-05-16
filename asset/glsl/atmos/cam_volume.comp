@@ -1,0 +1,30 @@
+#version 450
+
+#include "../utils/konst.glsl"
+#include "data.glsl"
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout (binding = 0, rgba16f) uniform writeonly image3D out_image;
+
+layout (set = 0, binding = 1) uniform sampler2D u_trans_lut;
+layout (set = 0, binding = 2) uniform sampler2D u_multi_scat;
+
+
+
+layout (push_constant) uniform U_AtmosMultiScatPushConst {
+    mat4 pv_inv;
+    int output_res;
+} u_pc;
+
+
+void main() {
+    const ivec3 xyz = ivec3(gl_GlobalInvocationID.xyz);
+    const vec2 uv1 = vec2(gl_GlobalInvocationID.xy) / 32.0;
+    const vec2 uv2 = vec2(gl_GlobalInvocationID.yz) / 32.0;
+
+    imageStore(out_image, xyz, vec4(
+        vec3(gl_GlobalInvocationID.xyz) / 32.0 + texture(u_trans_lut, uv1).xyz * texture(u_multi_scat, uv2).xyz,
+        1.
+    ));
+}

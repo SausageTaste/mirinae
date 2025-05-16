@@ -1122,6 +1122,10 @@ namespace {
                 );
 
                 render_passes_.push_back(
+                    mirinae::rp::create_rp_atmos_cam_vol(cbundle)
+                );
+
+                render_passes_.push_back(
                     mirinae::rp::create_rp_ocean_h0(cbundle)
                 );
 

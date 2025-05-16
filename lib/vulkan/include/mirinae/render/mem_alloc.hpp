@@ -117,6 +117,8 @@ namespace mirinae {
             return this->set_dimensions(len, len);
         }
         ImageCreateInfo& set_dimensions(uint32_t width, uint32_t height);
+        ImageCreateInfo& set_dim3(uint32_t x, uint32_t y, uint32_t z);
+        ImageCreateInfo& set_type(VkImageType type);
         ImageCreateInfo& set_format(VkFormat format);
         ImageCreateInfo& set_arr_layers(uint32_t arr_layers);
 
