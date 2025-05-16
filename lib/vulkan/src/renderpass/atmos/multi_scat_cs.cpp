@@ -12,8 +12,7 @@
 
 namespace {
 
-    constexpr int32_t TEX_WIDTH = 32;
-    constexpr int32_t TEX_HEIGHT = 32;
+    constexpr int32_t TEX_RES = 32;
 
 
     class U_AtmosMultiScatPushConst {
@@ -26,8 +25,7 @@ namespace {
 
     private:
         glm::mat4 pv_inv_;
-        int32_t output_width_ = TEX_WIDTH;
-        int32_t output_height_ = TEX_HEIGHT;
+        int32_t output_res_ = TEX_RES;
     };
 
 
@@ -111,7 +109,7 @@ namespace {
                 .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .record(cmdbuf, pc);
 
-            vkCmdDispatch(cmdbuf, ::TEX_WIDTH, ::TEX_HEIGHT, 1);
+            vkCmdDispatch(cmdbuf, ::TEX_RES, ::TEX_RES, 1);
             return true;
         }
 
@@ -184,7 +182,7 @@ namespace {
             // Storage images
             {
                 mirinae::ImageCreateInfo cinfo;
-                cinfo.set_dimensions(::TEX_WIDTH, ::TEX_HEIGHT)
+                cinfo.set_dimensions(::TEX_RES, ::TEX_RES)
                     .set_format(VK_FORMAT_R16G16B16A16_SFLOAT)
                     .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
                     .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
@@ -276,7 +274,7 @@ namespace {
                         .add_storage_img_write(fd.desc_set_, 0);
                     writer.add_img_info()
                         .set_img_view(fd.trans_lut_->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device.samplers().get_cubemap())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 1);
                 }
