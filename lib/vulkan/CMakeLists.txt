@@ -17,6 +17,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkmajorplayers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/trans_lut.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/builder.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/dlight.cpp

@@ -20,6 +20,7 @@
 #include "mirinae/render/platform_func.hpp"
 #include "mirinae/render/render_graph.hpp"
 #include "mirinae/render/renderpass.hpp"
+#include "mirinae/renderpass/atmos/sky.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/compo.hpp"
 #include "mirinae/renderpass/envmap/envmap.hpp"
@@ -1111,6 +1112,10 @@ namespace {
                 );
 
                 mirinae::RpCreateBundle cbundle{ *cosmos_, rp_res_, device_ };
+
+                render_passes_.push_back(
+                    mirinae::rp::create_rp_atmos_trans_lut(cbundle)
+                );
 
                 render_passes_.push_back(
                     mirinae::rp::create_rp_ocean_h0(cbundle)
