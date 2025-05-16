@@ -12,27 +12,28 @@
 
 namespace {
 
-    constexpr int32_t LUT_WIDTH = 256;
-    constexpr int32_t LUT_HEIGHT = 64;
+    constexpr int32_t TEX_WIDTH = 32;
+    constexpr int32_t TEX_HEIGHT = 32;
 
 
-    class U_AtmosTransLutPushConst {
+    class U_AtmosMultiScatPushConst {
 
     public:
-        U_AtmosTransLutPushConst& pv_inv(const glm::mat4& x) {
+        U_AtmosMultiScatPushConst& pv_inv(const glm::mat4& x) {
             pv_inv_ = x;
             return *this;
         }
 
     private:
         glm::mat4 pv_inv_;
-        int32_t output_width_ = LUT_WIDTH;
-        int32_t output_height_ = LUT_HEIGHT;
+        int32_t output_width_ = TEX_WIDTH;
+        int32_t output_height_ = TEX_HEIGHT;
     };
 
 
     struct FrameData {
         mirinae::HRpImage trans_lut_;
+        mirinae::HRpImage multi_scat_;
         VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
@@ -102,7 +103,7 @@ namespace {
                 .add(fd.desc_set_)
                 .record(cmdbuf);
 
-            ::U_AtmosTransLutPushConst pc;
+            ::U_AtmosMultiScatPushConst pc;
             pc.pv_inv(glm::inverse(ctxt.main_cam_.pv()));
 
             mirinae::PushConstInfo{}
@@ -110,17 +111,7 @@ namespace {
                 .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .record(cmdbuf, pc);
 
-            vkCmdDispatch(cmdbuf, ::LUT_WIDTH / 16, ::LUT_HEIGHT / 16, 1);
-
-            mirinae::ImageMemoryBarrier{}
-                .image(fd.trans_lut_->img_.image())
-                .set_src_access(VK_ACCESS_SHADER_WRITE_BIT)
-                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
-                .old_layout(VK_IMAGE_LAYOUT_GENERAL)
-                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .set_signle_mip_layer();
-
+            vkCmdDispatch(cmdbuf, ::TEX_WIDTH, ::TEX_HEIGHT, 1);
             return true;
         }
 
@@ -151,7 +142,7 @@ namespace {
             record_tasks_.init(reg, rp, frame_data, cmd_pool, device);
         }
 
-        std::string_view name() const override { return "atmos trans LUT"; }
+        std::string_view name() const override { return "multi scattering CS"; }
 
         void prepare(const mirinae::RpCtxt& ctxt) override {
             record_tasks_.prepare(ctxt);
@@ -193,7 +184,7 @@ namespace {
             // Storage images
             {
                 mirinae::ImageCreateInfo cinfo;
-                cinfo.set_dimensions(256, 64)
+                cinfo.set_dimensions(::TEX_WIDTH, ::TEX_HEIGHT)
                     .set_format(VK_FORMAT_R16G16B16A16_SFLOAT)
                     .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
                     .add_usage(VK_IMAGE_USAGE_STORAGE_BIT);
@@ -203,10 +194,10 @@ namespace {
                     .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
 
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                    const auto img_name = fmt::format("trans_lut_f#{}", i);
+                    const auto img_name = fmt::format("multi_scat_f#{}", i);
                     auto img = rp_res.ren_img_.new_img(img_name, name_s());
                     img->img_.init(cinfo.get(), device.mem_alloc());
-                    frame_data_.at(i).trans_lut_ = img;
+                    frame_data_.at(i).multi_scat_ = img;
 
                     builder.image(img->img_.image());
                     img->view_.reset(builder, device);
@@ -228,7 +219,7 @@ namespace {
                 cmd_pool.init(device);
                 auto cmdbuf = cmd_pool.begin_single_time(device);
                 for (auto& fd : frame_data_) {
-                    barrier.image(fd.trans_lut_->img_.image());
+                    barrier.image(fd.multi_scat_->img_.image());
                     barrier.record_single(
                         cmdbuf,
                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -239,6 +230,15 @@ namespace {
                 cmd_pool.destroy(device.logi_device());
             }
 
+            // Reference image
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& fd = frame_data_[i];
+                fd.trans_lut_ = rp_res.ren_img_.get_img_reader(
+                    fmt::format("atmos trans LUT:trans_lut_f#{}", i), name_s()
+                );
+                MIRINAE_ASSERT(fd.trans_lut_ != nullptr);
+            }
+
             // Desc layouts
             {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
@@ -247,6 +247,7 @@ namespace {
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(1)
                     .finish_binding();
+                builder.add_img(VK_SHADER_STAGE_COMPUTE_BIT, 1);
                 rp_res.desclays_.add(builder, device.logi_device());
             }
 
@@ -271,8 +272,13 @@ namespace {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
-                    writer.add_storage_img_info(fd.trans_lut_->view_.get())
+                    writer.add_storage_img_info(fd.multi_scat_->view_.get())
                         .add_storage_img_write(fd.desc_set_, 0);
+                    writer.add_img_info()
+                        .set_img_view(fd.trans_lut_->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 1);
                 }
                 writer.apply_all(device.logi_device());
             }
@@ -281,22 +287,22 @@ namespace {
             {
                 mirinae::PipelineLayoutBuilder{}
                     .add_stage_flags(VK_SHADER_STAGE_COMPUTE_BIT)
-                    .pc<U_AtmosTransLutPushConst>()
+                    .pc<U_AtmosMultiScatPushConst>()
                     .desc(layout.layout())
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/atmos_trans_lut_comp.spv", pipe_layout_, device
+                    ":asset/spv/atmos_multi_scat_comp.spv", pipe_layout_, device
                 );
             }
 
             cmd_pool.destroy(device.logi_device());
-            return;
         }
 
         ~RpStates() override {
             for (auto& fd : frame_data_) {
                 rp_res_.ren_img_.free_img(fd.trans_lut_->id(), name_s());
+                rp_res_.ren_img_.free_img(fd.multi_scat_->id(), name_s());
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
 
@@ -305,7 +311,7 @@ namespace {
             pipe_layout_.destroy(device_);
         }
 
-        std::string_view name() const override { return "atmos trans LUT"; }
+        std::string_view name() const override { return "multi scattering CS"; }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<::RpTask>();
@@ -327,8 +333,6 @@ namespace {
         mirinae::DescPool desc_pool_;
         mirinae::RpPipeline pipeline_;
         mirinae::RpPipeLayout pipe_layout_;
-
-        sung::MonotonicRealtimeTimer timer_;
     };
 
 }  // namespace
@@ -336,7 +340,9 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_rp_atmos_trans_lut(RpCreateBundle& bundle) {
+    std::unique_ptr<IRpBase> create_rp_atmos_multi_scat(
+        RpCreateBundle& bundle
+    ) {
         return std::make_unique<RpStates>(
             bundle.cosmos_, bundle.rp_res_, bundle.device_
         );
