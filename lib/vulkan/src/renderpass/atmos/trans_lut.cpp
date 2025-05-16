@@ -19,7 +19,15 @@ namespace {
     class U_AtmosTransLutPushConst {
 
     public:
-        int32_t dummy_ = 0;
+        U_AtmosTransLutPushConst& pv_inv(const glm::mat4& x) {
+            pv_inv_ = x;
+            return *this;
+        }
+
+    private:
+        glm::mat4 pv_inv_;
+        int32_t output_width_ = LUT_WIDTH;
+        int32_t output_height_ = LUT_HEIGHT;
     };
 
 
@@ -95,7 +103,7 @@ namespace {
                 .record(cmdbuf);
 
             ::U_AtmosTransLutPushConst pc;
-            pc.dummy_ = 0;
+            pc.pv_inv(glm::inverse(ctxt.main_cam_.pv()));
 
             mirinae::PushConstInfo{}
                 .layout(rp.pipe_layout())
