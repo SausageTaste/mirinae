@@ -1122,6 +1122,10 @@ namespace {
                 );
 
                 render_passes_.push_back(
+                    mirinae::rp::create_rp_sky_view_lut(cbundle)
+                );
+
+                render_passes_.push_back(
                     mirinae::rp::create_rp_atmos_cam_vol(cbundle)
                 );
 
