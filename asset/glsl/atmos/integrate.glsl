@@ -45,6 +45,11 @@ vec2 LutTransmittanceParamsToUv(AtmosphereParameters Atmosphere, float viewHeigh
 
 float fromUnitToSubUvs(float u, float resolution) { return (u + 0.5 / resolution) * (resolution / (resolution + 1.0)); }
 
+float fromSubUvsToUnit(float u, float resolution) {
+    return (u - 0.5 / resolution) * (resolution / (resolution - 1.0));
+}
+
+
 vec3 GetMultipleScattering(AtmosphereParameters Atmosphere, sampler2D multi_scat, vec3 scattering, vec3 extinction, vec3 worlPos, float viewZenithCosAngle) {
     vec2 uv = saturate(vec2(viewZenithCosAngle*0.5 + 0.5, (length(worlPos) - Atmosphere.BottomRadius) / (Atmosphere.TopRadius - Atmosphere.BottomRadius)));
     uv = vec2(fromUnitToSubUvs(uv.x, 32), fromUnitToSubUvs(uv.y, 32));
@@ -84,6 +89,26 @@ float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR) {
         return max(0.0, sol0);
     }
     return max(0.0, min(sol0, sol1));
+}
+
+bool MoveToTopAtmosphere(inout vec3 WorldPos, vec3 WorldDir, float AtmosphereTopRadius) {
+    float viewHeight = length(WorldPos);
+    if (viewHeight > AtmosphereTopRadius)
+    {
+        float tTop = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0, 0.0, 0.0), AtmosphereTopRadius);
+        if (tTop >= 0.0)
+        {
+            vec3 UpVector = WorldPos / viewHeight;
+            vec3 UpOffset = UpVector * -PLANET_RADIUS_OFFSET;
+            WorldPos = WorldPos + WorldDir * tTop + UpOffset;
+        }
+        else
+        {
+            // Ray is not intersecting the atmosphere
+            return false;
+        }
+    }
+    return true; // ok to start tracing
 }
 
 struct MediumSampleRGB {

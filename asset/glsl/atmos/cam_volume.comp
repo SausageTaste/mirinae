@@ -31,26 +31,6 @@ float AerialPerspectiveSliceToDepth(float slice) {
 }
 
 
-bool MoveToTopAtmosphere(inout vec3 WorldPos, vec3 WorldDir, float AtmosphereTopRadius) {
-    float viewHeight = length(WorldPos);
-    if (viewHeight > AtmosphereTopRadius)
-    {
-        float tTop = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0, 0.0, 0.0), AtmosphereTopRadius);
-        if (tTop >= 0.0)
-        {
-            vec3 UpVector = WorldPos / viewHeight;
-            vec3 UpOffset = UpVector * -PLANET_RADIUS_OFFSET;
-            WorldPos = WorldPos + WorldDir * tTop + UpOffset;
-        }
-        else
-        {
-            // Ray is not intersecting the atmosphere
-            return false;
-        }
-    }
-    return true; // ok to start tracing
-}
-
 
 vec4 gen_texel() {
     const int sliceId = int(gl_GlobalInvocationID.z);

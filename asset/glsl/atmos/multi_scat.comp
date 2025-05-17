@@ -23,13 +23,6 @@ layout (push_constant) uniform U_AtmosMultiScatPushConst {
 } u_pc;
 
 
-float fromSubUvsToUnit(float u, float resolution) {
-    return (u - 0.5 / resolution) * (resolution / (resolution - 1.0));
-}
-
-
-
-
 void UvToLutTransmittanceParams(AtmosphereParameters Atmosphere, out float viewHeight, out float viewZenithCosAngle, vec2 uv) {
     //uv = vec2(fromSubUvsToUnit(uv.x, TRANSMITTANCE_TEXTURE_WIDTH), fromSubUvsToUnit(uv.y, TRANSMITTANCE_TEXTURE_HEIGHT)); // No real impact so off
     float x_mu = uv.x;
