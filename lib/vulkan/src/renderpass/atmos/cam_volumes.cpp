@@ -3,6 +3,8 @@
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/light.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
@@ -18,14 +20,11 @@ namespace {
     class U_AtmosCamVolPushConst {
 
     public:
-        U_AtmosCamVolPushConst& pv_inv(const glm::mat4& x) {
-            pv_inv_ = x;
-            return *this;
-        }
-
-    private:
         glm::mat4 pv_inv_;
-        int32_t output_res_ = TEX_RES;
+        glm::mat4 proj_inv_;
+        glm::mat4 view_inv_;
+        glm::vec4 sun_direction_;
+        glm::vec4 view_pos_;
     };
 
 
@@ -80,13 +79,14 @@ namespace {
                 return;
 
             mirinae::begin_cmdbuf(cmdbuf_);
-            this->record(cmdbuf_, *frame_data_, *rp_, *ctxt_);
+            this->record(cmdbuf_, *frame_data_, *reg_, *rp_, *ctxt_);
             mirinae::end_cmdbuf(cmdbuf_);
         }
 
         static bool record(
             const VkCommandBuffer cmdbuf,
             const ::FrameDataArr& frame_data,
+            const entt::registry& reg,
             const mirinae::IPipelinePair& rp,
             const mirinae::RpCtxt& ctxt
         ) {
@@ -103,7 +103,17 @@ namespace {
                 .record(cmdbuf);
 
             ::U_AtmosCamVolPushConst pc;
-            pc.pv_inv(glm::inverse(ctxt.main_cam_.pv()));
+            pc.proj_inv_ = ctxt.main_cam_.proj_inv();
+            pc.view_inv_ = ctxt.main_cam_.view_inv();
+            pc.pv_inv_ = pc.view_inv_ * pc.proj_inv_;
+            pc.view_pos_ = glm::vec4{ ctxt.main_cam_.view_pos(), 1 };
+
+            for (auto e : reg.view<mirinae::cpnt::DLight>()) {
+                auto& light = reg.get<mirinae::cpnt::DLight>(e);
+                auto& tform = reg.get<mirinae::cpnt::Transform>(e);
+                const auto dir = light.calc_to_light_dir(glm::dmat4(1), tform);
+                pc.sun_direction_ = glm::vec4{ dir, 0 };
+            }
 
             mirinae::PushConstInfo{}
                 .layout(rp.pipe_layout())

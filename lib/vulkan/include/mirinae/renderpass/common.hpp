@@ -356,6 +356,7 @@ namespace mirinae {
         auto& view_inv() const { return view_inv_; }
         auto pv() const { return proj_mat_ * view_mat_; }
 
+        // World space position of the camera
         auto& view_pos() const { return view_pos_; }
         auto& fov() const { return fov_; }
         auto& view_frustum() const { return view_frustum_; }
