@@ -229,6 +229,7 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* e) {
     if (e->type == SDL_EVENT_QUIT)
         return SDL_AppResult::SDL_APP_SUCCESS;
 
+    ImGui_ImplSDL3_ProcessEvent(e);
     auto app = static_cast<::CombinedEngine*>(appstate);
     auto& engine = app->engine();
 
