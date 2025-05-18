@@ -761,8 +761,8 @@ namespace {
         }
 
         dal::ReqResult request_skinned(const dal::path& res_id) override {
-            auto found = models_.find(res_id);
-            if (models_.end() != found)
+            auto found = skin_models_.find(res_id);
+            if (skin_models_.end() != found)
                 return dal::ReqResult::ready;
 
             auto task = load_tasks_.try_get_task(res_id);
