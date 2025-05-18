@@ -749,13 +749,14 @@ namespace { namespace task {
 
             std::lock_guard<std::mutex> lock(g_model_mtx);
 
-            const auto mdl_path = mactor.model_path_;
+            const auto& mdl_path = mactor.model_path_;
             const auto res = model_mgr.request_skinned(mdl_path);
             if (dal::ReqResult::loading == res) {
                 return false;
             } else if (dal::ReqResult::ready != res) {
                 const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
+                mactor.model_path_ = "Sung/rickroll.dun/rickroll.dmd";
                 return false;
             }
 
