@@ -93,6 +93,20 @@ namespace {
         ) {
             auto& fd = frame_data.at(ctxt.f_index_.get());
 
+            mirinae::ImageMemoryBarrier{}
+                .image(fd.sky_view_lut_->img_.image())
+                .set_src_access(VK_ACCESS_SHADER_READ_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_WRITE_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                );
+
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, rp.pipeline()
             );
@@ -122,6 +136,21 @@ namespace {
                 .record(cmdbuf, pc);
 
             vkCmdDispatch(cmdbuf, ::TEX_WIDTH, ::TEX_HEIGHT, 1);
+
+            mirinae::ImageMemoryBarrier{}
+                .image(fd.sky_view_lut_->img_.image())
+                .set_src_access(VK_ACCESS_SHADER_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_GENERAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                );
+
             return true;
         }
 
