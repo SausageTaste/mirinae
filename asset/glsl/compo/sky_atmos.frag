@@ -60,7 +60,6 @@ vec2 SkyViewLutParamsToUv(
 
 
 vec3 get_sun_luminance(const vec3 cam_pos_e, vec3 cam_dir_w, const float PlanetRadius) {
-    cam_dir_w.y = -cam_dir_w.y; // flip y axis to match the shader
     if (dot(cam_dir_w, u_pc.sun_direction_w.xyz) > cos(0.5 * 0.505 * PI / 180.0)) {
         const float t = raySphereIntersectNearest(cam_pos_e, cam_dir_w, vec3(0.0, 0.0, 0.0), PlanetRadius);
         if (t < 0.0) {  // no intersection

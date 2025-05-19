@@ -172,7 +172,7 @@ namespace { namespace task {
                 auto& light = reg.get<mirinae::cpnt::DLight>(e);
                 auto& tform = reg.get<mirinae::cpnt::Transform>(e);
                 const auto dir = light.calc_to_light_dir(glm::dmat4(1), tform);
-                pc.set_sun_dir_w(-dir);
+                pc.set_sun_dir_w(dir);
             }
 
             mirinae::PushConstInfo{}
