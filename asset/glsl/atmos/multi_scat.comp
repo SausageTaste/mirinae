@@ -59,8 +59,8 @@ void main() {
         + saturate(uv.y + PLANET_RADIUS_OFFSET)
         * (Atmosphere.TopRadius - Atmosphere.BottomRadius - PLANET_RADIUS_OFFSET);
 
-    vec3 WorldPos = vec3(0.0, 0.0, viewHeight);
-    vec3 WorldDir = vec3(0.0, 0.0, 1.0);
+    vec3 WorldPos = vec3(0.0, viewHeight, 0.0);
+    vec3 WorldDir = vec3(0.0, 1.0, 0.0);
 
     const bool ground = true;
     const float SampleCountIni = 20;// a minimum set of step is required for accuracy unfortunately

@@ -6,6 +6,7 @@
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/light.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderpass/builder.hpp"
@@ -26,22 +27,25 @@ namespace {
             return *this;
         }
 
-        U_CompoSkyAtmosMain& set_fog_color(const glm::vec3& v) {
-            fog_color_density_.x = v.r;
-            fog_color_density_.y = v.g;
-            fog_color_density_.z = v.b;
+        U_CompoSkyAtmosMain& set_view_pos_w(const glm::vec3& v) {
+            view_pos_w_.x = v.x;
+            view_pos_w_.y = v.y;
+            view_pos_w_.z = v.z;
             return *this;
         }
 
-        U_CompoSkyAtmosMain& set_fog_density(float density) {
-            fog_color_density_.w = density;
+        U_CompoSkyAtmosMain& set_sun_dir_w(const glm::vec3& v) {
+            sun_direction_w_.x = v.x;
+            sun_direction_w_.y = v.y;
+            sun_direction_w_.z = v.z;
             return *this;
         }
 
     private:
         glm::mat4 proj_inv_;
         glm::mat4 view_inv_;
-        glm::vec4 fog_color_density_;
+        glm::vec4 view_pos_w_;
+        glm::vec4 sun_direction_w_;
     };
 
 
@@ -158,12 +162,17 @@ namespace { namespace task {
 
             ::U_CompoSkyAtmosMain pc;
             pc.set_proj_inv(ctxt.main_cam_.proj_inv())
-                .set_view_inv(ctxt.main_cam_.view_inv());
+                .set_view_inv(ctxt.main_cam_.view_inv())
+                .set_view_pos_w(ctxt.main_cam_.view_pos());
             for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
                 auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
-                pc.set_fog_color(atmos.fog_color_)
-                    .set_fog_density(atmos.fog_density_);
                 break;
+            }
+            for (auto e : reg.view<mirinae::cpnt::DLight>()) {
+                auto& light = reg.get<mirinae::cpnt::DLight>(e);
+                auto& tform = reg.get<mirinae::cpnt::Transform>(e);
+                const auto dir = light.calc_to_light_dir(glm::dmat4(1), tform);
+                pc.set_sun_dir_w(-dir);
             }
 
             mirinae::PushConstInfo{}
@@ -250,7 +259,8 @@ namespace {
                     fmt::format("atmos trans LUT:trans_lut_f#{}", i), name_s()
                 );
                 fd.multi_scat_ = rp_res_.ren_img_.get_img_reader(
-                    fmt::format("multi scattering CS:multi_scat_f#{}", i), name_s()
+                    fmt::format("multi scattering CS:multi_scat_f#{}", i),
+                    name_s()
                 );
                 fd.sky_view_lut_ = rp_res_.ren_img_.get_img_reader(
                     fmt::format("sky view LUT:sky_view_lut_f#{}", i), name_s()
