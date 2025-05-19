@@ -25,6 +25,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/dlight.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/envmap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/sky_atmos.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/sky.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/slight.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/cubemap.cpp

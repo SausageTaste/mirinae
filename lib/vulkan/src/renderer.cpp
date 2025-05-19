@@ -1203,7 +1203,7 @@ namespace {
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::compo::create_rps_sky(cbundle)
+                    mirinae::rp::compo::create_rps_sky_atmos(cbundle)
                 );
 
                 render_passes_.push_back(

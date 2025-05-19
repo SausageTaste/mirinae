@@ -335,7 +335,7 @@ namespace {
             pipe_layout_.destroy(device_);
         }
 
-        std::string_view name() const override { return "atmos cam volume"; }
+        std::string_view name() const override { return "sky view LUT"; }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<::RpTask>();
