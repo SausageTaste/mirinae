@@ -172,7 +172,7 @@ namespace {
                 if (action_map.get_value(ActionType::translate_down))
                     vertical -= 1;
 
-                tgt_tform->pos_.y += vertical * dt * 15;
+                tgt_tform->pos_.y += vertical * dt * move_speed_;
             }
         }
 
@@ -224,7 +224,7 @@ namespace {
         ::ValueInterpolator tgt_heading_;
 
     public:
-        double move_speed_ = 3;        // World space
+        double move_speed_ = 1000;     // World space
         double offset_dist_ = 2;       // World space
         double offset_height_ = 0.75;  // World space
         double offset_hor_ = 0.2;      // World space

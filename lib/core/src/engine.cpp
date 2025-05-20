@@ -647,7 +647,7 @@ namespace {
             auto& reg = cosmos_->reg();
 
             // Physice object
-            for (int x = 0; x < 5; ++x) {
+            for (int x = 0; x < 0; ++x) {
                 for (int y = 0; y < 5; ++y) {
                     for (int z = 0; z < 2; ++z) {
                         const auto entt = reg.create();
@@ -714,6 +714,7 @@ namespace {
             */
 
             // SLight
+            /*
             {
                 flashlight_ = reg.create();
 
@@ -785,6 +786,7 @@ namespace {
                     t.pos_ = positions[i];
                 }
             }
+            */
 
             // Main Camera
             {
@@ -797,7 +799,8 @@ namespace {
 
                 auto& cam = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
                 cam.proj_.near_ = 0.1;
-                cam.proj_.far_ = 1000;
+                cam.proj_.far_ = 100000.000;
+                cam.exposure_ = 10;
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = {
@@ -829,6 +832,7 @@ namespace {
             }
 
             // Ocean
+            /*
             {
                 const auto entt = reg.create();
 
@@ -871,6 +875,7 @@ namespace {
                 cas->amplitude_ = 0.3;
                 cas->L_ = cas->lod_scale_;
             }
+            */
 
             // Atmosphere
             {
@@ -903,6 +908,7 @@ namespace {
                 tform.rotate(
                     sung::TAngle<double>::from_deg(90), glm::vec3{ 0, 1, 0 }
                 );
+                tform.set_scale(100);
 
                 cosmos_->phys_world().give_body_height_field(entt, reg);
             }
@@ -918,7 +924,7 @@ namespace {
                 auto& mdl = reg.emplace<mirinae::cpnt::MdlActorSkinned>(entt);
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { -70, 2, -4 };
+                tform.pos_ = { 63350.34, 6202.51, -66619.72 };
 
 #if true
                 cosmos_->cam_ctrl().anim_idle_ = "idle_normal_1";
@@ -947,6 +953,7 @@ namespace {
             }
 
             // City
+            /*
             {
                 const auto entt = reg.create();
 
@@ -973,6 +980,7 @@ namespace {
                     script_->exec(str.c_str());
                 }
             }
+            */
 
             // ImGui Widgets
             {
