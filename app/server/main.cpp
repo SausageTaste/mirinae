@@ -22,7 +22,7 @@ namespace {
 
         void do_frame() {
             server_->do_frame();
-            cosmos_->do_frame();
+            // cosmos_->do_frame();
         }
 
         std::unique_ptr<mirinae::INetworkServer> server_;
