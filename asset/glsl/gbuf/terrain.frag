@@ -42,8 +42,7 @@ void main() {
             1,
             u_pc.height_scale * (down - up) / (size_per_texel.y * 4)
         );
-        normal = normalize(normal);
         normal = mat3(u_pc.view) * mat3(u_pc.model) * normal;
-        out_normal.xyz = normal * 0.5 + 0.5;
+        out_normal.xyz = normalize(normal) * 0.5 + 0.5;
     }
 }
