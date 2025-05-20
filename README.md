@@ -67,7 +67,7 @@ Oh, by the way, don't forget to compile shaders!
 |WASD |Move
 |Arrow keys |Look around
 |Space |Ascend
-|Left shift |Descend
+|Left alt |Descend
 |` |ImGui console
 |Alt + Enter |Toggle fullscreen
 
