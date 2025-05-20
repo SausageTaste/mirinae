@@ -4,6 +4,16 @@ https://github.com/user-attachments/assets/794bda9c-f5d2-4ddf-a1aa-7d468bdc9fcb
 
 A game engine powered by Vulkan.
 
+# Points of Interest
+
+If you want to read though sources, here are some good starting points.
+
+1. [Main entry point](/app/sdl/main.cpp)
+1. [Render passes](/lib/vulkan/src/renderpass)
+    - This is where the most complex rendering topics are actually implemented, such as atmospheric scattering, Tessendorf ocean, etc.
+1. [Shader sources](/asset/glsl)
+    - Note the directory structure resembles that of render passes, which will ease associating with each other
+
 # How to build
 
 This app is mainly targeting Windows, but it's also frequently tested on Ubuntu and Android.
