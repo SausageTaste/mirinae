@@ -19,7 +19,7 @@ layout(push_constant) uniform U_CompoSkyAtmosMain {
 layout(set = 0, binding = 0) uniform sampler2D u_trans_lut;
 layout(set = 0, binding = 1) uniform sampler2D u_multi_scat;
 layout(set = 0, binding = 2) uniform sampler2D u_sky_view_lut;
-layout(set = 0, binding = 3) uniform sampler2D u_cam_scat_vol;
+layout(set = 0, binding = 3) uniform sampler3D u_cam_scat_vol;
 
 
 vec2 SkyViewLutParamsToUv(

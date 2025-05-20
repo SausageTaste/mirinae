@@ -2,6 +2,7 @@
 
 #include "../utils/lighting.glsl"
 #include "../utils/shadow.glsl"
+#include "../atmos/data.glsl"
 
 layout (location = 0) in vec2 v_uv_coord;
 
@@ -15,13 +16,14 @@ layout (set = 0, binding = 3) uniform sampler2D u_material_map;
 layout (set = 0, binding = 4) uniform sampler2D u_trans_lut;
 layout (set = 0, binding = 5) uniform sampler2D u_multi_scat;
 layout (set = 0, binding = 6) uniform sampler2D u_sky_view_lut;
-layout (set = 0, binding = 7) uniform sampler2D u_cam_scat_vol;
+layout (set = 0, binding = 7) uniform sampler3D u_cam_scat_vol;
 
 layout (set = 0, binding = 8) uniform U_CompoAtmosSurfMain {
     mat4 proj;
     mat4 proj_inv;
     mat4 view;
     mat4 view_inv;
+    vec4 view_pos_w;
     vec4 fog_color_density;
     float mie_anisotropy;
 } u_main;
@@ -44,6 +46,13 @@ vec3 make_shadow_texco(const vec3 frag_pos_v, const uint selected_cascade) {
 }
 
 
+const float AP_SLICE_COUNT = 32;
+const float AP_KM_PER_SLICE = 4;
+
+float AerialPerspectiveDepthToSlice(float depth) {
+    return depth * (1.0 / AP_KM_PER_SLICE);
+}
+
 void main() {
     const float depth_texel = texture(u_depth_map, v_uv_coord).r;
     const vec4 albedo_texel = texture(u_albedo_map, v_uv_coord);
@@ -65,54 +74,24 @@ void main() {
     const vec3 reflect_direc = reflect(view_direc, normal);
     const vec3 world_reflect = (u_main.view_inv * vec4(reflect_direc, 0)).xyz;
 
-    vec3 light = vec3(0);
+    const vec3 cam_dir_v = normalize(frag_pos);
+    const vec3 cam_dir_w = normalize(mat3(u_main.view_inv) * cam_dir_v);
 
-    // Volumetric scattering
-    {
-        const int SAMPLE_COUNT = 5;
-        const float INTENSITY_DLIGHT = 0.6;
+    const AtmosphereParameters atmos_params = GetAtmosphereParameters();
 
-        const float dlight_factor = INTENSITY_DLIGHT * phase_mie(dot(view_direc, ubuf_sh.dlight_dir.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);
-        const vec3 vec_step = frag_pos / float(-SAMPLE_COUNT - 1);
-        const float dither_value = get_dither_value();
+    const vec3 cam_pos_e = u_main.view_pos_w.xyz + vec3(0, atmos_params.BottomRadius, 0);
+    const float cam_height_e = length(cam_pos_e);
 
-        for (int i = 0; i < SAMPLE_COUNT; ++i) {
-            const float sample_factor = float(i + 0.5) * dither_value;
-            const vec3 sample_pos = frag_pos + vec_step * sample_factor;
-            const float sample_depth = calc_depth(sample_pos, u_main.proj);
-            const uint selected_dlight = select_cascade(sample_depth, ubuf_sh.cascade_depths);
-            const vec3 texco = make_shadow_texco(sample_pos, selected_dlight);
-            const float lit = texture(u_shadow_map, texco);
-            light += ubuf_sh.dlight_color.rgb * (dlight_factor * lit);
-        }
+    float tDepth = length(world_pos - (cam_pos_e + vec3(0, -atmos_params.BottomRadius, 0)));
+    float Slice = AerialPerspectiveDepthToSlice(tDepth);
+    float Weight = 1.0;
+    if (Slice < 0.5) {
+        // We multiply by weight to fade to 0 at depth 0. That works for luminance and opacity.
+        Weight = clamp(Slice * 2.00, 0, 1);
+        Slice = 0.5;
     }
+    float w = sqrt(Slice / AP_SLICE_COUNT);	// squared distribution
 
-    // Directional light
-    {
-        const uint selected_dlight = select_cascade(depth_texel, ubuf_sh.cascade_depths);
-        const vec3 texco = make_shadow_texco(frag_pos, selected_dlight);
-        const float lit = texture(u_shadow_map, texco);
-
-        light += lit * calc_pbr_illumination(
-            roughness,
-            metallic,
-            albedo,
-            normal,
-            F0,
-            -view_direc,
-            ubuf_sh.dlight_dir.xyz,
-            ubuf_sh.dlight_color.rgb
-        );
-    }
-
-    // Fog
-    {
-        const float x = frag_distance * u_main.fog_color_density.w;
-        const float xx = x * x;
-        const float fog_factor = 1.0 / exp(xx);
-        light = mix(u_main.fog_color_density.xyz, light, fog_factor);
-    }
-
-    f_color = vec4(light, 1);
-    f_color = vec4(1, 0.5, 0.25, 0);
+    const vec4 AP = Weight * textureLod(u_cam_scat_vol, vec3(v_uv_coord, w), 0);
+    f_color = AP;
 }

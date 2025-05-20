@@ -31,6 +31,14 @@ namespace {
         }
 
         template <typename T>
+        U_CompoAtmosSurfMain& set_view_pos_w(const glm::tvec3<T>& v) {
+            view_pos_w_.x = static_cast<float>(v.x);
+            view_pos_w_.y = static_cast<float>(v.y);
+            view_pos_w_.z = static_cast<float>(v.z);
+            return *this;
+        }
+
+        template <typename T>
         U_CompoAtmosSurfMain& set_fog_color(const glm::tvec3<T>& v) {
             fog_color_density_.x = static_cast<float>(v.x);
             fog_color_density_.y = static_cast<float>(v.y);
@@ -55,6 +63,7 @@ namespace {
         glm::mat4 proj_inv_;
         glm::mat4 view_;
         glm::mat4 view_inv_;
+        glm::vec4 view_pos_w_;
         glm::vec4 fog_color_density_;
         float mie_anisotropy_ = 0.5f;
     };
@@ -184,7 +193,8 @@ namespace { namespace task {
         ) {
             U_CompoAtmosSurfMain ubuf;
             ubuf.set_proj(ctxt.main_cam_.proj())
-                .set_view(ctxt.main_cam_.view());
+                .set_view(ctxt.main_cam_.view())
+                .set_view_pos_w(ctxt.main_cam_.view_pos());
             for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
                 auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
                 ubuf.set_fog_color(atmos.fog_color_)
