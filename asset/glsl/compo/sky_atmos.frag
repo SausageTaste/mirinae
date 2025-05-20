@@ -61,7 +61,7 @@ vec2 SkyViewLutParamsToUv(
 
 vec3 get_sun_luminance(const vec3 cam_pos_e, vec3 cam_dir_w, const float PlanetRadius) {
     if (dot(cam_dir_w, u_pc.sun_direction_w.xyz) > cos(0.5 * 0.505 * PI / 180.0)) {
-        const float t = raySphereIntersectNearest(cam_pos_e, cam_dir_w, vec3(0.0, 0.0, 0.0), PlanetRadius);
+        const float t = raySphereIntersectNearest(cam_pos_e / 1000, cam_dir_w, vec3(0.0, 0.0, 0.0), PlanetRadius / 1000);
         if (t < 0.0) {  // no intersection
             // arbitrary. But fine, not use when comparing the models
             return vec3(1000000.0);
@@ -80,7 +80,7 @@ void main() {
 
     const AtmosphereParameters atmos_params = GetAtmosphereParameters();
 
-    const vec3 cam_pos_e = u_pc.view_pos_w.xyz + vec3(0, atmos_params.BottomRadius, 0);
+    const vec3 cam_pos_e = u_pc.view_pos_w.xyz + vec3(0, atmos_params.BottomRadius * 1000, 0);
     const float cam_height_e = length(cam_pos_e);
 
     const vec3 up_dir_e = normalize(cam_pos_e);
@@ -98,7 +98,7 @@ void main() {
     ));
     const float light_view_cos_angle = light_on_plane.x;
     const bool intersect_ground = raySphereIntersectNearest(
-        cam_pos_e, cam_dir_w, vec3(0, 0, 0), atmos_params.BottomRadius
+        cam_pos_e, cam_dir_w, vec3(0, 0, 0), atmos_params.BottomRadius * 1000
     ) >= 0.0;
 
     const vec2 uv = SkyViewLutParamsToUv(
@@ -106,10 +106,10 @@ void main() {
         intersect_ground,
         view_zenith_cos_angle,
         light_view_cos_angle,
-        cam_height_e
+        cam_height_e / 1000
     );
 
     const vec4 sky_view_texel = textureLod(u_sky_view_lut, uv, 0);
-    f_color.rgb = sky_view_texel.rgb + get_sun_luminance(cam_pos_e, cam_dir_w, atmos_params.BottomRadius);
+    f_color.rgb = sky_view_texel.rgb + get_sun_luminance(cam_pos_e, cam_dir_w, atmos_params.BottomRadius * 1000);
     f_color.a = 1.0;
 }

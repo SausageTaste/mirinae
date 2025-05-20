@@ -82,7 +82,7 @@ void main() {
     const vec3 cam_pos_e = u_main.view_pos_w.xyz + vec3(0, atmos_params.BottomRadius, 0);
     const float cam_height_e = length(cam_pos_e);
 
-    float tDepth = length(world_pos - (cam_pos_e + vec3(0, -atmos_params.BottomRadius, 0)));
+    float tDepth = length(world_pos - u_main.view_pos_w.xyz) / 1000.0;
     float Slice = AerialPerspectiveDepthToSlice(tDepth);
     float Weight = 1.0;
     if (Slice < 0.5) {

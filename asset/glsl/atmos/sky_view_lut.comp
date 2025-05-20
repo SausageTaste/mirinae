@@ -65,7 +65,7 @@ void main() {
 	vec3 ClipSpace = vec3((pixPos / vec2(192.0,108.0))*vec2(2.0, 2.0) - vec2(1.0, 1.0), 1.0);
 	vec4 HViewPos = u_pc.proj_inv * vec4(ClipSpace, 1.0);
 	vec3 WorldDir = normalize(mat3(u_pc.view_inv) * (HViewPos.xyz / HViewPos.w));
-	vec3 WorldPos = u_pc.view_pos.xyz + vec3(0, Atmosphere.BottomRadius, 0);
+	vec3 WorldPos = u_pc.view_pos.xyz / 1000 + vec3(0, Atmosphere.BottomRadius, 0);
 
 	vec2 uv = pixPos / vec2(192.0, 108.0);
 
