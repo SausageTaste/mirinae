@@ -23,6 +23,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/trans_lut.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/builder.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/common.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/atmos_surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/dlight.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/envmap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/sky_atmos.cpp

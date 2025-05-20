@@ -1190,6 +1190,7 @@ namespace {
                     mirinae::rp::gbuf::create_rp_gbuf_terrain(cbundle)
                 );
 
+                /*
                 render_passes_.push_back(
                     mirinae::rp::compo::create_rps_dlight(cbundle)
                 );
@@ -1200,6 +1201,11 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::compo::create_rps_envmap(cbundle)
+                );
+                */
+
+                render_passes_.push_back(
+                    mirinae::rp::compo::create_rps_atmos_surface(cbundle)
                 );
 
                 render_passes_.push_back(
