@@ -45,6 +45,18 @@ vec3 make_shadow_texco(const vec3 frag_pos_v, const uint selected_cascade) {
     return vec3(texco, proj_coords.z);
 }
 
+bool check_shadow_texco_range(const vec3 texco) {
+    if (texco.z < 0)
+        return false;
+    else if (texco.z > 1)
+        return false;
+    else if (texco.x < 0 || texco.x > 1 || texco.y < 0 || texco.y > 1)
+        return false;
+    else
+        return true;
+
+}
+
 
 const float AP_SLICE_COUNT = 32;
 const float AP_SLICE_COUNT_RCP = 1.0 / AP_SLICE_COUNT;
@@ -88,4 +100,29 @@ void main() {
     }
     const float w = sqrt(slice * AP_SLICE_COUNT_RCP);	// squared distribution
     f_color = weight * textureLod(u_cam_scat_vol, vec3(v_uv_coord, w), 0);
+
+    // Directional light
+    {
+        const uint selected_dlight = select_cascade(depth_texel, ubuf_sh.cascade_depths);
+        const vec3 texco = make_shadow_texco(frag_pos_v, selected_dlight);
+
+        float lit = 1;
+        if (check_shadow_texco_range(texco))
+            lit = texture(u_shadow_map, texco);
+
+        if (texco.x < 0 || texco.x > 1 || texco.y < 0 || texco.y > 1)
+            lit = 1;
+
+        f_color.xyz += lit* calc_pbr_illumination(
+            roughness,
+            metallic,
+            albedo,
+            normal_v,
+            F0,
+            -view_dir_v,
+            ubuf_sh.dlight_dir.xyz,
+            vec3(1)
+        );
+    }
+
 }
