@@ -24,89 +24,81 @@ layout (push_constant) uniform U_AtmosCamVolPushConst {
 
 const float AP_SLICE_COUNT = 32;
 const float AP_KM_PER_SLICE = 4;
+const float M_TO_KM = 0.001;
 
 
-float AerialPerspectiveSliceToDepth(float slice) {
+float AerialPerspectiveSliceToDepth(const float slice) {
     return slice * AP_KM_PER_SLICE;
 }
 
 
-
 vec4 gen_texel() {
-    const int sliceId = int(gl_GlobalInvocationID.z);
-    const vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5, 0.5);
+    const float slice_id = float(gl_GlobalInvocationID.z);
+    const vec2 pix_pos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5);
 
-    AtmosphereParameters Atmosphere = GetAtmosphereParameters();
+    const AtmosphereParameters Atmosphere = GetAtmosphereParameters();
 
-    float gResolution = 32;
-    vec3 ClipSpace = vec3((pixPos / vec2(gResolution))*vec2(2.0, 2.0) - vec2(1.0, 1.0), 0.5);
-    vec4 HViewPos = u_pc.proj_inv * vec4(ClipSpace, 1.0);
-    vec3 WorldDir = normalize(mat3(u_pc.view_inv) * (HViewPos.xyz / HViewPos.w));
+    const float out_resolution = 32;
+    const vec3 clip_space = vec3(pix_pos / vec2(out_resolution * 2) - vec2(1), 0.5);
+    const vec4 h_view_pos = u_pc.proj_inv * vec4(clip_space, 1.0);
+    vec3 world_dir = normalize(mat3(u_pc.view_inv) * (h_view_pos.xyz / h_view_pos.w));
 
-    float earthR = Atmosphere.BottomRadius;
-    vec3 earthO = vec3(0, -earthR, 0);
-    vec3 camPos = u_pc.view_pos.xyz / 1000 + vec3(0, earthR, 0);
-    vec3 SunDir = u_pc.sun_direction.xyz;
-    vec3 SunLuminance = vec3(0.0);
+    const float earthR = Atmosphere.BottomRadius;
+    const vec3 earthO = vec3(0, -earthR, 0);
+    const vec3 cam_pos = u_pc.view_pos.xyz * M_TO_KM + vec3(0, earthR, 0);
+    const vec3 SunDir = u_pc.sun_direction.xyz;
+    const vec3 SunLuminance = vec3(0);
 
-    float Slice = ((float(sliceId) + 0.5) / AP_SLICE_COUNT);
-    Slice *= Slice;	// squared distribution
-    Slice *= AP_SLICE_COUNT;
+    float slice = (slice_id + 0.5) / AP_SLICE_COUNT;
+    slice *= slice;	// squared distribution
+    slice *= AP_SLICE_COUNT;
 
-    vec3 WorldPos = camPos;
-    float viewHeight;
-
+    vec3 world_pos = cam_pos;
 
     // Compute position from froxel information
-    float tMax = AerialPerspectiveSliceToDepth(Slice);
-    vec3 newWorldPos = WorldPos + tMax * WorldDir;
-
+    float tMax = AerialPerspectiveSliceToDepth(slice);
+    vec3 new_world_pos = world_pos + tMax * world_dir;
 
     // If the voxel is under the ground, make sure to offset it out on the ground.
-    viewHeight = length(newWorldPos);
-    if (viewHeight <= (Atmosphere.BottomRadius + PLANET_RADIUS_OFFSET))
-    {
+    float view_height = length(new_world_pos);
+    if (view_height <= (Atmosphere.BottomRadius + PLANET_RADIUS_OFFSET)) {
         // Apply a position offset to make sure no artefact are visible close to the earth boundaries for large voxel.
-        newWorldPos = normalize(newWorldPos) * (Atmosphere.BottomRadius + PLANET_RADIUS_OFFSET + 0.001f);
-        WorldDir = normalize(newWorldPos - camPos);
-        tMax = length(newWorldPos - camPos);
+        new_world_pos = normalize(new_world_pos) * (Atmosphere.BottomRadius + PLANET_RADIUS_OFFSET + 0.001);
+        world_dir = normalize(new_world_pos - cam_pos);
+        tMax = length(new_world_pos - cam_pos);
     }
     float tMaxMax = tMax;
 
-
     // Move ray marching start up to top atmosphere.
-    viewHeight = length(WorldPos);
-    if (viewHeight >= Atmosphere.TopRadius)
-    {
-        vec3 prevWorlPos = WorldPos;
-        if (!MoveToTopAtmosphere(WorldPos, WorldDir, Atmosphere.TopRadius))
-        {
+    view_height = length(world_pos);
+    if (view_height >= Atmosphere.TopRadius) {
+        const vec3 prev_world_pos = world_pos;
+        if (!MoveToTopAtmosphere(world_pos, world_dir, Atmosphere.TopRadius)) {
             // Ray is not intersecting the atmosphere
-            return vec4(0.0, 0.0, 0.0, 1.0);
+            return vec4(0, 0, 0, 1);
         }
-        float LengthToAtmosphere = length(prevWorlPos - WorldPos);
-        if (tMaxMax < LengthToAtmosphere)
-        {
+        float LengthToAtmosphere = length(prev_world_pos - world_pos);
+        if (tMaxMax < LengthToAtmosphere) {
             // tMaxMax for this voxel is not within earth atmosphere
-            return vec4(0.0, 0.0, 0.0, 1.0);
+            return vec4(0, 0, 0, 1);
         }
         // Now world position has been moved to the atmosphere boundary: we need to reduce tMaxMax accordingly.
-        tMaxMax = max(0.0, tMaxMax - LengthToAtmosphere);
+        tMaxMax = max(0, tMaxMax - LengthToAtmosphere);
     }
 
     const bool ground = false;
-    const float SampleCountIni = max(1.0, float(sliceId + 1.0) * 2.0);
-    const float DepthBufferValue = -1.0;
-    const bool VariableSampleCount = false;
+    const float sample_count_ini = max(1, (slice_id + 1) * 2);
+    const float depth_buffer_value = -1;
+    const bool variable_sample_count = false;
     const bool MieRayPhase = true;
-    SingleScatteringResult ss = IntegrateScatteredLuminance(
-        pixPos, WorldPos, WorldDir, SunDir, Atmosphere, ground, SampleCountIni,
-        DepthBufferValue, VariableSampleCount, MieRayPhase, tMaxMax,
-        u_trans_lut, u_multi_scat, vec2(32), u_pc.pv_inv
+    const SingleScatteringResult ss = IntegrateScatteredLuminance(
+        pix_pos, world_pos, world_dir, SunDir, Atmosphere, ground, sample_count_ini,
+        depth_buffer_value, variable_sample_count, MieRayPhase, tMaxMax,
+        u_trans_lut, u_multi_scat, vec2(out_resolution), u_pc.pv_inv
     );
 
-    const float Transmittance = dot(ss.Transmittance, vec3(1.0 / 3.0));
-    return vec4(ss.L, 1.0 - Transmittance);
+    const float transmittance = dot(ss.Transmittance, vec3(1.0 / 3.0));
+    return vec4(ss.L, 1 - transmittance);
 }
 
 
