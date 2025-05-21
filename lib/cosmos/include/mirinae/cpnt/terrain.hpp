@@ -45,6 +45,8 @@ namespace mirinae::cpnt {
         // Runtime data
         std::unique_ptr<ITerrainRenUnit> ren_unit_;
         float tess_factor_;
+        int tile_count_x_ = 10;
+        int tile_count_y_ = 10;
     };
 
 }  // namespace mirinae::cpnt

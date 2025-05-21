@@ -305,15 +305,15 @@ namespace {
 
                 ::U_GbufTerrainPushConst pc;
                 pc.pvm(ctxt.main_cam_.proj(), ctxt.main_cam_.view(), model_mat)
-                    .tile_count(24, 24)
+                    .tile_count(terr.tile_count_x_, terr.tile_count_y_)
                     .height_map_size(unit->height_map_size())
                     .fbuf_size(fd.fbuf_size_)
                     .terrain_size(terr.terrain_width_, terr.terrain_height_)
                     .height_scale(terr.height_scale_)
                     .tess_factor(terr.tess_factor_);
 
-                for (int x = 0; x < 24; ++x) {
-                    for (int y = 0; y < 24; ++y) {
+                for (int x = 0; x < terr.tile_count_x_; ++x) {
+                    for (int y = 0; y < terr.tile_count_y_; ++y) {
                         pc.tile_index(x, y);
                         pc_info.record(cmdbuf, pc);
                         vkCmdDraw(cmdbuf, 4, 1, 0, 0);

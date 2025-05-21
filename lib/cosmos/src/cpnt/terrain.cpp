@@ -17,6 +17,8 @@ namespace mirinae::cpnt {
         ImGui::SliderFloat(
             "Tess factor", &tess_factor_, 0, 10, 0, ImGuiSliderFlags_Logarithmic
         );
+        ImGui::SliderInt("Tile count X", &tile_count_x_, 1, 100);
+        ImGui::SliderInt("Tile count Y", &tile_count_y_, 1, 100);
     }
 
 }  // namespace mirinae::cpnt
