@@ -35,8 +35,14 @@ namespace mirinae::cpnt {
             return dynamic_cast<const T*>(ren_unit_.get());
         }
 
+        // Terrain definition
         std::filesystem::path height_map_path_;
         std::filesystem::path albedo_map_path_;
+        double terrain_width_ = 0;
+        double terrain_height_ = 0;
+        double height_scale_ = 0;
+
+        // Runtime data
         std::unique_ptr<ITerrainRenUnit> ren_unit_;
         float tess_factor_;
     };

@@ -14,6 +14,7 @@ layout (push_constant) uniform U_GbufTerrainPushConst {
     mat4 model;
     vec4 tile_index_count;
     vec4 height_map_size_fbuf_size;
+    vec4 terrain_size;
     float height_scale;
     float tess_factor;
 } u_pc;
@@ -28,9 +29,7 @@ void main() {
     out_material = vec4(0, 0.9, 0, 0);
 
     {
-        const vec2 tile_size = vec2(60, 60);
-        const vec2 terr_plane_size = tile_size * u_pc.tile_index_count.zw;
-        const vec2 size_per_texel = terr_plane_size / u_pc.height_map_size_fbuf_size.xy;
+        const vec2 size_per_texel = u_pc.terrain_size.xy / u_pc.height_map_size_fbuf_size.xy;
 
         const float right = textureOffset(u_height_map, i_uv, ivec2( 2,  0)).r;
         const float left  = textureOffset(u_height_map, i_uv, ivec2(-2,  0)).r;

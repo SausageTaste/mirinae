@@ -60,6 +60,13 @@ namespace {
             return *this;
         }
 
+        template <typename T>
+        U_GbufTerrainPushConst& terrain_size(T x, T y) {
+            terrain_size_.x = static_cast<float>(x);
+            terrain_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
         U_GbufTerrainPushConst& height_scale(float x) {
             height_scale_ = x;
             return *this;
@@ -76,6 +83,7 @@ namespace {
         glm::mat4 model_;
         glm::vec4 tile_index_count_;
         glm::vec4 height_map_size_fbuf_size_;
+        glm::vec4 terrain_size_;
         float height_scale_;
         float tess_factor_;
     };
@@ -300,7 +308,8 @@ namespace {
                     .tile_count(24, 24)
                     .height_map_size(unit->height_map_size())
                     .fbuf_size(fd.fbuf_size_)
-                    .height_scale(64)
+                    .terrain_size(terr.terrain_width_, terr.terrain_height_)
+                    .height_scale(terr.height_scale_)
                     .tess_factor(terr.tess_factor_);
 
                 for (int x = 0; x < 24; ++x) {

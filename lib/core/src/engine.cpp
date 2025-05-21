@@ -902,13 +902,11 @@ namespace {
                     "Sung/36_271_-112_357_14_4096_4096.png";
                 terrain.albedo_map_path_ =
                     "Sung/36_271_-112_357_14_4096_4096_albedo_imagery.png";
+                terrain.terrain_width_ = 31500;
+                terrain.terrain_height_ = 31500;
+                terrain.height_scale_ = 2761.32 - 585.625;
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { -607, -59, 1303 };
-                tform.rotate(
-                    sung::TAngle<double>::from_deg(90), glm::vec3{ 0, 1, 0 }
-                );
-                tform.set_scale(100);
 
                 cosmos_->phys_world().give_body_height_field(entt, reg);
             }
@@ -924,7 +922,7 @@ namespace {
                 auto& mdl = reg.emplace<mirinae::cpnt::MdlActorSkinned>(entt);
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 63350.34, 6202.51, -66619.72 };
+                tform.pos_ = { 0, 1000, 0 };
 
 #if true
                 cosmos_->cam_ctrl().anim_idle_ = "idle_normal_1";
