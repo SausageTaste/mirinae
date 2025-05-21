@@ -915,11 +915,13 @@ namespace { namespace cpnt {
 
             JPH::HeightFieldShapeSettings shape_settings(
                 height_data_.data(),
-                JPH::Vec3(0, 0, 0),
                 JPH::Vec3(
-                    (60 * 24) / float(height_data_len_ - 1),
-                    64,
-                    (60 * 24) / float(height_data_len_ - 1)
+                    terr->terrain_width_ * -0.5, 0, terr->terrain_height_ * -0.5
+                ),
+                JPH::Vec3(
+                    terr->terrain_width_ / float(height_data_len_ - 1),
+                    terr->height_scale_,
+                    terr->terrain_height_ / float(height_data_len_ - 1)
                 ),
                 height_data_len_
             );
@@ -1437,7 +1439,7 @@ namespace mirinae {
                 reg,
                 physics_system,
 #ifdef MIRINAE_JOLT_DEBUG_RENDERER
-                debug_ren_,
+                &debug_ren_,
 #else
                 nullptr,
 #endif

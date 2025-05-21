@@ -922,7 +922,7 @@ namespace {
                 auto& mdl = reg.emplace<mirinae::cpnt::MdlActorSkinned>(entt);
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 0, 1000, 0 };
+                tform.pos_ = { 0, 2000, 0 };
 
 #if true
                 cosmos_->cam_ctrl().anim_idle_ = "idle_normal_1";
