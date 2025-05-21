@@ -26,7 +26,7 @@ const vec2[] POSITIONS = vec2[4](
 
 void main() {
     const vec2 tile_size = u_pc.terrain_size.xy / u_pc.tile_index_count.zw;
-    const vec2w tile_offset = u_pc.tile_index_count.xy * tile_size;
+    const vec2 tile_offset = u_pc.tile_index_count.xy * tile_size;
     gl_Position.xz = POSITIONS[gl_VertexIndex] * tile_size + tile_offset;
     gl_Position.y = 0;
     gl_Position.w = 1;
