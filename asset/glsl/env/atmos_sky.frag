@@ -75,7 +75,7 @@ vec3 get_sun_luminance(const vec3 cam_pos_e, vec3 cam_dir_w, vec3 sun_dir_w, con
         const float t = raySphereIntersectNearest(cam_pos_e, cam_dir_w, vec3(0.0, 0.0, 0.0), planet_radius);
         if (t < 0.0) {  // no intersection
             // arbitrary. But fine, not use when comparing the models
-            return vec3(1000000.0);
+            return vec3(1);
         }
     }
 

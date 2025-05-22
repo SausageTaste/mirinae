@@ -30,7 +30,9 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/sky.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/slight.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/cubemap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/diffuse.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/envmap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/mip_chain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_base.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_brdf_lut.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_diffuse.cpp

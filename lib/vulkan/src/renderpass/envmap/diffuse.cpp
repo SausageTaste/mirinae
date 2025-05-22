@@ -8,18 +8,6 @@
 #include "mirinae/renderpass/envmap/cubemap.hpp"
 
 
-namespace {
-
-    struct FrameData {
-        mirinae::HRpImage sky_view_lut_;
-        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
-    };
-
-    using FrameDataArr = std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
-
-}  // namespace
-
-
 // Tasks
 namespace {
 
@@ -29,14 +17,12 @@ namespace {
         DrawTasks() { fence_.succeed(this); }
 
         void init(
-            const ::FrameDataArr& frame_data,
             const mirinae::IRenPass& rp,
             mirinae::EnvmapBundle& envmaps,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
             rp_ = &rp;
-            frame_data_ = &frame_data;
             envmaps_ = &envmaps;
             cmd_pool_ = &cmd_pool;
             device_ = &device;
@@ -59,21 +45,17 @@ namespace {
                 return;
 
             mirinae::begin_cmdbuf(cmdbuf_);
-            this->record(
-                cmdbuf_,
-                frame_data_->at(ctxt_->f_index_.get()),
-                *envmaps_->begin(),
-                *rp_
-            );
+            this->record(cmdbuf_, *envmaps_->begin(), *rp_);
             mirinae::end_cmdbuf(cmdbuf_);
         }
 
         static void record(
             const VkCommandBuffer cmdbuf,
-            const ::FrameData& fd,
             const mirinae::EnvmapBundle::Item& env_item,
             const mirinae::IRenPass& rp
         ) {
+            namespace cpnt = mirinae::cpnt;
+
             mirinae::RenderPassBeginInfo rp_info{};
             rp_info.rp(rp.render_pass())
                 .clear_value_count(rp.clear_value_count())
@@ -83,47 +65,60 @@ namespace {
                 sung::to_radians(90.0), 1.0, 1000.0, 0.1
             );
 
-            auto& cube_map = env_item.cube_map_;
-            auto& base_cube = cube_map.base();
+            mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
 
-            mirinae::Viewport{}
-                .set_wh(base_cube.width(), base_cube.height())
-                .record_single(cmdbuf);
-            mirinae::Rect2D{}
-                .set_wh(base_cube.width(), base_cube.height())
-                .record_scissor(cmdbuf);
-            rp_info.wh(base_cube.width(), base_cube.height());
+            auto& cube_map = env_item.cube_map_;
+            auto& diffuse = cube_map.diffuse();
+
+            const mirinae::Viewport viewport{ diffuse.extent2d() };
+            const mirinae::Rect2D scissor{ diffuse.extent2d() };
+            rp_info.wh(diffuse.extent2d());
 
             for (int i = 0; i < 6; ++i) {
-                rp_info.fbuf(base_cube.face_fbuf(i)).record_begin(cmdbuf);
+                rp_info.fbuf(diffuse.face_fbuf(i)).record_begin(cmdbuf);
 
                 vkCmdBindPipeline(
                     cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
                 );
 
-                mirinae::DescSetBindInfo{}
-                    .layout(rp.pipe_layout())
-                    .set(fd.desc_set_)
-                    .record(cmdbuf);
+                viewport.record_single(cmdbuf);
+                scissor.record_scissor(cmdbuf);
 
-                mirinae::U_EnvSkyPushConst pc;
-                pc.proj_view_ = proj_mat * mirinae::CUBE_VIEW_MATS[i];
+                descset_info.set(cube_map.desc_set()).record(cmdbuf);
+
+                mirinae::U_EnvdiffusePushConst push_const;
+                push_const.proj_view_ = proj_mat * mirinae::CUBE_VIEW_MATS[i];
 
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())
                     .add_stage_vert()
-                    .record(cmdbuf, pc);
+                    .record(cmdbuf, push_const);
 
                 vkCmdDraw(cmdbuf, 36, 1, 0, 0);
-
                 vkCmdEndRenderPass(cmdbuf);
             }
+
+            mirinae::ImageMemoryBarrier barrier;
+            barrier.image(diffuse.cube_img())
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .mip_base(0)
+                .mip_count(1)
+                .layer_base(0)
+                .layer_count(6);
+            barrier.record_single(
+                cmdbuf,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            );
         }
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
-        const ::FrameDataArr* frame_data_ = nullptr;
         const mirinae::EnvmapBundle* envmaps_ = nullptr;
         const mirinae::IRenPass* rp_ = nullptr;
         const mirinae::RpCtxt* ctxt_ = nullptr;
@@ -138,16 +133,15 @@ namespace {
         RpTask() {}
 
         void init(
-            const ::FrameDataArr& frame_data,
             const mirinae::IRenPass& rp,
             mirinae::EnvmapBundle& envmaps,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
-            record_tasks_.init(frame_data, rp, envmaps, cmd_pool, device);
+            record_tasks_.init(rp, envmaps, cmd_pool, device);
         }
 
-        std::string_view name() const override { return "env atmos sky"; }
+        std::string_view name() const override { return "env diffuse"; }
 
         void prepare(const mirinae::RpCtxt& ctxt) override {
             record_tasks_.prepare(ctxt);
@@ -174,80 +168,36 @@ namespace {
 
     class RpBase
         : public mirinae::IRpBase
-        , public mirinae::RenPassBundle<2> {
+        , public mirinae::RenPassBundle<1> {
 
     public:
         RpBase(mirinae::RpCreateBundle& cbundle)
-            : device_(cbundle.device_)
-            , rp_res_(cbundle.rp_res_)
-            , cosmos_(cbundle.cosmos_) {
+            : device_(cbundle.device_), rp_res_(cbundle.rp_res_) {
             // Clear values
             {
-                clear_values_.at(0).depthStencil = { 0, 0 };
-                clear_values_.at(1).color = { 0, 0, 0, 1 };
-            }
-
-            // Image references
-            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                auto& fd = frame_data_[i];
-                fd.sky_view_lut_ = rp_res_.ren_img_.get_img_reader(
-                    fmt::format("sky view LUT:sky_view_lut_f#{}", i), name_s()
-                );
+                clear_values_.at(0).color = { 0, 0, 0, 1 };
             }
 
             // Desc layout
             {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
-                builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+                builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // envmap
                 rp_res_.desclays_.add(builder, device_.logi_device());
             }
 
             auto& desclay = rp_res_.desclays_.get(name_s() + ":main");
-
-            // Desc sets
-            {
-                desc_pool_.init(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    desclay.size_info(),
-                    device_.logi_device()
-                );
-
-                auto desc_sets = desc_pool_.alloc(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    desclay.layout(),
-                    device_.logi_device()
-                );
-
-                mirinae::DescWriter writer;
-                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                    auto& fd = frame_data_[i];
-                    fd.desc_set_ = desc_sets[i];
-
-                    writer.add_img_info()
-                        .set_img_view(fd.sky_view_lut_->view_.get())
-                        .set_sampler(device_.samplers().get_cubemap())
-                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 0);
-                }
-                writer.apply_all(device_.logi_device());
-            }
 
             // Render pass
             {
                 mirinae::RenderPassBuilder builder;
 
                 builder.attach_desc()
-                    .add(device_.img_formats().depth_map())
-                    .ini_lay(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-                builder.attach_desc()
                     .add(VK_FORMAT_B10G11R11_UFLOAT_PACK32)
                     .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .op_pair_clear_store();
 
-                builder.depth_attach_ref().set(0);
-                builder.color_attach_ref().add_color_attach(1);
+                builder.color_attach_ref().add_color_attach(0);
 
                 builder.subpass_dep().add().preset_single();
 
@@ -261,7 +211,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .desc(desclay.layout())
                     .add_vertex_flag()
-                    .pc<mirinae::U_EnvSkyPushConst>()
+                    .pc<mirinae::U_EnvdiffusePushConst>()
                     .build(pipe_layout_, device_);
             }
 
@@ -270,8 +220,8 @@ namespace {
                 mirinae::PipelineBuilder builder{ device_ };
 
                 builder.shader_stages()
-                    .add_vert(":asset/spv/env_sky_vert.spv")
-                    .add_frag(":asset/spv/env_atmos_sky_frag.spv");
+                    .add_vert(":asset/spv/env_diffuse_vert.spv")
+                    .add_frag(":asset/spv/env_diffuse_frag.spv");
 
                 builder.color_blend_state().add(false, 1);
 
@@ -283,22 +233,13 @@ namespace {
             }
         }
 
-        ~RpBase() override {
-            for (auto& fd : frame_data_) {
-                rp_res_.ren_img_.free_img(fd.sky_view_lut_->id(), name_s());
-                fd.desc_set_ = VK_NULL_HANDLE;
-            }
+        ~RpBase() override { this->destroy_render_pass_elements(device_); }
 
-            desc_pool_.destroy(device_.logi_device());
-            this->destroy_render_pass_elements(device_);
-        }
-
-        std::string_view name() const override { return "env atmos sky"; }
+        std::string_view name() const override { return "env diffuse"; }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<::RpTask>();
             out->init(
-                frame_data_,
                 *this,
                 *static_cast<mirinae::EnvmapBundle*>(rp_res_.envmaps_.get()),
                 rp_res_.cmd_pool_,
@@ -310,10 +251,6 @@ namespace {
     private:
         mirinae::VulkanDevice& device_;
         mirinae::RpResources& rp_res_;
-        mirinae::CosmosSimulator& cosmos_;
-
-        FrameDataArr frame_data_;
-        mirinae::DescPool desc_pool_;
     };
 
 }  // namespace
@@ -321,7 +258,7 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_rp_env_sky_atmos(RpCreateBundle& cbundle) {
+    std::unique_ptr<IRpBase> create_rp_env_diffuse(RpCreateBundle& cbundle) {
         return std::make_unique<RpBase>(cbundle);
     }
 
