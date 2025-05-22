@@ -100,6 +100,12 @@ namespace mirinae::mouse {
         double ypos_ = 0;
     };
 
+    struct EventRel {
+        Clock_t::time_point timepoint_ = Clock_t::now();
+        double xrel_ = 0;
+        double yrel_ = 0;
+    };
+
 
     class EventAnalyzer {
 

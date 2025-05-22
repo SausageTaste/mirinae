@@ -1125,6 +1125,17 @@ namespace {
             return true;
         }
 
+        bool on_mouse_rel_event(const mirinae::mouse::EventRel& e) override {
+            namespace cpnt = mirinae::cpnt;
+
+            if (renderer_->on_mouse_rel_event(e))
+                return true;
+            if (action_mapper_.on_mouse_rel_event(e))
+                return true;
+
+            return true;
+        }
+
         bool on_touch_event(const mirinae::touch::Event& e) override {
             if (renderer_->on_touch_event(e))
                 return true;

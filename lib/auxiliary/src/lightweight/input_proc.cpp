@@ -107,6 +107,22 @@ namespace mirinae {
         return false;
     }
 
+    bool InputActionMapper::on_mouse_rel_event(const mouse::EventRel& e) {
+        using mirinae::mouse::ActionType;
+
+        if (move_pointer_ == &mouse_state_) {
+            mouse_state_.last_pos_.x += e.xrel_;
+            mouse_state_.last_pos_.y += e.yrel_;
+            return true;
+        } else if (look_pointer_ == &mouse_state_) {
+            mouse_state_.last_pos_.x += e.xrel_;
+            mouse_state_.last_pos_.y += e.yrel_;
+            return true;
+        }
+
+        return false;
+    }
+
     bool InputActionMapper::on_touch_event(const touch::Event& e) {
         return false;
     }

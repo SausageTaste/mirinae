@@ -20,6 +20,9 @@ namespace mirinae {
         virtual bool on_key_event(const key::Event& e) { return false; }
         virtual bool on_text_event(char32_t c) { return false; }
         virtual bool on_mouse_event(const mouse::Event& e) { return false; }
+        virtual bool on_mouse_rel_event(const mouse::EventRel& e) {
+            return false;
+        }
         virtual bool on_touch_event(const touch::Event& e) { return false; }
     };
 
@@ -117,6 +120,7 @@ namespace mirinae {
         bool on_key_event(const key::Event& e) override;
         bool on_text_event(char32_t c) override;
         bool on_mouse_event(const mouse::Event& e) override;
+        bool on_mouse_rel_event(const mouse::EventRel& e) override;
         bool on_touch_event(const touch::Event& e) override;
 
         double get_value(ActionType action) const;
