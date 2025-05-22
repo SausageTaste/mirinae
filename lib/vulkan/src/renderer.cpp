@@ -909,7 +909,9 @@ namespace { namespace task {
             device_ = &device;
 
             for (auto& rp : passes) {
-                passes_.push_back(rp->create_task());
+                if (auto task = rp->create_task()) {
+                    passes_.push_back(std::move(task));
+                }
             }
         }
 
