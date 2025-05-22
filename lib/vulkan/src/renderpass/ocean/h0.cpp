@@ -77,27 +77,27 @@ namespace { namespace task {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = VK_NULL_HANDLE;
+            auto ocean = mirinae::find_ocean_cpnt(*reg_);
+            if (!ocean)
+                return;
+
             cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
             mirinae::begin_cmdbuf(cmdbuf_);
-            this->record(cmdbuf_, *rp_, *ctxt_, *reg_, *frame_data_);
+            this->record(cmdbuf_, *frame_data_, *ocean, *rp_, *ctxt_);
             mirinae::end_cmdbuf(cmdbuf_);
         }
 
         static bool record(
             const VkCommandBuffer cmdbuf,
+            const ::FrameDataArr& frame_data,
+            const mirinae::cpnt::Ocean& ocean_entt,
             const mirinae::IPipelinePair& rp,
-            const mirinae::RpCtxt& ctxt,
-            const entt::registry& reg,
-            const ::FrameDataArr& frame_data
+            const mirinae::RpCtxt& ctxt
         ) {
-            auto ocean = mirinae::find_ocean_cpnt(reg);
-            if (!ocean)
-                return false;
-
-            auto& ocean_entt = *ocean;
             auto& fd = frame_data.at(ctxt.f_index_.get());
 
             vkCmdBindPipeline(

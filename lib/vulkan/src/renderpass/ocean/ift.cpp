@@ -246,12 +246,17 @@ namespace { namespace task { namespace butterfly {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = VK_NULL_HANDLE;
+            auto ocean = mirinae::find_ocean_cpnt(*reg_);
+            if (!ocean)
+                return;
+
             cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
             mirinae::begin_cmdbuf(cmdbuf_);
-            this->record(cmdbuf_, *rp_, *ctxt_, *reg_, *frame_data_);
+            this->record(cmdbuf_, *rp_, *ctxt_, *frame_data_);
             mirinae::end_cmdbuf(cmdbuf_);
         }
 
@@ -259,13 +264,8 @@ namespace { namespace task { namespace butterfly {
             const VkCommandBuffer cmdbuf,
             const mirinae::IPipelinePair& rp,
             const mirinae::RpCtxt& ctxt,
-            const entt::registry& reg,
             const ::ButterFrameDataArr& frame_data
         ) {
-            auto ocean = mirinae::find_ocean_cpnt(reg);
-            if (!ocean)
-                return false;
-            auto& ocean_entt = *ocean;
             auto& fd = frame_data.at(ctxt.f_index_.get());
 
             vkCmdBindPipeline(

@@ -502,11 +502,10 @@ namespace { namespace task {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = VK_NULL_HANDLE;
             auto ocean = ::find_first_cpnt<mirinae::cpnt::Ocean>(*reg_);
-            if (!ocean) {
-                cmdbuf_ = VK_NULL_HANDLE;
+            if (!ocean)
                 return;
-            }
 
             cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
             if (cmdbuf_ == VK_NULL_HANDLE)
