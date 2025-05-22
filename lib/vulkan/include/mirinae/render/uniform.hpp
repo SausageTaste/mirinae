@@ -52,6 +52,7 @@ namespace mirinae {
 
     struct U_EnvSkyPushConst {
         glm::mat4 proj_view_;
+        glm::vec4 sun_dir_w_;
     };
 
 

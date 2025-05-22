@@ -11,6 +11,11 @@ layout(location = 0) out vec4 f_color;
 
 layout(set = 0, binding = 0) uniform sampler2D u_sky_view_lut;
 
+layout(push_constant) uniform U_EnvSkyPushConst {
+    mat4 proj_view;
+    vec4 sun_dir_w;
+} u_pc;
+
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
 vec2 map_cube(vec3 v) {
@@ -93,7 +98,7 @@ void main() {
     const vec3 up_dir_e = normalize(cam_pos_e);
     const float view_zenith_cos_angle = dot(cam_dir_w, up_dir_e);
 
-    const vec3 sun_dir_w = normalize(vec3(1, 0.5, 1));
+    const vec3 sun_dir_w = u_pc.sun_dir_w.xyz;
 
     // assumes non parallel vectors
     const vec3 side_dir_e = normalize(cross(up_dir_e, cam_dir_w));

@@ -2,6 +2,10 @@
 
 #include "mirinae/renderpass/envmap/envmap.hpp"
 
+#include <entt/entity/registry.hpp>
+
+#include "mirinae/cpnt/light.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/renderpass/builder.hpp"
@@ -30,12 +34,14 @@ namespace {
 
         void init(
             const ::FrameDataArr& frame_data,
+            const entt::registry& reg,
             const mirinae::IRenPass& rp,
             mirinae::EnvmapBundle& envmaps,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
             rp_ = &rp;
+            reg_ = &reg;
             frame_data_ = &frame_data;
             envmaps_ = &envmaps;
             cmd_pool_ = &cmd_pool;
@@ -62,6 +68,7 @@ namespace {
             this->record(
                 cmdbuf_,
                 frame_data_->at(ctxt_->f_index_.get()),
+                *reg_,
                 *envmaps_->begin(),
                 *rp_
             );
@@ -71,6 +78,7 @@ namespace {
         static void record(
             const VkCommandBuffer cmdbuf,
             const ::FrameData& fd,
+            const entt::registry& reg,
             const mirinae::EnvmapBundle::Item& env_item,
             const mirinae::IRenPass& rp
         ) {
@@ -94,6 +102,16 @@ namespace {
                 .record_scissor(cmdbuf);
             rp_info.wh(base_cube.width(), base_cube.height());
 
+            mirinae::U_EnvSkyPushConst pc;
+
+            for (auto e : reg.view<mirinae::cpnt::DLight>()) {
+                auto& light = reg.get<mirinae::cpnt::DLight>(e);
+                auto& tform = reg.get<mirinae::cpnt::Transform>(e);
+                const auto dir = light.calc_to_light_dir(glm::dmat4(1), tform);
+                pc.sun_dir_w_ = glm::vec4{ dir, 0 };
+                break;
+            }
+
             for (int i = 0; i < 6; ++i) {
                 rp_info.fbuf(base_cube.face_fbuf(i)).record_begin(cmdbuf);
 
@@ -106,12 +124,12 @@ namespace {
                     .set(fd.desc_set_)
                     .record(cmdbuf);
 
-                mirinae::U_EnvSkyPushConst pc;
                 pc.proj_view_ = proj_mat * mirinae::CUBE_VIEW_MATS[i];
 
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())
                     .add_stage_vert()
+                    .add_stage_frag()
                     .record(cmdbuf, pc);
 
                 vkCmdDraw(cmdbuf, 36, 1, 0, 0);
@@ -124,6 +142,7 @@ namespace {
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
         const ::FrameDataArr* frame_data_ = nullptr;
+        const entt::registry* reg_ = nullptr;
         const mirinae::EnvmapBundle* envmaps_ = nullptr;
         const mirinae::IRenPass* rp_ = nullptr;
         const mirinae::RpCtxt* ctxt_ = nullptr;
@@ -139,12 +158,13 @@ namespace {
 
         void init(
             const ::FrameDataArr& frame_data,
+            const entt::registry& reg,
             const mirinae::IRenPass& rp,
             mirinae::EnvmapBundle& envmaps,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
-            record_tasks_.init(frame_data, rp, envmaps, cmd_pool, device);
+            record_tasks_.init(frame_data, reg, rp, envmaps, cmd_pool, device);
         }
 
         std::string_view name() const override { return "env atmos sky"; }
@@ -261,6 +281,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .desc(desclay.layout())
                     .add_vertex_flag()
+                    .add_frag_flag()
                     .pc<mirinae::U_EnvSkyPushConst>()
                     .build(pipe_layout_, device_);
             }
@@ -299,6 +320,7 @@ namespace {
             auto out = std::make_unique<::RpTask>();
             out->init(
                 frame_data_,
+                cosmos_.reg(),
                 *this,
                 *static_cast<mirinae::EnvmapBundle*>(rp_res_.envmaps_.get()),
                 rp_res_.cmd_pool_,
