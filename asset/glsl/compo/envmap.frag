@@ -85,13 +85,5 @@ void main() {
         u_env_specular[0]
     );
 
-    // Fog
-    {
-        const float x = frag_distance * u_pc.fog_color_density.w;
-        const float xx = x * x;
-        const float fog_factor = 1.0 / exp(xx);
-        light = mix(u_pc.fog_color_density.xyz, light, fog_factor);
-    }
-
     f_color = vec4(light, 1);
 }
