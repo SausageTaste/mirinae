@@ -109,9 +109,8 @@ namespace {
 
         void do_frame() {}
 
-        bool get_win_size(int& width, int& height) const {
-            SDL_GetWindowSize(window_, &width, &height);
-            return true;
+        bool get_win_fbuf_size(int& width, int& height) const {
+            return SDL_GetWindowSizeInPixels(window_, &width, &height);
         }
 
         void fill_vulkan_extensions(std::vector<std::string>& out) const {
@@ -197,7 +196,7 @@ namespace {
             );
 
             window_.fill_vulkan_extensions(cinfo.instance_extensions_);
-            window_.get_win_size(cinfo.init_width_, cinfo.init_height_);
+            window_.get_win_fbuf_size(cinfo.init_width_, cinfo.init_height_);
             cinfo.osio_ = &window_;
             cinfo.vulkan_os_ = &window_;
             cinfo.ui_scale_ = 1;
