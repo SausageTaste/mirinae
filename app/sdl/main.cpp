@@ -211,8 +211,94 @@ namespace {
             engine_->do_frame();
         }
 
-        auto& window() { return window_; }
-        auto& engine() { return *engine_; }
+        SDL_AppResult proc_event(const SDL_Event& e) {
+            ImGui_ImplSDL3_ProcessEvent(&e);
+
+            if (!engine_)
+                return SDL_AppResult::SDL_APP_FAILURE;
+            auto& engine = *engine_;
+
+            if (e.type == SDL_EVENT_KEY_DOWN) {
+                if (ImGui::GetIO().WantCaptureKeyboard)
+                    return SDL_AppResult::SDL_APP_CONTINUE;
+
+                SPDLOG_TRACE("Key down: {}", e.key.scancode);
+                mirinae::key::Event ke;
+                ke.action_type = mirinae::key::ActionType::down;
+                ke.scancode_ = e.key.scancode;
+                ke.keycode_ = e.key.key;
+                engine.on_key_event(ke);
+            } else if (e.type == SDL_EVENT_KEY_UP) {
+                if (ImGui::GetIO().WantCaptureKeyboard)
+                    return SDL_AppResult::SDL_APP_CONTINUE;
+
+                SPDLOG_TRACE("Key up: {}", e.key.scancode);
+                mirinae::key::Event ke;
+                ke.action_type = mirinae::key::ActionType::up;
+                ke.scancode_ = e.key.scancode;
+                ke.keycode_ = e.key.key;
+                engine.on_key_event(ke);
+            } else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                if (ImGui::GetIO().WantCaptureMouse)
+                    return SDL_AppResult::SDL_APP_CONTINUE;
+
+                SPDLOG_TRACE(
+                    "Mouse button down: ({}, {}), btn={}",
+                    e.button.x,
+                    e.button.y,
+                    e.button.button
+                );
+                mirinae::mouse::Event me;
+                me.action_ = mirinae::mouse::ActionType::down;
+                me.button_ = mirinae::mouse::ButtonCode::right;
+                me.xpos_ = e.button.x;
+                me.ypos_ = e.button.y;
+                engine.on_mouse_event(me);
+            } else if (e.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+                if (ImGui::GetIO().WantCaptureMouse)
+                    return SDL_AppResult::SDL_APP_CONTINUE;
+
+                SPDLOG_TRACE(
+                    "Mouse button up: ({}, {}), btn={}",
+                    e.button.x,
+                    e.button.y,
+                    e.button.button
+                );
+                mirinae::mouse::Event me;
+                me.action_ = mirinae::mouse::ActionType::up;
+                me.button_ = mirinae::mouse::ButtonCode::right;
+                me.xpos_ = e.button.x;
+                me.ypos_ = e.button.y;
+                engine.on_mouse_event(me);
+            } else if (e.type == SDL_EVENT_MOUSE_MOTION) {
+                if (ImGui::GetIO().WantCaptureMouse)
+                    return SDL_AppResult::SDL_APP_CONTINUE;
+
+                if (window_.rel_mouse_mode()) {
+                    SPDLOG_TRACE(
+                        "Rel motion: ({}, {})", e.motion.xrel, e.motion.yrel
+                    );
+                    mirinae::mouse::EventRel me;
+                    me.xrel_ = e.motion.xrel;
+                    me.yrel_ = e.motion.yrel;
+                    engine.on_mouse_rel_event(me);
+                } else {
+                    SPDLOG_TRACE(
+                        "Abs motion: ({}, {})", e.button.x, e.button.y
+                    );
+                    mirinae::mouse::Event me;
+                    me.action_ = mirinae::mouse::ActionType::move;
+                    me.button_ = mirinae::mouse::ButtonCode::eoe;
+                    me.xpos_ = e.button.x;
+                    me.ypos_ = e.button.y;
+                    engine.on_mouse_event(me);
+                }
+            } else {
+                SPDLOG_WARN("Unhandled event: {}", e.type);
+            }
+
+            return SDL_AppResult::SDL_APP_CONTINUE;
+        }
 
     private:
         WindowSDL window_;
@@ -237,76 +323,16 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* e) {
+    if (nullptr == e)
+        return SDL_AppResult::SDL_APP_CONTINUE;
     if (e->type == SDL_EVENT_QUIT)
         return SDL_AppResult::SDL_APP_SUCCESS;
 
-    ImGui_ImplSDL3_ProcessEvent(e);
     auto app = static_cast<::CombinedEngine*>(appstate);
-    auto& engine = app->engine();
+    if (nullptr == app)
+        return SDL_AppResult::SDL_APP_FAILURE;
 
-    if (e->type == SDL_EVENT_KEY_DOWN) {
-        mirinae::key::Event ke;
-        ke.action_type = mirinae::key::ActionType::down;
-        ke.scancode_ = e->key.scancode;
-        ke.keycode_ = e->key.key;
-        SPDLOG_TRACE("Key down: {}", ke.scancode_);
-        engine.on_key_event(ke);
-    } else if (e->type == SDL_EVENT_KEY_UP) {
-        mirinae::key::Event ke;
-        ke.action_type = mirinae::key::ActionType::up;
-        ke.scancode_ = e->key.scancode;
-        ke.keycode_ = e->key.key;
-        SPDLOG_TRACE("Key up: {}", ke.scancode_);
-        engine.on_key_event(ke);
-    } else if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-        mirinae::mouse::Event me;
-        me.action_ = mirinae::mouse::ActionType::down;
-        me.button_ = mirinae::mouse::ButtonCode::right;
-        me.xpos_ = e->button.x;
-        me.ypos_ = e->button.y;
-        SPDLOG_TRACE(
-            "Mouse button down: ({}, {}), btn={}",
-            e->button.x,
-            e->button.y,
-            e->button.button
-        );
-        engine.on_mouse_event(me);
-    } else if (e->type == SDL_EVENT_MOUSE_BUTTON_UP) {
-        mirinae::mouse::Event me;
-        me.action_ = mirinae::mouse::ActionType::up;
-        me.button_ = mirinae::mouse::ButtonCode::right;
-        me.xpos_ = e->button.x;
-        me.ypos_ = e->button.y;
-        SPDLOG_TRACE(
-            "Mouse button up: ({}, {}), btn={}",
-            e->button.x,
-            e->button.y,
-            e->button.button
-        );
-        engine.on_mouse_event(me);
-    } else if (e->type == SDL_EVENT_MOUSE_MOTION) {
-        if (app->window().rel_mouse_mode()) {
-            SPDLOG_TRACE(
-                "Rel motion: ({}, {})", e->motion.xrel, e->motion.yrel
-            );
-            mirinae::mouse::EventRel me;
-            me.xrel_ = e->motion.xrel;
-            me.yrel_ = e->motion.yrel;
-            engine.on_mouse_rel_event(me);
-        } else {
-            SPDLOG_TRACE("Abs motion: ({}, {})", e->button.x, e->button.y);
-            mirinae::mouse::Event me;
-            me.action_ = mirinae::mouse::ActionType::move;
-            me.button_ = mirinae::mouse::ButtonCode::eoe;
-            me.xpos_ = e->button.x;
-            me.ypos_ = e->button.y;
-            engine.on_mouse_event(me);
-        }
-    } else {
-        SPDLOG_WARN("Unhandled event: {}", e->type);
-    }
-
-    return SDL_AppResult::SDL_APP_CONTINUE;
+    return app->proc_event(*e);
 }
 
 
