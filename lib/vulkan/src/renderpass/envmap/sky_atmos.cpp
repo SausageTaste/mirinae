@@ -82,6 +82,20 @@ namespace {
             const mirinae::EnvmapBundle::Item& env_item,
             const mirinae::IRenPass& rp
         ) {
+            mirinae::ImageMemoryBarrier barrier_pre{};
+            barrier_pre.image(env_item.cube_map_.base().depth_img(0))
+                .set_src_access(VK_ACCESS_SHADER_READ_BIT)
+                .set_dst_access(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+                .old_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                );
+
             mirinae::RenderPassBeginInfo rp_info{};
             rp_info.rp(rp.render_pass())
                 .clear_value_count(rp.clear_value_count())
@@ -258,7 +272,7 @@ namespace {
 
                 builder.attach_desc()
                     .add(device_.img_formats().depth_map())
-                    .ini_lay(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
                 builder.attach_desc()
                     .add(VK_FORMAT_B10G11R11_UFLOAT_PACK32)

@@ -261,8 +261,16 @@ namespace mirinae {
         return fbufs_.at(index).get();
     }
 
+    VkImage ColorDepthCubeMap::depth_img(size_t index) const {
+        return depth_map_->image();
+    }
+
     VkImageView ColorDepthCubeMap::face_view(size_t index) const {
         return face_views_.at(index).get();
+    }
+
+    VkImageView ColorDepthCubeMap::depth_view(size_t index) const {
+        return depth_map_->image_view();
     }
 
     VkImageView ColorDepthCubeMap::cube_view() const {

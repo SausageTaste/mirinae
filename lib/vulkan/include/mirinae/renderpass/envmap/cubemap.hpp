@@ -117,7 +117,9 @@ namespace mirinae {
         VkExtent2D extent2d() const;
 
         VkFramebuffer face_fbuf(size_t index) const;
+        VkImage depth_img(size_t index) const;
         VkImageView face_view(size_t index) const;
+        VkImageView depth_view(size_t index) const;
         VkImageView cube_view() const;
 
     public:
