@@ -1164,6 +1164,10 @@ namespace {
                     mirinae::rp::create_rp_env_diffuse(cbundle)
                 );
 
+                render_passes_.push_back(
+                    mirinae::rp::create_rp_env_specular(cbundle)
+                );
+
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );
