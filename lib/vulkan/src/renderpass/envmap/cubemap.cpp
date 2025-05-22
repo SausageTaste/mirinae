@@ -455,9 +455,9 @@ namespace mirinae {
         return false;
     }
 
-    EnvmapBundle::Item* EnvmapBundle::choose_to_update() {
+    const EnvmapBundle::Item* EnvmapBundle::choose_to_update() const {
         double min_elapsed = std::numeric_limits<double>::max();
-        Item* chosen = nullptr;
+        const Item* chosen = nullptr;
 
         for (auto& item : items_) {
             if (entt::null == item.entity_)

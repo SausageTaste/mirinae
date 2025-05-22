@@ -201,10 +201,12 @@ namespace mirinae {
         void destroy();
 
         auto begin() { return items_.begin(); }
+        auto begin() const { return items_.begin(); }
         auto end() { return items_.end(); }
+        auto end() const { return items_.end(); }
 
         bool has_entt(entt::entity e) const;
-        Item* choose_to_update();
+        const Item* choose_to_update() const;
 
     private:
         VulkanDevice& device_;
