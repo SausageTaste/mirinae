@@ -221,7 +221,7 @@ namespace {
                 if (ImGui::GetIO().WantCaptureKeyboard)
                     return SDL_AppResult::SDL_APP_CONTINUE;
 
-                SPDLOG_TRACE("Key down: {}", e.key.scancode);
+                SPDLOG_TRACE("Key down: {}", (int)e.key.scancode);
                 mirinae::key::Event ke;
                 ke.action_type = mirinae::key::ActionType::down;
                 ke.scancode_ = e.key.scancode;
@@ -231,7 +231,7 @@ namespace {
                 if (ImGui::GetIO().WantCaptureKeyboard)
                     return SDL_AppResult::SDL_APP_CONTINUE;
 
-                SPDLOG_TRACE("Key up: {}", e.key.scancode);
+                SPDLOG_TRACE("Key up: {}", (int)e.key.scancode);
                 mirinae::key::Event ke;
                 ke.action_type = mirinae::key::ActionType::up;
                 ke.scancode_ = e.key.scancode;
