@@ -117,7 +117,7 @@ namespace {
 
                     auto move_speed = move_speed_;
                     if (sprint) {
-                        move_speed *= 3;
+                        move_speed *= 100;
                     } else if (walk) {
                         move_speed = 0.7;
                     }
@@ -224,7 +224,7 @@ namespace {
         ::ValueInterpolator tgt_heading_;
 
     public:
-        double move_speed_ = 1000;     // World space
+        double move_speed_ = 10;     // World space
         double offset_dist_ = 2;       // World space
         double offset_height_ = 0.75;  // World space
         double offset_hor_ = 0.2;      // World space

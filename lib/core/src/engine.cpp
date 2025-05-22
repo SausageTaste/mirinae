@@ -907,6 +907,7 @@ namespace {
                 terrain.height_scale_ = 2761.32 - 585.625;
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
+                tform.pos_ = { -513, 0, 49 };
 
                 cosmos_->phys_world().give_body_height_field(entt, reg);
             }
@@ -922,7 +923,7 @@ namespace {
                 auto& mdl = reg.emplace<mirinae::cpnt::MdlActorSkinned>(entt);
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 0, 2000, 0 };
+                tform.pos_ = { 0, 1290, 0 };
 
 #if true
                 cosmos_->cam_ctrl().anim_idle_ = "idle_normal_1";
@@ -951,7 +952,6 @@ namespace {
             }
 
             // City
-            /*
             {
                 const auto entt = reg.create();
 
@@ -962,13 +962,14 @@ namespace {
                 mdl.model_path_ = "Sung/city.dun/city.dmd";
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { -21, 1.8, 42 };
+                tform.pos_ = { 0, 1289, 0 };
                 tform.set_scale(0.65);
 
                 cosmos_->phys_world().give_body_triangles(entt, reg);
             }
 
             // Script
+            /*
             {
                 const auto contents = ecinfo_.filesys_->read_file(
                     ":asset/script/startup.lua"
