@@ -1152,6 +1152,10 @@ namespace {
                     mirinae::rp::create_rp_envmap(cbundle)
                 );
 
+                render_passes_.push_back(
+                    mirinae::rp::create_rp_env_sky_atmos(cbundle)
+                );
+
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );

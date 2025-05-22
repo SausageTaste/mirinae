@@ -5,6 +5,19 @@
 
 namespace mirinae {
 
+    const glm::dvec3 DVEC_ZERO{ 0, 0, 0 };
+    const glm::dvec3 DVEC_DOWN{ 0, -1, 0 };
+
+    const std::array<glm::dmat4, 6> CUBE_VIEW_MATS{
+        glm::lookAt(DVEC_ZERO, glm::dvec3(1, 0, 0), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(-1, 0, 0), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 1, 0), glm::dvec3(0, 0, 1)),
+        glm::lookAt(DVEC_ZERO, DVEC_DOWN, glm::dvec3(0, 0, -1)),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, 1), DVEC_DOWN),
+        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, -1), DVEC_DOWN)
+    };
+
+
     struct IEnvmapRpBundle {
         virtual ~IEnvmapRpBundle() = default;
         virtual const IRenPass& rp_base() const = 0;

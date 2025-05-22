@@ -21,18 +21,6 @@ namespace {
 
     constexpr double ENVMAP_UPDATE_INVERVAL = 10;
 
-    const glm::dvec3 DVEC_ZERO{ 0, 0, 0 };
-    const glm::dvec3 DVEC_DOWN{ 0, -1, 0 };
-
-    const std::array<glm::dmat4, 6> CUBE_VIEW_MATS{
-        glm::lookAt(DVEC_ZERO, glm::dvec3(1, 0, 0), DVEC_DOWN),
-        glm::lookAt(DVEC_ZERO, glm::dvec3(-1, 0, 0), DVEC_DOWN),
-        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 1, 0), glm::dvec3(0, 0, 1)),
-        glm::lookAt(DVEC_ZERO, DVEC_DOWN, glm::dvec3(0, 0, -1)),
-        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, 1), DVEC_DOWN),
-        glm::lookAt(DVEC_ZERO, glm::dvec3(0, 0, -1), DVEC_DOWN)
-    };
-
 
     glm::dmat4 make_proj(double znear, double zfar) {
         constexpr static auto ANGLE_90 = mirinae::Angle::from_deg(90.0);
@@ -218,7 +206,8 @@ namespace { namespace task {
                         .set(actor.get_desc_set(ctxt.f_index_.get()))
                         .record(cmdbuf);
 
-                    push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i] *
+                    push_const.proj_view_ = proj_mat *
+                                            mirinae::CUBE_VIEW_MATS[i] *
                                             env_item.world_mat_;
 
                     mirinae::PushConstInfo{}
@@ -416,7 +405,7 @@ namespace { namespace task {
                     .record(cmdbuf);
 
                 mirinae::U_EnvSkyPushConst pc;
-                pc.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+                pc.proj_view_ = proj_mat * mirinae::CUBE_VIEW_MATS[i];
 
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())
@@ -515,7 +504,7 @@ namespace { namespace task {
                 descset_info.set(cube_map.desc_set()).record(cmdbuf);
 
                 mirinae::U_EnvdiffusePushConst push_const;
-                push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+                push_const.proj_view_ = proj_mat * mirinae::CUBE_VIEW_MATS[i];
 
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())
@@ -630,7 +619,8 @@ namespace { namespace task {
                     descset_info.set(cube_map.desc_set()).record(cmdbuf);
 
                     mirinae::U_EnvSpecularPushConst push_const;
-                    push_const.proj_view_ = proj_mat * CUBE_VIEW_MATS[i];
+                    push_const.proj_view_ = proj_mat *
+                                            mirinae::CUBE_VIEW_MATS[i];
                     push_const.roughness_ = mip.roughness_;
 
                     mirinae::PushConstInfo{}
@@ -717,6 +707,7 @@ namespace { namespace task {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            /*
             namespace cpnt = mirinae::cpnt;
 
             if (!timer_.check_if_elapsed(ENVMAP_UPDATE_INVERVAL)) {
@@ -774,6 +765,7 @@ namespace { namespace task {
             draw_sky_.prepare(*ctxt_, chosen);
             draw_diffuse_.prepare(*ctxt_, chosen);
             draw_specular_.prepare(*ctxt_, chosen);
+            */
         }
 
         DrawBase draw_base_;
@@ -892,6 +884,7 @@ namespace {
         std::string_view name() const override { return "envmap"; }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
+            /*
             auto task = std::make_unique<::task::RpTask>();
             task->init(
                 desc_set_,
@@ -901,7 +894,8 @@ namespace {
                 rp_res_.cmd_pool_,
                 device_
             );
-            return task;
+            */
+            return nullptr;
         }
 
     private:

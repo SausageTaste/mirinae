@@ -14,5 +14,6 @@ void main() {
     v_local_pos = CUBE_VERTICES[gl_VertexIndex];
     vec4 clip_pos = u_push_const.proj_view * vec4(v_local_pos, 0);
     gl_Position = clip_pos;
-    gl_Position.z = 0.5 * gl_Position.w;
+    gl_Position.z = 0;
+    gl_Position.w = 1;
 }
