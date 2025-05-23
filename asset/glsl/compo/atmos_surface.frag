@@ -88,25 +88,24 @@ void main() {
 
     const AtmosphereParameters atmos_params = GetAtmosphereParameters();
 
-    const vec3 cam_pos_e = u_main.view_pos_w.xyz + vec3(0, atmos_params.BottomRadius, 0);
-    const float cam_height_e = length(cam_pos_e);
-
     const float tDepth = length(frag_pos_w - u_main.view_pos_w.xyz);
     float slice = AerialPerspectiveDepthToSlice(tDepth);
-    float weight = 1.0;
+    float weight = 1;
     if (slice < 0.5) {
         // We multiply by weight to fade to 0 at depth 0. That works for luminance and opacity.
-        weight = clamp(slice * 2.00, 0, 1);
+        weight = clamp(slice * 2, 0, 1);
         slice = 0.5;
     }
     const float w = sqrt(slice * AP_SLICE_COUNT_RCP);	// squared distribution
     const vec4 cam_scat_texel = textureLod(u_cam_scat_vol, vec3(v_uv_coord, w), 0);
     f_color = weight * cam_scat_texel;
 
-    const vec3 up_dir_e = normalize(cam_pos_e);
-    const float view_zenith_cos_angle = dot(view_dir_w, up_dir_e);
-    const float view_height = length(cam_pos_e);
-    const vec2 lut_trans_uv = LutTransmittanceParamsToUv(atmos_params, view_height, view_zenith_cos_angle);
+    const vec3 frag_pos_e = frag_pos_w + vec3(0, atmos_params.BottomRadius * 1000, 0);
+    const float view_height = length(frag_pos_e);
+    const vec3 frag_up_dir_e = frag_pos_e / view_height;
+    const vec3 sun_dir_w = mat3(u_main.view_inv) * ubuf_sh.dlight_dir.xyz;
+    const float view_zenith_cos_angle = dot(sun_dir_w, frag_up_dir_e);
+    const vec2 lut_trans_uv = LutTransmittanceParamsToUv(atmos_params, view_height / 1000.0, view_zenith_cos_angle);
     const vec4 trans_lut_texel = textureLod(u_trans_lut, lut_trans_uv, 0);
 
     // Directional light
@@ -121,7 +120,7 @@ void main() {
         if (texco.x < 0 || texco.x > 1 || texco.y < 0 || texco.y > 1)
             lit = 1;
 
-        f_color.xyz += lit * calc_pbr_illumination(
+        f_color.xyz += lit * trans_lut_texel.xyz * calc_pbr_illumination(
             roughness,
             metallic,
             albedo,
