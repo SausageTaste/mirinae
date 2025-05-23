@@ -62,6 +62,13 @@ namespace {
             return *this;
         }
 
+        template <typename T>
+        U_ShadowTerrainPushConst& terrain_size(T x, T y) {
+            terrain_size_.x = static_cast<float>(x);
+            terrain_size_.y = static_cast<float>(y);
+            return *this;
+        }
+
         U_ShadowTerrainPushConst& height_scale(float x) {
             height_scale_ = x;
             return *this;
@@ -76,6 +83,7 @@ namespace {
         glm::mat4 pvm_;
         glm::vec4 tile_index_count_;
         glm::vec4 height_map_size_fbuf_size_;
+        glm::vec4 terrain_size_;
         float height_scale_;
         float tess_factor_;
     };
@@ -222,14 +230,17 @@ namespace { namespace task {
 
                         ::U_ShadowTerrainPushConst pc;
                         pc.pvm(cascade.light_mat_ * model_mat)
-                            .tile_count(24, 24)
+                            .tile_count(terr.tile_count_x_, terr.tile_count_y_)
                             .height_map_size(unit->height_map_size())
                             .fbuf_size(half_width, half_height)
-                            .height_scale(64)
+                            .terrain_size(
+                                terr.terrain_width_, terr.terrain_height_
+                            )
+                            .height_scale(terr.height_scale_)
                             .tess_factor(terr.tess_factor_);
 
-                        for (int x = 0; x < 24; ++x) {
-                            for (int y = 0; y < 24; ++y) {
+                        for (int x = 0; x < terr.tile_count_x_; ++x) {
+                            for (int y = 0; y < terr.tile_count_y_; ++y) {
                                 pc.tile_index(x, y);
                                 pc_info.record(cmdbuf, pc);
                                 vkCmdDraw(cmdbuf, 4, 1, 0, 0);
