@@ -95,7 +95,7 @@ bool MoveToTopAtmosphere(inout vec3 WorldPos, vec3 WorldDir, float AtmosphereTop
     float viewHeight = length(WorldPos);
     if (viewHeight > AtmosphereTopRadius)
     {
-        float tTop = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0, 0.0, 0.0), AtmosphereTopRadius);
+        float tTop = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0), AtmosphereTopRadius);
         if (tTop >= 0.0)
         {
             vec3 UpVector = WorldPos / viewHeight;
@@ -186,53 +186,42 @@ SingleScatteringResult IntegrateScatteredLuminance(
     vec2 gResolution,
     mat4 pv_inv
 ) {
-    const bool debugEnabled = false;
     SingleScatteringResult result;
-    result.MultiScatAs1 = vec3(0.0);
+    result.MultiScatAs1 = vec3(0);
 
-    vec3 ClipSpace = vec3((pixPos / gResolution)*vec2(2.0, -2.0) - vec2(1.0, -1.0), 1.0);
+    vec3 ClipSpace = vec3((pixPos / gResolution) * vec2(2) - vec2(1), 1);
 
     // Compute next intersection with atmosphere or ground
     vec3 earthO = vec3(0);
     float tBottom = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.BottomRadius);
     float tTop = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.TopRadius);
-    float tMax = 0.0;
-    if (tBottom < 0.0)
-    {
-        if (tTop < 0.0)
-        {
-            tMax = 0.0; // No intersection with earth nor atmosphere: stop right away
+    float tMax = 0;
+    if (tBottom < 0) {
+        if (tTop < 0) {
+            // No intersection with earth nor atmosphere: stop right away
+            tMax = 0;
             return result;
-        }
-        else
-        {
+        } else {
             tMax = tTop;
         }
-    }
-    else
-    {
-        if (tTop > 0.0)
-        {
+    } else {
+        if (tTop > 0) {
             tMax = min(tTop, tBottom);
         }
     }
 
-    if (DepthBufferValue >= 0.0)
-    {
+    if (DepthBufferValue >= 0.0) {
         ClipSpace.z = DepthBufferValue;
-        if (ClipSpace.z < 1.0)
-        {
-            vec4 DepthBufferWorldPos = pv_inv * vec4(ClipSpace, 1.0);
+        if (ClipSpace.z < 1.0) {
+            vec4 DepthBufferWorldPos = pv_inv * vec4(ClipSpace, 1);
             DepthBufferWorldPos /= DepthBufferWorldPos.w;
 
-            float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0.0, 0.0, -Atmosphere.BottomRadius))); // apply earth offset to go back to origin as top of earth mode.
-            if (tDepth < tMax)
-            {
+            // apply earth offset to go back to origin as top of earth mode.
+            float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0, -Atmosphere.BottomRadius, 0)));
+            if (tDepth < tMax) {
                 tMax = tDepth;
             }
         }
-        //		if (VariableSampleCount && ClipSpace.z == 1.0)
-        //			return result;
     }
     tMax = min(tMax, tMaxMax);
 
@@ -240,8 +229,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
     float SampleCount = SampleCountIni;
     float SampleCountFloor = SampleCountIni;
     float tMaxFloor = tMax;
-    if (VariableSampleCount)
-    {
+    if (VariableSampleCount) {
         SampleCount = mix(4, 126, clamp(tMax*0.01, 0, 1));
         SampleCountFloor = floor(SampleCount);
         tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
@@ -255,19 +243,17 @@ SingleScatteringResult IntegrateScatteredLuminance(
     float cosTheta = dot(wi, wo);
     float MiePhaseValue = hgPhase(Atmosphere.MiePhaseG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction.
     float RayleighPhaseValue = RayleighPhase(cosTheta);
-    vec3 globalL = vec3(1.0);
+    vec3 globalL = vec3(1);
 
     // Ray march the atmosphere to integrate optical depth
-    vec3 L = vec3(0.0);
-    vec3 throughput = vec3(1.0);
-    vec3 OpticalDepth = vec3(0.0);
-    float t = 0.0;
-    float tPrev = 0.0;
+    vec3 L = vec3(0);
+    vec3 throughput = vec3(1);
+    vec3 OpticalDepth = vec3(0);
+    float t = 0;
+    float tPrev = 0;
     const float SampleSegmentT = 0.3;
-    for (float s = 0.0; s < SampleCount; s += 1.0)
-    {
-        if (VariableSampleCount)
-        {
+    for (float s = 0; s < SampleCount; s += 1) {
+        if (VariableSampleCount) {
             // More expenssive but artefact free
             float t0 = (s) / SampleCountFloor;
             float t1 = (s + 1.0) / SampleCountFloor;
@@ -276,21 +262,16 @@ SingleScatteringResult IntegrateScatteredLuminance(
             t1 = t1 * t1;
             // Make t0 and t1 world space distances.
             t0 = tMaxFloor * t0;
-            if (t1 > 1.0)
-            {
+            if (t1 > 1.0) {
                 t1 = tMax;
-                //	t1 = tMaxFloor;	// this reveal depth slices
-            }
-            else
-            {
+                // t1 = tMaxFloor;	// this reveal depth slices
+            } else {
                 t1 = tMaxFloor * t1;
             }
-            //t = t0 + (t1 - t0) * (whangHashNoise(pixPos.x, pixPos.y, gFrameId * 1920 * 1080)); // With dithering required to hide some sampling artefact relying on TAA later? This may even allow volumetric shadow?
+            // t = t0 + (t1 - t0) * (whangHashNoise(pixPos.x, pixPos.y, gFrameId * 1920 * 1080)); // With dithering required to hide some sampling artefact relying on TAA later? This may even allow volumetric shadow?
             t = t0 + (t1 - t0)*SampleSegmentT;
             dt = t1 - t0;
-        }
-        else
-        {
+        } else {
             //t = tMax * (s + SampleSegmentT) / SampleCount;
             // Exact difference, important for accuracy of multiple scattering
             float NewT = tMax * (s + SampleSegmentT) / SampleCount;
@@ -308,31 +289,28 @@ SingleScatteringResult IntegrateScatteredLuminance(
         const vec3 UpVector = P / pHeight;
         float SunZenithCosAngle = dot(SunDir, UpVector);
         vec2 uv = LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle);
-        uv = clamp(uv, vec2(0.0), vec2(1.0));
+        uv = clamp(uv, vec2(0), vec2(1));
         vec3 TransmittanceToSun = textureLod(trans_lut, uv, 0).xyz;
 
         vec3 PhaseTimesScattering;
-        if (MieRayPhase)
-        {
+        if (MieRayPhase) {
             PhaseTimesScattering = medium.scatteringMie * MiePhaseValue + medium.scatteringRay * RayleighPhaseValue;
-        }
-        else
-        {
+        } else {
             PhaseTimesScattering = medium.scattering * uniformPhase;
         }
 
         // Earth shadow
         float tEarth = raySphereIntersectNearest(P, SunDir, earthO + PLANET_RADIUS_OFFSET * UpVector, Atmosphere.BottomRadius);
-        float earthShadow = tEarth >= 0.0 ? 0.0 : 1.0;
+        float earthShadow = tEarth >= 0 ? 0 : 1;
 
         // Dual scattering for multi scattering
 
-        vec3 multiScatteredLuminance = vec3(0.0);
+        vec3 multiScatteredLuminance = vec3(0);
 #if MULTISCATAPPROX_ENABLED
         multiScatteredLuminance = GetMultipleScattering(Atmosphere, multi_scat, medium.scattering, medium.extinction, P, SunZenithCosAngle);
 #endif
 
-        float shadow = 1.0;
+        float shadow = 1;
 #if SHADOWMAP_ENABLED
         // First evaluate opaque shadow
         shadow = getShadow(Atmosphere, P);
@@ -381,7 +359,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
         tPrev = t;
     }
 
-    if (ground && tMax == tBottom && tBottom > 0.0)
+    if (ground && tMax == tBottom && tBottom > 0)
     {
         // Account for bounced light off the earth
         vec3 P = WorldPos + tBottom * WorldDir;
@@ -390,7 +368,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
         const vec3 UpVector = P / pHeight;
         float SunZenithCosAngle = dot(SunDir, UpVector);
         vec2 uv = LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle);
-        uv = clamp(uv, vec2(0.0), vec2(1.0));
+        uv = clamp(uv, vec2(0), vec2(1));
         vec3 TransmittanceToSun = textureLod(trans_lut, uv, 0).xyz;
 
         const float NdotL = clamp(dot(normalize(UpVector), normalize(SunDir)), 0, 1);

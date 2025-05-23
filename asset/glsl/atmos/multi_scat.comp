@@ -53,14 +53,14 @@ void main() {
     const AtmosphereParameters Atmosphere = GetAtmosphereParameters();
 
     float cosSunZenithAngle = uv.x * 2.0 - 1.0;
-    vec3 sunDir = normalize(vec3(0.0, sqrt(saturate(1.0 - cosSunZenithAngle * cosSunZenithAngle)), cosSunZenithAngle));
+    vec3 sunDir = normalize(vec3(0.0, cosSunZenithAngle, sqrt(saturate(1.0 - cosSunZenithAngle * cosSunZenithAngle))));
     // We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
     float viewHeight = Atmosphere.BottomRadius
         + saturate(uv.y + PLANET_RADIUS_OFFSET)
         * (Atmosphere.TopRadius - Atmosphere.BottomRadius - PLANET_RADIUS_OFFSET);
 
-    vec3 WorldPos = vec3(0.0, viewHeight, 0.0);
-    vec3 WorldDir = vec3(0.0, 1.0, 0.0);
+    vec3 WorldPos = vec3(0, viewHeight, 0);
+    vec3 WorldDir = vec3(0, 1, 0);
 
     const bool ground = true;
     const float SampleCountIni = 20;// a minimum set of step is required for accuracy unfortunately
@@ -84,8 +84,8 @@ void main() {
         float cosTheta = cos(theta);
         float sinTheta = sin(theta);
         WorldDir.x = cosTheta * sinPhi;
-        WorldDir.y = sinTheta * sinPhi;
-        WorldDir.z = cosPhi;
+        WorldDir.y = cosPhi;
+        WorldDir.z = sinTheta * sinPhi;
         SingleScatteringResult result = IntegrateScatteredLuminance(
             pixPos, WorldPos, WorldDir, sunDir, Atmosphere, ground,
             SampleCountIni, DepthBufferValue, VariableSampleCount, MieRayPhase,

@@ -3,6 +3,7 @@
 #include "../utils/lighting.glsl"
 #include "../utils/shadow.glsl"
 #include "../atmos/data.glsl"
+#include "../atmos/integrate.glsl"
 
 layout (location = 0) in vec2 v_uv_coord;
 
@@ -99,7 +100,14 @@ void main() {
         slice = 0.5;
     }
     const float w = sqrt(slice * AP_SLICE_COUNT_RCP);	// squared distribution
-    f_color = weight * textureLod(u_cam_scat_vol, vec3(v_uv_coord, w), 0);
+    const vec4 cam_scat_texel = textureLod(u_cam_scat_vol, vec3(v_uv_coord, w), 0);
+    f_color = weight * cam_scat_texel;
+
+    const vec3 up_dir_e = normalize(cam_pos_e);
+    const float view_zenith_cos_angle = dot(view_dir_w, up_dir_e);
+    const float view_height = length(cam_pos_e);
+    const vec2 lut_trans_uv = LutTransmittanceParamsToUv(atmos_params, view_height, view_zenith_cos_angle);
+    const vec4 trans_lut_texel = textureLod(u_trans_lut, lut_trans_uv, 0);
 
     // Directional light
     {
@@ -113,7 +121,7 @@ void main() {
         if (texco.x < 0 || texco.x > 1 || texco.y < 0 || texco.y > 1)
             lit = 1;
 
-        f_color.xyz += lit* calc_pbr_illumination(
+        f_color.xyz += lit * calc_pbr_illumination(
             roughness,
             metallic,
             albedo,
