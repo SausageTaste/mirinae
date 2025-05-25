@@ -638,6 +638,7 @@ namespace {
 
     public:
         std::atomic_bool no_simulate_{ false };
+        std::atomic_bool need_optimization_{ false };
     };
 
 }  // namespace
@@ -1017,6 +1018,8 @@ namespace {
 
             if (someone_is_preparing_)
                 states_->no_simulate_.store(true);
+            if (someone_finished_preparing_)
+                states_->need_optimization_.store(true);
         }
 
     private:
@@ -1076,6 +1079,8 @@ namespace {
 
             if (someone_is_preparing_)
                 states_->no_simulate_.store(true);
+            if (someone_finished_preparing_)
+                states_->need_optimization_.store(true);
         }
 
     private:
@@ -1192,6 +1197,10 @@ namespace {
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             if (states_->no_simulate_.load())
                 return;
+            if (states_->need_optimization_.load()) {
+                states_->need_optimization_.store(false);
+                phys_sys_->OptimizeBroadPhase();
+            }
 
             const auto res = phys_sys_->Update(dt_, 1, temp_alloc_, job_sys_);
 
