@@ -14,7 +14,10 @@ namespace {
     class DrawTasks : public mirinae::DependingTask {
 
     public:
-        DrawTasks() { fence_.succeed(this); }
+        DrawTasks() {
+            fence_.succeed(this);
+            timer_.set_min();
+        }
 
         void init(
             const mirinae::IRenPass& rp,
@@ -40,6 +43,10 @@ namespace {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = VK_NULL_HANDLE;
+            if (!timer_.check_if_elapsed(10))
+                return;
+
             cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
@@ -118,6 +125,7 @@ namespace {
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
+        sung::MonotonicRealtimeTimer timer_;
 
         const mirinae::EnvmapBundle* envmaps_ = nullptr;
         const mirinae::IRenPass* rp_ = nullptr;
