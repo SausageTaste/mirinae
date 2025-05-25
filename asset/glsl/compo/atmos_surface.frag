@@ -39,35 +39,11 @@ layout (set = 1, binding = 1) uniform U_CompoDlightShadowMap {
 } ubuf_sh;
 
 
-const float AP_SLICE_COUNT = 32;
-const float AP_SLICE_COUNT_RCP = 1.0 / AP_SLICE_COUNT;
-
-
 vec3 make_shadow_texco(const vec3 frag_pos_v, const uint selected_cascade) {
     const vec4 frag_pos_in_dlight = ubuf_sh.light_mats[selected_cascade] * vec4(frag_pos_v, 1);
     const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
     const vec2 texco = (proj_coords.xy * 0.25 + 0.25) + CASCADE_OFFSETS[selected_cascade];
     return vec3(texco, proj_coords.z);
-}
-
-
-bool check_shadow_texco_range(const vec3 texco) {
-    if (texco.z < 0)
-        return false;
-    else if (texco.z > 1)
-        return false;
-    else if (texco.x < 0 || texco.x > 1 || texco.y < 0 || texco.y > 1)
-        return false;
-    else
-        return true;
-
-}
-
-
-float AerialPerspectiveDepthToSlice(float depth) {
-    const float AP_KM_PER_SLICE = 4;
-    const float M_PER_SLICE_RCP = 1.0 / (AP_KM_PER_SLICE * 1000.0);
-    return depth * M_PER_SLICE_RCP;
 }
 
 
@@ -138,5 +114,4 @@ void main() {
             vec3(1)
         );
     }
-
 }

@@ -1,4 +1,7 @@
-
+const float AP_KM_PER_SLICE = 4;
+const float AP_SLICE_COUNT = 32;
+const float AP_SLICE_COUNT_RCP = 1.0 / AP_SLICE_COUNT;
+const float M_TO_KM = 0.001;
 const float PLANET_RADIUS_OFFSET = 0.01;
 
 
@@ -47,6 +50,13 @@ float fromUnitToSubUvs(float u, float resolution) { return (u + 0.5 / resolution
 
 float fromSubUvsToUnit(float u, float resolution) {
     return (u - 0.5 / resolution) * (resolution / (resolution - 1.0));
+}
+
+
+float AerialPerspectiveDepthToSlice(float depth) {
+    const float AP_KM_PER_SLICE = 4;
+    const float M_PER_SLICE_RCP = 1.0 / (AP_KM_PER_SLICE * 1000.0);
+    return depth * M_PER_SLICE_RCP;
 }
 
 

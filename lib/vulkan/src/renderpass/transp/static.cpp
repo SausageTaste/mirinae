@@ -85,6 +85,8 @@ namespace {
 
 
     struct FrameData {
+        mirinae::HRpImage trans_lut_;
+        mirinae::HRpImage cam_scat_vol_;
         mirinae::Fbuf fbuf_;
         mirinae::Buffer ubuf_;
         VkDescriptorSet desc_ = VK_NULL_HANDLE;
@@ -313,6 +315,17 @@ namespace {
             : cosmos_(cosmos), rp_res_(rp_res), device_(device) {
             auto& desclays = rp_res_.desclays_;
 
+            // Image references
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& fd = frame_data_[i];
+                fd.trans_lut_ = rp_res_.ren_img_.get_img_reader(
+                    fmt::format("atmos trans LUT:trans_lut_f#{}", i), name_s()
+                );
+                fd.cam_scat_vol_ = rp_res_.ren_img_.get_img_reader(
+                    fmt::format("atmos cam volume:cam_vol_f#{}", i), name_s()
+                );
+            }
+
             // Desc layout
             {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":frame" };
@@ -322,7 +335,9 @@ namespace {
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // slight
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env diffuse
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env specular
-                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // env lut
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env lut
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // trans lut
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // cam scat vol
                 desclays.add(builder, device.logi_device());
             }
 
@@ -348,28 +363,73 @@ namespace {
                     device.logi_device()
                 );
 
-                const auto sam_sha = device.samplers().get_shadow();
-                const auto sam_lin = device.samplers().get_linear();
-                const auto sam_cube = device.samplers().get_cubemap();
-                auto& shadows = *rp_res.shadow_maps_;
-                auto& dlights = shadows.dlights();
-                auto& envmaps = *rp_res.envmaps_;
+                auto& shadow = *rp_res.shadow_maps_;
+                auto& dlights = shadow.dlights();
+                const auto slight_count = shadow.slight_count();
 
-                mirinae::DescWriteInfoBuilder builder;
-                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                mirinae::DescWriter w;
+                for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
                     const mirinae::FrameIndex f_idx(i);
-                    auto& fd = frame_data_.at(i);
+                    auto& fd = frame_data_[i];
                     fd.desc_ = desc_sets[i];
 
-                    builder.set_descset(fd.desc_)
-                        .add_ubuf(fd.ubuf_)
-                        .add_img_sampler(dlights.at(0).view(f_idx), sam_sha)
-                        .add_img_sampler(shadows.slight_view_at(0), sam_sha)
-                        .add_img_sampler(envmaps.diffuse_at(0), sam_cube)
-                        .add_img_sampler(envmaps.specular_at(0), sam_cube)
-                        .add_img_sampler(envmaps.brdf_lut(), sam_lin);
+                    // Ubuf
+                    w.add_buf_info(fd.ubuf_).add_buf_write(fd.desc_, 0);
+                    // Dlight shadow maps
+                    for (uint32_t i_dl = 0; i_dl < dlights.count(); ++i_dl) {
+                        constexpr auto LAYOUT =
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                        w.add_img_info()
+                            .set_img_view(dlights.at(i_dl).view(f_idx))
+                            .set_layout(LAYOUT)
+                            .set_sampler(device.samplers().get_shadow());
+                        break;
+                    }
+                    w.add_sampled_img_write(fd.desc_, 1);
+                    // Slight shadow maps
+                    for (uint32_t i_sl = 0; i_sl < slight_count; ++i_sl) {
+                        constexpr auto LAYOUT =
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                        const auto view = shadow.slight_view_at(i_sl);
+                        w.add_img_info()
+                            .set_img_view(view)
+                            .set_layout(LAYOUT)
+                            .set_sampler(device.samplers().get_shadow());
+                        break;
+                    }
+                    w.add_sampled_img_write(fd.desc_, 2);
+                    // Env diffuse
+                    w.add_img_info()
+                        .set_img_view(rp_res.envmaps_->diffuse_at(0))
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .set_sampler(device.samplers().get_cubemap());
+                    w.add_sampled_img_write(fd.desc_, 3);
+                    // Env specular
+                    w.add_img_info()
+                        .set_img_view(rp_res.envmaps_->specular_at(0))
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .set_sampler(device.samplers().get_cubemap());
+                    w.add_sampled_img_write(fd.desc_, 4);
+                    // Env lut
+                    w.add_img_info()
+                        .set_img_view(rp_res.envmaps_->brdf_lut())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .set_sampler(device.samplers().get_linear());
+                    w.add_sampled_img_write(fd.desc_, 5);
+                    // Transmittance LUT
+                    w.add_img_info()
+                        .set_img_view(fd.trans_lut_->view_.get())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .set_sampler(device.samplers().get_cubemap());
+                    w.add_sampled_img_write(fd.desc_, 6);
+                    // Camera scattering volume
+                    w.add_img_info()
+                        .set_img_view(fd.cam_scat_vol_->view_.get())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .set_sampler(device.samplers().get_linear());
+                    w.add_sampled_img_write(fd.desc_, 7);
                 }
-                builder.apply_all(device.logi_device());
+                w.apply_all(device.logi_device());
             }
 
             // Pipeline layout

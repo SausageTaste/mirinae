@@ -85,6 +85,8 @@ namespace {
 
 
     struct FrameData {
+        mirinae::HRpImage trans_lut_;
+        mirinae::HRpImage cam_scat_vol_;
         mirinae::Fbuf fbuf_;
         mirinae::Buffer ubuf_;
         VkDescriptorSet desc_ = VK_NULL_HANDLE;
@@ -348,6 +350,17 @@ namespace {
             : cosmos_(cosmos), rp_res_(rp_res), device_(device) {
             auto& desclays = rp_res_.desclays_;
 
+            // Image references
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& fd = frame_data_[i];
+                fd.trans_lut_ = rp_res_.ren_img_.get_img_reader(
+                    fmt::format("atmos trans LUT:trans_lut_f#{}", i), name_s()
+                );
+                fd.cam_scat_vol_ = rp_res_.ren_img_.get_img_reader(
+                    fmt::format("atmos cam volume:cam_vol_f#{}", i), name_s()
+                );
+            }
+
             // Desc layout
             {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":frame" };
@@ -357,7 +370,9 @@ namespace {
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // slight
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env diffuse
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env specular
-                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // env lut
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // env lut
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1)   // trans lut
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // cam scat vol
                 desclays.add(builder, device.logi_device());
             }
 
@@ -365,8 +380,9 @@ namespace {
             {
                 for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
                     auto& fd = frame_data_.at(i);
-                    fd.ubuf_.init_ubuf<::U_TranspSkinnedFrame>(device.mem_alloc(
-                    ));
+                    fd.ubuf_.init_ubuf<::U_TranspSkinnedFrame>(
+                        device.mem_alloc()
+                    );
                 }
             }
 
@@ -438,6 +454,18 @@ namespace {
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                         .set_sampler(device.samplers().get_linear());
                     w.add_sampled_img_write(fd.desc_, 5);
+                    // Transmittance LUT
+                    w.add_img_info()
+                        .set_img_view(fd.trans_lut_->view_.get())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .set_sampler(device.samplers().get_cubemap());
+                    w.add_sampled_img_write(fd.desc_, 6);
+                    // Camera scattering volume
+                    w.add_img_info()
+                        .set_img_view(fd.cam_scat_vol_->view_.get())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .set_sampler(device.samplers().get_linear());
+                    w.add_sampled_img_write(fd.desc_, 7);
                 }
                 w.apply_all(device.logi_device());
             }

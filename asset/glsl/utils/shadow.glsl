@@ -15,6 +15,19 @@ uint select_cascade(float depth, vec4 cascade_depths) {
 }
 
 
+bool check_shadow_texco_range(const vec3 texco) {
+    if (texco.z < 0)
+        return false;
+    else if (texco.z > 1)
+        return false;
+    else if (texco.x < 0 || texco.x > 1 || texco.y < 0 || texco.y > 1)
+        return false;
+    else
+        return true;
+
+}
+
+
 float how_much_not_in_shadow_pcf_bilinear(const vec3 world_pos, const mat4 light_mat, sampler2D depth_map) {
     const vec4 frag_pos_in_dlight = light_mat * vec4(world_pos, 1);
     const vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;

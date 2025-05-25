@@ -22,11 +22,6 @@ layout (push_constant) uniform U_AtmosCamVolPushConst {
 } u_pc;
 
 
-const float AP_SLICE_COUNT = 32;
-const float AP_KM_PER_SLICE = 4;
-const float M_TO_KM = 0.001;
-
-
 float AerialPerspectiveSliceToDepth(const float slice) {
     return slice * AP_KM_PER_SLICE;
 }
