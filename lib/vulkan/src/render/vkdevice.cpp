@@ -12,6 +12,7 @@
 #include <sung/basic/stringtool.hpp>
 
 #include "mirinae/lightweight/konsts.hpp"
+#include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/enum_str.hpp"
 #include "mirinae/render/platform_func.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
@@ -1094,6 +1095,12 @@ namespace mirinae {
                 create_info.instance_extensions_.end()
             );
 
+            {
+                instance_factory.ext_layers_.extensions_.push_back(
+                    VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+                );
+            }
+
             SPDLOG_DEBUG(
                 "Vulkan instance extensions: {}",
                 fmt::join(instance_factory.ext_layers_.extensions_, ", ")
@@ -1117,6 +1124,8 @@ namespace mirinae {
             mem_allocator_ = mirinae::create_vma_allocator(
                 instance_.get(), phys_device_.get(), logi_device_.get()
             );
+
+            mirinae::DebugLabel::load_funcs(logi_device_.get());
 
             ::SwapChainSupportDetails swapchain_details;
             swapchain_details.init(surface_, phys_device_.get());

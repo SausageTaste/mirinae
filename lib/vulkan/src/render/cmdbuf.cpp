@@ -145,12 +145,14 @@ namespace mirinae {
     CLS::CLS() { info_ = {}; }
 
     ImageSubresourceLayers& CLS::src_subres() {
-        return *reinterpret_cast<ImageSubresourceLayers*>(&info_.srcSubresource
+        return *reinterpret_cast<ImageSubresourceLayers*>(
+            &info_.srcSubresource
         );
     }
 
     ImageSubresourceLayers& CLS::dst_subres() {
-        return *reinterpret_cast<ImageSubresourceLayers*>(&info_.dstSubresource
+        return *reinterpret_cast<ImageSubresourceLayers*>(
+            &info_.dstSubresource
         );
     }
 
@@ -350,7 +352,8 @@ namespace mirinae {
     PresentInfo& PresentInfo::add_wait_semaph(const VkSemaphore& semaph) {
         wait_semaphores_.push_back(semaph);
 
-        info_.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores_.size()
+        info_.waitSemaphoreCount = static_cast<uint32_t>(
+            wait_semaphores_.size()
         );
         info_.pWaitSemaphores = wait_semaphores_.data();
         return *this;
@@ -392,6 +395,84 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// DebugLabel
+namespace mirinae {
+
+    PFN_vkCmdBeginDebugUtilsLabelEXT DebugLabel::vkCmdBeginDebugUtilsLabelEXT =
+        nullptr;
+    PFN_vkCmdEndDebugUtilsLabelEXT DebugLabel::vkCmdEndDebugUtilsLabelEXT =
+        nullptr;
+
+
+    void DebugLabel::load_funcs(VkDevice device) {
+        if (nullptr == vkCmdBeginDebugUtilsLabelEXT) {
+            DebugLabel::vkCmdBeginDebugUtilsLabelEXT =
+                reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
+                    vkGetDeviceProcAddr(device, "vkCmdBeginDebugUtilsLabelEXT")
+                );
+        }
+
+        if (nullptr == vkCmdEndDebugUtilsLabelEXT) {
+            DebugLabel::vkCmdEndDebugUtilsLabelEXT =
+                reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
+                    vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelEXT")
+                );
+        }
+
+        MIRINAE_ASSERT(nullptr != vkCmdBeginDebugUtilsLabelEXT);
+    }
+
+    DebugLabel::DebugLabel() {
+        info_ = {};
+        info_.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    }
+
+    DebugLabel::DebugLabel(const char* label) {
+        info_ = {};
+        info_.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        info_.pLabelName = label;
+    }
+
+    DebugLabel::DebugLabel(
+        const char* label, float r, float g, float b, float a
+    ) {
+        info_ = {};
+        info_.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        info_.pLabelName = label;
+        info_.color[0] = r;
+        info_.color[1] = g;
+        info_.color[2] = b;
+        info_.color[3] = a;
+    }
+
+    DebugLabel& DebugLabel::set_label(const char* label) {
+        info_.pLabelName = label;
+        return *this;
+    }
+
+    DebugLabel& DebugLabel::set_color(float r, float g, float b, float a) {
+        info_.color[0] = r;
+        info_.color[1] = g;
+        info_.color[2] = b;
+        info_.color[3] = a;
+        return *this;
+    }
+
+    void DebugLabel::record_begin(VkCommandBuffer cmdbuf) const {
+        if (nullptr != DebugLabel::vkCmdBeginDebugUtilsLabelEXT) {
+            DebugLabel::vkCmdBeginDebugUtilsLabelEXT(cmdbuf, &info_);
+        }
+    }
+
+    void DebugLabel::record_end(VkCommandBuffer cmdbuf) {
+        if (nullptr != DebugLabel::vkCmdEndDebugUtilsLabelEXT) {
+            DebugLabel::vkCmdEndDebugUtilsLabelEXT(cmdbuf);
+        }
+    }
+
+}  // namespace mirinae
+
+
 namespace mirinae {
 
     void begin_cmdbuf(VkCommandBuffer cmdbuf) {
@@ -404,9 +485,19 @@ namespace mirinae {
         MIRINAE_ASSERT(VK_SUCCESS == res);
     }
 
+    void begin_cmdbuf(VkCommandBuffer cmdbuf, const DebugLabel& label) {
+        begin_cmdbuf(cmdbuf);
+        label.record_begin(cmdbuf);
+    }
+
     void end_cmdbuf(VkCommandBuffer cmdbuf) {
         const auto res = vkEndCommandBuffer(cmdbuf);
         MIRINAE_ASSERT(VK_SUCCESS == res);
+    }
+
+    void end_cmdbuf(VkCommandBuffer cmdbuf, const DebugLabel& label) {
+        label.record_end(cmdbuf);
+        end_cmdbuf(cmdbuf);
     }
 
 }  // namespace mirinae

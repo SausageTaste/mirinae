@@ -403,7 +403,33 @@ namespace mirinae {
     };
 
 
+    class DebugLabel {
+
+    public:
+        static void load_funcs(VkDevice device);
+
+        DebugLabel();
+        DebugLabel(const char* label);
+        DebugLabel(const char* label, float r, float g, float b, float a = 1);
+
+        DebugLabel& set_label(const char* label);
+        DebugLabel& set_color(float r, float g, float b, float a = 1);
+
+        void record_begin(VkCommandBuffer cmdbuf) const;
+       static void record_end(VkCommandBuffer cmdbuf) ;
+
+    private:
+        static PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;
+        static PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT;
+
+        VkDebugUtilsLabelEXT info_;
+    };
+
+
     void begin_cmdbuf(VkCommandBuffer cmdbuf);
+    void begin_cmdbuf(VkCommandBuffer cmdbuf, const DebugLabel& label);
+
     void end_cmdbuf(VkCommandBuffer cmdbuf);
+    void end_cmdbuf(VkCommandBuffer cmdbuf, const DebugLabel& label);
 
 }  // namespace mirinae
