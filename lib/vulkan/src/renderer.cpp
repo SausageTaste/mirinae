@@ -220,6 +220,7 @@ namespace {
             mirinae::RenderPassPackage& rp_pkg
         ) {
             auto& rp = rp_pkg.get("fillscreen");
+            DEBUG_LABEL.record_begin(cmdbuf);
 
             mirinae::ImageMemoryBarrier{}
                 .image(gbufs.compo(f_index.get()).image())
@@ -267,7 +268,12 @@ namespace {
             vkCmdDraw(cmdbuf, 3, 1, 0, 0);
 
             vkCmdEndRenderPass(cmdbuf);
+            DEBUG_LABEL.record_end(cmdbuf);
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Fill Screen", 0.47, 0.56, 0.61, 0.5
+        };
 
         mirinae::DescPool desc_pool_;
         std::vector<VkDescriptorSet> desc_sets_;
@@ -1399,7 +1405,12 @@ namespace {
 
             // Shader: Overlay
             {
+                const mirinae::DebugLabel DEBUG_LABEL{
+                    "Overlay", 0.47, 0.56, 0.61, 0.5
+                };
+
                 auto& rp = rp_.get("overlay");
+                DEBUG_LABEL.record_begin(ren_ctxt.cmdbuf_);
 
                 mirinae::RenderPassBeginInfo{}
                     .rp(rp.renderpass())
@@ -1427,10 +1438,16 @@ namespace {
                 overlay_man_.record_render(widget_ren_data);
 
                 vkCmdEndRenderPass(ren_ctxt.cmdbuf_);
+                DEBUG_LABEL.record_end(ren_ctxt.cmdbuf_);
             }
 
             // ImGui
             {
+                const mirinae::DebugLabel DEBUG_LABEL{
+                    "ImGui", 0.47, 0.56, 0.61, 0.5
+                };
+                DEBUG_LABEL.record_begin(ren_ctxt.cmdbuf_);
+
                 ImGui_ImplVulkan_NewFrame();
                 ecinfo_.vulkan_os_->imgui_new_frame();
                 ImGui::NewFrame();
@@ -1442,6 +1459,7 @@ namespace {
 
                 ImGui::Render();
                 rp_states_imgui_.record(ren_ctxt);
+                DEBUG_LABEL.record_end(ren_ctxt.cmdbuf_);
             }
 
             mirinae::end_cmdbuf(ren_ctxt.cmdbuf_);

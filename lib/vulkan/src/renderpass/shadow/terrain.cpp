@@ -129,13 +129,11 @@ namespace { namespace task {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
-            mirinae::begin_cmdbuf(cmdbuf_);
-
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record_dlight(
                 cmdbuf_, *rp_, *ctxt_, *reg_, shadow_maps_->dlights()
             );
-
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void record_dlight(
@@ -252,6 +250,10 @@ namespace { namespace task {
                 vkCmdEndRenderPass(cmdbuf);
             }
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Shadow Terrain", 0.38, 0.38, 0.38, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

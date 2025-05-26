@@ -51,9 +51,9 @@ namespace {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record(cmdbuf_, *envmaps_->begin(), *rp_);
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void record(
@@ -122,6 +122,10 @@ namespace {
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
             );
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Envmap Diffuse", 0.5, 0.78, 0.52, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

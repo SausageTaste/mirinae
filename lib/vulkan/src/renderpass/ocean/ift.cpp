@@ -255,9 +255,9 @@ namespace { namespace task { namespace butterfly {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record(cmdbuf_, *rp_, *ctxt_, *frame_data_);
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static bool record(
@@ -351,6 +351,10 @@ namespace { namespace task { namespace butterfly {
 
             return true;
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Ocean Butterfly", 0.31, 0.76, 0.97, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

@@ -61,7 +61,7 @@ namespace {
             draw_set_.clear();
             draw_set_.fetch(*reg_);
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record(
                 cmdbuf_,
                 frame_data_->at(ctxt_->f_index_.get()),
@@ -69,7 +69,7 @@ namespace {
                 *rp_,
                 *ctxt_
             );
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void record(
@@ -115,6 +115,10 @@ namespace {
 
             vkCmdEndRenderPass(cmdbuf);
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "G-buffer Static", 0.12, 0.58, 0.95, 0.5
+        };
 
         mirinae::FenceTask fence_;
         mirinae::DrawSetStatic draw_set_;

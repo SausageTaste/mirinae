@@ -98,10 +98,10 @@ namespace { namespace task {
             auto& fd = fdata_->at(ctxt_->f_index_.get());
             const auto gbuf_ext = gbufs_->extent();
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
             this->record(cmdbuf_, fd, *reg_, *rp_, *ctxt_, gbuf_ext);
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void record_barriers(
@@ -170,6 +170,10 @@ namespace { namespace task {
             vkCmdDraw(cmdbuf, 3, 1, 0, 0);
             vkCmdEndRenderPass(cmdbuf);
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Compo Sky", 1, 0.96, 0.61, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

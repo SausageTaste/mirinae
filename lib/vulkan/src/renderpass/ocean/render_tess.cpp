@@ -516,11 +516,11 @@ namespace { namespace task {
             const auto atmos =
                 ::find_first_cpnt<mirinae::cpnt::AtmosphereSimple>(*reg_);
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->update_ubuf(*reg_, atmos, *ocean, *ctxt_, fd, *device_);
             this->record_barriers(cmdbuf_, fd, *gbufs_, *ctxt_);
             this->record(cmdbuf_, fd, *ocean, *rp_, *ctxt_, gbuf_ext);
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void update_ubuf(
@@ -678,6 +678,10 @@ namespace { namespace task {
 
             vkCmdEndRenderPass(cmdbuf);
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Ocean Tess", 0.31, 0.76, 0.97, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

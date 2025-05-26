@@ -178,11 +178,11 @@ namespace { namespace task {
             auto& fd = fdata_->at(ctxt_->f_index_.get());
             const auto gbuf_ext = gbufs_->extent();
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->update_ubuf(*reg_, *ctxt_, fd, *device_);
             this->record_barriers_shadow(cmdbuf_, *shadows_, *ctxt_);
             this->record(cmdbuf_, fd, *reg_, *rp_, *shadows_, *ctxt_, gbuf_ext);
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void update_ubuf(
@@ -297,6 +297,10 @@ namespace { namespace task {
 
             vkCmdEndRenderPass(cmdbuf);
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Compo SLight", 1, 0.96, 0.61, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

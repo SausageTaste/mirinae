@@ -196,7 +196,7 @@ namespace {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
             this->record(
                 cmdbuf_,
@@ -205,7 +205,7 @@ namespace {
                 *rp_,
                 *ctxt_
             );
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void record_barriers(
@@ -323,6 +323,10 @@ namespace {
 
             vkCmdEndRenderPass(cmdbuf);
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "G-buffer Terrain", 0.12, 0.58, 0.95, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

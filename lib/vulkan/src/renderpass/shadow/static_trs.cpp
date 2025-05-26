@@ -59,17 +59,14 @@ namespace { namespace task {
             draw_set_.clear();
             draw_set_.fetch(*reg_);
 
-            mirinae::begin_cmdbuf(cmdbuf_);
-
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record_dlight(
                 cmdbuf_, draw_set_, *rp_, *ctxt_, *reg_, shadow_maps_->dlights()
             );
-
             this->record_slight(
                 cmdbuf_, draw_set_, *rp_, *ctxt_, *reg_, *shadow_maps_
             );
-
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void record_dlight(
@@ -327,6 +324,10 @@ namespace { namespace task {
                 vkCmdEndRenderPass(cmdbuf);
             }
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Shadow Static Trans", 0.38, 0.38, 0.38, 0.5
+        };
 
         mirinae::FenceTask fence_;
         mirinae::DrawSetStatic draw_set_;

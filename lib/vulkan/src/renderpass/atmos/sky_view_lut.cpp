@@ -79,9 +79,9 @@ namespace {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record(cmdbuf_, *frame_data_, *reg_, *rp_, *ctxt_);
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static bool record(
@@ -153,6 +153,10 @@ namespace {
 
             return true;
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Atmos View LUT", 0.9, 0.45, 0.45, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

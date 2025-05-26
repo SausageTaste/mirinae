@@ -71,7 +71,7 @@ namespace {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record(
                 cmdbuf_,
                 frame_data_->at(ctxt_->f_index_.get()),
@@ -79,7 +79,7 @@ namespace {
                 *envmaps_->begin(),
                 *rp_
             );
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void record(
@@ -158,6 +158,10 @@ namespace {
                 vkCmdEndRenderPass(cmdbuf);
             }
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Envmap Sky Atmos", 0.5, 0.78, 0.52, 0.5
+        };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

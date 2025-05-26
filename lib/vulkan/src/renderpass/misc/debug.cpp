@@ -136,7 +136,7 @@ namespace {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
             const auto res = this->record(
                 cmdbuf_,
@@ -147,7 +147,7 @@ namespace {
                 frame_data_->at(ctxt_->f_index_.get()),
                 *device_
             );
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
 
             if (!res) {
                 cmdbuf_ = VK_NULL_HANDLE;
@@ -266,6 +266,8 @@ namespace {
             vkCmdEndRenderPass(cmdbuf);
             return true;
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{ "Debug" };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

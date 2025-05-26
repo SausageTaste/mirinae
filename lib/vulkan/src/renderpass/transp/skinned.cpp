@@ -144,11 +144,11 @@ namespace {
             draw_set_.clear();
             draw_set_.fetch(*reg_);
 
-            mirinae::begin_cmdbuf(cmdbuf_);
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->update_ubuf(*reg_, *shadows_, *ctxt_, fd, *device_);
             this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
             this->record(cmdbuf_, fd, draw_set_, *rp_, *ctxt_, fbuf_ext);
-            mirinae::end_cmdbuf(cmdbuf_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void update_ubuf(
@@ -279,6 +279,10 @@ namespace {
 
             vkCmdEndRenderPass(cmdbuf);
         }
+
+        const mirinae::DebugLabel DEBUG_LABEL{
+            "Trans Skinned", 0.7, 0.62, 0.86, 0.5
+        };
 
         mirinae::FenceTask fence_;
         mirinae::DrawSetSkinned draw_set_;
