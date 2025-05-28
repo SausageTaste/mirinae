@@ -37,7 +37,7 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
 
 
 void main() {
-    const float MAX_TESS_LEVEL = 128;
+    const float MAX_TESS_LEVEL = 64;
 
     if (gl_InvocationID == 0) {
         vec4 p00 = u_pc.pvm * gl_in[0].gl_Position;
