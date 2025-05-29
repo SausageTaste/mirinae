@@ -891,6 +891,9 @@ namespace {
                 atm.mie_anisotropy_ = 0.8;
             }
 
+            // https://manticorp.github.io/unrealheightmap/#latitude/36.271/longitude/-112.357/zoom/14/outputzoom/14/width/4096/height/4096
+            // https://manticorp.github.io/unrealheightmap/#latitude/46.453/longitude/10.635/zoom/12/outputzoom/12/width/8129/height/8129
+
             // Terrain
             {
                 const auto entt = reg.create();
