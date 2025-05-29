@@ -660,7 +660,8 @@ namespace {
                         );
                         mdl.model_path_ = "Sung/sphere.dun/sphere.dmd";
 
-                        auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt
+                        auto& tform = reg.emplace<mirinae::cpnt::Transform>(
+                            entt
                         );
                         const auto radius = 1.0;
                         const auto jitter = (x + y + z) * radius * 0.2;
@@ -905,6 +906,8 @@ namespace {
                 terrain.terrain_width_ = 31500;
                 terrain.terrain_height_ = 31500;
                 terrain.height_scale_ = 2761.32 - 585.625;
+                terrain.tile_count_x_ = 20;
+                terrain.tile_count_y_ = 20;
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -513, 0, 49 };

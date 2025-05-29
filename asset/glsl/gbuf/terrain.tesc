@@ -13,7 +13,6 @@ layout (push_constant) uniform U_GbufTerrainPushConst {
     mat4 pvm;
     mat4 view;
     mat4 model;
-    vec4 tile_index_count;
     vec4 height_map_size_fbuf_size;
     vec4 terrain_size;
     float height_scale;

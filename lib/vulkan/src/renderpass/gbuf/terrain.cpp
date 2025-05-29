@@ -30,18 +30,6 @@ namespace {
             return *this;
         }
 
-        U_GbufTerrainPushConst& tile_index(int x, int y) {
-            tile_index_count_.x = static_cast<float>(x);
-            tile_index_count_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& tile_count(int x, int y) {
-            tile_index_count_.z = static_cast<float>(x);
-            tile_index_count_.w = static_cast<float>(y);
-            return *this;
-        }
-
         U_GbufTerrainPushConst& height_map_size(uint32_t x, uint32_t y) {
             height_map_size_fbuf_size_.x = static_cast<float>(x);
             height_map_size_fbuf_size_.y = static_cast<float>(y);
@@ -81,7 +69,6 @@ namespace {
         glm::mat4 pvm_;
         glm::mat4 view_;
         glm::mat4 model_;
-        glm::vec4 tile_index_count_;
         glm::vec4 height_map_size_fbuf_size_;
         glm::vec4 terrain_size_;
         float height_scale_;
@@ -305,20 +292,14 @@ namespace {
 
                 ::U_GbufTerrainPushConst pc;
                 pc.pvm(ctxt.main_cam_.proj(), ctxt.main_cam_.view(), model_mat)
-                    .tile_count(terr.tile_count_x_, terr.tile_count_y_)
                     .height_map_size(unit->height_map_size())
                     .fbuf_size(fd.fbuf_size_)
                     .terrain_size(terr.terrain_width_, terr.terrain_height_)
                     .height_scale(terr.height_scale_)
                     .tess_factor(terr.tess_factor_);
+                pc_info.record(cmdbuf, pc);
 
-                for (int x = 0; x < terr.tile_count_x_; ++x) {
-                    for (int y = 0; y < terr.tile_count_y_; ++y) {
-                        pc.tile_index(x, y);
-                        pc_info.record(cmdbuf, pc);
-                        vkCmdDraw(cmdbuf, 4, 1, 0, 0);
-                    }
-                }
+                unit->draw_indexed(cmdbuf);
             }
 
             vkCmdEndRenderPass(cmdbuf);
@@ -430,6 +411,7 @@ namespace {
         VkPipelineLayout pipe_layout,
         mirinae::VulkanDevice& device
     ) {
+        using Vertex = mirinae::RenUnitTerrain::Vertex;
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
@@ -437,6 +419,11 @@ namespace {
             .add_tesc(":asset/spv/gbuf_terrain_tesc.spv")
             .add_tese(":asset/spv/gbuf_terrain_tese.spv")
             .add_frag(":asset/spv/gbuf_terrain_frag.spv");
+
+        builder.vertex_input_state()
+            .add_binding<Vertex>()
+            .add_attrib_vec3(offsetof(Vertex, pos_))
+            .add_attrib_vec2(offsetof(Vertex, texco_));
 
         builder.input_assembly_state().topology_patch_list();
 
