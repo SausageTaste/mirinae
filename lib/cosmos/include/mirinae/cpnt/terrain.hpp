@@ -38,15 +38,15 @@ namespace mirinae::cpnt {
         // Terrain definition
         std::filesystem::path height_map_path_;
         std::filesystem::path albedo_map_path_;
-        double terrain_width_ = 0;
-        double terrain_height_ = 0;
-        double height_scale_ = 0;
+        double terrain_width_;
+        double terrain_height_;
+        int tile_count_x_;
+        int tile_count_y_;
 
         // Runtime data
         std::unique_ptr<ITerrainRenUnit> ren_unit_;
+        double height_scale_;
         float tess_factor_;
-        int tile_count_x_ = 10;
-        int tile_count_y_ = 10;
     };
 
 }  // namespace mirinae::cpnt
