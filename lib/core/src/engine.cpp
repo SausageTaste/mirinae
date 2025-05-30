@@ -712,10 +712,8 @@ namespace {
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(entt);
                 d.set_light_dir(0.5613, -0.7396, -0.3713, t);
             }
-            */
 
             // SLight
-            /*
             {
                 flashlight_ = reg.create();
 
@@ -730,6 +728,7 @@ namespace {
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(flashlight_);
                 t.pos_ = { 0, 2, 0 };
             }
+            */
 
             // SLight
             {
@@ -744,18 +743,19 @@ namespace {
                 s.outer_angle_.set_deg(25);
 
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
-                t.pos_ = { -106.85, 7.77, -51.13 };
+                t.pos_ = { -10.90, 1321.80, -45.40 };
                 t.rot_ = glm::normalize(
                     glm::dquat{
-                        0.202623,
-                        -0.444979,
-                        0.855584,
-                        0.170041,
+                        0.830827,
+                        -0.495304,
+                        0.220694,
+                        -0.125276,
                     }
                 );
             }
 
             // VPLight
+            /*
             {
                 static const std::array<glm::dvec3, 8> positions{
                     glm::dvec3(23.06373011, 7.406594568543, -40.16145784411),

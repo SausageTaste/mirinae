@@ -60,12 +60,12 @@ void main() {
     const vec3 reflect_direc = reflect(view_direc, normal);
     const vec3 world_reflect = (u_main.view_inv * vec4(reflect_direc, 0)).xyz;
 
-    vec3 light = vec3(0);
+    f_color = vec4(0, 0, 0, 1);
 
     // Volumetric scattering
     {
         const int SAMPLE_COUNT = 5;
-        const float INTENSITY = 0.6;
+        const float INTENSITY = 0.2;
 
         const float light_factor = INTENSITY * phase_mie(dot(view_direc, u_pc.dir_n_outer_angle.xyz), u_main.mie_anisotropy) / float(SAMPLE_COUNT);
         const vec3 vec_step = frag_pos / float(-SAMPLE_COUNT - 1);
@@ -88,7 +88,7 @@ void main() {
                 sample_dist, u_pc.color_n_max_dist.w
             );
 
-            light += u_pc.color_n_max_dist.xyz * (light_factor * lit * attenuation);
+            f_color.xyz += u_pc.color_n_max_dist.xyz * (light_factor * lit * attenuation);
         }
     }
 
@@ -111,7 +111,7 @@ void main() {
         const vec3 texco = make_shadow_texco(frag_pos);
         const float lit = texture(u_shadow_map, texco);
 
-        light += calc_pbr_illumination(
+        f_color.xyz += calc_pbr_illumination(
             roughness,
             metallic,
             albedo,
@@ -122,14 +122,4 @@ void main() {
             u_pc.color_n_max_dist.xyz
         ) * attenuation * lit;
     }
-
-    // Fog
-    {
-        const float x = frag_distance * u_main.fog_color_density.w;
-        const float xx = x * x;
-        const float fog_factor = 1.0 / exp(xx);
-        light = mix(u_main.fog_color_density.xyz, light, fog_factor);
-    }
-
-    f_color = vec4(light, 1);
 }
