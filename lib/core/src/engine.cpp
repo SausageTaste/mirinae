@@ -647,7 +647,7 @@ namespace {
             auto& reg = cosmos_->reg();
 
             // Physice object
-            for (int x = 0; x < 0; ++x) {
+            for (int x = 0; x < 2; ++x) {
                 for (int y = 0; y < 5; ++y) {
                     for (int z = 0; z < 2; ++z) {
                         const auto entt = reg.create();
@@ -663,12 +663,12 @@ namespace {
                         auto& tform = reg.emplace<mirinae::cpnt::Transform>(
                             entt
                         );
-                        const auto radius = 1.0;
+                        const auto radius = 20;
                         const auto jitter = (x + y + z) * radius * 0.2;
                         tform.pos_ = glm::dvec3{
                             2.2 * radius * x - 50 - jitter,
-                            2.2 * radius * y + 20,
-                            2.2 * radius * z + 00 + jitter,
+                            2.2 * radius * y + 1400,
+                            2.2 * radius * z + 50 + jitter,
                         };
                         tform.set_scale(radius);
 
@@ -890,6 +890,7 @@ namespace {
                 terrain.height_scale_ = 2761.32 - 585.625;
                 terrain.tile_count_x_ = 20;
                 terrain.tile_count_y_ = 20;
+                terrain.tess_factor_ = 0.5;
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { -513, 0, 49 };
