@@ -755,39 +755,18 @@ namespace {
             }
 
             // VPLight
-            /*
             {
-                static const std::array<glm::dvec3, 8> positions{
-                    glm::dvec3(23.06373011, 7.406594568543, -40.16145784411),
-                    glm::dvec3(-12.5902652420, 3.742476132263, -57.91384509770),
-                    glm::dvec3(-27.18744272, 2.81600329, -59.14043760),
-                    glm::dvec3(-11.314874664, 4.1150336202, -72.997129503),
-                    glm::dvec3(406.275784993, 26.4602983105, -211.201358558),
-                    glm::dvec3(17.7235240304, 4.51899223978, -70.447537981),
-                    glm::dvec3(-3.62620977943, 0.758235418969, -0.122477245173)
-                };
+                const auto e = reg.create();
 
-                static const std::array<glm::vec3, 8> colors{
-                    glm::vec3(7, 24, 7) * 0.5f,  glm::vec3(24, 18, 7) * 0.5f,
-                    glm::vec3(24, 18, 7) * 0.5f, glm::vec3(24, 18, 7) * 0.5f,
-                    glm::vec3(240, 180, 70),     glm::vec3(7, 18, 24) * 2.f,
-                    glm::vec3(1, 1, 1) * 5.f
-                };
+                auto& id = reg.emplace<mirinae::cpnt::Id>(e);
+                id.set_name("VPLight 1");
 
-                for (size_t i = 0; i < positions.size(); ++i) {
-                    const auto e = reg.create();
+                auto& l = reg.emplace<mirinae::cpnt::VPLight>(e);
+                l.color_.set_scaled_color(glm::vec3(7, 24, 7) * 0.5f);
 
-                    auto& id = reg.emplace<mirinae::cpnt::Id>(e);
-                    id.set_name(fmt::format("VPLight-{}", i).c_str());
-
-                    auto& l = reg.emplace<mirinae::cpnt::VPLight>(e);
-                    l.color_.set_scaled_color(colors[i]);
-
-                    auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
-                    t.pos_ = positions[i];
-                }
+                auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
+                t.pos_ = glm::dvec3(29.86, 1298.61, -51.86);
             }
-            */
 
             // Main Camera
             {

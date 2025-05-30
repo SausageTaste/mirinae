@@ -299,7 +299,18 @@ namespace mirinae::cpnt {
 // VPLight
 namespace mirinae::cpnt {
 
-    void VPLight::render_imgui() { ::render_color_intensity(color_); }
+    void VPLight::render_imgui() {
+        ::render_color_intensity(color_);
+
+        ImGui::SliderFloat(
+            "Volume light intensity",
+            &volume_light_intensity_,
+            0.0f,
+            1.0f,
+            "%.3f",
+            ImGuiSliderFlags_Logarithmic
+        );
+    }
 
 }  // namespace mirinae::cpnt
 

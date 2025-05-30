@@ -40,8 +40,9 @@ namespace mirinae {
         using Tform = TransformQuat<double>;
 
     public:
-        glm::dvec3 calc_to_light_dir(const glm::dmat4 view, const Tform& tform)
-            const;
+        glm::dvec3 calc_to_light_dir(
+            const glm::dmat4 view, const Tform& tform
+        ) const;
 
         // glm::dmat4 make_proj_mat() const;
         // glm::dmat4 make_view_mat() const;
@@ -148,8 +149,13 @@ namespace mirinae::cpnt {
     public:
         void render_imgui();
 
+        glm::vec3 volume_light_color() const {
+            return color_.scaled_color() * volume_light_intensity_;
+        }
+
     public:
         ColorIntensity color_;
+        float volume_light_intensity_ = 0.01;
     };
 
 

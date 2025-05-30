@@ -1241,6 +1241,10 @@ namespace {
                 );
 
                 render_passes_.push_back(
+                    mirinae::rp::compo::create_rps_vplight(cbundle)
+                );
+
+                render_passes_.push_back(
                     mirinae::rp::create_rp_states_transp_static(cbundle)
                 );
 

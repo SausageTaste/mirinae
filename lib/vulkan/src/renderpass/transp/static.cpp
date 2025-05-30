@@ -146,6 +146,7 @@ namespace {
 
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->update_ubuf(*reg_, *shadows_, *ctxt_, fd, *device_);
+            this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
             this->record(cmdbuf_, fd, draw_set_, *rp_, *ctxt_, fbuf_ext);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
@@ -197,6 +198,26 @@ namespace {
             }
 
             fd.ubuf_.set_data(ubuf, device.mem_alloc());
+        }
+
+        static void record_barriers(
+            const VkCommandBuffer cmdbuf,
+            const mirinae::FbufImageBundle& gbufs,
+            const mirinae::RpCtxt& ctxt
+        ) {
+            mirinae::ImageMemoryBarrier{}
+                .image(gbufs.depth(ctxt.f_index_.get()).image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .set_src_acc(VK_ACCESS_SHADER_READ_BIT)
+                .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                );
         }
 
         static void record(
