@@ -565,7 +565,11 @@ namespace {
             {
                 app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
                 app_info.pApplicationName = "mirinapp";
-                app_info.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
+                app_info.applicationVersion = VK_MAKE_VERSION(
+                    mirinae::ENGINE_VERSION_MAJOR,
+                    mirinae::ENGINE_VERSION_MINOR,
+                    mirinae::ENGINE_VERSION_PATCH
+                );
                 app_info.pEngineName = mirinae::ENGINE_NAME;
                 app_info.engineVersion = VK_MAKE_VERSION(
                     mirinae::ENGINE_VERSION_MAJOR,
