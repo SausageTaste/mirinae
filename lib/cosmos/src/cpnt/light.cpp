@@ -164,12 +164,13 @@ namespace mirinae {
 
     void CascadeInfo::update(
         const double ratio,
+        const double max_far_distance,
         const glm::dmat4& view_inv,
         const PerspectiveCamera<double>& pers,
         const DirectionalLight& dlight,
         const DirectionalLight::Tform& tform
     ) {
-        const auto capped_far = std::min<double>(pers.far_, 200);
+        const auto capped_far = std::min<double>(pers.far_, max_far_distance);
         const auto dist = this->make_plane_distances(pers.near_, capped_far);
 
         for (size_t i = 0; i < dist.size() - 1; ++i) {
@@ -244,7 +245,23 @@ namespace mirinae {
 // DLight
 namespace mirinae::cpnt {
 
-    void DLight::render_imgui() { ::render_color_intensity(color_); }
+    DLight::DLight() : max_shadow_distance_(200) {}
+
+    void DLight::render_imgui() {
+        ::render_color_intensity(color_);
+
+        constexpr double MIN_SHADOW_DISTANCE = 0.01;
+        constexpr double MAX_SHADOW_DISTANCE = 100000;
+        ImGui::SliderScalar(
+            "Max shadow distance",
+            ImGuiDataType_Double,
+            &max_shadow_distance_,
+            &MIN_SHADOW_DISTANCE,
+            &MAX_SHADOW_DISTANCE,
+            "%.2f",
+            ImGuiSliderFlags_Logarithmic
+        );
+    }
 
 }  // namespace mirinae::cpnt
 

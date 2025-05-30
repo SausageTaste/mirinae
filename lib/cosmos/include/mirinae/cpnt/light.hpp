@@ -77,6 +77,7 @@ namespace mirinae {
 
         void update(
             const double ratio,
+            const double max_far_distance,
             const glm::dmat4& view_inv,
             const PerspectiveCamera<double>& pers,
             const DirectionalLight& dlight,
@@ -110,9 +111,11 @@ namespace mirinae::cpnt {
     class DLight : public DirectionalLight {
 
     public:
+        DLight();
         void render_imgui();
 
         CascadeInfo cascades_;
+        double max_shadow_distance_;
     };
 
 

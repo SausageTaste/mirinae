@@ -883,7 +883,12 @@ namespace { namespace task {
 
                 tfrom->pos_ = cam_view->pos_;
                 light.cascades_.update(
-                    swhain_->calc_ratio(), view_inv, cam->proj_, light, *tfrom
+                    swhain_->calc_ratio(),
+                    light.max_shadow_distance_,
+                    view_inv,
+                    cam->proj_,
+                    light,
+                    *tfrom
                 );
             }
         }
