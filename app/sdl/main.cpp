@@ -185,16 +185,19 @@ namespace {
             system("chcp 65001");
             spdlog::set_level(spdlog::level::level_enum::debug);
 
-            mirinae::EngineCreateInfo cinfo;
+            const auto asset_path = ::find_asset_folder();
 
+            mirinae::EngineCreateInfo cinfo;
             cinfo.filesys_ = std::make_shared<dal::Filesystem>();
             cinfo.filesys_->add_subsys(
-                dal::create_filesubsys_std(":asset", ::find_asset_folder())
+                dal::create_filesubsys_std(":asset", asset_path)
             );
             cinfo.filesys_->add_subsys(
                 dal::create_filesubsys_std("", ::get_documents_path("Mirinapp"))
             );
-
+            cinfo.filesys_->add_subsys(
+                dal::create_filesubsys_std("", asset_path.parent_path() / "res")
+            );
             window_.fill_vulkan_extensions(cinfo.instance_extensions_);
             window_.get_win_fbuf_size(cinfo.init_width_, cinfo.init_height_);
             cinfo.osio_ = &window_;
