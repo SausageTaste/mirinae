@@ -224,7 +224,7 @@ namespace {
         ::ValueInterpolator tgt_heading_;
 
     public:
-        double move_speed_ = 10;     // World space
+        double move_speed_ = 10;       // World space
         double offset_dist_ = 2;       // World space
         double offset_height_ = 0.75;  // World space
         double offset_hor_ = 0.2;      // World space
@@ -248,6 +248,10 @@ namespace {
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             cosmos_.tick_clock();
             cosmos_.scene().do_frame();
+
+            for (auto& imgui : cosmos_.imgui_) {
+                imgui->do_frame(cosmos_.scene().clock());
+            }
         }
 
         enki::ITaskSet* get_fence() override { return &fence_; }

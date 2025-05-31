@@ -260,6 +260,51 @@ namespace {
         double move_speed_ = 10;
     };
 
+
+    template <size_t TSize>
+    class RollingBuffer {
+
+    public:
+        RollingBuffer() { data_.fill(0); }
+
+        void push(float value) {
+            data_[index_] = value;
+            index_ = (index_ + 1) % TSize;
+        }
+
+        const float* data() const { return data_.data(); }
+        size_t size() const { return TSize; }
+
+    private:
+        std::array<float, TSize> data_;
+        size_t index_ = 0;
+    };
+
+
+    template <size_t TSize>
+    class AppendingBuffer {
+
+    public:
+        AppendingBuffer() { data_.fill(0); }
+
+        void push(float value) {
+            this->shift_left();
+            data_[TSize - 1] = value;
+        }
+
+        const float* data() const { return data_.data(); }
+        size_t size() const { return TSize; }
+
+    private:
+        void shift_left() {
+            for (size_t i = 1; i < TSize; ++i) {
+                data_[i - 1] = data_[i];
+            }
+        }
+
+        std::array<float, TSize> data_;
+    };
+
 }  // namespace
 
 
@@ -501,6 +546,10 @@ namespace {
             }
         }
 
+        void do_frame(const sung::SimClock& clock) override {
+            fps_samples_.push(1.0 / clock.dt());
+        }
+
         void render() override {
             if (this->begin("Main Window")) {
                 if (ImGui::BeginMenuBar()) {
@@ -513,9 +562,21 @@ namespace {
                     ImGui::EndMenuBar();
                 }
 
-                ImGui::Text("FPS (ImGui): %.1f", ImGui::GetIO().Framerate);
-                console_.render_imgui();
+                // ImGui::Text("FPS (ImGui): %.1f", ImGui::GetIO().Framerate);
+                ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+                // ImGui::Text("Frame time (ms): %.2f", dt * 1000);
 
+                ImGui::PlotLines(
+                    "FPS",
+                    fps_samples_.data(),
+                    fps_samples_.size(),
+                    0,
+                    nullptr,
+                    0,
+                    FLT_MAX
+                );
+
+                console_.render_imgui();
                 this->end();
             }
 
@@ -598,6 +659,7 @@ namespace {
         ImGuiCvars cvars_;
 
         ImVector<ImWchar> ranges_;
+        ::RollingBuffer<300> fps_samples_;
     };
 
 }  // namespace

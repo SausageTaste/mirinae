@@ -14,7 +14,8 @@ namespace mirinae {
 
     struct ImGuiRenderUnit {
         virtual ~ImGuiRenderUnit() = default;
-        virtual void render() = 0;
+        virtual void do_frame(const sung::SimClock& clock) {}
+        virtual void render() {}
     };
 
 
