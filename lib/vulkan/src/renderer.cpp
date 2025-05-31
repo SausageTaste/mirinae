@@ -635,7 +635,8 @@ namespace { namespace task {
             } else if (dal::ReqResult::ready != res) {
                 const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
-                mactor.model_path_ = "Sung/rickroll.dun/rickroll.dmd";
+                mactor.model_path_ =
+                    "Sung/missing_static_mdl.dun/missing_static_mdl.dmd";
                 return false;
             }
 
@@ -762,7 +763,8 @@ namespace { namespace task {
             } else if (dal::ReqResult::ready != res) {
                 const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
-                mactor.model_path_ = "Sung/rickroll.dun/rickroll.dmd";
+                mactor.model_path_ =
+                    "Sung/missing_static_mdl.dun/missing_static_mdl.dmd";
                 return false;
             }
 
