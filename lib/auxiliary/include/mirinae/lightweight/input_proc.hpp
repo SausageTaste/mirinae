@@ -146,6 +146,7 @@ namespace mirinae {
             glm::dvec2 start_pos_{ 0, 0 };
             glm::dvec2 last_pos_{ 0, 0 };
             glm::dvec2 consumed_pos_{ 0, 0 };
+            glm::dvec2 smoothed_rel_{ 0, 0 };
         };
 
         IOsIoFunctions* osio_ = nullptr;

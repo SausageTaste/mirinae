@@ -1,6 +1,7 @@
 #include "mirinae/lightweight/input_proc.hpp"
 
 #include <SDL3/SDL_scancode.h>
+#include <glm/common.hpp>
 
 
 // InputActionMapper
@@ -157,10 +158,11 @@ namespace mirinae {
     glm::dvec2 InputActionMapper::get_value_mouse_look() const {
         glm::dvec2 out{ 0 };
 
-        if (look_pointer_) {
-            out.x = look_pointer_->consumed_pos_.x - look_pointer_->last_pos_.x;
-            out.y = look_pointer_->consumed_pos_.y - look_pointer_->last_pos_.y;
-            look_pointer_->consumed_pos_ = look_pointer_->last_pos_;
+        if (auto pst = look_pointer_) {
+            const auto diff = pst->consumed_pos_ - pst->last_pos_;
+            pst->smoothed_rel_ = glm::mix(diff, pst->smoothed_rel_, 0.5);
+            pst->consumed_pos_ = pst->last_pos_;
+            out += pst->smoothed_rel_;
         }
 
         return out;

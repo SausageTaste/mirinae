@@ -291,8 +291,8 @@ namespace {
                     mirinae::mouse::Event me;
                     me.action_ = mirinae::mouse::ActionType::move;
                     me.button_ = mirinae::mouse::ButtonCode::eoe;
-                    me.xpos_ = e.button.x;
-                    me.ypos_ = e.button.y;
+                    me.xpos_ = e.motion.x;
+                    me.ypos_ = e.motion.y;
                     engine.on_mouse_event(me);
                 }
             } else {
