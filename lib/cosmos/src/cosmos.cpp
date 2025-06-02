@@ -94,6 +94,16 @@ namespace {
                 offset_dist_ = std::max(offset_dist_, 0.001);
             }
 
+            const auto sprint = action_map.get_value(ActionType::sprint) > 0.1;
+            const auto walk = action_map.get_value(ActionType::translate_down) >
+                              0.1;
+            auto move_speed = move_speed_;
+            if (sprint) {
+                move_speed *= 100;
+            } else if (walk) {
+                move_speed = 0.7;
+            }
+
             // Move with respect to camera direction
             {
                 constexpr auto ANGLE_OFFSET = Angle::from_deg(90);
@@ -103,24 +113,12 @@ namespace {
                     action_map.get_value_move_backward(),
                 };
                 const auto move_dir_len = glm::length(move_dir);
-                const auto sprint = action_map.get_value(ActionType::sprint) >
-                                    0.1;
-                const auto walk = action_map.get_value(
-                                      ActionType::translate_down
-                                  ) > 0.1;
 
                 if (move_dir_len > 0.01) {
                     const auto cam_front = cam_tform->make_forward_dir();
                     const auto cam_front_angle = Angle::from_rad(
                         std::atan2(cam_front.z, cam_front.x)
                     );
-
-                    auto move_speed = move_speed_;
-                    if (sprint) {
-                        move_speed *= 100;
-                    } else if (walk) {
-                        move_speed = 0.7;
-                    }
 
                     const auto move_vec_rot = mirinae::rotate_vec(
                         move_dir, cam_front_angle + ANGLE_OFFSET
@@ -172,7 +170,7 @@ namespace {
                 if (action_map.get_value(ActionType::translate_down))
                     vertical -= 1;
 
-                tgt_tform->pos_.y += vertical * dt * move_speed_;
+                tgt_tform->pos_.y += vertical * dt * move_speed;
             }
         }
 
@@ -229,7 +227,7 @@ namespace {
         double offset_height_ = 0.75;  // World space
         double offset_hor_ = 0.2;      // World space
         double key_look_speed_ = 1;
-        double mouse_look_speed_ = 0.1;
+        double mouse_look_speed_ = 0.15;
     };
 
 }  // namespace
