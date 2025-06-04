@@ -64,7 +64,7 @@ namespace {
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             cmdbuf_ = VK_NULL_HANDLE;
-            if (!timer_.check_if_elapsed(10))
+            if (!timer_.check_if_elapsed(0.1))
                 return;
 
             cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);

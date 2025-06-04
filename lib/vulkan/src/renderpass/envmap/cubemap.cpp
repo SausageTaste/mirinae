@@ -289,11 +289,11 @@ namespace mirinae {
         mirinae::DesclayoutManager& desclayouts,
         mirinae::VulkanDevice& device
     ) {
-        if (!base_.init(256, 256, rp_pkg, device))
+        if (!base_.init(64, 64, rp_pkg, device))
             return false;
-        if (!diffuse_.init(256, 256, rp_pkg, device))
+        if (!diffuse_.init(32, 32, rp_pkg, device))
             return false;
-        if (!specular_.init(128, 128, rp_pkg, device))
+        if (!specular_.init(32, 32, rp_pkg, device))
             return false;
 
         desc_set_ = desc_pool.alloc(
