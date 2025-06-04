@@ -296,6 +296,16 @@ namespace {
         std::string make_report_str() const {
             dal::ValuesReport report;
             report.set_title(properties_.deviceName);
+            report.add(
+                0,
+                "API version",
+                fmt::format(
+                    "{}.{}.{}",
+                    VK_VERSION_MAJOR(properties_.apiVersion),
+                    VK_VERSION_MINOR(properties_.apiVersion),
+                    VK_VERSION_PATCH(properties_.apiVersion)
+                )
+            );
 
             switch (properties_.deviceType) {
                 case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
