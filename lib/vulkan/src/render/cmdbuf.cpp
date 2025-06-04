@@ -418,8 +418,6 @@ namespace mirinae {
                     vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelEXT")
                 );
         }
-
-        MIRINAE_ASSERT(nullptr != vkCmdBeginDebugUtilsLabelEXT);
     }
 
     DebugLabel::DebugLabel() {

@@ -1109,12 +1109,6 @@ namespace mirinae {
                 create_info.instance_extensions_.end()
             );
 
-            {
-                instance_factory.ext_layers_.extensions_.push_back(
-                    VK_EXT_DEBUG_UTILS_EXTENSION_NAME
-                );
-            }
-
             SPDLOG_DEBUG(
                 "Vulkan instance extensions: {}",
                 fmt::join(instance_factory.ext_layers_.extensions_, ", ")
