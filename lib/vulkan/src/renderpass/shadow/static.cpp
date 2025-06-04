@@ -468,8 +468,8 @@ namespace {
                 mirinae::PipelineBuilder builder{ device };
 
                 builder.shader_stages()
-                    .add_vert(":asset/spv/shadow_basic_vert.spv")
-                    .add_frag(":asset/spv/shadow_basic_frag.spv");
+                    .add_vert(":asset/spv/shadow_static_vert.spv")
+                    .add_frag(":asset/spv/shadow_static_frag.spv");
 
                 builder.vertex_input_state().set_static();
 
