@@ -586,7 +586,7 @@ namespace {
                     mirinae::ENGINE_VERSION_MINOR,
                     mirinae::ENGINE_VERSION_PATCH
                 );
-                app_info.apiVersion = VK_API_VERSION_1_0;
+                app_info.apiVersion = VK_API_VERSION_1_1;
             }
 
             {
