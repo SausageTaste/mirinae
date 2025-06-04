@@ -24,34 +24,22 @@ namespace {
             const glm::dmat4& view,
             const glm::dmat4& model
         ) {
-            pvm_ = proj * view * model;
-            view_ = view;
-            model_ = model;
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& height_map_size(uint32_t x, uint32_t y) {
-            height_map_size_fbuf_size_.x = static_cast<float>(x);
-            height_map_size_fbuf_size_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        U_GbufTerrainPushConst& height_map_size(const VkExtent2D& e) {
-            height_map_size_fbuf_size_.x = static_cast<float>(e.width);
-            height_map_size_fbuf_size_.y = static_cast<float>(e.height);
+            const auto vm = view * model;
+            view_model_ = vm;
+            pvm_ = proj * vm;
             return *this;
         }
 
         U_GbufTerrainPushConst& fbuf_size(const VkExtent2D& x) {
-            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
-            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
+            fbuf_size_.x = static_cast<float>(x.width);
+            fbuf_size_.y = static_cast<float>(x.height);
             return *this;
         }
 
         template <typename T>
-        U_GbufTerrainPushConst& terrain_size(T x, T y) {
-            terrain_size_.x = static_cast<float>(x);
-            terrain_size_.y = static_cast<float>(y);
+        U_GbufTerrainPushConst& len_per_texel(T x, T y) {
+            len_per_texel_.x = static_cast<float>(x);
+            len_per_texel_.y = static_cast<float>(y);
             return *this;
         }
 
@@ -67,10 +55,9 @@ namespace {
 
     private:
         glm::mat4 pvm_;
-        glm::mat4 view_;
-        glm::mat4 model_;
-        glm::vec4 height_map_size_fbuf_size_;
-        glm::vec4 terrain_size_;
+        glm::mat4 view_model_;
+        glm::vec2 fbuf_size_;
+        glm::vec2 len_per_texel_;
         float height_scale_;
         float tess_factor_;
     };
@@ -290,11 +277,14 @@ namespace {
                 if (auto tform = reg.try_get<cpnt::Transform>(e))
                     model_mat = tform->make_model_mat();
 
+                const auto hz = unit->height_map_size();
+                const auto x_per_texel = terr.terrain_width_ / hz.width;
+                const auto y_per_texel = terr.terrain_height_ / hz.height;
+
                 ::U_GbufTerrainPushConst pc;
                 pc.pvm(ctxt.main_cam_.proj(), ctxt.main_cam_.view(), model_mat)
-                    .height_map_size(unit->height_map_size())
                     .fbuf_size(fd.fbuf_size_)
-                    .terrain_size(terr.terrain_width_, terr.terrain_height_)
+                    .len_per_texel(x_per_texel, y_per_texel)
                     .height_scale(terr.height_scale_)
                     .tess_factor(terr.tess_factor_);
                 pc_info.record(cmdbuf, pc);
