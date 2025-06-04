@@ -58,8 +58,8 @@ float4x4 make_joint_transform(int4 j_ids, float4 j_weights) {
     for (int i = 0; i < 4; i++) {
         if (j_ids[i] < 0)
             break;
-        else
-            joint_transform += j_weights[i] * u_gbuf_model.j_tforms_[j_ids[i]];
+
+        joint_transform += j_weights[i] * u_gbuf_model.j_tforms_[j_ids[i]];
     }
 
     return joint_transform;

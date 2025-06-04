@@ -16,6 +16,8 @@ INCLUDE_DIRECTIVE = "#include"
 ENTRY_POINTS = {
     "vert_main",
     "frag_main",
+    "tesc_main",
+    "tese_main",
 }
 
 
@@ -78,11 +80,12 @@ def __compile_one_slang(file_path):
     for func_name in found_entry_points:
         suffix = func_name.strip("_main")
         out_glsl_path = f"{output_prefix}_{suffix}.glsl"
-        if False and 0 != os.system(f'{SLANGC_PATH} "{file_path}" -capability glsl_spirv_1_0 -profile glsl_450 -target glsl -o "{out_glsl_path}" -entry {func_name}'):
+        if False and 0 != os.system(f'{SLANGC_PATH} "{file_path}" -profile glsl_450 -target glsl -o "{out_glsl_path}" -entry {func_name}'):
             return False
 
         out_spv_path = f"{output_prefix}_{suffix}.spv"
-        if 0 != os.system(f'{SLANGC_PATH} "{file_path}" -capability glsl_spirv_1_0 -profile glsl_450 -target spirv -o "{out_spv_path}" -entry {func_name}'):
+        if 0 != os.system(f'{SLANGC_PATH} "{file_path}" -profile glsl_450 -target spirv -o "{out_spv_path}" -entry {func_name}'):
+            print(f"Error: Failed to compile {file_path} with entry point {func_name}.")
             return False
 
     return True
