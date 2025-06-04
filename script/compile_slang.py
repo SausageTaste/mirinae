@@ -2,6 +2,7 @@ import multiprocessing as mp
 import os
 import shutil
 import time
+import subprocess
 
 import utils
 
@@ -59,9 +60,9 @@ def __gen_slang_files():
             yield file_path
 
 
-def __compile_one_slang(file_path):
+def __gen_one_slang_cmds(file_path):
     if not os.path.isfile(file_path):
-        return False
+        return
 
     output_prefix = __make_output_prefix(file_path, SLANG_DIR)
     os.makedirs(os.path.dirname(output_prefix), exist_ok=True)
@@ -75,20 +76,33 @@ def __compile_one_slang(file_path):
 
     if not found_entry_points:
         print(f"Warning: No entry points found in {file_path}.")
-        return False
+        return
+
+    basic_cmd = [
+        SLANGC_PATH,
+        file_path,
+        "-minimum-slang-optimization",
+        "-profile", "glsl_450",
+    ]
 
     for func_name in found_entry_points:
         suffix = func_name.strip("_main")
-        out_glsl_path = f"{output_prefix}_{suffix}.glsl"
-        if False and 0 != os.system(f'{SLANGC_PATH} "{file_path}" -profile glsl_450 -target glsl -o "{out_glsl_path}" -entry {func_name}'):
-            return False
+        entry_cmd = basic_cmd + [
+            "-entry", func_name,
+            "-target",
+        ]
 
-        out_spv_path = f"{output_prefix}_{suffix}.spv"
-        if 0 != os.system(f'{SLANGC_PATH} "{file_path}" -profile glsl_450 -target spirv -o "{out_spv_path}" -entry {func_name}'):
-            print(f"Error: Failed to compile {file_path} with entry point {func_name}.")
-            return False
+        # yield entry_cmd + ["glsl", "-o", f"{output_prefix}_{suffix}.glsl"]
+        yield entry_cmd + ["spirv", "-o", f"{output_prefix}_{suffix}.spv"]
 
-    return True
+
+def __gen_cmds():
+    for file_path in __gen_slang_files():
+        yield from __gen_one_slang_cmds(file_path)
+
+
+def __exec_cmd(cmd: list[str]):
+    return subprocess.run(cmd).returncode == 0
 
 
 def main():
@@ -96,7 +110,7 @@ def main():
     success_count = 0
 
     with mp.Pool() as pool:
-        for result in pool.imap_unordered(__compile_one_slang, __gen_slang_files()):
+        for result in pool.imap_unordered(__exec_cmd, __gen_cmds()):
             if result is None:
                 continue
             work_count += 1
