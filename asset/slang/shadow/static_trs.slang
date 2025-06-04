@@ -1,7 +1,5 @@
 struct VSInput {
     float3 pos_;
-    float3 normal_;
-    float3 tangent_;
     float2 texco_;
 };
 

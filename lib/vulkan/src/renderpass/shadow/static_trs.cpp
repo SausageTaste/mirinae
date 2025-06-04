@@ -436,7 +436,11 @@ namespace {
                     .add_vert(":asset/spv/shadow_static_trs_vert.spv")
                     .add_frag(":asset/spv/shadow_static_trs_frag.spv");
 
-                builder.vertex_input_state().set_static();
+                using Vertex = mirinae::VertexStatic;
+                builder.vertex_input_state()
+                    .add_binding<Vertex>()
+                    .add_attrib_vec3(offsetof(Vertex, pos_))
+                    .add_attrib_vec2(offsetof(Vertex, texcoord_));
 
                 builder.rasterization_state()
                     .polygon_mode(VK_POLYGON_MODE_FILL)

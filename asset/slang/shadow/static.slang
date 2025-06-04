@@ -1,7 +1,5 @@
 struct VSInput {
     float3 pos_;
-    float3 normal_;
-    float3 tangent_;
     float2 texco_;
 };
 
@@ -28,4 +26,4 @@ VSOutput vert_main(VSInput input) {
 
 
 [shader("fragment")]
-void frag_main(VSOutput input) {}
+void frag_main() {}

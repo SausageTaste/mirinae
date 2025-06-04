@@ -349,7 +349,13 @@ namespace {
                     .add_vert(":asset/spv/shadow_skinned_vert.spv")
                     .add_frag(":asset/spv/shadow_skinned_frag.spv");
 
-                builder.vertex_input_state().set_skinned();
+                using Vertex = mirinae::VertexSkinned;
+                builder.vertex_input_state()
+                    .add_binding<Vertex>()
+                    .add_attrib_vec3(offsetof(Vertex, pos_))
+                    .add_attrib_vec2(offsetof(Vertex, uv_))
+                    .add_attrib_vec4(offsetof(Vertex, joint_weights_))
+                    .add_attrib_ivec4(offsetof(Vertex, joint_indices_));
 
                 builder.rasterization_state()
                     .depth_clamp_enable(device.has_supp_depth_clamp())

@@ -127,7 +127,7 @@ DSOutput tese_main(
     }
 
     {
-        let height = u_height_map.Sample(output.texco_).r * u_pc.height_scale_;
+        let height = u_height_map.SampleLevel(output.texco_, 0).r * u_pc.height_scale_;
 
         let p00 = patch[0].pos_.xyz;
         let p01 = patch[1].pos_.xyz;
@@ -151,10 +151,10 @@ FSOutput frag_main(DSOutput input) {
     FSOutput output;
 
     {
-        let right = u_height_map.Sample(input.texco_, int2(2, 0)).r;
-        let left = u_height_map.Sample(input.texco_, int2(-2, 0)).r;
-        let up = u_height_map.Sample(input.texco_, int2(0, 2)).r;
-        let down = u_height_map.Sample(input.texco_, int2(0, -2)).r;
+        let right = u_height_map.SampleLevel(input.texco_, 0, int2(2, 0)).r;
+        let left = u_height_map.SampleLevel(input.texco_, 0, int2(-2, 0)).r;
+        let up = u_height_map.SampleLevel(input.texco_, 0, int2(0, 2)).r;
+        let down = u_height_map.SampleLevel(input.texco_, 0, int2(0, -2)).r;
 
         var normal = float3(
             u_pc.height_scale_ * (left - right) / (u_pc.len_per_texel_.x * 4),
