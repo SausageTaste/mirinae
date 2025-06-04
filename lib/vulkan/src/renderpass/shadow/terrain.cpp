@@ -25,35 +25,16 @@ namespace {
             return *this;
         }
 
-        U_ShadowTerrainPushConst& height_map_size(uint32_t x, uint32_t y) {
-            height_map_size_fbuf_size_.x = static_cast<float>(x);
-            height_map_size_fbuf_size_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        U_ShadowTerrainPushConst& height_map_size(const VkExtent2D& e) {
-            height_map_size_fbuf_size_.x = static_cast<float>(e.width);
-            height_map_size_fbuf_size_.y = static_cast<float>(e.height);
-            return *this;
-        }
-
         template <typename T>
         U_ShadowTerrainPushConst& fbuf_size(T x, T y) {
-            height_map_size_fbuf_size_.z = static_cast<float>(x);
-            height_map_size_fbuf_size_.w = static_cast<float>(y);
+            fbuf_size_.x = static_cast<float>(x);
+            fbuf_size_.y = static_cast<float>(y);
             return *this;
         }
 
         U_ShadowTerrainPushConst& fbuf_size(const VkExtent2D& x) {
-            height_map_size_fbuf_size_.z = static_cast<float>(x.width);
-            height_map_size_fbuf_size_.w = static_cast<float>(x.height);
-            return *this;
-        }
-
-        template <typename T>
-        U_ShadowTerrainPushConst& terrain_size(T x, T y) {
-            terrain_size_.x = static_cast<float>(x);
-            terrain_size_.y = static_cast<float>(y);
+            fbuf_size_.x = static_cast<float>(x.width);
+            fbuf_size_.y = static_cast<float>(x.height);
             return *this;
         }
 
@@ -69,8 +50,7 @@ namespace {
 
     private:
         glm::mat4 pvm_;
-        glm::vec4 height_map_size_fbuf_size_;
-        glm::vec4 terrain_size_;
+        glm::vec2 fbuf_size_;
         float height_scale_;
         float tess_factor_;
     };
@@ -215,11 +195,7 @@ namespace { namespace task {
 
                         ::U_ShadowTerrainPushConst pc;
                         pc.pvm(cascade.light_mat_ * model_mat)
-                            .height_map_size(unit->height_map_size())
                             .fbuf_size(half_width, half_height)
-                            .terrain_size(
-                                terr.terrain_width_, terr.terrain_height_
-                            )
                             .height_scale(terr.height_scale_)
                             .tess_factor(terr.tess_factor_);
                         pc_info.record(cmdbuf, pc);
@@ -341,7 +317,7 @@ namespace {
                     .add_vert(":asset/spv/shadow_terrain_vert.spv")
                     .add_tesc(":asset/spv/shadow_terrain_tesc.spv")
                     .add_tese(":asset/spv/shadow_terrain_tese.spv")
-                    .add_frag(":asset/spv/shadow_basic_frag.spv");
+                    .add_frag(":asset/spv/shadow_terrain_frag.spv");
 
                 builder.vertex_input_state()
                     .add_binding<Vertex>()
