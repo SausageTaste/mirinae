@@ -71,6 +71,10 @@ def __compile_one_slang(file_path):
             if content.count(x):
                 found_entry_points.append(x)
 
+    if not found_entry_points:
+        print(f"Warning: No entry points found in {file_path}.")
+        return False
+
     for func_name in found_entry_points:
         suffix = func_name.strip("_main")
         out_glsl_path = f"{output_prefix}_{suffix}.glsl"
