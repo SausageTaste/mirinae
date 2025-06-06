@@ -45,3 +45,29 @@ public float dither4x4(float2 position, float brightness) {
 
     return brightness < limit ? 0.0 : 1.0;
 }
+
+
+float get_dither_value(float2 position) {
+    const float dither_pattern[16] = float[](
+        0.0,
+        0.5,
+        0.125,
+        0.625,
+        0.75,
+        0.22,
+        0.875,
+        0.375,
+        0.1875,
+        0.6875,
+        0.0625,
+        0.5625,
+        0.9375,
+        0.4375,
+        0.8125,
+        0.3125
+    );
+
+    const int i = int(position.x) % 4;
+    const int j = int(position.y) % 4;
+    return dither_pattern[4 * i + j];
+}

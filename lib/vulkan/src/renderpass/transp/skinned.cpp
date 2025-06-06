@@ -538,8 +538,8 @@ namespace {
                 mirinae::PipelineBuilder builder{ device_ };
 
                 builder.shader_stages()
-                    .add_vert(":asset/spv/transp_skin_vert.spv")
-                    .add_frag(":asset/spv/transp_basic_frag.spv");
+                    .add_vert(":asset/spv/transp_skinned_vert.spv")
+                    .add_frag(":asset/spv/transp_skinned_frag.spv");
 
                 builder.vertex_input_state().set_skinned();
 
