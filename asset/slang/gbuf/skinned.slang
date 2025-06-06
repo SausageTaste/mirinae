@@ -1,3 +1,7 @@
+import "../module/lighting";
+import "../module/skinned";
+
+
 struct VSInput {
     float3 pos_;
     float3 normal_;
@@ -20,8 +24,6 @@ struct FSOutput {
 };
 
 
-static const int MAX_JOINTS = 256;
-
 struct U_GbufModel {
     float roughness_;
     float metallic_;
@@ -40,35 +42,9 @@ layout(set = 0, binding = 3) Sampler2D u_orm_map;
 layout(set = 1, binding = 0) ConstantBuffer<U_GbufActorSkinned> u_gbuf_model;
 
 
-float3x3 make_tbn_mat(float3 normal, float3 tangent, float3x3 m) {
-    var T = normalize(mul(m, tangent));
-    let N = normalize(mul(m, normal));
-    T = normalize(T - dot(T, N) * N);
-    let B = cross(N, T);
-    return transpose(float3x3(T, B, N));
-}
-
-
-float4x4 make_joint_transform(int4 j_ids, float4 j_weights) {
-    if (j_ids[0] < 0) {
-        return float4x4(1);
-    }
-
-    float4x4 joint_transform = float4x4(0);
-    for (int i = 0; i < 4; i++) {
-        if (j_ids[i] < 0)
-            break;
-
-        joint_transform += j_weights[i] * u_gbuf_model.j_tforms_[j_ids[i]];
-    }
-
-    return joint_transform;
-}
-
-
 [shader("vertex")]
 VSOutput vert_main(VSInput input) {
-    let joint_mat = make_joint_transform(input.j_ids_, input.j_weights_);
+    let joint_mat = make_joint_transform(input.j_ids_, input.j_weights_, u_gbuf_model.j_tforms_);
     let pvmj = mul(u_gbuf_model.pvm_, joint_mat);
     let vmj = mul(u_gbuf_model.view_model_, joint_mat);
 

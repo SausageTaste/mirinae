@@ -50,6 +50,9 @@ def __make_output_prefix(file_path: str, root_dir: str):
 
 def __gen_slang_files():
     for loc, folders, files in os.walk(SLANG_DIR):
+        if loc.endswith("module"):
+            continue
+
         for file_name_ext in files:
             file_path = os.path.join(loc, file_name_ext)
 
