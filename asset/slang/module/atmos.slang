@@ -153,8 +153,7 @@ float2 LutTransmittanceParamsToUv(
 }
 
 
-#define NONLINEARSKYVIEWLUT 1
-public void UvToSkyViewLutParams(
+public void UvToSkyViewLutParams<let TNonLinearSkyViewLut : bool>(
     AtmosphereParameters Atmosphere,
     out float viewZenithCosAngle,
     out float lightViewCosAngle,
@@ -175,16 +174,14 @@ public void UvToSkyViewLutParams(
     if (uv.y < 0.5f) {
         float coord = 2.0 * uv.y;
         coord = 1.0 - coord;
-#if NONLINEARSKYVIEWLUT
-        coord *= coord;
-#endif
+        if (TNonLinearSkyViewLut)
+            coord *= coord;
         coord = 1.0 - coord;
         viewZenithCosAngle = cos(ZenithHorizonAngle * coord);
     } else {
         float coord = uv.y * 2.0 - 1.0;
-#if NONLINEARSKYVIEWLUT
-        coord *= coord;
-#endif
+        if (TNonLinearSkyViewLut)
+            coord *= coord;
         viewZenithCosAngle = cos(ZenithHorizonAngle + Beta * coord);
     }
 
@@ -208,28 +205,6 @@ public float AerialPerspectiveDepthToSlice(float depth) {
     const float AP_KM_PER_SLICE = 4;
     const float M_PER_SLICE_RCP = 1.0 / (AP_KM_PER_SLICE * 1000.0);
     return depth * M_PER_SLICE_RCP;
-}
-
-
-float3 GetMultipleScattering(
-    AtmosphereParameters Atmosphere,
-    Sampler2D multi_scat,
-    float3 scattering,
-    float3 extinction,
-    float3 worlPos,
-    float viewZenithCosAngle
-) {
-    float2 uv = saturate(float2(
-        viewZenithCosAngle * 0.5f + 0.5f,
-        (length(worlPos) - Atmosphere.BottomRadius) /
-            (Atmosphere.TopRadius - Atmosphere.BottomRadius)
-    ));
-    uv = float2(
-        fromUnitToSubUvs(uv.x, MULTI_SCAT_LUT_RES), fromUnitToSubUvs(uv.y, MULTI_SCAT_LUT_RES)
-    );
-
-    float3 multiScatteredLuminance = multi_scat.SampleLevel(uv, 0).rgb;
-    return multiScatteredLuminance;
 }
 
 
@@ -262,7 +237,9 @@ float raySphereIntersectNearest(float3 r0, float3 rd, float3 s0, float sR) {
 }
 
 
-bool MoveToTopAtmosphere(inout float3 WorldPos, in float3 WorldDir, in float AtmosphereTopRadius) {
+public bool MoveToTopAtmosphere(
+    inout float3 WorldPos, in float3 WorldDir, in float AtmosphereTopRadius
+) {
     float viewHeight = length(WorldPos);
     if (viewHeight > AtmosphereTopRadius) {
         float tTop = raySphereIntersectNearest(WorldPos, WorldDir, float3(0), AtmosphereTopRadius);
@@ -337,49 +314,124 @@ MediumSampleRGB sampleMediumRGB(float3 WorldPos, AtmosphereParameters Atmosphere
 
 
 public struct SingleScatteringResult {
-    float3 L;                      // Scattered light (luminance)
+    public float3 L;               // Scattered light (luminance)
     public float3 optical_depth_;  // Optical depth (1/m)
     float3 transmittance_;         // Transmittance in [0,1] (unitless)
-    float3 MultiScatAs1;
+    public float3 MultiScatAs1;
 
     float3 NewMultiScatStep0Out;
     float3 NewMultiScatStep1Out;
 };
 
 
-public float3 get_transmittance(
+public interface ITransLut {
+    float3 sample(AtmosphereParameters atmos_params, float height, float cos_angle);
+}
+
+
+public struct NullTransLut : ITransLut {
+    public float3 sample(AtmosphereParameters atmos_params, float height, float cos_angle) {
+        return float3(1);  // No transmittance
+    }
+};
+
+
+public struct SamplerTransLut : ITransLut {
+    public __init(Sampler2D tex) {
+        this.tex_ = tex;
+    }
+
+    public float3 sample(AtmosphereParameters atmos_params, float height, float cos_angle) {
+        let uv = LutTransmittanceParamsToUv(atmos_params, height, cos_angle);
+        return tex_.SampleLevel(uv, 0).xyz;
+    }
+
+    private Sampler2D tex_;
+};
+
+
+public interface IMulScatLut {
+    float3 sample(
+        AtmosphereParameters Atmosphere,
+        float3 scattering,
+        float3 extinction,
+        float3 worlPos,
+        float viewZenithCosAngle
+    );
+}
+
+
+public struct NullMulScatLut : IMulScatLut {
+    public float3 sample(
+        AtmosphereParameters Atmosphere,
+        float3 scattering,
+        float3 extinction,
+        float3 worlPos,
+        float viewZenithCosAngle
+    ) {
+        return float3(0);  // No multi scattering
+    }
+};
+
+
+public struct SamplerMulScatLut : IMulScatLut {
+    public __init(Sampler2D tex) {
+        this.tex_ = tex;
+    }
+
+    public float3 sample(
+        AtmosphereParameters Atmosphere,
+        float3 scattering,
+        float3 extinction,
+        float3 worlPos,
+        float viewZenithCosAngle
+    ) {
+        float2 uv = saturate(float2(
+            viewZenithCosAngle * 0.5f + 0.5f,
+            (length(worlPos) - Atmosphere.BottomRadius) /
+                (Atmosphere.TopRadius - Atmosphere.BottomRadius)
+        ));
+        uv = float2(
+            fromUnitToSubUvs(uv.x, MULTI_SCAT_LUT_RES), fromUnitToSubUvs(uv.y, MULTI_SCAT_LUT_RES)
+        );
+
+        return tex_.SampleLevel(uv, 0).xyz;
+    }
+
+    private Sampler2D tex_;
+};
+
+
+public float3 get_transmittance<TTransLut>(
     float3 frag_pos_w,
     float3 sun_dir_w,
-    Sampler2D trans_lut,
+    TTransLut trans_lut,
     const AtmosphereParameters atmos_params
-) {
+)
+    where TTransLut : ITransLut {
     const float planet_radius = atmos_params.BottomRadius * 1000;
     const float3 frag_pos_e = frag_pos_w + float3(0, planet_radius, 0);
     const float frag_height_e = length(frag_pos_e);
     const float3 frag_up_dir_e = normalize(frag_pos_e);
     const float view_zenith_cos_angle = dot(sun_dir_w, frag_up_dir_e);
-    const float2 lut_trans_uv = LutTransmittanceParamsToUv(
-        atmos_params, frag_height_e / 1000.0, view_zenith_cos_angle
-    );
-    return trans_lut.SampleLevel(lut_trans_uv, 0).xyz;
+    return trans_lut.sample(atmos_params, frag_height_e * M_TO_KM, view_zenith_cos_angle);
 }
 
 
-public SingleScatteringResult IntegrateScatteredLuminance(
+public SingleScatteringResult IntegrateScatteredLuminance<TTransLut, TMulScatLut>(
     float2 pixPos,
     float2 gResolution,
     float2 RayMarchMinMaxSPP,
     float3 WorldPos,
     float3 WorldDir,
     float3 SunDir,
+    // When building the scattering factor, we assume light illuminance is 1 to compute a transfert
+    // function relative to identity illuminance of 1. This make the scattering factor independent
+    // of the light.It is now only linked to the atmosphere properties.
     float3 gSunIlluminance,
     float4x4 gSkyInvViewProjMat,
-#ifdef MIRINAE_INTEGRATE_TRANS_LUT
-    Sampler2D TransmittanceLutTexture,
-#endif
-#ifdef MIRINAE_MULTISCAT_APPROX
-    Sampler2D multi_scat,
-#endif
+    TTransLut trans_lut,
+    TMulScatLut multi_scat,
     AtmosphereParameters Atmosphere,
     float SampleCountIni,
     float DepthBufferValue = -1,
@@ -387,7 +439,9 @@ public SingleScatteringResult IntegrateScatteredLuminance(
     bool MieRayPhase = false,
     bool ground = false,
     float tMaxMax = 9000000
-) {
+)
+    where TTransLut : ITransLut
+    where TMulScatLut : IMulScatLut {
     SingleScatteringResult result;
     result.MultiScatAs1 = 0;
 
@@ -449,15 +503,6 @@ public SingleScatteringResult IntegrateScatteredLuminance(
     float MiePhaseValue = hgPhase(Atmosphere.MiePhaseG, -cosTheta);
     float RayleighPhaseValue = RayleighPhase(cosTheta);
 
-#ifdef ILLUMINANCE_IS_ONE
-    // When building the scattering factor, we assume light illuminance is 1 to compute a transfert
-    // function relative to identity illuminance of 1. This make the scattering factor independent
-    // of the light.It is now only linked to the atmosphere properties.
-    float3 globalL = 1.0f;
-#else
-    float3 globalL = gSunIlluminance;
-#endif
-
     // Ray march the atmosphere to integrate optical depth
     float3 L = 0.0f;
     float3 throughput = 1.0;
@@ -495,27 +540,15 @@ public SingleScatteringResult IntegrateScatteredLuminance(
         }
         float3 P = WorldPos + t * WorldDir;
 
-#ifdef DEBUGENABLED
-        float3 Pprev = WorldPos + tPrev * WorldDir;
-        float3 TxToDebugWorld = float3(0, 0, -Atmosphere.BottomRadius);
-        addGpuDebugLine(TxToDebugWorld + Pprev, TxToDebugWorld + P, float3(0.2, 1, 0.2));
-        addGpuDebugCross(TxToDebugWorld + P, float3(0.2, 0.2, 1.0), 0.2);
-#endif
-
         MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
         const float3 SampleOpticalDepth = medium.extinction * dt;
         const float3 SampleTransmittance = exp(-SampleOpticalDepth);
         OpticalDepth += SampleOpticalDepth;
 
-        float pHeight = length(P);
+        const float pHeight = length(P);
         const float3 UpVector = P / pHeight;
-#ifdef MIRINAE_INTEGRATE_TRANS_LUT
-        float SunZenithCosAngle = dot(SunDir, UpVector);
-        let uv = LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle);
-        float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(uv, 0).rgb;
-#else
-        float3 TransmittanceToSun = 1;
-#endif
+        const float SunZenithCosAngle = dot(SunDir, UpVector);
+        let TransmittanceToSun = trans_lut.sample(Atmosphere, pHeight, SunZenithCosAngle);
 
         float3 PhaseTimesScattering;
         if (MieRayPhase) {
@@ -533,40 +566,20 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
         // Dual scattering for multi scattering
 
-        float3 multiScatteredLuminance = 0.0f;
-#ifdef MIRINAE_MULTISCAT_APPROX
-        multiScatteredLuminance = GetMultipleScattering(
-            Atmosphere, multi_scat, medium.scattering, medium.extinction, P, SunZenithCosAngle
+        let multiScatteredLuminance = multi_scat.sample(
+            Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle
         );
-#endif
 
         float shadow = 1.0f;
-#ifdef SHADOWMAP_ENABLED
         // First evaluate opaque shadow
-        shadow = getShadow(Atmosphere, P);
-#endif
+        // shadow = getShadow(Atmosphere, P);
 
-        float3 S = globalL * (earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering +
-                              multiScatteredLuminance * medium.scattering);
-
-        // When using the power serie to accumulate all sattering order, serie r must be <1 for a
-        // serie to converge. Under extreme coefficient, MultiScatAs1 can grow larger and thus
-        // result in broken visuals.The way to fix that is to use a proper analytical integration as
-        // proposed in slide 28 of http://
-        // www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/
-        // However, it is possible to disable as it can also work using simple power serie sum
-        // unroll up to 5th order. The rest of the orders has a really low contribution.
-#define MULTI_SCATTERING_POWER_SERIE 1
-
-#if MULTI_SCATTERING_POWER_SERIE == 0
-        // 1 is the integration of luminance over the 4pi of a sphere, and assuming an
-        // isotropic phase function of 1.0/(4*PI)
-        result.MultiScatAs1 += throughput * medium.scattering * 1 * dt;
-#else
+        float3 S = gSunIlluminance *
+                   (earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering +
+                    multiScatteredLuminance * medium.scattering);
         float3 MS = medium.scattering * 1;
         float3 MSint = (MS - MS * SampleTransmittance) / medium.extinction;
         result.MultiScatAs1 += throughput * MSint;
-#endif
 
         // Evaluate input to multi scattering
         {
@@ -583,10 +596,6 @@ public SingleScatteringResult IntegrateScatteredLuminance(
             //	result.NewMultiScatStep1Out += SampleTransmittance * throughput * newMS * dt;
         }
 
-#if 0
-        L += throughput * S * dt;
-        throughput *= SampleTransmittance;
-#else
         // See slide 28 at
         // http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/
 
@@ -595,8 +604,6 @@ public SingleScatteringResult IntegrateScatteredLuminance(
         // accumulate and also take into account the transmittance from previous steps
         L += throughput * Sint;
         throughput *= SampleTransmittance;
-#endif
-
         tPrev = t;
     }
 
@@ -606,16 +613,12 @@ public SingleScatteringResult IntegrateScatteredLuminance(
         float pHeight = length(P);
 
         const float3 UpVector = P / pHeight;
-#ifdef MIRINAE_INTEGRATE_TRANS_LUT
         float SunZenithCosAngle = dot(SunDir, UpVector);
-        let uv = LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle);
-        float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(uv, 0).rgb;
-#else
-        float3 TransmittanceToSun = 1;
-#endif
+        let TransmittanceToSun = trans_lut.sample(Atmosphere, pHeight, SunZenithCosAngle);
 
         const float NdotL = saturate(dot(normalize(UpVector), normalize(SunDir)));
-        L += globalL * TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo / PI;
+        L += gSunIlluminance * TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo /
+             PI;
     }
 
     result.L = L;

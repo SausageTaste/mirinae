@@ -1,6 +1,5 @@
 import "../module/atmos";
 
-
 layout(set = 0, binding = 0, rgba16f) RWTexture2D<float4> out_image;
 
 [push_constant]
@@ -10,6 +9,8 @@ cbuffer U_AtmosTransLutPushConst {
     int output_height_;
 }
 u_pc;
+
+static const float PI = 3.14159265358979323846;
 
 
 [shader("compute")]
@@ -39,6 +40,8 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
         float3(0, 1, 0),
         float3(1),
         u_pc.pv_inv_,
+        NullTransLut(),
+        NullMulScatLut(),
         Atmosphere,
         SampleCountIni
     );

@@ -139,7 +139,9 @@ float4 frag_main(VSOutput input, float4 screen_pos: SV_Position) : SV_Target {
 
     // Directional light
     {
-        let transmittance = get_transmittance(frag_pos_w, dlight_dir_w, u_trans_lut, atmos_params);
+        let transmittance = get_transmittance(
+            frag_pos_w, dlight_dir_w, SamplerTransLut(u_trans_lut), atmos_params
+        );
         let selected_dlight = select_cascade(depth, u_main.dlight_cascade_depths);
         let texco = make_shadow_texco(
             frag_pos_v, u_main.dlight_mats[selected_dlight], selected_dlight

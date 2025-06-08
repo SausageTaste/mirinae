@@ -1,7 +1,4 @@
-#define MIRINAE_INTEGRATE_TRANS_LUT
-#define MIRINAE_MULTISCAT_APPROX
-#include "../module/atmos.slang"
-
+import "../module/atmos";
 
 layout(set = 0, binding = 0, rgba16f) RWTexture2D<float4> out_image;
 layout(set = 0, binding = 1) Sampler2D u_trans_lut;
@@ -36,7 +33,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
 
     float viewZenithCosAngle;
     float lightViewCosAngle;
-    UvToSkyViewLutParams(Atmosphere, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
+    UvToSkyViewLutParams<true>(Atmosphere, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
 
     float3 SunDir;
     {
@@ -77,8 +74,8 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
         SunDir,
         float3(1),
         u_pc.pv_inv,
-        u_trans_lut,
-        u_multi_scat,
+        SamplerTransLut(u_trans_lut),
+        SamplerMulScatLut(u_multi_scat),
         Atmosphere,
         SampleCountIni,
         DepthBufferValue,
