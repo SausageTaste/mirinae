@@ -153,6 +153,47 @@ float2 LutTransmittanceParamsToUv(
 }
 
 
+#define NONLINEARSKYVIEWLUT 1
+public void UvToSkyViewLutParams(
+    AtmosphereParameters Atmosphere,
+    out float viewZenithCosAngle,
+    out float lightViewCosAngle,
+    in float viewHeight,
+    in float2 uv
+) {
+    // Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage
+    // visible)
+    uv = float2(fromSubUvsToUnit(uv.x, 192.0f), fromSubUvsToUnit(uv.y, 108.0f));
+
+    float Vhorizon = sqrt(
+        viewHeight * viewHeight - Atmosphere.BottomRadius * Atmosphere.BottomRadius
+    );
+    float CosBeta = Vhorizon / viewHeight;  // GroundToHorizonCos
+    float Beta = acos(CosBeta);
+    float ZenithHorizonAngle = PI - Beta;
+
+    if (uv.y < 0.5f) {
+        float coord = 2.0 * uv.y;
+        coord = 1.0 - coord;
+#if NONLINEARSKYVIEWLUT
+        coord *= coord;
+#endif
+        coord = 1.0 - coord;
+        viewZenithCosAngle = cos(ZenithHorizonAngle * coord);
+    } else {
+        float coord = uv.y * 2.0 - 1.0;
+#if NONLINEARSKYVIEWLUT
+        coord *= coord;
+#endif
+        viewZenithCosAngle = cos(ZenithHorizonAngle + Beta * coord);
+    }
+
+    float coord = uv.x;
+    coord *= coord;
+    lightViewCosAngle = -(coord * 2.0 - 1.0);
+}
+
+
 float fromUnitToSubUvs(float u, float resolution) {
     return (u + 0.5 / resolution) * (resolution / (resolution + 1.0));
 }
@@ -333,8 +374,11 @@ public SingleScatteringResult IntegrateScatteredLuminance(
     float3 SunDir,
     float3 gSunIlluminance,
     float4x4 gSkyInvViewProjMat,
-#if defined(MIRINAE_INTEGRATE_TRANS_LUT)
+#ifdef MIRINAE_INTEGRATE_TRANS_LUT
     Sampler2D TransmittanceLutTexture,
+#endif
+#ifdef MIRINAE_MULTISCAT_APPROX
+    Sampler2D multi_scat,
 #endif
     AtmosphereParameters Atmosphere,
     float SampleCountIni,
@@ -490,9 +534,9 @@ public SingleScatteringResult IntegrateScatteredLuminance(
         // Dual scattering for multi scattering
 
         float3 multiScatteredLuminance = 0.0f;
-#ifdef MULTISCATAPPROX_ENABLED
+#ifdef MIRINAE_MULTISCAT_APPROX
         multiScatteredLuminance = GetMultipleScattering(
-            Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle
+            Atmosphere, multi_scat, medium.scattering, medium.extinction, P, SunZenithCosAngle
         );
 #endif
 

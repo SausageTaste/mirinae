@@ -346,9 +346,7 @@ namespace {
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/atmos_sky_view_lut_comp.spv",
-                    pipe_layout_,
-                    device
+                    ":asset/spv/atmos_sky_view_comp.spv", pipe_layout_, device
                 );
             }
 
