@@ -1,13 +1,13 @@
 module atmos;
 
+static const float AP_KM_PER_SLICE = 4;
+static const float AP_SLICE_COUNT = 32;
+static const float M_TO_KM = 0.001;
 static const float PI = 3.14159265358979323846;
+static const float PLANET_RADIUS_OFFSET = 0.01;
+static const int MULTI_SCAT_LUT_RES = 32;
 
-public static const float AP_KM_PER_SLICE = 4;
-public static const float AP_SLICE_COUNT = 32;
 public static const float AP_SLICE_COUNT_RCP = 1.0 / AP_SLICE_COUNT;
-public static const float M_TO_KM = 0.001;
-public static const float PLANET_RADIUS_OFFSET = 0.01;
-public static const int MULTI_SCAT_LUT_RES = 32;
 
 
 public struct AtmosphereParameters {
@@ -44,6 +44,7 @@ public struct AtmosphereParameters {
     // The albedo of the ground.
     float3 GroundAlbedo;
 };
+
 
 public AtmosphereParameters GetAtmosphereParameters() {
     AtmosphereParameters Parameters;
@@ -94,6 +95,32 @@ float CornetteShanksMiePhaseFunction(float g, float cosTheta) {
 
 float hgPhase(float g, float cosTheta) {
     return CornetteShanksMiePhaseFunction(g, cosTheta);
+}
+
+
+public void UvToLutTransmittanceParams(
+    AtmosphereParameters Atmosphere,
+    out float viewHeight,
+    out float viewZenithCosAngle,
+    in float2 uv
+) {
+    // uv = float2(fromSubUvsToUnit(uv.x, TRANSMITTANCE_TEXTURE_WIDTH), fromSubUvsToUnit(uv.y,
+    // TRANSMITTANCE_TEXTURE_HEIGHT)); // No real impact so off
+    float x_mu = uv.x;
+    float x_r = uv.y;
+
+    float H = sqrt(
+        Atmosphere.TopRadius * Atmosphere.TopRadius -
+        Atmosphere.BottomRadius * Atmosphere.BottomRadius
+    );
+    float rho = H * x_r;
+    viewHeight = sqrt(rho * rho + Atmosphere.BottomRadius * Atmosphere.BottomRadius);
+
+    float d_min = Atmosphere.TopRadius - viewHeight;
+    float d_max = rho + H;
+    float d = d_min + x_mu * (d_max - d_min);
+    viewZenithCosAngle = d == 0.0 ? 1.0f : (H * H - rho * rho - d * d) / (2.0 * viewHeight * d);
+    viewZenithCosAngle = clamp(viewZenithCosAngle, -1.0, 1.0);
 }
 
 
@@ -268,10 +295,10 @@ MediumSampleRGB sampleMediumRGB(float3 WorldPos, AtmosphereParameters Atmosphere
 }
 
 
-struct SingleScatteringResult {
-    float3 L;              // Scattered light (luminance)
-    float3 OpticalDepth;   // Optical depth (1/m)
-    float3 Transmittance;  // Transmittance in [0,1] (unitless)
+public struct SingleScatteringResult {
+    float3 L;                      // Scattered light (luminance)
+    public float3 optical_depth_;  // Optical depth (1/m)
+    float3 transmittance_;         // Transmittance in [0,1] (unitless)
     float3 MultiScatAs1;
 
     float3 NewMultiScatStep0Out;
@@ -297,7 +324,7 @@ public float3 get_transmittance(
 }
 
 
-SingleScatteringResult IntegrateScatteredLuminance(
+public SingleScatteringResult IntegrateScatteredLuminance(
     float2 pixPos,
     float2 gResolution,
     float2 RayMarchMinMaxSPP,
@@ -306,16 +333,19 @@ SingleScatteringResult IntegrateScatteredLuminance(
     float3 SunDir,
     float3 gSunIlluminance,
     float4x4 gSkyInvViewProjMat,
+#ifdef MIRINAE_INTEGRATE_TRANS_LUT
     Sampler2D TransmittanceLutTexture,
+#endif
     AtmosphereParameters Atmosphere,
-    bool ground,
     float SampleCountIni,
-    float DepthBufferValue,
-    bool VariableSampleCount,
-    bool MieRayPhase,
-    float tMaxMax = 9000000.0f
+    float DepthBufferValue = -1,
+    bool VariableSampleCount = false,
+    bool MieRayPhase = false,
+    bool ground = false,
+    float tMaxMax = 9000000
 ) {
-    SingleScatteringResult result = (SingleScatteringResult)0;
+    SingleScatteringResult result;
+    result.MultiScatAs1 = 0;
 
     float3 ClipSpace = float3((pixPos / gResolution) * 2 - 1, 1);
 
@@ -345,7 +375,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
 
             // apply earth offset to go back to origin as top of earth mode.
             float tDepth = length(
-                DepthBufferWorldPos.xyz - (WorldPos + float3(0.0, 0.0, -Atmosphere.BottomRadius))
+                DepthBufferWorldPos.xyz - (WorldPos + float3(0, -Atmosphere.BottomRadius, 0))
             );
             if (tDepth < tMax) {
                 tMax = tDepth;
@@ -435,9 +465,13 @@ SingleScatteringResult IntegrateScatteredLuminance(
 
         float pHeight = length(P);
         const float3 UpVector = P / pHeight;
+#ifdef MIRINAE_INTEGRATE_TRANS_LUT
         float SunZenithCosAngle = dot(SunDir, UpVector);
         let uv = LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle);
         float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(uv, 0).rgb;
+#else
+        float3 TransmittanceToSun = 1;
+#endif
 
         float3 PhaseTimesScattering;
         if (MieRayPhase) {
@@ -528,16 +562,20 @@ SingleScatteringResult IntegrateScatteredLuminance(
         float pHeight = length(P);
 
         const float3 UpVector = P / pHeight;
+#ifdef MIRINAE_INTEGRATE_TRANS_LUT
         float SunZenithCosAngle = dot(SunDir, UpVector);
         let uv = LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle);
         float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(uv, 0).rgb;
+#else
+        float3 TransmittanceToSun = 1;
+#endif
 
         const float NdotL = saturate(dot(normalize(UpVector), normalize(SunDir)));
         L += globalL * TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo / PI;
     }
 
     result.L = L;
-    result.OpticalDepth = OpticalDepth;
-    result.Transmittance = throughput;
+    result.optical_depth_ = OpticalDepth;
+    result.transmittance_ = throughput;
     return result;
 }

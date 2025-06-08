@@ -19,6 +19,7 @@ ENTRY_POINTS = {
     "frag_main",
     "tesc_main",
     "tese_main",
+    "comp_main",
 }
 
 
@@ -84,7 +85,7 @@ def __gen_one_slang_cmds(file_path):
     basic_cmd = [
         SLANGC_PATH,
         file_path,
-        "-minimum-slang-optimization",
+        "-O3",
         "-profile", "glsl_450",
     ]
 
