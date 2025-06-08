@@ -4,17 +4,17 @@ static const float AP_KM_PER_SLICE = 4;
 static const float AP_SLICE_COUNT = 32;
 static const float M_TO_KM = 0.001;
 static const float PI = 3.14159265358979323846;
-static const float PLANET_RADIUS_OFFSET = 0.01;
 static const int MULTI_SCAT_LUT_RES = 32;
 
+public static const float PLANET_RADIUS_OFFSET = 0.01;
 public static const float AP_SLICE_COUNT_RCP = 1.0 / AP_SLICE_COUNT;
 
 
 public struct AtmosphereParameters {
     // Radius of the planet (center to ground)
-    float BottomRadius;
+    public float BottomRadius;
     // Maximum considered atmosphere height (center to atmosphere top)
-    float TopRadius;
+    public float TopRadius;
 
     // Rayleigh scattering exponential distribution scale in the atmosphere
     float RayleighDensityExpScale;
@@ -158,7 +158,7 @@ float fromUnitToSubUvs(float u, float resolution) {
 }
 
 
-float fromSubUvsToUnit(float u, float resolution) {
+public float fromSubUvsToUnit(float u, float resolution) {
     return (u - 0.5 / resolution) * (resolution / (resolution - 1.0));
 }
 
@@ -333,7 +333,7 @@ public SingleScatteringResult IntegrateScatteredLuminance(
     float3 SunDir,
     float3 gSunIlluminance,
     float4x4 gSkyInvViewProjMat,
-#ifdef MIRINAE_INTEGRATE_TRANS_LUT
+#if defined(MIRINAE_INTEGRATE_TRANS_LUT)
     Sampler2D TransmittanceLutTexture,
 #endif
     AtmosphereParameters Atmosphere,
