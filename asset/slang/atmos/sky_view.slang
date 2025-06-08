@@ -6,11 +6,11 @@ layout(set = 0, binding = 2) Sampler2D u_multi_scat;
 
 [push_constant]
 cbuffer U_AtmosCamVolPushConst {
-    float4x4 pv_inv;
-    float4x4 proj_inv;
-    float4x4 view_inv;
-    float4 sun_direction;
-    float4 view_pos;
+    float4x4 pv_inv_;
+    float4x4 proj_inv_;
+    float4x4 view_inv_;
+    float4 sun_dir_w_;
+    float4 view_pos_w_;
 }
 u_pc;
 
@@ -23,10 +23,10 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
 
     let tex_res = float2(192, 108);
     let uv = pixPos / tex_res;
-    let view_inv3 = float3x3(u_pc.view_inv);
+    let view_inv3 = float3x3(u_pc.view_inv_);
     let ClipSpace = float3((pixPos / tex_res) * 2 - 1, 1);
-    let HViewPos = mul(u_pc.proj_inv, float4(ClipSpace, 1));
-    let WorldPos = u_pc.view_pos.xyz / 1000 + float3(0, Atmosphere.BottomRadius, 0);
+    let HViewPos = mul(u_pc.proj_inv_, float4(ClipSpace, 1));
+    let WorldPos = u_pc.view_pos_w_.xyz / 1000 + float3(0, Atmosphere.BottomRadius, 0);
     let viewHeight = length(WorldPos);
 
     ScatLumiIntParams params;
@@ -34,14 +34,14 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     params.gResolution = tex_res;
     params.WorldPos = float3(0, viewHeight, 0);
     params.WorldDir = normalize(mul(view_inv3, (HViewPos.xyz / HViewPos.w)));
-    params.gSkyInvViewProjMat = u_pc.pv_inv;
+    params.gSkyInvViewProjMat = u_pc.pv_inv_;
     params.SampleCountIni = 30;
     params.VariableSampleCount = true;
     params.MieRayPhase = true;
 
     {
         let UpVector = WorldPos / viewHeight;
-        let cos_angle = dot(UpVector, u_pc.sun_direction.xyz);
+        let cos_angle = dot(UpVector, u_pc.sun_dir_w_.xyz);
         params.SunDir = normalize(float3(sqrt(1 - cos_angle * cos_angle), cos_angle, 0));
     }
 

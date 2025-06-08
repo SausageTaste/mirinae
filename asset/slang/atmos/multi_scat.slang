@@ -5,16 +5,16 @@ layout(set = 0, binding = 1) Sampler2D u_trans_lut;
 
 [push_constant]
 cbuffer U_AtmosMultiScatPushConst {
-    float4x4 pv_inv;
-    int output_res;
+    float4x4 pv_inv_;
+    int output_res_;
 }
 u_pc;
 
 static const float PI = 3.14159265358979323846;
 static const int SQRTSAMPLECOUNT = 8;
 
-groupshared float3 MultiScatAs1SharedMem[64];
-groupshared float3 LSharedMem[64];
+groupshared float3 g_multi_scat_as_1[64];
+groupshared float3 g_L[64];
 
 
 [shader("compute")]
@@ -24,11 +24,11 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
     let pixPos = float2(dispatch_id.xy) + 0.5;
     let Atmosphere = GetAtmosphereParameters();
 
-    float2 uv = pixPos / u_pc.output_res;
-    uv = float2(fromSubUvsToUnit(uv.x, u_pc.output_res), fromSubUvsToUnit(uv.y, u_pc.output_res));
+    float2 uv = pixPos / u_pc.output_res_;
+    uv = float2(fromSubUvsToUnit(uv.x, u_pc.output_res_), fromSubUvsToUnit(uv.y, u_pc.output_res_));
 
-    const float cosSunZenithAngle = uv.x * 2 - 1;
-    const float3 sunDir = normalize(
+    let cosSunZenithAngle = uv.x * 2 - 1;
+    let sunDir = normalize(
         float3(0, cosSunZenithAngle, sqrt(saturate(1 - cosSunZenithAngle * cosSunZenithAngle)))
     );
     // We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
@@ -38,11 +38,11 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
 
     ScatLumiIntParams params;
     params.pixPos = pixPos;
-    params.gResolution = float2(u_pc.output_res);
-    params.WorldPos = float3(0, viewHeight, 0);
+    params.gResolution = float2(u_pc.output_res_);
+    params.WorldPos.y = viewHeight;
     params.WorldDir = float3(0, 1, 0);
     params.SunDir = sunDir;
-    params.gSkyInvViewProjMat = u_pc.pv_inv;
+    params.gSkyInvViewProjMat = u_pc.pv_inv_;
     // a minimum set of step is required for accuracy unfortunately
     params.SampleCountIni = 20;
     params.ground = true;
@@ -50,10 +50,10 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
     const float SphereSolidAngle = 4.0 * PI;
     const float IsotropicPhase = 1.0 / SphereSolidAngle;
 
-    const float sqrtSample = float(SQRTSAMPLECOUNT);
-    const float i = 0.5 + float(idx / SQRTSAMPLECOUNT);
-    const float j = 0.5 + float(idx - float((idx / SQRTSAMPLECOUNT) * SQRTSAMPLECOUNT));
     {
+        const float sqrtSample = float(SQRTSAMPLECOUNT);
+        const float i = 0.5 + float(idx / SQRTSAMPLECOUNT);
+        const float j = 0.5 + float(idx - float((idx / SQRTSAMPLECOUNT) * SQRTSAMPLECOUNT));
         const float randA = i / sqrtSample;
         const float randB = j / sqrtSample;
         const float theta = 2 * PI * randA;
@@ -71,49 +71,49 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
             SamplerTransLut(u_trans_lut), NullMulScatLut(), Atmosphere, params
         );
 
-        MultiScatAs1SharedMem[idx] = result.MultiScatAs1 * SphereSolidAngle /
-                                     (sqrtSample * sqrtSample);
-        LSharedMem[idx] = result.L * SphereSolidAngle / (sqrtSample * sqrtSample);
+        g_multi_scat_as_1[idx] = result.MultiScatAs1 * SphereSolidAngle / (sqrtSample * sqrtSample);
+        g_L[idx] = result.L * SphereSolidAngle / (sqrtSample * sqrtSample);
     }
+
     GroupMemoryBarrierWithGroupSync();
     // 64 to 32
     if (idx < 32) {
-        MultiScatAs1SharedMem[idx] += MultiScatAs1SharedMem[idx + 32];
-        LSharedMem[idx] += LSharedMem[idx + 32];
+        g_multi_scat_as_1[idx] += g_multi_scat_as_1[idx + 32];
+        g_L[idx] += g_L[idx + 32];
     }
     GroupMemoryBarrierWithGroupSync();
     // 32 to 16
     if (idx < 16) {
-        MultiScatAs1SharedMem[idx] += MultiScatAs1SharedMem[idx + 16];
-        LSharedMem[idx] += LSharedMem[idx + 16];
+        g_multi_scat_as_1[idx] += g_multi_scat_as_1[idx + 16];
+        g_L[idx] += g_L[idx + 16];
     }
     GroupMemoryBarrierWithGroupSync();
     // 16 to 8 (16 is thread group min hardware size with intel, no sync required from there)
     if (idx < 8) {
-        MultiScatAs1SharedMem[idx] += MultiScatAs1SharedMem[idx + 8];
-        LSharedMem[idx] += LSharedMem[idx + 8];
+        g_multi_scat_as_1[idx] += g_multi_scat_as_1[idx + 8];
+        g_L[idx] += g_L[idx + 8];
     }
     GroupMemoryBarrierWithGroupSync();
     if (idx < 4) {
-        MultiScatAs1SharedMem[idx] += MultiScatAs1SharedMem[idx + 4];
-        LSharedMem[idx] += LSharedMem[idx + 4];
+        g_multi_scat_as_1[idx] += g_multi_scat_as_1[idx + 4];
+        g_L[idx] += g_L[idx + 4];
     }
     GroupMemoryBarrierWithGroupSync();
     if (idx < 2) {
-        MultiScatAs1SharedMem[idx] += MultiScatAs1SharedMem[idx + 2];
-        LSharedMem[idx] += LSharedMem[idx + 2];
+        g_multi_scat_as_1[idx] += g_multi_scat_as_1[idx + 2];
+        g_L[idx] += g_L[idx + 2];
     }
     GroupMemoryBarrierWithGroupSync();
     if (idx < 1) {
-        MultiScatAs1SharedMem[idx] += MultiScatAs1SharedMem[idx + 1];
-        LSharedMem[idx] += LSharedMem[idx + 1];
+        g_multi_scat_as_1[idx] += g_multi_scat_as_1[idx + 1];
+        g_L[idx] += g_L[idx + 1];
     }
     GroupMemoryBarrierWithGroupSync();
     if (idx > 0)
         return;
 
-    let MultiScatAs1 = MultiScatAs1SharedMem[0] * IsotropicPhase;  // Equation 7 f_ms
-    let InScatteredLuminance = LSharedMem[0] * IsotropicPhase;     // Equation 5 L_2ndOrder
+    let MultiScatAs1 = g_multi_scat_as_1[0] * IsotropicPhase;  // Equation 7 f_ms
+    let InScatteredLuminance = g_L[0] * IsotropicPhase;        // Equation 5 L_2ndOrder
 
     let r = MultiScatAs1;
     let SumOfAllMultiScatteringEventsContribution = 1 / (1 - r);
