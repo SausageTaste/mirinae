@@ -1,7 +1,7 @@
 import "../module/atmos";
 
 
-layout(binding = 0) RWTexture2D<float4> out_image;
+layout(set = 0, binding = 0, rgba16f) RWTexture2D<float4> out_image;
 
 [push_constant]
 cbuffer U_AtmosTransLutPushConst {

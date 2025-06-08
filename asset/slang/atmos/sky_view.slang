@@ -3,7 +3,7 @@
 #include "../module/atmos.slang"
 
 
-layout(set = 0, binding = 0) RWTexture2D<float4> out_image;
+layout(set = 0, binding = 0, rgba16f) RWTexture2D<float4> out_image;
 layout(set = 0, binding = 1) Sampler2D u_trans_lut;
 layout(set = 0, binding = 2) Sampler2D u_multi_scat;
 

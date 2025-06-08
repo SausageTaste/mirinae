@@ -2,8 +2,8 @@
 #include "../module/atmos.slang"
 
 
-layout(binding = 0) RWTexture2D<float4> out_image;
-layout(set = 0, binding = 1) uniform Sampler2D u_trans_lut;
+layout(set = 0, binding = 0, rgba16f) RWTexture2D<float4> out_image;
+layout(set = 0, binding = 1) Sampler2D u_trans_lut;
 
 [push_constant]
 cbuffer U_AtmosMultiScatPushConst {
