@@ -22,11 +22,10 @@ groupshared float3 LSharedMem[64];
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: SV_GroupThreadID) {
     let idx = int(local_dispatch_id.z);
     let pixPos = float2(dispatch_id.xy) + 0.5;
+    let Atmosphere = GetAtmosphereParameters();
 
     float2 uv = pixPos / u_pc.output_res;
     uv = float2(fromSubUvsToUnit(uv.x, u_pc.output_res), fromSubUvsToUnit(uv.y, u_pc.output_res));
-
-    const AtmosphereParameters Atmosphere = GetAtmosphereParameters();
 
     const float cosSunZenithAngle = uv.x * 2 - 1;
     const float3 sunDir = normalize(
@@ -37,15 +36,16 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
                      saturate(uv.y + PLANET_RADIUS_OFFSET) *
                          (Atmosphere.TopRadius - Atmosphere.BottomRadius - PLANET_RADIUS_OFFSET);
 
-    let WorldPos = float3(0, viewHeight, 0);
-    var WorldDir = float3(0, 1, 0);
-
-    const bool ground = true;
+    ScatLumiIntParams params;
+    params.pixPos = pixPos;
+    params.gResolution = float2(u_pc.output_res);
+    params.WorldPos = float3(0, viewHeight, 0);
+    params.WorldDir = float3(0, 1, 0);
+    params.SunDir = sunDir;
+    params.gSkyInvViewProjMat = u_pc.pv_inv;
     // a minimum set of step is required for accuracy unfortunately
-    const float SampleCountIni = 20;
-    const float DepthBufferValue = -1.0;
-    const bool VariableSampleCount = false;
-    const bool MieRayPhase = false;
+    params.SampleCountIni = 20;
+    params.ground = true;
 
     const float SphereSolidAngle = 4.0 * PI;
     const float IsotropicPhase = 1.0 / SphereSolidAngle;
@@ -63,26 +63,12 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
         const float sinPhi = sin(phi);
         const float cosTheta = cos(theta);
         const float sinTheta = sin(theta);
-        WorldDir.x = cosTheta * sinPhi;
-        WorldDir.y = cosPhi;
-        WorldDir.z = sinTheta * sinPhi;
+        params.WorldDir.x = cosTheta * sinPhi;
+        params.WorldDir.y = cosPhi;
+        params.WorldDir.z = sinTheta * sinPhi;
+
         let result = IntegrateScatteredLuminance(
-            pixPos,
-            float2(u_pc.output_res),
-            float2(4, 128),
-            WorldPos,
-            WorldDir,
-            sunDir,
-            float3(1),
-            u_pc.pv_inv,
-            SamplerTransLut(u_trans_lut),
-            NullMulScatLut(),
-            Atmosphere,
-            SampleCountIni,
-            DepthBufferValue,
-            VariableSampleCount,
-            MieRayPhase,
-            ground
+            SamplerTransLut(u_trans_lut), NullMulScatLut(), Atmosphere, params
         );
 
         MultiScatAs1SharedMem[idx] = result.MultiScatAs1 * SphereSolidAngle /

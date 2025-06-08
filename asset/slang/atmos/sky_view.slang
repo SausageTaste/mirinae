@@ -24,63 +24,45 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let tex_res = float2(192, 108);
     let uv = pixPos / tex_res;
     let view_inv3 = float3x3(u_pc.view_inv);
-    const float3 ClipSpace = float3((pixPos / tex_res) * 2 - 1, 1);
-    const float4 HViewPos = mul(u_pc.proj_inv, float4(ClipSpace, 1));
-    float3 WorldDir = normalize(mul(view_inv3, (HViewPos.xyz / HViewPos.w)));
-    float3 WorldPos = u_pc.view_pos.xyz / 1000 + float3(0, Atmosphere.BottomRadius, 0);
+    let ClipSpace = float3((pixPos / tex_res) * 2 - 1, 1);
+    let HViewPos = mul(u_pc.proj_inv, float4(ClipSpace, 1));
+    let WorldPos = u_pc.view_pos.xyz / 1000 + float3(0, Atmosphere.BottomRadius, 0);
+    let viewHeight = length(WorldPos);
 
-    const float viewHeight = length(WorldPos);
+    ScatLumiIntParams params;
+    params.pixPos = pixPos;
+    params.gResolution = tex_res;
+    params.WorldPos = float3(0, viewHeight, 0);
+    params.WorldDir = normalize(mul(view_inv3, (HViewPos.xyz / HViewPos.w)));
+    params.gSkyInvViewProjMat = u_pc.pv_inv;
+    params.SampleCountIni = 30;
+    params.VariableSampleCount = true;
+    params.MieRayPhase = true;
+
+    {
+        let UpVector = WorldPos / viewHeight;
+        let cos_angle = dot(UpVector, u_pc.sun_direction.xyz);
+        params.SunDir = normalize(float3(sqrt(1 - cos_angle * cos_angle), cos_angle, 0));
+    }
 
     float viewZenithCosAngle;
     float lightViewCosAngle;
     UvToSkyViewLutParams<true>(Atmosphere, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
 
-    float3 SunDir;
-    {
-        const float3 UpVector = WorldPos / viewHeight;
-        const float sunZenithCosAngle = dot(UpVector, u_pc.sun_direction.xyz);
-        SunDir = normalize(
-            float3(sqrt(1 - sunZenithCosAngle * sunZenithCosAngle), sunZenithCosAngle, 0)
-        );
-    }
-
-    WorldPos = float3(0, viewHeight, 0);
-
-    const float viewZenithSinAngle = sqrt(1 - viewZenithCosAngle * viewZenithCosAngle);
-    WorldDir = float3(
-        viewZenithSinAngle * lightViewCosAngle,
-        viewZenithCosAngle,
-        viewZenithSinAngle * sqrt(1.0 - lightViewCosAngle * lightViewCosAngle)
-    );
+    let viewZenithSinAngle = sqrt(1 - viewZenithCosAngle * viewZenithCosAngle);
+    params.WorldDir.x = viewZenithSinAngle * lightViewCosAngle;
+    params.WorldDir.y = viewZenithCosAngle;
+    params.WorldDir.z = viewZenithSinAngle * sqrt(1.0 - lightViewCosAngle * lightViewCosAngle);
 
     // Move to top atmospehre
-    if (!MoveToTopAtmosphere(WorldPos, WorldDir, Atmosphere.TopRadius)) {
+    if (!MoveToTopAtmosphere(params.WorldPos, params.WorldDir, Atmosphere.TopRadius)) {
         // Ray is not intersecting the atmosphere
         out_image[dispatch_id.xy] = float4(0, 0, 0, 1);
         return;
     }
 
-    const bool ground = false;
-    const float SampleCountIni = 30;
-    const float DepthBufferValue = -1.0;
-    const bool VariableSampleCount = true;
-    const bool MieRayPhase = true;
-    SingleScatteringResult ss = IntegrateScatteredLuminance(
-        pixPos,
-        tex_res,
-        float2(4, 128),
-        WorldPos,
-        WorldDir,
-        SunDir,
-        float3(1),
-        u_pc.pv_inv,
-        SamplerTransLut(u_trans_lut),
-        SamplerMulScatLut(u_multi_scat),
-        Atmosphere,
-        SampleCountIni,
-        DepthBufferValue,
-        VariableSampleCount,
-        MieRayPhase
+    let ss = IntegrateScatteredLuminance(
+        SamplerTransLut(u_trans_lut), SamplerMulScatLut(u_multi_scat), Atmosphere, params
     );
 
     out_image[dispatch_id.xy] = float4(ss.L, 1);

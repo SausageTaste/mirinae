@@ -22,29 +22,18 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let Atmosphere = GetAtmosphereParameters();
 
     float viewHeight;
-    float viewZenithCosAngle;
-    UvToLutTransmittanceParams(Atmosphere, viewHeight, viewZenithCosAngle, uv);
-    const float3 WorldPos = float3(0, viewHeight, 0);
-    const float3 WorldDir = float3(
-        0, viewZenithCosAngle, sqrt(1 - viewZenithCosAngle * viewZenithCosAngle)
-    );
+    float cos_angle;
+    UvToLutTransmittanceParams(Atmosphere, viewHeight, cos_angle, uv);
 
+    ScatLumiIntParams params;
+    params.pixPos = pixPos;
+    params.gResolution = out_res;
+    params.WorldPos.y = viewHeight;
+    params.WorldDir = float3(0, cos_angle, sqrt(1 - cos_angle * cos_angle));
+    params.gSkyInvViewProjMat = u_pc.pv_inv_;
     // Can go a low as 10 sample but energy lost starts to be visible.
-    const float SampleCountIni = 40;
-    let ss = IntegrateScatteredLuminance(
-        pixPos,
-        out_res,
-        float2(4, 128),
-        WorldPos,
-        WorldDir,
-        float3(0, 1, 0),
-        float3(1),
-        u_pc.pv_inv_,
-        NullTransLut(),
-        NullMulScatLut(),
-        Atmosphere,
-        SampleCountIni
-    );
+    params.SampleCountIni = 40;
+    let ss = IntegrateScatteredLuminance(NullTransLut(), NullMulScatLut(), Atmosphere, params);
     let transmittance = exp(-ss.optical_depth_);
 
     out_image[dispatch_id.xy] = float4(transmittance, 1);
