@@ -416,7 +416,7 @@ namespace {
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/ocean_tilde_hkt_comp.spv", pipe_layout_, device
+                    ":asset/spv/ocean_hkt_comp.spv", pipe_layout_, device
                 );
             }
 
