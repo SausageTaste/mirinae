@@ -1,16 +1,9 @@
-#version 450
+layout(set = 0, binding = 0, rgba32f) RWTexture2D<float4> out_images[3];
+layout(set = 0, binding = 1) Sampler2D u_noise;
 
-#include "../utils/konst.glsl"
-
-layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
-
-layout (binding = 0, rgba32f) uniform writeonly image2D out_images[3];
-
-layout(set = 0, binding = 1) uniform sampler2D u_noise;
-
-
-layout (push_constant) uniform U_OceanTildeHPushConst {
-    vec2 wind_dir;
+[push_constant]
+cbuffer U_OceanTildeHPushConst {
+    float2 wind_dir;
     float wind_speed;
     float amplitude;
     float fetch;
@@ -22,15 +15,18 @@ layout (push_constant) uniform U_OceanTildeHPushConst {
     float L;
     int N;
     int cascade;
-} u_pc;
+}
+u_pc;
 
-const float GAMMA = 3.3;
-const float SHORT_WAVES_FADE = 0.01;
+static const float GAMMA = 3.3;
+static const float SHORT_WAVES_FADE = 0.01;
+static const float PI = 3.1415926535897932384626433832795028841971693993751058209749445923078;
+static const float TAU = 6.283185307179586476925287;
+static const float GRAVITY_EARTH = 9.81;
 
 
-vec4 gauseRnd() {
-    const ivec2 tex_coord = ivec2(gl_GlobalInvocationID.xy);
-    const vec4 noise_texel = texelFetch(u_noise, tex_coord, 0);
+float4 gauseRnd(uint3 dispatch_id) {
+    let noise_texel = u_noise.Load(int3(dispatch_id.xy, 0));
 
     const float noise0 = clamp(noise_texel.x, 0.001, 1.0);
     const float noise1 = clamp(noise_texel.y, 0.001, 1.0);
@@ -42,7 +38,7 @@ vec4 gauseRnd() {
     const float u1 = 2.0 * PI * noise2;
     const float v1 = sqrt(-2.0 * log(noise3));
 
-    return vec4(v0 * cos(u0), v0 * sin(u0), v1 * cos(u1), v1 * sin(u1));
+    return float4(v0 * cos(u0), v0 * sin(u0), v1 * cos(u1), v1 * sin(u1));
 }
 
 
@@ -52,26 +48,26 @@ float sqr(float x) {
 
 
 float quad(float x) {
-    float xx = x * x;
+    let xx = x * x;
     return xx * xx;
 }
 
 
 float hexic(float x) {
-    float xx = x * x;
-    float xxxx = xx * xx;
+    let xx = x * x;
+    let xxxx = xx * xx;
     return xxxx * xx;
 }
 
 
 float octic(float x) {
-    float xx = x * x;
-    float xxxx = xx * xx;
+    let xx = x * x;
+    let xxxx = xx * xx;
     return xxxx * xxxx;
 }
 
 
-vec2 phillips_spectrum(vec2 wave_vector) {
+float2 phillips_spectrum(float2 wave_vector) {
     const float damping = 0.001;
 
     const float k = max(length(wave_vector), 0.00001);
@@ -85,19 +81,11 @@ vec2 phillips_spectrum(vec2 wave_vector) {
     const float spectrum = (u_pc.amplitude / (kk * kk)) * exp(-gg / (kk * uuuu));
     const float suppression = exp(-kk * uuuu * damping * damping / gg);
 
-    const float h0k = sqrt(
-        spectrum
-        * suppression
-        * hexic(k_dot_u)
-    );
+    const float h0k = sqrt(spectrum * suppression * hexic(k_dot_u));
 
-    const float h0minusk = sqrt(
-        spectrum
-        * suppression
-        * hexic(k_dot_u_conj)
-    );
+    const float h0minusk = sqrt(spectrum * suppression * hexic(k_dot_u_conj));
 
-    return vec2(h0k, h0minusk) / sqrt(2.0);
+    return float2(h0k, h0minusk) / sqrt(2.0);
 }
 
 
@@ -107,16 +95,16 @@ float Frequency(float k) {
 
 
 float FrequencyDerivative(float k) {
-    float th = tanh(min(k * u_pc.depth, 20));
-    float ch = cosh(k * u_pc.depth);
+    let th = tanh(min(k * u_pc.depth, 20));
+    let ch = cosh(k * u_pc.depth);
     return GRAVITY_EARTH * (u_pc.depth * k / ch / ch + th) / Frequency(k) / 2;
 }
 
 
 float NormalisationFactor(float s) {
-    float s2 = s * s;
-    float s3 = s2 * s;
-    float s4 = s3 * s;
+    let s2 = s * s;
+    let s3 = s2 * s;
+    let s4 = s3 * s;
     if (s < 5)
         return -0.000564 * s4 + 0.00776 * s3 - 0.044 * s2 + 0.192 * s + 0.163;
     else
@@ -129,14 +117,14 @@ float DonelanBannerBeta(float x) {
         return 2.61 * pow(abs(x), 1.3);
     if (x < 1.6)
         return 2.28 * pow(abs(x), -1.3);
-    float p = -0.4 + 0.8393 * exp(-0.567 * log(x * x));
+    let p = -0.4 + 0.8393 * exp(-0.567 * log(x * x));
     return pow(10, p);
 }
 
 
 float DonelanBanner(float theta, float omega, float peakOmega) {
-    float beta = DonelanBannerBeta(omega / peakOmega);
-    float sech = 1 / cosh(beta * theta);
+    let beta = DonelanBannerBeta(omega / peakOmega);
+    let sech = 1 / cosh(beta * theta);
     return beta / 2 / tanh(beta * 3.1416) * sech * sech;
 }
 
@@ -156,15 +144,17 @@ float SpreadPower(float omega, float peak_omega) {
 
 
 float DirectionSpectrum(float theta, float omega, float peak_omega) {
-    const float wind_angle = atan(u_pc.wind_dir.y, u_pc.wind_dir.x);
-    float s = SpreadPower(omega, peak_omega)
-        + 16.0 * tanh(min(omega / peak_omega, 20.0)) * u_pc.swell * u_pc.swell;
-    return mix(2 / PI * cos(theta) * cos(theta), Cosine2s(theta - wind_angle, s), u_pc.spread_blend);
+    let wind_angle = atan2(u_pc.wind_dir.y, u_pc.wind_dir.x);
+    let s = SpreadPower(omega, peak_omega) +
+            16.0 * tanh(min(omega / peak_omega, 20.0)) * u_pc.swell * u_pc.swell;
+    return lerp(
+        2 / PI * cos(theta) * cos(theta), Cosine2s(theta - wind_angle, s), u_pc.spread_blend
+    );
 }
 
 
 float TMACorrection(float omega) {
-    float omegaH = omega * sqrt(u_pc.depth / GRAVITY_EARTH);
+    let omegaH = omega * sqrt(u_pc.depth / GRAVITY_EARTH);
     if (omegaH <= 1)
         return 0.5 * omegaH * omegaH;
     if (omegaH < 2)
@@ -174,23 +164,26 @@ float TMACorrection(float omega) {
 
 
 float JONSWAP(float omega, float peak_omega) {
-    const float g = GRAVITY_EARTH;
-    const float u = u_pc.wind_speed;
-    const float alpha = 0.076 * pow(g * u_pc.fetch / sqr(u), -0.22);
+    let g = GRAVITY_EARTH;
+    let u = u_pc.wind_speed;
+    let alpha = 0.076 * pow(g * u_pc.fetch / sqr(u), -0.22);
 
     float sigma;
     if (omega <= peak_omega)
         sigma = 0.07;
     else
         sigma = 0.09;
-    float r = exp(-(omega - peak_omega) * (omega - peak_omega) / 2.0 / sigma / sigma / peak_omega / peak_omega);
+    let r = exp(
+        -(omega - peak_omega) * (omega - peak_omega) / 2.0 / sigma / sigma / peak_omega / peak_omega
+    );
 
-    float oneOverOmega = 1.0 / omega;
-    float peakOmegaOverOmega = peak_omega / omega;
-    return u_pc.amplitude * TMACorrection(omega) * alpha * g * g
-        * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega
-        * exp(-1.25 * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega)
-        * pow(abs(GAMMA), r);
+    let oneOverOmega = 1.0 / omega;
+    let peakOmegaOverOmega = peak_omega / omega;
+    return u_pc.amplitude * TMACorrection(omega) * alpha * g * g * oneOverOmega * oneOverOmega *
+           oneOverOmega * oneOverOmega * oneOverOmega *
+           exp(-1.25 * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega *
+               peakOmegaOverOmega) *
+           pow(abs(GAMMA), r);
 }
 
 
@@ -199,36 +192,36 @@ float ShortWavesFade(float k) {
 }
 
 
-float jonswap_spectrum(vec2 wave_vector) {
+float jonswap_spectrum(float2 wave_vector) {
     const float deltaK = TAU / float(u_pc.L);
     const float k_len = max(length(wave_vector), 0.000001);
 
     if (k_len < u_pc.cutoff_low || k_len > u_pc.cutoff_high)
         return 0;
 
-    const float k_angle = atan(wave_vector.y, wave_vector.x);
-    const float peak_omega = 22 * pow(GRAVITY_EARTH * GRAVITY_EARTH / (u_pc.wind_speed * u_pc.fetch), 0.33);
+    let gg = GRAVITY_EARTH * GRAVITY_EARTH;
+    const float k_angle = atan2(wave_vector.y, wave_vector.x);
+    const float peak_omega = 22 * pow(gg / (u_pc.wind_speed * u_pc.fetch), 0.33);
     const float omega = Frequency(k_len);
-    const vec4 wave_data = vec4(wave_vector.x, 1 / k_len, wave_vector.y, omega);
+    const float4 wave_data = float4(wave_vector.x, 1 / k_len, wave_vector.y, omega);
     const float domega_dk = FrequencyDerivative(k_len);
 
-    const float spectrum = JONSWAP(omega, peak_omega)
-        * DirectionSpectrum(k_angle, omega, peak_omega)
-        * ShortWavesFade(k_len);
+    const float spectrum = JONSWAP(omega, peak_omega) *
+                           DirectionSpectrum(k_angle, omega, peak_omega) * ShortWavesFade(k_len);
 
     return sqrt(2 * spectrum * abs(domega_dk) / k_len * deltaK * deltaK);
 }
 
 
-void main() {
-    const ivec2 nm = ivec2(gl_GlobalInvocationID.xy);
-    const vec2 x = vec2(gl_GlobalInvocationID.xy) - float(u_pc.N) * 0.5;
-    const vec2 k = x * (TAU / float(u_pc.L));
+[shader("compute")]
+[numthreads(16, 16, 1)]
+void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
+    let x = float2(dispatch_id.xy) - float(u_pc.N) * 0.5;
+    let k = x * (TAU / float(u_pc.L));
 
-    const vec4 gause_random = gauseRnd();
+    let gause_random = gauseRnd(dispatch_id);
 
-    imageStore(out_images[u_pc.cascade], nm, vec4(
-        gause_random.xy * jonswap_spectrum(k),
-        gause_random.zw * jonswap_spectrum(-k)
-    ));
+    out_images[u_pc.cascade][dispatch_id.xy] = float4(
+        gause_random.xy * jonswap_spectrum(k), gause_random.zw * jonswap_spectrum(-k)
+    );
 }
