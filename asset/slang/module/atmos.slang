@@ -402,13 +402,12 @@ public struct SamplerMulScatLut : IMulScatLut {
 };
 
 
-public float3 get_transmittance<TTransLut>(
-    float3 frag_pos_w,
-    float3 sun_dir_w,
-    TTransLut trans_lut,
+public float3 get_transmittance(
+    const float3 frag_pos_w,
+    const float3 sun_dir_w,
+    const ITransLut trans_lut,
     const AtmosphereParameters atmos_params
-)
-    where TTransLut : ITransLut {
+) {
     const float planet_radius = atmos_params.BottomRadius * 1000;
     const float3 frag_pos_e = frag_pos_w + float3(0, planet_radius, 0);
     const float frag_height_e = length(frag_pos_e);
@@ -461,14 +460,12 @@ public struct ScatLumiIntParams {
 };
 
 
-public SingleScatteringResult IntegrateScatteredLuminance<TTransLut, TMulScatLut>(
-    TTransLut trans_lut,
-    TMulScatLut multi_scat,
-    AtmosphereParameters Atmosphere,
-    ScatLumiIntParams params
-)
-    where TTransLut : ITransLut
-    where TMulScatLut : IMulScatLut {
+public SingleScatteringResult IntegrateScatteredLuminance(
+    const ITransLut trans_lut,
+    const IMulScatLut multi_scat,
+    const AtmosphereParameters Atmosphere,
+    const ScatLumiIntParams params
+) {
     SingleScatteringResult result;
     result.MultiScatAs1 = 0;
 
