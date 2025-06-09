@@ -1,13 +1,13 @@
 module atmos;
 
 static const float AP_KM_PER_SLICE = 4;
-static const float AP_SLICE_COUNT = 32;
-static const float M_TO_KM = 0.001;
 static const float PI = 3.14159265358979323846;
 static const int MULTI_SCAT_LUT_RES = 32;
 
-public static const float PLANET_RADIUS_OFFSET = 0.01;
+public static const float AP_SLICE_COUNT = 32;
 public static const float AP_SLICE_COUNT_RCP = 1.0 / AP_SLICE_COUNT;
+public static const float M_TO_KM = 0.001;
+public static const float PLANET_RADIUS_OFFSET = 0.01;
 
 
 public struct AtmosphereParameters {
@@ -202,9 +202,13 @@ public float fromSubUvsToUnit(float u, float resolution) {
 
 
 public float AerialPerspectiveDepthToSlice(float depth) {
-    const float AP_KM_PER_SLICE = 4;
     const float M_PER_SLICE_RCP = 1.0 / (AP_KM_PER_SLICE * 1000.0);
     return depth * M_PER_SLICE_RCP;
+}
+
+
+public float AerialPerspectiveSliceToDepth(const float slice) {
+    return slice * AP_KM_PER_SLICE;
 }
 
 
@@ -311,17 +315,6 @@ MediumSampleRGB sampleMediumRGB(float3 WorldPos, AtmosphereParameters Atmosphere
 
     return s;
 }
-
-
-public struct SingleScatteringResult {
-    public float3 L;               // Scattered light (luminance)
-    public float3 optical_depth_;  // Optical depth (1/m)
-    float3 transmittance_;         // Transmittance in [0,1] (unitless)
-    public float3 MultiScatAs1;
-
-    float3 NewMultiScatStep0Out;
-    float3 NewMultiScatStep1Out;
-};
 
 
 public interface ITransLut {
@@ -457,6 +450,17 @@ public struct ScatLumiIntParams {
     public bool VariableSampleCount;
     public bool MieRayPhase;
     public bool ground;
+};
+
+
+public struct SingleScatteringResult {
+    public float3 L;               // Scattered light (luminance)
+    public float3 optical_depth_;  // Optical depth (1/m)
+    public float3 transmittance_;  // Transmittance in [0,1] (unitless)
+    public float3 MultiScatAs1;
+
+    float3 NewMultiScatStep0Out;
+    float3 NewMultiScatStep1Out;
 };
 
 

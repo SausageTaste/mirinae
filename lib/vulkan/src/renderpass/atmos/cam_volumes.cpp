@@ -346,7 +346,7 @@ namespace {
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/atmos_cam_volume_comp.spv", pipe_layout_, device
+                    ":asset/spv/atmos_cam_vol_comp.spv", pipe_layout_, device
                 );
             }
 
