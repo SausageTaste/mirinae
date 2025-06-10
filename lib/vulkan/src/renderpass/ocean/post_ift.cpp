@@ -433,7 +433,7 @@ namespace {
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/ocean_finalize_comp.spv", pipe_layout_, device
+                    ":asset/spv/ocean_post_ift_comp.spv", pipe_layout_, device
                 );
             }
 
