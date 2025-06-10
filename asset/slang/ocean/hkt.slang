@@ -3,7 +3,7 @@ import "../module/complex";
 
 layout(binding = 0, rgba32f) RWTexture2D<float4> out_hkt_1[3];
 layout(binding = 1, rgba32f) RWTexture2D<float4> out_hkt_2[3];
-layout(binding = 2, rgba32f) Texture2D<float4> in_hk[3];
+layout(binding = 2, rgba32f) RWTexture2D<float4> in_hk[3];
 
 [push_constant]
 cbuffer U_OceanTildeHktPushConst {
