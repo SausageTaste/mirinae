@@ -153,6 +153,49 @@ float2 LutTransmittanceParamsToUv(
 }
 
 
+public float2 SkyViewLutParamsToUv<let TNonLinearSkyViewLut : bool>(
+    AtmosphereParameters Atmosphere,
+    bool IntersectGround,
+    float viewZenithCosAngle,
+    float lightViewCosAngle,
+    float viewHeight
+) {
+    float2 uv;
+
+    let Vhorizon = sqrt(
+        viewHeight * viewHeight - Atmosphere.BottomRadius * Atmosphere.BottomRadius
+    );
+    let CosBeta = Vhorizon / viewHeight;  // GroundToHorizonCos
+    let Beta = acos(CosBeta);
+    let ZenithHorizonAngle = PI - Beta;
+
+    if (!IntersectGround) {
+        float coord = acos(viewZenithCosAngle) / ZenithHorizonAngle;
+        coord = 1.0 - coord;
+        if (TNonLinearSkyViewLut)
+            coord = sqrt(coord);
+        coord = 1.0 - coord;
+        uv.y = coord * 0.5f;
+    } else {
+        float coord = (acos(viewZenithCosAngle) - ZenithHorizonAngle) / Beta;
+        if (TNonLinearSkyViewLut)
+            coord = sqrt(coord);
+        uv.y = coord * 0.5f + 0.5f;
+    }
+
+    {
+        float coord = -lightViewCosAngle * 0.5f + 0.5f;
+        coord = sqrt(coord);
+        uv.x = coord;
+    }
+
+    // Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage
+    // visible)
+    uv = float2(fromUnitToSubUvs(uv.x, 192.0f), fromUnitToSubUvs(uv.y, 108.0f));
+    return uv;
+}
+
+
 public void UvToSkyViewLutParams<let TNonLinearSkyViewLut : bool>(
     AtmosphereParameters Atmosphere,
     out float viewZenithCosAngle,
@@ -218,7 +261,7 @@ public float AerialPerspectiveSliceToDepth(const float slice) {
 // - sR: sphere radius
 // - Returns distance from r0 to first intersecion with sphere,
 //   or -1.0 if no intersection.
-float raySphereIntersectNearest(float3 r0, float3 rd, float3 s0, float sR) {
+public float raySphereIntersectNearest(float3 r0, float3 rd, float3 s0, float sR) {
     float a = dot(rd, rd);
     float3 s0_r0 = r0 - s0;
     float b = 2.0 * dot(rd, s0_r0);
@@ -407,6 +450,23 @@ public float3 get_transmittance(
     const float3 frag_up_dir_e = normalize(frag_pos_e);
     const float view_zenith_cos_angle = dot(sun_dir_w, frag_up_dir_e);
     return trans_lut.sample(atmos_params, frag_height_e * M_TO_KM, view_zenith_cos_angle);
+}
+
+
+public float3 get_sun_luminance(
+    const float3 cam_pos_e, float3 cam_dir_w, float3 sun_dir_w, const float planet_radius
+) {
+    if (dot(cam_dir_w, sun_dir_w) > cos(0.5 * 0.505 * PI / 180.0)) {
+        const float t = raySphereIntersectNearest(
+            cam_pos_e, cam_dir_w, float3(0.0, 0.0, 0.0), planet_radius
+        );
+        if (t < 0.0) {  // no intersection
+            // arbitrary. But fine, not use when comparing the models
+            return float3(1);
+        }
+    }
+
+    return float3(0);
 }
 
 

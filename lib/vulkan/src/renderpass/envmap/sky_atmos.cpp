@@ -317,7 +317,7 @@ namespace {
                 mirinae::PipelineBuilder builder{ device_ };
 
                 builder.shader_stages()
-                    .add_vert(":asset/spv/env_sky_vert.spv")
+                    .add_vert(":asset/spv/env_atmos_sky_vert.spv")
                     .add_frag(":asset/spv/env_atmos_sky_frag.spv");
 
                 builder.color_blend_state().add(false, 1);
