@@ -32,6 +32,10 @@ public struct Complex {
         return Complex(value_.x, -value_.y);
     }
 
+    public float2 to_float2() {
+        return value_;
+    }
+
     private float2 value_;
 };
 

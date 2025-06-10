@@ -568,7 +568,7 @@ namespace {
                 MIRINAE_ASSERT(VK_NULL_HANDLE != pipe_layout_);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/ocean_butterfly_comp.spv", pipe_layout_, device
+                    ":asset/spv/ocean_ift_butterfly_comp.spv", pipe_layout_, device
                 );
             }
 
@@ -715,7 +715,7 @@ namespace {
                     .build(pipe_layout_, device);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/ocean_naive_ift_comp.spv", pipe_layout_, device
+                    ":asset/spv/ocean_ift_naive_comp.spv", pipe_layout_, device
                 );
             }
 
