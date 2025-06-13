@@ -17,8 +17,6 @@ cbuffer U_EnvSkyPushConst {
 }
 u_pc;
 
-static const float PI = 3.1415926535897932384626433832795028841971693993751058209749445923078;
-
 
 [shader("vertex")]
 VSOutput vert_main(int vtx_id: SV_VertexID) {

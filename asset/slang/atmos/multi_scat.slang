@@ -1,4 +1,6 @@
 import "../module/atmos";
+import "../module/konst";
+
 
 layout(set = 0, binding = 0, rgba16f) RWTexture2D<float4> out_image;
 layout(set = 0, binding = 1) Sampler2D u_trans_lut;
@@ -10,7 +12,6 @@ cbuffer U_AtmosMultiScatPushConst {
 }
 u_pc;
 
-static const float PI = 3.14159265358979323846;
 static const int SQRTSAMPLECOUNT = 8;
 
 groupshared float3 g_multi_scat_as_1[64];

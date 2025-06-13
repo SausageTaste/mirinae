@@ -1,4 +1,5 @@
 import "../module/complex";
+import "../module/konst";
 
 
 layout(binding = 0, rgba32f) RWTexture2D<float4> out_hkt_1[3];
@@ -14,10 +15,6 @@ cbuffer U_OceanTildeHktPushConst {
     int N;
 }
 u_pc;
-
-static const float PI = 3.1415926535897932384626433832795028841971693993751058209749445923078;
-static const float TAU = 6.283185307179586476925287;
-static const float GRAVITY_EARTH = 9.81;
 
 
 float dispersion(float mag) {
@@ -55,7 +52,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let Dz = ih * (k.y * mag_rcp);
 
     let dDx_dx = minus_h * (k.x * k.x * mag_rcp);  // Dx * i * k.x
-    let dDy_dx = ih * k.x;                       // Likewise
+    let dDy_dx = ih * k.x;                         // Likewise
     let dDz_dx = minus_h * (k.x * k.y * mag_rcp);
 
     let dDy_dz = ih * k.y;

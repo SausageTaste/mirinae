@@ -1,3 +1,7 @@
+
+import "../module/konst";
+
+
 layout(set = 0, binding = 0, rgba32f) RWTexture2D<float4> out_images[3];
 layout(set = 0, binding = 1) Sampler2D u_noise;
 
@@ -20,9 +24,6 @@ u_pc;
 
 static const float GAMMA = 3.3;
 static const float SHORT_WAVES_FADE = 0.01;
-static const float PI = 3.1415926535897932384626433832795028841971693993751058209749445923078;
-static const float TAU = 6.283185307179586476925287;
-static const float GRAVITY_EARTH = 9.81;
 
 
 float4 gauseRnd(uint3 dispatch_id) {

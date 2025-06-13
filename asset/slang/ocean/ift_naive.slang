@@ -1,4 +1,5 @@
 import "../module/complex";
+import "../module/konst";
 
 
 layout(binding = 0, rgba32f) RWTexture2D<float4> ppong_images[6];
@@ -10,8 +11,6 @@ cbuffer U_OceanNaiveIftPushConst {
     int stage_;  // 0: hor, 1: ver
 }
 u_pc;
-
-static const float TAU = 6.283185307179586476925287;
 
 
 [shader("compute")]
