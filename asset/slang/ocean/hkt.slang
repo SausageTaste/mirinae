@@ -62,12 +62,9 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let dDz_dz = minus_h * (k.y * k.y * mag_rcp);
 
     out_hkt_1[cascade][global_idx] = float4(
-        float2(Dx.real - Dz.imag, Dx.imag + Dz.real),         // Dx + i * Dz
-        float2(Dy.real - dDz_dx.imag, Dy.imag + dDz_dx.real)  // Dy + i * dDz_dx
+        Dx.add_i_times(Dz).to_float2(), Dy.add_i_times(dDz_dx).to_float2()
     );
-
     out_hkt_2[cascade][global_idx] = float4(
-        float2(dDy_dx.real - dDy_dz.imag, dDy_dx.imag + dDy_dz.real),  // dDy_dx + i * dDy_dz
-        float2(dDx_dx.real - dDz_dz.imag, dDx_dx.imag + dDz_dz.real)   // dDx_dx + i * dDz_dz
+        dDy_dx.add_i_times(dDy_dz).to_float2(), dDx_dx.add_i_times(dDz_dz).to_float2()
     );
 }

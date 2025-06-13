@@ -28,6 +28,11 @@ public struct Complex {
         set { value_.y = newValue; }
     }
 
+    // this + i * rhs
+    public Complex add_i_times(const Complex rhs) {
+        return Complex(this.real - rhs.imag, this.imag + rhs.real);
+    }
+
     public Complex conj() {
         return Complex(value_.x, -value_.y);
     }
