@@ -23,7 +23,7 @@ float4 gen_texel(uint3 dispatch_id) {
     let Atmosphere = GetAtmosphereParameters();
 
     let view_inv3 = float3x3(u_pc.view_inv);
-    let clip_space = float3(pix_pos / (OUT_TEX_RES * 2) - 1, 0.5);
+    let clip_space = float3(pix_pos / (OUT_TEX_RES) * 2 - 1, 0.5);
     let h_view_pos = mul(u_pc.proj_inv, float4(clip_space, 1.0));
     var world_dir = normalize(mul(view_inv3, (h_view_pos.xyz / h_view_pos.w)));
 
