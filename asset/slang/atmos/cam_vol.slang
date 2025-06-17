@@ -27,16 +27,13 @@ float4 gen_texel(uint3 dispatch_id) {
     let h_view_pos = mul(u_pc.proj_inv, float4(clip_space, 1.0));
     var world_dir = normalize(mul(view_inv3, (h_view_pos.xyz / h_view_pos.w)));
 
-    const float earthR = Atmosphere.BottomRadius;
-    const float3 earthO = float3(0, -earthR, 0);
-    const float3 cam_pos = u_pc.view_pos.xyz * M_TO_KM + float3(0, earthR, 0);
-    const float3 SunLuminance = float3(0);
 
     float slice = (slice_id + 0.5) * AP_SLICE_COUNT_RCP;
     slice *= slice;  // squared distribution
     slice *= AP_SLICE_COUNT;
 
-    float3 world_pos = cam_pos;
+    let cam_pos = u_pc.view_pos.xyz * M_TO_KM + float3(0, Atmosphere.BottomRadius, 0);
+    var world_pos = cam_pos;
 
     // Compute position from froxel information
     float tMax = AerialPerspectiveSliceToDepth(slice);
