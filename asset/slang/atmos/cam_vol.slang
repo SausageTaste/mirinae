@@ -70,15 +70,15 @@ float4 gen_texel(uint3 dispatch_id) {
     }
 
     ScatLumiIntParams params;
-    params.pixPos = pix_pos;
-    params.gResolution = OUT_TEX_RES;
-    params.WorldPos = world_pos;
-    params.WorldDir = world_dir;
-    params.SunDir = u_pc.sun_direction.xyz;
-    params.gSkyInvViewProjMat = u_pc.pv_inv;
-    params.SampleCountIni = max(1, (slice_id + 1) * 2);
-    params.MieRayPhase = true;
-    params.tMaxMax = tMaxMax;
+    params.pix_pos_ = pix_pos;
+    params.tex_res_ = OUT_TEX_RES;
+    params.world_pos_ = world_pos;
+    params.world_dir_ = world_dir;
+    params.sun_dir_ = u_pc.sun_direction.xyz;
+    params.pv_inv_ = u_pc.pv_inv;
+    params.sample_count_ini_ = max(1, (slice_id + 1) * 2);
+    params.mie_ray_phase_ = true;
+    params.t_max_max_ = tMaxMax;
 
     let ss = IntegrateScatteredLuminance(
         SamplerTransLut(u_trans_lut), SamplerMulScatLut(u_multi_scat), Atmosphere, params

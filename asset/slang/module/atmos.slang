@@ -473,43 +473,43 @@ public float3 get_sun_luminance(
 // Scattered luminance integration parameters
 public struct ScatLumiIntParams {
     public __init() {
-        gSkyInvViewProjMat = float4x4(1);
-        gSunIlluminance = float3(1);
-        WorldPos = float3(0, 0, 0);
-        WorldDir = float3(0, 1, 0);
-        SunDir = float3(0, 1, 0);
-        pixPos = float2(0, 0);
-        gResolution = float2(10, 10);
-        RayMarchMinMaxSPP = float2(4, 128);
-        SampleCountIni = 10;
-        DepthBufferValue = -1;
-        tMaxMax = 9000000;
-        VariableSampleCount = false;
-        MieRayPhase = false;
-        ground = false;
+        pv_inv_ = float4x4(1);
+        sun_illuminance_ = float3(1);
+        world_pos_ = float3(0, 0, 0);
+        world_dir_ = float3(0, 1, 0);
+        sun_dir_ = float3(0, 1, 0);
+        pix_pos_ = float2(0, 0);
+        tex_res_ = float2(10, 10);
+        ray_march_minmax_spp_ = float2(4, 128);
+        sample_count_ini_ = 10;
+        depth_buffer_value_ = -1;
+        t_max_max_ = 9000000;
+        variable_sample_count_ = false;
+        mie_ray_phase_ = false;
+        ground_ = false;
     }
 
-    public float4x4 gSkyInvViewProjMat;
+    public float4x4 pv_inv_;
 
     // When building the scattering factor, we assume light illuminance is 1 to compute a transfert
     // function relative to identity illuminance of 1. This make the scattering factor independent
     // of the light.It is now only linked to the atmosphere properties.
-    public float3 gSunIlluminance;
+    public float3 sun_illuminance_;
 
-    public float3 WorldPos;
-    public float3 WorldDir;
-    public float3 SunDir;
+    public float3 world_pos_;
+    public float3 world_dir_;
+    public float3 sun_dir_;
 
-    public float2 pixPos;
-    public float2 gResolution;
-    public float2 RayMarchMinMaxSPP;
+    public float2 pix_pos_;
+    public float2 tex_res_;
+    public float2 ray_march_minmax_spp_;
 
-    public float SampleCountIni;
-    public float DepthBufferValue;
-    public float tMaxMax;
-    public bool VariableSampleCount;
-    public bool MieRayPhase;
-    public bool ground;
+    public float sample_count_ini_;
+    public float depth_buffer_value_;
+    public float t_max_max_;
+    public bool variable_sample_count_;
+    public bool mie_ray_phase_;
+    public bool ground_;
 };
 
 
@@ -533,15 +533,15 @@ public SingleScatteringResult IntegrateScatteredLuminance(
     SingleScatteringResult result;
     result.MultiScatAs1 = 0;
 
-    float3 ClipSpace = float3((params.pixPos / params.gResolution) * 2 - 1, 1);
+    float3 ClipSpace = float3((params.pix_pos_ / params.tex_res_) * 2 - 1, 1);
 
     // Compute next intersection with atmosphere or ground
     float3 earthO = float3(0.0f, 0.0f, 0.0f);
     float tBottom = raySphereIntersectNearest(
-        params.WorldPos, params.WorldDir, earthO, Atmosphere.BottomRadius
+        params.world_pos_, params.world_dir_, earthO, Atmosphere.BottomRadius
     );
     float tTop = raySphereIntersectNearest(
-        params.WorldPos, params.WorldDir, earthO, Atmosphere.TopRadius
+        params.world_pos_, params.world_dir_, earthO, Atmosphere.TopRadius
     );
     float tMax = 0.0f;
     if (tBottom < 0.0f) {
@@ -557,30 +557,31 @@ public SingleScatteringResult IntegrateScatteredLuminance(
         }
     }
 
-    if (params.DepthBufferValue >= 0.0f) {
-        ClipSpace.z = params.DepthBufferValue;
+    if (params.depth_buffer_value_ >= 0.0f) {
+        ClipSpace.z = params.depth_buffer_value_;
         if (ClipSpace.z < 1.0f) {
-            float4 DepthBufferWorldPos = mul(params.gSkyInvViewProjMat, float4(ClipSpace, 1.0));
+            float4 DepthBufferWorldPos = mul(params.pv_inv_, float4(ClipSpace, 1.0));
             DepthBufferWorldPos /= DepthBufferWorldPos.w;
 
             // apply earth offset to go back to origin as top of earth mode.
             float tDepth = length(
-                DepthBufferWorldPos.xyz - (params.WorldPos + float3(0, -Atmosphere.BottomRadius, 0))
+                DepthBufferWorldPos.xyz -
+                (params.world_pos_ + float3(0, -Atmosphere.BottomRadius, 0))
             );
             if (tDepth < tMax) {
                 tMax = tDepth;
             }
         }
     }
-    tMax = min(tMax, params.tMaxMax);
+    tMax = min(tMax, params.t_max_max_);
 
     // Sample count
-    float SampleCount = params.SampleCountIni;
-    float SampleCountFloor = params.SampleCountIni;
+    float SampleCount = params.sample_count_ini_;
+    float SampleCountFloor = params.sample_count_ini_;
     float tMaxFloor = tMax;
-    if (params.VariableSampleCount) {
+    if (params.variable_sample_count_) {
         SampleCount = lerp(
-            params.RayMarchMinMaxSPP.x, params.RayMarchMinMaxSPP.y, saturate(tMax * 0.01)
+            params.ray_march_minmax_spp_.x, params.ray_march_minmax_spp_.y, saturate(tMax * 0.01)
         );
         SampleCountFloor = floor(SampleCount);
         // rescale tMax to map to the last entire step segment.
@@ -590,8 +591,8 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
     // Phase functions
     const float uniformPhase = 1.0 / (4.0 * PI);
-    const float3 wi = params.SunDir;
-    const float3 wo = params.WorldDir;
+    const float3 wi = params.sun_dir_;
+    const float3 wo = params.world_dir_;
     float cosTheta = dot(wi, wo);
     // mnegate cosTheta because due to WorldDir being a "in" direction.
     float MiePhaseValue = hgPhase(Atmosphere.MiePhaseG, -cosTheta);
@@ -605,7 +606,7 @@ public SingleScatteringResult IntegrateScatteredLuminance(
     float tPrev = 0.0;
     const float SampleSegmentT = 0.3f;
     for (float s = 0.0f; s < SampleCount; s += 1.0f) {
-        if (params.VariableSampleCount) {
+        if (params.variable_sample_count_) {
             // More expenssive but artefact free
             float t0 = (s) / SampleCountFloor;
             float t1 = (s + 1.0f) / SampleCountFloor;
@@ -632,7 +633,7 @@ public SingleScatteringResult IntegrateScatteredLuminance(
             dt = NewT - t;
             t = NewT;
         }
-        float3 P = params.WorldPos + t * params.WorldDir;
+        float3 P = params.world_pos_ + t * params.world_dir_;
 
         MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
         const float3 SampleOpticalDepth = medium.extinction * dt;
@@ -641,11 +642,11 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
         const float pHeight = length(P);
         const float3 UpVector = P / pHeight;
-        const float SunZenithCosAngle = dot(params.SunDir, UpVector);
+        const float SunZenithCosAngle = dot(params.sun_dir_, UpVector);
         let TransmittanceToSun = trans_lut.sample(Atmosphere, pHeight, SunZenithCosAngle);
 
         float3 PhaseTimesScattering;
-        if (params.MieRayPhase) {
+        if (params.mie_ray_phase_) {
             PhaseTimesScattering = medium.scatteringMie * MiePhaseValue +
                                    medium.scatteringRay * RayleighPhaseValue;
         } else {
@@ -654,7 +655,7 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
         // Earth shadow
         float tEarth = raySphereIntersectNearest(
-            P, params.SunDir, earthO + PLANET_RADIUS_OFFSET * UpVector, Atmosphere.BottomRadius
+            P, params.sun_dir_, earthO + PLANET_RADIUS_OFFSET * UpVector, Atmosphere.BottomRadius
         );
         float earthShadow = tEarth >= 0.0f ? 0.0f : 1.0f;
 
@@ -668,7 +669,7 @@ public SingleScatteringResult IntegrateScatteredLuminance(
         // First evaluate opaque shadow
         // shadow = getShadow(Atmosphere, P);
 
-        float3 S = params.gSunIlluminance *
+        float3 S = params.sun_illuminance_ *
                    (earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering +
                     multiScatteredLuminance * medium.scattering);
         float3 MS = medium.scattering * 1;
@@ -701,17 +702,17 @@ public SingleScatteringResult IntegrateScatteredLuminance(
         tPrev = t;
     }
 
-    if (params.ground && tMax == tBottom && tBottom > 0.0) {
+    if (params.ground_ && tMax == tBottom && tBottom > 0.0) {
         // Account for bounced light off the earth
-        float3 P = params.WorldPos + tBottom * params.WorldDir;
+        float3 P = params.world_pos_ + tBottom * params.world_dir_;
         float pHeight = length(P);
 
         const float3 UpVector = P / pHeight;
-        float SunZenithCosAngle = dot(params.SunDir, UpVector);
+        float SunZenithCosAngle = dot(params.sun_dir_, UpVector);
         let TransmittanceToSun = trans_lut.sample(Atmosphere, pHeight, SunZenithCosAngle);
 
-        const float NdotL = saturate(dot(normalize(UpVector), normalize(params.SunDir)));
-        L += params.gSunIlluminance * TransmittanceToSun * throughput * NdotL *
+        const float NdotL = saturate(dot(normalize(UpVector), normalize(params.sun_dir_)));
+        L += params.sun_illuminance_ * TransmittanceToSun * throughput * NdotL *
              Atmosphere.GroundAlbedo / PI;
     }
 

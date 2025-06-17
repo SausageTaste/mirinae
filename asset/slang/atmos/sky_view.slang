@@ -30,19 +30,19 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let viewHeight = length(WorldPos);
 
     ScatLumiIntParams params;
-    params.pixPos = pixPos;
-    params.gResolution = tex_res;
-    params.WorldPos = float3(0, viewHeight, 0);
-    params.WorldDir = normalize(mul(view_inv3, (HViewPos.xyz / HViewPos.w)));
-    params.gSkyInvViewProjMat = u_pc.pv_inv_;
-    params.SampleCountIni = 30;
-    params.VariableSampleCount = true;
-    params.MieRayPhase = true;
+    params.pix_pos_ = pixPos;
+    params.tex_res_ = tex_res;
+    params.world_pos_ = float3(0, viewHeight, 0);
+    params.world_dir_ = normalize(mul(view_inv3, (HViewPos.xyz / HViewPos.w)));
+    params.pv_inv_ = u_pc.pv_inv_;
+    params.sample_count_ini_ = 30;
+    params.variable_sample_count_ = true;
+    params.mie_ray_phase_ = true;
 
     {
         let UpVector = WorldPos / viewHeight;
         let cos_angle = dot(UpVector, u_pc.sun_dir_w_.xyz);
-        params.SunDir = normalize(float3(sqrt(1 - cos_angle * cos_angle), cos_angle, 0));
+        params.sun_dir_ = normalize(float3(sqrt(1 - cos_angle * cos_angle), cos_angle, 0));
     }
 
     float viewZenithCosAngle;
@@ -50,12 +50,12 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     UvToSkyViewLutParams<true>(Atmosphere, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
 
     let viewZenithSinAngle = sqrt(1 - viewZenithCosAngle * viewZenithCosAngle);
-    params.WorldDir.x = viewZenithSinAngle * lightViewCosAngle;
-    params.WorldDir.y = viewZenithCosAngle;
-    params.WorldDir.z = viewZenithSinAngle * sqrt(1.0 - lightViewCosAngle * lightViewCosAngle);
+    params.world_dir_.x = viewZenithSinAngle * lightViewCosAngle;
+    params.world_dir_.y = viewZenithCosAngle;
+    params.world_dir_.z = viewZenithSinAngle * sqrt(1.0 - lightViewCosAngle * lightViewCosAngle);
 
     // Move to top atmospehre
-    if (!MoveToTopAtmosphere(params.WorldPos, params.WorldDir, Atmosphere.TopRadius)) {
+    if (!MoveToTopAtmosphere(params.world_pos_, params.world_dir_, Atmosphere.TopRadius)) {
         // Ray is not intersecting the atmosphere
         out_image[dispatch_id.xy] = float4(0, 0, 0, 1);
         return;

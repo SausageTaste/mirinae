@@ -38,15 +38,15 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
                          (Atmosphere.TopRadius - Atmosphere.BottomRadius - PLANET_RADIUS_OFFSET);
 
     ScatLumiIntParams params;
-    params.pixPos = pixPos;
-    params.gResolution = float2(u_pc.output_res_);
-    params.WorldPos.y = viewHeight;
-    params.WorldDir = float3(0, 1, 0);
-    params.SunDir = sunDir;
-    params.gSkyInvViewProjMat = u_pc.pv_inv_;
+    params.pix_pos_ = pixPos;
+    params.tex_res_ = float2(u_pc.output_res_);
+    params.world_pos_.y = viewHeight;
+    params.world_dir_ = float3(0, 1, 0);
+    params.sun_dir_ = sunDir;
+    params.pv_inv_ = u_pc.pv_inv_;
     // a minimum set of step is required for accuracy unfortunately
-    params.SampleCountIni = 20;
-    params.ground = true;
+    params.sample_count_ini_ = 20;
+    params.ground_ = true;
 
     const float SphereSolidAngle = 4.0 * PI;
     const float IsotropicPhase = 1.0 / SphereSolidAngle;
@@ -64,9 +64,9 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
         const float sinPhi = sin(phi);
         const float cosTheta = cos(theta);
         const float sinTheta = sin(theta);
-        params.WorldDir.x = cosTheta * sinPhi;
-        params.WorldDir.y = cosPhi;
-        params.WorldDir.z = sinTheta * sinPhi;
+        params.world_dir_.x = cosTheta * sinPhi;
+        params.world_dir_.y = cosPhi;
+        params.world_dir_.z = sinTheta * sinPhi;
 
         let result = IntegrateScatteredLuminance(
             SamplerTransLut(u_trans_lut), NullMulScatLut(), Atmosphere, params
