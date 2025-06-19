@@ -353,7 +353,7 @@ namespace { namespace task { namespace butterfly {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Ocean Butterfly", 0.31, 0.76, 0.97, 0.5
+            "Ocean Butterfly", 0.31, 0.76, 0.97
         };
 
         mirinae::FenceTask fence_;
@@ -568,7 +568,9 @@ namespace {
                 MIRINAE_ASSERT(VK_NULL_HANDLE != pipe_layout_);
 
                 pipeline_ = mirinae::create_compute_pipeline(
-                    ":asset/spv/ocean_ift_butterfly_comp.spv", pipe_layout_, device
+                    ":asset/spv/ocean_ift_butterfly_comp.spv",
+                    pipe_layout_,
+                    device
                 );
             }
 

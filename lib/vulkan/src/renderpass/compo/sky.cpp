@@ -171,9 +171,7 @@ namespace { namespace task {
             vkCmdEndRenderPass(cmdbuf);
         }
 
-        const mirinae::DebugLabel DEBUG_LABEL{
-            "Compo Sky", 1, 0.96, 0.61, 0.5
-        };
+        const mirinae::DebugLabel DEBUG_LABEL{ "Compo Sky", 1, 0.96, 0.61 };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

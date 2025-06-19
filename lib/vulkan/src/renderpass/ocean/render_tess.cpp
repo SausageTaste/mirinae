@@ -679,9 +679,7 @@ namespace { namespace task {
             vkCmdEndRenderPass(cmdbuf);
         }
 
-        const mirinae::DebugLabel DEBUG_LABEL{
-            "Ocean Tess", 0.31, 0.76, 0.97, 0.5
-        };
+        const mirinae::DebugLabel DEBUG_LABEL{ "Ocean Tess", 0.31, 0.76, 0.97 };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;

@@ -209,7 +209,7 @@ namespace { namespace task {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Shadow Terrain", 0.38, 0.38, 0.38, 0.5
+            "Shadow Terrain", 0.38, 0.38, 0.38
         };
 
         mirinae::FenceTask fence_;

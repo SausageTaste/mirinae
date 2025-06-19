@@ -410,13 +410,13 @@ namespace mirinae {
 
         DebugLabel();
         DebugLabel(const char* label);
-        DebugLabel(const char* label, float r, float g, float b, float a = 1);
+        DebugLabel(const char*, double r, double g, double b, double a = 0.5);
 
         DebugLabel& set_label(const char* label);
-        DebugLabel& set_color(float r, float g, float b, float a = 1);
+        DebugLabel& set_color(double r, double g, double b, double a = 0.5);
 
         void record_begin(VkCommandBuffer cmdbuf) const;
-       static void record_end(VkCommandBuffer cmdbuf) ;
+        static void record_end(VkCommandBuffer cmdbuf);
 
     private:
         static PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;

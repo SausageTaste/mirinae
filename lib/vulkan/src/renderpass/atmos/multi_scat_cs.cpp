@@ -143,7 +143,7 @@ namespace {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Atmos Multi Scat", 0.9, 0.45, 0.45, 0.5
+            "Atmos Multi Scat", 0.9, 0.45, 0.45
         };
 
         mirinae::FenceTask fence_;

@@ -169,7 +169,7 @@ namespace {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "G-buffer Skinned", 0.12, 0.58, 0.95, 0.5
+            "G-buffer Skinned", 0.12, 0.58, 0.95
         };
 
         mirinae::FenceTask fence_;

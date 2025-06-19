@@ -267,7 +267,7 @@ namespace {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Trans Static", 0.7, 0.62, 0.86, 0.5
+            "Trans Static", 0.7, 0.62, 0.86
         };
 
         mirinae::FenceTask fence_;

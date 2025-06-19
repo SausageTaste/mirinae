@@ -369,7 +369,7 @@ namespace { namespace task {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Compo Atmos Surface", 1, 0.96, 0.61, 0.5
+            "Compo Atmos Surface", 1, 0.96, 0.61
         };
 
         mirinae::FenceTask fence_;

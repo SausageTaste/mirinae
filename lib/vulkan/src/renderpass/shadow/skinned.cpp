@@ -242,7 +242,7 @@ namespace { namespace task {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Shadow Skinned", 0.38, 0.38, 0.38, 0.5
+            "Shadow Skinned", 0.38, 0.38, 0.38
         };
 
         mirinae::FenceTask fence_;

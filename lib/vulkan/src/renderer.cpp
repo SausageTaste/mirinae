@@ -272,7 +272,7 @@ namespace {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Fill Screen", 0.47, 0.56, 0.61, 0.5
+            "Fill Screen", 0.47, 0.56, 0.61
         };
 
         mirinae::DescPool desc_pool_;
@@ -1413,7 +1413,7 @@ namespace {
             // Shader: Overlay
             {
                 const mirinae::DebugLabel DEBUG_LABEL{
-                    "Overlay", 0.47, 0.56, 0.61, 0.5
+                    "Overlay", 0.47, 0.56, 0.61
                 };
 
                 auto& rp = rp_.get("overlay");
@@ -1451,7 +1451,7 @@ namespace {
             // ImGui
             {
                 const mirinae::DebugLabel DEBUG_LABEL{
-                    "ImGui", 0.47, 0.56, 0.61, 0.5
+                    "ImGui", 0.47, 0.56, 0.61
                 };
                 DEBUG_LABEL.record_begin(ren_ctxt.cmdbuf_);
 

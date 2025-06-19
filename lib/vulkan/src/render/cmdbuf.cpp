@@ -432,15 +432,15 @@ namespace mirinae {
     }
 
     DebugLabel::DebugLabel(
-        const char* label, float r, float g, float b, float a
+        const char* label, double r, double g, double b, double a
     ) {
         info_ = {};
         info_.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
         info_.pLabelName = label;
-        info_.color[0] = r;
-        info_.color[1] = g;
-        info_.color[2] = b;
-        info_.color[3] = a;
+        info_.color[0] = static_cast<float>(r);
+        info_.color[1] = static_cast<float>(g);
+        info_.color[2] = static_cast<float>(b);
+        info_.color[3] = static_cast<float>(a);
     }
 
     DebugLabel& DebugLabel::set_label(const char* label) {
@@ -448,11 +448,11 @@ namespace mirinae {
         return *this;
     }
 
-    DebugLabel& DebugLabel::set_color(float r, float g, float b, float a) {
-        info_.color[0] = r;
-        info_.color[1] = g;
-        info_.color[2] = b;
-        info_.color[3] = a;
+    DebugLabel& DebugLabel::set_color(double r, double g, double b, double a) {
+        info_.color[0] = static_cast<float>(r);
+        info_.color[1] = static_cast<float>(g);
+        info_.color[2] = static_cast<float>(b);
+        info_.color[3] = static_cast<float>(a);
         return *this;
     }
 

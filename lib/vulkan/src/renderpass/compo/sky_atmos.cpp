@@ -187,7 +187,7 @@ namespace { namespace task {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Compo Atmos Sky", 1, 0.96, 0.61, 0.5
+            "Compo Atmos Sky", 1, 0.96, 0.61
         };
 
         mirinae::FenceTask fence_;

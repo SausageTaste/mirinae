@@ -129,7 +129,7 @@ namespace {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Envmap Specular", 0.5, 0.78, 0.52, 0.5
+            "Envmap Specular", 0.5, 0.78, 0.52
         };
 
         mirinae::FenceTask fence_;

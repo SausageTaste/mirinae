@@ -326,7 +326,7 @@ namespace { namespace task {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Shadow Static Trans", 0.38, 0.38, 0.38, 0.5
+            "Shadow Static Trans", 0.38, 0.38, 0.38
         };
 
         mirinae::FenceTask fence_;

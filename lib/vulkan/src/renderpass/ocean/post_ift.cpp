@@ -147,7 +147,7 @@ namespace { namespace task {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Ocean Post IFT", 0.31, 0.76, 0.97, 0.5
+            "Ocean Post IFT", 0.31, 0.76, 0.97
         };
 
         mirinae::FenceTask fence_;

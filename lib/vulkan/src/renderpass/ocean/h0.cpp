@@ -143,9 +143,7 @@ namespace { namespace task {
             return true;
         }
 
-        const mirinae::DebugLabel DEBUG_LABEL{
-            "Ocean H0", 0.31, 0.76, 0.97, 0.5
-        };
+        const mirinae::DebugLabel DEBUG_LABEL{ "Ocean H0", 0.31, 0.76, 0.97 };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
