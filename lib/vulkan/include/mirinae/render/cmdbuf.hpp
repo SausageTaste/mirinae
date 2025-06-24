@@ -426,6 +426,32 @@ namespace mirinae {
     };
 
 
+    class DebugAnnoName {
+
+    public:
+        DebugAnnoName();
+
+        static void load_funcs(VkDevice device);
+
+        DebugAnnoName& set_type(VkObjectType type);
+        DebugAnnoName& set_handle(uint64_t handle);
+        DebugAnnoName& set_name(const char* name);
+
+        template <typename T>
+        DebugAnnoName& set_handle(T handle) {
+            info_.objectHandle = (uint64_t)handle;
+            return *this;
+        }
+
+        void apply(VkDevice device) const;
+
+    private:
+        static PFN_vkSetDebugUtilsObjectNameEXT set_debug_object_name_;
+
+        VkDebugUtilsObjectNameInfoEXT info_;
+    };
+
+
     void begin_cmdbuf(VkCommandBuffer cmdbuf);
     void begin_cmdbuf(VkCommandBuffer cmdbuf, const DebugLabel& label);
 

@@ -1134,6 +1134,7 @@ namespace mirinae {
             );
 
             mirinae::DebugLabel::load_funcs(logi_device_.get());
+            mirinae::DebugAnnoName::load_funcs(logi_device_.get());
 
             ::SwapChainSupportDetails swapchain_details;
             swapchain_details.init(surface_, phys_device_.get());

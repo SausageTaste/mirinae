@@ -471,6 +471,54 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// DebugAnnoName
+namespace mirinae {
+
+    PFN_vkSetDebugUtilsObjectNameEXT DebugAnnoName::set_debug_object_name_ =
+        nullptr;
+
+
+    DebugAnnoName::DebugAnnoName() {
+        info_ = {};
+        info_.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        info_.pNext = nullptr;
+        info_.objectType = VK_OBJECT_TYPE_UNKNOWN;
+        info_.objectHandle = 0;
+        info_.pObjectName = nullptr;
+    }
+
+    void DebugAnnoName::load_funcs(VkDevice device) {
+        if (nullptr == set_debug_object_name_) {
+            set_debug_object_name_ =
+                reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
+                    vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT")
+                );
+        }
+    }
+
+    DebugAnnoName& DebugAnnoName::set_type(VkObjectType type) {
+        info_.objectType = type;
+        return *this;
+    }
+
+    DebugAnnoName& DebugAnnoName::set_handle(uint64_t handle) {
+        info_.objectHandle = handle;
+        return *this;
+    }
+
+    DebugAnnoName& DebugAnnoName::set_name(const char* name) {
+        info_.pObjectName = name;
+        return *this;
+    }
+
+    void DebugAnnoName::apply(VkDevice device) const {
+        if (set_debug_object_name_)
+            set_debug_object_name_(device, &info_);
+    }
+
+}  // namespace mirinae
+
+
 namespace mirinae {
 
     void begin_cmdbuf(VkCommandBuffer cmdbuf) {
