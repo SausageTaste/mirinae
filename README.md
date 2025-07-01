@@ -17,8 +17,10 @@ If you want to read though sources, here are some good starting points.
 1. [Main entry point](/app/sdl/main.cpp)
 1. [Render passes](/lib/vulkan/src/renderpass)
     - This is where the most complex rendering topics are actually implemented, such as atmospheric scattering, Tessendorf ocean, etc.
-1. [Shader sources](/asset/glsl)
-    - Note the directory structure resembles that of render passes, which will ease associating with each other
+1. [GLSL shaders](/asset/glsl)
+    - Note the directory structure resembles that of render passes, which will ease associating each other
+1. [Slang shaders](/asset/slang)
+    - GLSL shaders have slowly been converted to Slang so take a look at this as well
 
 # How to build
 
