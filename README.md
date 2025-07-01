@@ -6,21 +6,21 @@
       </a>
 </div>
 
-> Click image to watch it on YouTube
+> Click above image to watch it on YouTube
 
-A game engine powered by Vulkan.
+A rendering engine powered by Vulkan.
 
 # Points of Interest
 
-If you want to read though sources, here are some good starting points.
+If you want to read through souce codes, here are some good starting points.
 
 1. [Main entry point](/app/sdl/main.cpp)
 1. [Render passes](/lib/vulkan/src/renderpass)
     - This is where the most complex rendering topics are actually implemented, such as atmospheric scattering, Tessendorf ocean, etc.
 1. [GLSL shaders](/asset/glsl)
-    - Note the directory structure resembles that of render passes, which will ease associating each other
+    - Note the directory structure resembles that of render passes. Hope that helps finding corresponding shader files.
 1. [Slang shaders](/asset/slang)
-    - GLSL shaders have slowly been converted to Slang so take a look at this as well
+    - GLSL shaders have slowly been converted to Slang. My goal is completely replacing GLSL sources with Slang.
 
 # How to build
 
@@ -37,7 +37,7 @@ You need following softwares:
 * C++ built tool
     * Preferably MSVC++, but GCC should work
 * [LunarG Vulkan SDK](https://vulkan.lunarg.com/)
-    * For Vulkan headers and glslc compiler
+    * For Vulkan headers and `glslc`, `slangc` compilers
 * [vcpkg](https://github.com/microsoft/vcpkg)
     * With an environment variable `VCPKG_ROOT` set
 * [Python](https://www.python.org/downloads/)
@@ -58,27 +58,21 @@ The output executable file is located at `<repo>/buildd/app/windows/Debug/mirina
 
 ## Compile Shaders
 
-Run a Python script at `<repo>/script/compile_glsl.py`.
-It compiles GLSL shader sources in `<repo>/asset/glsl`, and saves SPR-V shader files in `<repo>/asset/spv`.
+Run Python scripts `<repo>/script/compile_glsl.py` for GLSL and `<repo>/script/compile_slang.py` for Slang.
+They compile shader sources in `<repo>/asset/glsl` and `<repo>/asset/slang`, and save SPIR-V shader files in `<repo>/asset/spv`.
 
-The script uses `glslc` program, which is bundled in LunarG Vulkan SDK.
-If the SDK was installed in somewhere else than `C:/VulkanSDK`, the script might fail to find it.
-The simplest solution is to add the folder containing `glslc` to `PATH` environment variable.
-Please refer to `__find_glslc` function in the script for more detail as to finding `glslc`.
+The script uses `glslc` and `slangc` programs, which are bundled in LunarG Vulkan SDK.
+If the SDK was installed in somewhere else than `C:/VulkanSDK`, the scripts might fail to find them.
+The simplest solution is to add the folder containing `glslc` and `slangc` to `PATH` environment variable.
 
-I'm currently slowly migrating GLSL shaders to [Slang](https://github.com/shader-slang/slang).
-Please run `<repo>/script/compile_slang.py` similarly.
-The compilation time is way longer with Slang, but the rich language features are so awesome that it's worth it.
-
-Once it's done, you should see a number of `.spv` files in `<repo>/asset/spv` directory.
-And finally you can execute `mirinapp.exe`!
+Once finished, you should see a number of `.spv` files in `<repo>/asset/spv` directory.
+Now you are good to go!
 
 ## It Might Not Be Enough Yet!
 
-This project is under active development, and sometimes it crashes if there are not required assets.
+This project is under active development, and it may crash if some assets are missing.
 If that happens, it's a bug so please make an issue.
-All you need to run the app are *executable* files, *shared library* files, and `<repo>/asset` folder.
-Don't forget to compile shaders, though.
+All you need to run the app are *executable* files, *shared library* files, and `<repo>/asset` folder, and SPIR-V shaders.
 
 # Control
 
@@ -90,6 +84,7 @@ Don't forget to compile shaders, though.
 |Arrow keys |Look around
 |Space |Ascend
 |Left alt |Descend
+|Left shift |Move faster
 |` |ImGui console
 |Alt + Enter |Toggle fullscreen
 
