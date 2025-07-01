@@ -6,6 +6,8 @@
       </a>
 </div>
 
+> Click image to watch it on YouTube
+
 A game engine powered by Vulkan.
 
 # Points of Interest
