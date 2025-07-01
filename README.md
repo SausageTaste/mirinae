@@ -1,6 +1,10 @@
 # Mirinae
 
-https://github.com/user-attachments/assets/794bda9c-f5d2-4ddf-a1aa-7d468bdc9fcb
+<div align="left">
+      <a href="https://www.youtube.com/watch?v=RZYguhi-I4U">
+         <img src="https://img.youtube.com/vi/RZYguhi-I4U/maxresdefault.jpg">
+      </a>
+</div>
 
 A game engine powered by Vulkan.
 
@@ -50,13 +54,17 @@ The output executable file is located at `<repo>/buildd/app/windows/Debug/mirina
 
 ## Compile Shaders
 
-Run a Python script at `<repo>/script/compile_shaders.py`.
+Run a Python script at `<repo>/script/compile_glsl.py`.
 It compiles GLSL shader sources in `<repo>/asset/glsl`, and saves SPR-V shader files in `<repo>/asset/spv`.
 
 The script uses `glslc` program, which is bundled in LunarG Vulkan SDK.
 If the SDK was installed in somewhere else than `C:/VulkanSDK`, the script might fail to find it.
 The simplest solution is to add the folder containing `glslc` to `PATH` environment variable.
 Please refer to `__find_glslc` function in the script for more detail as to finding `glslc`.
+
+I'm currently slowly migrating GLSL shaders to [Slang](https://github.com/shader-slang/slang).
+Please run `<repo>/script/compile_slang.py` similarly.
+The compilation time is way longer with Slang, but the rich language features are so awesome that it's worth it.
 
 Once it's done, you should see a number of `.spv` files in `<repo>/asset/spv` directory.
 And finally you can execute `mirinapp.exe`!
@@ -66,7 +74,7 @@ And finally you can execute `mirinapp.exe`!
 This project is under active development, and sometimes it crashes if there are not required assets.
 If that happens, it's a bug so please make an issue.
 All you need to run the app are *executable* files, *shared library* files, and `<repo>/asset` folder.
-Oh, by the way, don't forget to compile shaders!
+Don't forget to compile shaders, though.
 
 # Control
 
