@@ -384,18 +384,22 @@ namespace {
         void OnBodyActivated(
             const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData
         ) override {
+            /*
             SPDLOG_INFO(
                 "A body got activated: {}", inBodyID.GetIndexAndSequenceNumber()
             );
+            */
         }
 
         void OnBodyDeactivated(
             const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData
         ) override {
+            /*
             SPDLOG_INFO(
                 "A body got deactivated: {}",
                 inBodyID.GetIndexAndSequenceNumber()
             );
+            */
         }
     };
 
