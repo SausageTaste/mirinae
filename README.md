@@ -12,7 +12,7 @@ A rendering engine powered by Vulkan.
 
 # Points of Interest
 
-If you want to read through souce codes, here are some good starting points.
+If you want to read through source codes, here are some good starting points.
 
 1. [Main entry point](/app/sdl/main.cpp)
 1. [Render passes](/lib/vulkan/src/renderpass)
