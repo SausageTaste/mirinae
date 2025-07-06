@@ -5,6 +5,8 @@
 
 namespace mirinae {
 
+    constexpr double ENVMAP_UPDATE_INTERVAL = 1;  // seconds
+
     const glm::dvec3 DVEC_ZERO{ 0, 0, 0 };
     const glm::dvec3 DVEC_DOWN{ 0, -1, 0 };
 
