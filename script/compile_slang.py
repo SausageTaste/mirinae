@@ -119,6 +119,7 @@ def main():
                 continue
             work_count += 1
             success_count += 1 if result else 0
+            print(f"Compiled {success_count}/{work_count} shaders", end="\r")
 
     if (work_count == 0):
         print("Nothing to compile.")
@@ -126,7 +127,7 @@ def main():
         if (success_count == work_count):
             print(f"Compiled {success_count}/{work_count} (\033[96m{success_count / work_count:.0%}\033[0m) shaders")
         else:
-            print(f"\nCompiled {success_count}/{work_count} (\033[91m{success_count / work_count:.0%}\033[0m) shaders")
+            print(f"Compiled {success_count}/{work_count} (\033[91m{success_count / work_count:.0%}\033[0m) shaders")
     print(f"Time taken: {time.time() - START_TIME:.2f} seconds")
 
 
