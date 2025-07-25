@@ -172,7 +172,7 @@ float phase_mie(const float cos_theta, const float anisotropy) {
 }
 
 
-float3 calc_frag_pos(float depth, float2 uv, float4x4 proj_inv) {
+public float3 calc_frag_pos(float depth, float2 uv, float4x4 proj_inv) {
     float4 clip_pos = float4(uv * 2 - 1, depth, 1);
     float4 frag_pos = mul(proj_inv, clip_pos);
     frag_pos /= frag_pos.w;
