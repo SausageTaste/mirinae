@@ -20,6 +20,18 @@ public uint select_cascade(float depth, float4 cascade_depths) {
 }
 
 
+public bool check_shadow_texco_range(const float3 texco) {
+    if (texco.z < 0)
+        return false;
+    else if (texco.z > 1)
+        return false;
+    else if (texco.x < 0 || texco.x > 1 || texco.y < 0 || texco.y > 1)
+        return false;
+    else
+        return true;
+}
+
+
 public float3 make_shadow_texco(float3 frag_pos_v, float4x4 light_mat, uint selected_cascade) {
     let frag_pos_in_dlight = mul(light_mat, float4(frag_pos_v, 1));
     let proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;

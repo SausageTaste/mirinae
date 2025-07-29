@@ -124,7 +124,7 @@ public void UvToLutTransmittanceParams(
 }
 
 
-float2 LutTransmittanceParamsToUv(
+public float2 LutTransmittanceParamsToUv(
     AtmosphereParameters Atmosphere, float viewHeight, float viewZenithCosAngle
 ) {
     float H = sqrt(

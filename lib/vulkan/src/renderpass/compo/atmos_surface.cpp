@@ -717,7 +717,7 @@ namespace {
             mirinae::PipelineBuilder builder{ device };
 
             builder.shader_stages()
-                .add_vert(":asset/spv/compo_dlight_vert.spv")
+                .add_vert(":asset/spv/compo_atmos_surface_vert.spv")
                 .add_frag(":asset/spv/compo_atmos_surface_frag.spv");
 
             builder.rasterization_state().cull_mode_back();
