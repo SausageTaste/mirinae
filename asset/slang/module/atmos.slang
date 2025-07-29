@@ -11,62 +11,118 @@ public static const float PLANET_RADIUS_OFFSET = 0.01;
 
 
 public struct AtmosphereParameters {
+    // Member functions
+    //--------------------------------------------------------------------------
+
+    [mutating]
+    internal void set_default_values() {
+        absorption_extinction_.xyz = float3(0.00065, 0.00188, 0.00008);
+
+        // Traslation from Bruneton2017 parameterisation.
+        rayleigh_density_exp_scale_ = -0.125;
+        mie_density_exp_scale_ = -0.83333;
+        absorption_density_0_layer_width_ = 25;
+        absorption_density_0_constant_term_ = -0.66667;
+        absorption_density_0_linear_term_ = 0.06667;
+        absorption_density_1_constant_term_ = 2.66667;
+        absorption_density_1_linear_term_ = -0.06667;
+
+        mie_phase_g_ = 0.8;
+        rayleigh_scattering_.xyz = float3(0.0058, 0.01356, 0.0331);
+        mie_scattering_.xyz = float3(0.004);
+        mie_absorption_.xyz = float3(0.00044);
+        mie_extinction_.xyz = float3(0.00444);
+        ground_albedo_.xyz = float3(0);
+        radius_bottom_ = 6360;
+        radius_top_ = 6460;
+    }
+
     // Radius of the planet (center to ground)
-    public float BottomRadius;
+    public float radius_bottom() {
+        return radius_bottom_;
+    }
     // Maximum considered atmosphere height (center to atmosphere top)
-    public float TopRadius;
+    public float radius_top() {
+        return radius_top_;
+    }
 
     // Rayleigh scattering exponential distribution scale in the atmosphere
-    float RayleighDensityExpScale;
+    internal float rayleigh_density_exp_scale() {
+        return rayleigh_density_exp_scale_;
+    }
     // Rayleigh scattering coefficients
-    float3 RayleighScattering;
+    internal float3 rayleigh_scattering() {
+        return rayleigh_scattering_.xyz;
+    }
 
     // Mie scattering exponential distribution scale in the atmosphere
-    float MieDensityExpScale;
+    internal float mie_density_exp_scale() {
+        return mie_density_exp_scale_;
+    }
     // Mie scattering coefficients
-    float3 MieScattering;
+    internal float3 mie_scattering() {
+        return mie_scattering_.xyz;
+    }
     // Mie extinction coefficients
-    float3 MieExtinction;
+    internal float3 mie_extinction() {
+        return mie_extinction_.xyz;
+    }
     // Mie absorption coefficients
-    float3 MieAbsorption;
+    internal float3 mie_absorption() {
+        return mie_absorption_.xyz;
+    }
     // Mie phase function excentricity
-    float MiePhaseG;
+    internal float mie_phase_g() {
+        return mie_phase_g_;
+    }
 
     // Another medium type in the atmosphere
-    float AbsorptionDensity0LayerWidth;
-    float AbsorptionDensity0ConstantTerm;
-    float AbsorptionDensity0LinearTerm;
-    float AbsorptionDensity1ConstantTerm;
-    float AbsorptionDensity1LinearTerm;
+    internal float calc_density_ozo(float viewHeight) {
+        const float densityOzo = saturate(
+            viewHeight < absorption_density_0_layer_width_
+                ? absorption_density_0_linear_term_ * viewHeight +
+                      absorption_density_0_constant_term_
+                : absorption_density_1_linear_term_ * viewHeight +
+                      absorption_density_1_constant_term_
+        );
+        return densityOzo;
+    }
     // This other medium only absorb light, e.g. useful to represent ozone in the earth atmosphere
-    float3 AbsorptionExtinction;
+    internal float3 absorption_extinction() {
+        return absorption_extinction_.xyz;
+    }
 
     // The albedo of the ground.
-    float3 GroundAlbedo;
+    internal float3 ground_albedo() {
+        return ground_albedo_.xyz;
+    }
+
+    // Member variables
+    //--------------------------------------------------------------------------
+
+    private float4 ground_albedo_;
+    private float4 rayleigh_scattering_;
+    private float4 mie_scattering_;
+    private float4 mie_extinction_;
+    private float4 mie_absorption_;
+    private float4 absorption_extinction_;
+
+    private float radius_bottom_;
+    private float radius_top_;
+    private float rayleigh_density_exp_scale_;
+    private float mie_phase_g_;
+    private float mie_density_exp_scale_;
+    private float absorption_density_0_layer_width_;
+    private float absorption_density_0_constant_term_;
+    private float absorption_density_0_linear_term_;
+    private float absorption_density_1_constant_term_;
+    private float absorption_density_1_linear_term_;
 };
 
 
 public AtmosphereParameters GetAtmosphereParameters() {
     AtmosphereParameters Parameters;
-    Parameters.AbsorptionExtinction = float3(0.00065, 0.00188, 0.00008);
-
-    // Traslation from Bruneton2017 parameterisation.
-    Parameters.RayleighDensityExpScale = -0.125;
-    Parameters.MieDensityExpScale = -0.83333;
-    Parameters.AbsorptionDensity0LayerWidth = 25;
-    Parameters.AbsorptionDensity0ConstantTerm = -0.66667;
-    Parameters.AbsorptionDensity0LinearTerm = 0.06667;
-    Parameters.AbsorptionDensity1ConstantTerm = 2.66667;
-    Parameters.AbsorptionDensity1LinearTerm = -0.06667;
-
-    Parameters.MiePhaseG = 0.8;
-    Parameters.RayleighScattering = float3(0.0058, 0.01356, 0.0331);
-    Parameters.MieScattering = float3(0.004);
-    Parameters.MieAbsorption = float3(0.00044);
-    Parameters.MieExtinction = float3(0.00444);
-    Parameters.GroundAlbedo = float3(0);
-    Parameters.BottomRadius = 6360;
-    Parameters.TopRadius = 6460;
+    Parameters.set_default_values();
     return Parameters;
 }
 
@@ -110,13 +166,13 @@ public void UvToLutTransmittanceParams(
     float x_r = uv.y;
 
     float H = sqrt(
-        Atmosphere.TopRadius * Atmosphere.TopRadius -
-        Atmosphere.BottomRadius * Atmosphere.BottomRadius
+        Atmosphere.radius_top() * Atmosphere.radius_top() -
+        Atmosphere.radius_bottom() * Atmosphere.radius_bottom()
     );
     float rho = H * x_r;
-    viewHeight = sqrt(rho * rho + Atmosphere.BottomRadius * Atmosphere.BottomRadius);
+    viewHeight = sqrt(rho * rho + Atmosphere.radius_bottom() * Atmosphere.radius_bottom());
 
-    float d_min = Atmosphere.TopRadius - viewHeight;
+    float d_min = Atmosphere.radius_top() - viewHeight;
     float d_max = rho + H;
     float d = d_min + x_mu * (d_max - d_min);
     viewZenithCosAngle = d == 0.0 ? 1.0f : (H * H - rho * rho - d * d) / (2.0 * viewHeight * d);
@@ -129,20 +185,20 @@ public float2 LutTransmittanceParamsToUv(
 ) {
     float H = sqrt(
         max(0.0f,
-            Atmosphere.TopRadius * Atmosphere.TopRadius -
-                Atmosphere.BottomRadius * Atmosphere.BottomRadius)
+            Atmosphere.radius_top() * Atmosphere.radius_top() -
+                Atmosphere.radius_bottom() * Atmosphere.radius_bottom())
     );
     float rho = sqrt(
-        max(0.0f, viewHeight * viewHeight - Atmosphere.BottomRadius * Atmosphere.BottomRadius)
+        max(0.0f, viewHeight * viewHeight - Atmosphere.radius_bottom() * Atmosphere.radius_bottom())
     );
 
     float discriminant = viewHeight * viewHeight * (viewZenithCosAngle * viewZenithCosAngle - 1.0) +
-                         Atmosphere.TopRadius * Atmosphere.TopRadius;
+                         Atmosphere.radius_top() * Atmosphere.radius_top();
     float d = max(
         0.0, (-viewHeight * viewZenithCosAngle + sqrt(discriminant))
     );  // Distance to atmosphere boundary
 
-    float d_min = Atmosphere.TopRadius - viewHeight;
+    float d_min = Atmosphere.radius_top() - viewHeight;
     float d_max = rho + H;
     float x_mu = (d - d_min) / (d_max - d_min);
     float x_r = rho / H;
@@ -163,7 +219,7 @@ public float2 SkyViewLutParamsToUv<let TNonLinearSkyViewLut : bool>(
     float2 uv;
 
     let Vhorizon = sqrt(
-        viewHeight * viewHeight - Atmosphere.BottomRadius * Atmosphere.BottomRadius
+        viewHeight * viewHeight - Atmosphere.radius_bottom() * Atmosphere.radius_bottom()
     );
     let CosBeta = Vhorizon / viewHeight;  // GroundToHorizonCos
     let Beta = acos(CosBeta);
@@ -208,7 +264,7 @@ public void UvToSkyViewLutParams<let TNonLinearSkyViewLut : bool>(
     uv = float2(fromSubUvsToUnit(uv.x, 192.0f), fromSubUvsToUnit(uv.y, 108.0f));
 
     float Vhorizon = sqrt(
-        viewHeight * viewHeight - Atmosphere.BottomRadius * Atmosphere.BottomRadius
+        viewHeight * viewHeight - Atmosphere.radius_bottom() * Atmosphere.radius_bottom()
     );
     float CosBeta = Vhorizon / viewHeight;  // GroundToHorizonCos
     float Beta = acos(CosBeta);
@@ -325,30 +381,24 @@ struct MediumSampleRGB {
 
 
 MediumSampleRGB sampleMediumRGB(float3 WorldPos, AtmosphereParameters Atmosphere) {
-    const float viewHeight = length(WorldPos) - Atmosphere.BottomRadius;
+    const float viewHeight = length(WorldPos) - Atmosphere.radius_bottom();
 
-    const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight);
-    const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight);
-    const float densityOzo = saturate(
-        viewHeight < Atmosphere.AbsorptionDensity0LayerWidth
-            ? Atmosphere.AbsorptionDensity0LinearTerm * viewHeight +
-                  Atmosphere.AbsorptionDensity0ConstantTerm
-            : Atmosphere.AbsorptionDensity1LinearTerm * viewHeight +
-                  Atmosphere.AbsorptionDensity1ConstantTerm
-    );
+    const float densityMie = exp(Atmosphere.mie_density_exp_scale() * viewHeight);
+    const float densityRay = exp(Atmosphere.rayleigh_density_exp_scale() * viewHeight);
+    const float densityOzo = Atmosphere.calc_density_ozo(viewHeight);
 
     MediumSampleRGB s;
 
-    s.scatteringMie = densityMie * Atmosphere.MieScattering;
-    s.absorptionMie = densityMie * Atmosphere.MieAbsorption;
-    s.extinctionMie = densityMie * Atmosphere.MieExtinction;
+    s.scatteringMie = densityMie * Atmosphere.mie_scattering();
+    s.absorptionMie = densityMie * Atmosphere.mie_absorption();
+    s.extinctionMie = densityMie * Atmosphere.mie_extinction();
 
-    s.scatteringRay = densityRay * Atmosphere.RayleighScattering;
+    s.scatteringRay = densityRay * Atmosphere.rayleigh_scattering();
     s.absorptionRay = float3(0);
     s.extinctionRay = s.scatteringRay + s.absorptionRay;
 
     s.scatteringOzo = float3(0);
-    s.absorptionOzo = densityOzo * Atmosphere.AbsorptionExtinction;
+    s.absorptionOzo = densityOzo * Atmosphere.absorption_extinction();
     s.extinctionOzo = s.scatteringOzo + s.absorptionOzo;
 
     s.scattering = s.scatteringMie + s.scatteringRay + s.scatteringOzo;
@@ -424,8 +474,8 @@ public struct SamplerMulScatLut : IMulScatLut {
     ) {
         float2 uv = saturate(float2(
             viewZenithCosAngle * 0.5f + 0.5f,
-            (length(worlPos) - Atmosphere.BottomRadius) /
-                (Atmosphere.TopRadius - Atmosphere.BottomRadius)
+            (length(worlPos) - Atmosphere.radius_bottom()) /
+                (Atmosphere.radius_top() - Atmosphere.radius_bottom())
         ));
         uv = float2(
             fromUnitToSubUvs(uv.x, MULTI_SCAT_LUT_RES), fromUnitToSubUvs(uv.y, MULTI_SCAT_LUT_RES)
@@ -444,7 +494,7 @@ public float3 get_transmittance(
     const ITransLut trans_lut,
     const AtmosphereParameters atmos_params
 ) {
-    const float planet_radius = atmos_params.BottomRadius * 1000;
+    const float planet_radius = atmos_params.radius_bottom() * 1000;
     const float3 frag_pos_e = frag_pos_w + float3(0, planet_radius, 0);
     const float frag_height_e = length(frag_pos_e);
     const float3 frag_up_dir_e = normalize(frag_pos_e);
@@ -538,10 +588,10 @@ public SingleScatteringResult IntegrateScatteredLuminance(
     // Compute next intersection with atmosphere or ground
     const float3 earthO = float3(0);
     const float tBottom = raySphereIntersectNearest(
-        params.world_pos_, params.world_dir_, earthO, Atmosphere.BottomRadius
+        params.world_pos_, params.world_dir_, earthO, Atmosphere.radius_bottom()
     );
     const float tTop = raySphereIntersectNearest(
-        params.world_pos_, params.world_dir_, earthO, Atmosphere.TopRadius
+        params.world_pos_, params.world_dir_, earthO, Atmosphere.radius_top()
     );
     float tMax = 0;
     if (tBottom < 0) {
@@ -565,7 +615,8 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
             // apply earth offset to go back to origin as top of earth mode.
             const float tDepth = length(
-                depth_world_pos.xyz - (params.world_pos_ + float3(0, -Atmosphere.BottomRadius, 0))
+                depth_world_pos.xyz -
+                (params.world_pos_ + float3(0, -Atmosphere.radius_bottom(), 0))
             );
             if (tDepth < tMax) {
                 tMax = tDepth;
@@ -594,7 +645,7 @@ public SingleScatteringResult IntegrateScatteredLuminance(
     const float3 wo = params.world_dir_;
     const float cosTheta = dot(wi, wo);
     // mnegate cosTheta because due to WorldDir being a "in" direction.
-    const float MiePhaseValue = hgPhase(Atmosphere.MiePhaseG, -cosTheta);
+    const float MiePhaseValue = hgPhase(Atmosphere.mie_phase_g(), -cosTheta);
     const float RayleighPhaseValue = RayleighPhase(cosTheta);
 
     // Ray march the atmosphere to integrate optical depth
@@ -650,7 +701,7 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
         // Earth shadow
         const float tEarth = raySphereIntersectNearest(
-            P, params.sun_dir_, earthO + PLANET_RADIUS_OFFSET * UpVector, Atmosphere.BottomRadius
+            P, params.sun_dir_, earthO + PLANET_RADIUS_OFFSET * UpVector, Atmosphere.radius_bottom()
         );
         const float earthShadow = tEarth >= 0 ? 0 : 1;
 
@@ -707,7 +758,7 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
         const float NdotL = saturate(dot(normalize(UpVector), normalize(params.sun_dir_)));
         L += params.sun_illuminance_ * TransmittanceToSun * throughput * NdotL *
-             Atmosphere.GroundAlbedo / PI;
+             Atmosphere.ground_albedo() / PI;
     }
 
     result.L = L;

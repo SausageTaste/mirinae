@@ -26,7 +26,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let view_inv3 = float3x3(u_pc.view_inv_);
     let ClipSpace = float3((pixPos / tex_res) * 2 - 1, 1);
     let HViewPos = mul(u_pc.proj_inv_, float4(ClipSpace, 1));
-    let WorldPos = u_pc.view_pos_w_.xyz / 1000 + float3(0, Atmosphere.BottomRadius, 0);
+    let WorldPos = u_pc.view_pos_w_.xyz / 1000 + float3(0, Atmosphere.radius_bottom(), 0);
     let viewHeight = length(WorldPos);
 
     ScatLumiIntParams params;
@@ -55,7 +55,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     params.world_dir_.z = viewZenithSinAngle * sqrt(1.0 - lightViewCosAngle * lightViewCosAngle);
 
     // Move to top atmospehre
-    if (!MoveToTopAtmosphere(params.world_pos_, params.world_dir_, Atmosphere.TopRadius)) {
+    if (!MoveToTopAtmosphere(params.world_pos_, params.world_dir_, Atmosphere.radius_top())) {
         // Ray is not intersecting the atmosphere
         out_image[dispatch_id.xy] = float4(0, 0, 0, 1);
         return;
