@@ -1,19 +1,8 @@
 import "../module/atmos";
+import "../module/konst";
 import "../module/lighting";
 import "../module/shadow";
 
-
-static const float2 FULLSCREEN_POS[3] = {
-    { -1, -1 },
-    { -1, 3 },
-    { 3, -1 },
-};
-
-static const float2 FULLSCREEN_UV[3] = {
-    { 0, 0 },
-    { 0, 2 },
-    { 2, 0 },
-};
 
 struct VSOutput {
     float4 pos_ : SV_POSITION;

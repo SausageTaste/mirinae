@@ -2,18 +2,6 @@ import "../module/atmos";
 import "../module/konst";
 
 
-static const float2 FULLSCREEN_POS[3] = {
-    { -1, -1 },
-    { 3, -1 },
-    { -1, 3 },
-};
-
-static const float2 FULLSCREEN_UV[3] = {
-    { 0, 0 },
-    { 2, 0 },
-    { 0, 2 },
-};
-
 struct VSOutput {
     float4 pos_ : SV_POSITION;
     float2 texco_;

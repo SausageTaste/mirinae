@@ -1,15 +1,4 @@
-
-static const float2 FULLSCREEN_POS[3] = {
-    { -1, -1 },
-    { 3, -1 },
-    { -1, 3 },
-};
-
-static const float2 FULLSCREEN_UV[3] = {
-    { 0, 0 },
-    { 2, 0 },
-    { 0, 2 },
-};
+import "module/konst";
 
 
 struct VSOutput {
