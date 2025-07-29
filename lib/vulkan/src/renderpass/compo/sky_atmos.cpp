@@ -444,8 +444,8 @@ namespace {
             mirinae::PipelineBuilder builder{ device };
 
             builder.shader_stages()
-                .add_vert(":asset/spv/compo_sky_vert.spv")
-                .add_frag(":asset/spv/compo_sky_atmos_frag.spv");
+                .add_vert(":asset/spv/compo_atmos_sky_vert.spv")
+                .add_frag(":asset/spv/compo_atmos_sky_frag.spv");
 
             builder.depth_stencil_state()
                 .depth_test_enable(true)
@@ -455,7 +455,6 @@ namespace {
             builder.color_blend_state().add(false, 1);
 
             builder.dynamic_state().add_viewport().add_scissor();
-
 
             pipeline.reset(builder.build(render_pass_, pipe_layout_), device);
         }
