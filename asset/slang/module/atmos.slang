@@ -21,11 +21,11 @@ public struct AtmosphereParameters {
         // Traslation from Bruneton2017 parameterisation.
         rayleigh_density_exp_scale = -0.125;
         mie_density_exp_scale = -0.83333;
-        absorption_density_0_layer_width_ = 25;
-        absorption_density_0_constant_term_ = -0.66667;
-        absorption_density_0_linear_term_ = 0.06667;
-        absorption_density_1_constant_term_ = 2.66667;
-        absorption_density_1_linear_term_ = -0.06667;
+        absorption_density_0_layer_width = 25;
+        absorption_density_0_constant_term = -0.66667;
+        absorption_density_0_linear_term = 0.06667;
+        absorption_density_1_constant_term = 2.66667;
+        absorption_density_1_linear_term = -0.06667;
 
         mie_phase_g = 0.8;
         rayleigh_scattering = float3(0.0058, 0.01356, 0.0331);
@@ -37,21 +37,32 @@ public struct AtmosphereParameters {
         radius_top = 6460;
     }
 
+    internal float calc_density_ozo(float viewHeight) {
+        return saturate(
+            viewHeight < absorption_density_0_layer_width
+                ? absorption_density_0_linear_term * viewHeight + absorption_density_0_constant_term
+                : absorption_density_1_linear_term * viewHeight + absorption_density_1_constant_term
+        );
+    }
+
+    // Member properties
+    //--------------------------------------------------------------------------
+
     // Radius of the planet (center to ground)
     public property float radius_bottom {
-        get { return radius_bottom_; }
-        set { radius_bottom_ = newValue; }
+        get { return ground_albedo_.w; }
+        set { ground_albedo_.w = newValue; }
     }
     // Maximum considered atmosphere height (center to atmosphere top)
     public property float radius_top {
-        get { return radius_top_; }
-        set { radius_top_ = newValue; }
+        get { return rayleigh_scattering_.w; }
+        set { rayleigh_scattering_.w = newValue; }
     }
 
     // Rayleigh scattering exponential distribution scale in the atmosphere
     internal property float rayleigh_density_exp_scale {
-        get { return rayleigh_density_exp_scale_; }
-        set { rayleigh_density_exp_scale_ = newValue; }
+        get { return mie_scattering_.w; }
+        set { mie_scattering_.w = newValue; }
     }
     // Rayleigh scattering coefficients
     internal property float3 rayleigh_scattering {
@@ -61,8 +72,8 @@ public struct AtmosphereParameters {
 
     // Mie scattering exponential distribution scale in the atmosphere
     internal property float mie_density_exp_scale {
-        get { return mie_density_exp_scale_; }
-        set { mie_density_exp_scale_ = newValue; }
+        get { return mie_absorption_.w; }
+        set { mie_absorption_.w = newValue; }
     }
 
     // Mie scattering coefficients
@@ -82,21 +93,32 @@ public struct AtmosphereParameters {
     }
     // Mie phase function excentricity
     internal property float mie_phase_g {
-        get { return mie_phase_g_; }
-        set { mie_phase_g_ = newValue; }
+        get { return mie_extinction_.w; }
+        set { mie_extinction_.w = newValue; }
     }
 
     // Another medium type in the atmosphere
-    internal float calc_density_ozo(float viewHeight) {
-        const float densityOzo = saturate(
-            viewHeight < absorption_density_0_layer_width_
-                ? absorption_density_0_linear_term_ * viewHeight +
-                      absorption_density_0_constant_term_
-                : absorption_density_1_linear_term_ * viewHeight +
-                      absorption_density_1_constant_term_
-        );
-        return densityOzo;
+    private property float absorption_density_0_layer_width {
+        get { return absorption_extinction_.w; }
+        set { absorption_extinction_.w = newValue; }
     }
+    private property float absorption_density_0_constant_term {
+        get { return absorption_density_params_.x; }
+        set { absorption_density_params_.x = newValue; }
+    }
+    private property float absorption_density_0_linear_term {
+        get { return absorption_density_params_.y; }
+        set { absorption_density_params_.y = newValue; }
+    }
+    private property float absorption_density_1_constant_term {
+        get { return absorption_density_params_.z; }
+        set { absorption_density_params_.z = newValue; }
+    }
+    private property float absorption_density_1_linear_term {
+        get { return absorption_density_params_.w; }
+        set { absorption_density_params_.w = newValue; }
+    }
+
     // This other medium only absorb light, e.g. useful to represent ozone in the earth atmosphere
     internal property float3 absorption_extinction {
         get { return absorption_extinction_.xyz; }
@@ -112,23 +134,18 @@ public struct AtmosphereParameters {
     // Member variables
     //--------------------------------------------------------------------------
 
-    private float4 ground_albedo_;
-    private float4 rayleigh_scattering_;
-    private float4 mie_scattering_;
-    private float4 mie_extinction_;
-    private float4 mie_absorption_;
-    private float4 absorption_extinction_;
+    private float4 ground_albedo_;          // xyz: as-is, w: Radius bottom
+    private float4 rayleigh_scattering_;    // xyz: as-is, w: Radius top
+    private float4 mie_scattering_;         // xyz: as-is, w: Rayleigh density exp scale
+    private float4 mie_extinction_;         // xyz: as-is, w: Mie phase g
+    private float4 mie_absorption_;         // xyz: as-is, w: Mie density exp scale
+    private float4 absorption_extinction_;  // xyz: as-is, w: Absorption density 0 layer width
 
-    private float radius_bottom_;
-    private float radius_top_;
-    private float rayleigh_density_exp_scale_;
-    private float mie_phase_g_;
-    private float mie_density_exp_scale_;
-    private float absorption_density_0_layer_width_;
-    private float absorption_density_0_constant_term_;
-    private float absorption_density_0_linear_term_;
-    private float absorption_density_1_constant_term_;
-    private float absorption_density_1_linear_term_;
+    // absorption_density_0_constant_term;
+    // absorption_density_0_linear_term;
+    // absorption_density_1_constant_term;
+    // absorption_density_1_linear_term;
+    private float4 absorption_density_params_;
 };
 
 
