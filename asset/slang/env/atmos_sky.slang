@@ -37,7 +37,7 @@ float4 frag_main(VSOutput input) : SV_Target {
     const float3 cam_dir_w = normalize(input.local_pos_);
     let atmos_params = GetAtmosphereParameters();
 
-    const float planet_radius = atmos_params.radius_bottom() * 1000;
+    const float planet_radius = atmos_params.radius_bottom * 1000;
     const float3 cam_pos_e = float3(0, planet_radius + 1, 0);
     const float cam_height_e = length(cam_pos_e);
 

@@ -33,9 +33,9 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
         float3(0, cosSunZenithAngle, sqrt(saturate(1 - cosSunZenithAngle * cosSunZenithAngle)))
     );
     // We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
-    let viewHeight = Atmosphere.radius_bottom() +
+    let viewHeight = Atmosphere.radius_bottom +
                      saturate(uv.y + PLANET_RADIUS_OFFSET) *
-                         (Atmosphere.radius_top() - Atmosphere.radius_bottom() -
+                         (Atmosphere.radius_top - Atmosphere.radius_bottom -
                           PLANET_RADIUS_OFFSET);
 
     ScatLumiIntParams params;

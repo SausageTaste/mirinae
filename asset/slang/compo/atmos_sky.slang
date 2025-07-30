@@ -60,7 +60,7 @@ float4 frag_main(VSOutput input) {
     const float3 cam_dir_v = normalize(frag_pos_v);
     const float3 cam_dir_w = normalize(mul(float3x3(u_pc.view_inv), cam_dir_v));
 
-    const float planet_radius = atmos_params.radius_bottom() * 1000;
+    const float planet_radius = atmos_params.radius_bottom * 1000;
     const float3 cam_pos_e = u_pc.view_pos_w.xyz + float3(0, planet_radius, 0);
     const float cam_height_e = length(cam_pos_e);
 
