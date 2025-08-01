@@ -21,9 +21,6 @@ namespace mirinae {
         static void record_end(VkCommandBuffer cmdbuf);
 
     private:
-        static PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;
-        static PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT;
-
         VkDebugUtilsLabelEXT info_;
     };
 
@@ -48,9 +45,7 @@ namespace mirinae {
         void apply(VkDevice device) const;
 
     private:
-        static PFN_vkSetDebugUtilsObjectNameEXT set_debug_object_name_;
-
         VkDebugUtilsObjectNameInfoEXT info_;
     };
 
-}
+}  // namespace mirinae

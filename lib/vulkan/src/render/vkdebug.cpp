@@ -1,28 +1,32 @@
 #include "mirinae/render/vkdebug.hpp"
 
+#define LOAD_VK_FUNC(func_name, device) \
+    reinterpret_cast<PFN_##func_name>(vkGetDeviceProcAddr(device, #func_name))
+
+
+namespace {
+
+    PFN_vkCmdBeginDebugUtilsLabelEXT cmd_begin_debug_label = nullptr;
+    PFN_vkCmdEndDebugUtilsLabelEXT cmd_end_debug_label = nullptr;
+    PFN_vkSetDebugUtilsObjectNameEXT set_debug_object_name_ = nullptr;
+
+}  // namespace
+
 
 // DebugLabel
 namespace mirinae {
 
-    PFN_vkCmdBeginDebugUtilsLabelEXT DebugLabel::vkCmdBeginDebugUtilsLabelEXT =
-        nullptr;
-    PFN_vkCmdEndDebugUtilsLabelEXT DebugLabel::vkCmdEndDebugUtilsLabelEXT =
-        nullptr;
-
-
     void DebugLabel::load_funcs(VkDevice device) {
-        if (nullptr == vkCmdBeginDebugUtilsLabelEXT) {
-            DebugLabel::vkCmdBeginDebugUtilsLabelEXT =
-                reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
-                    vkGetDeviceProcAddr(device, "vkCmdBeginDebugUtilsLabelEXT")
-                );
+        if (nullptr == ::cmd_begin_debug_label) {
+            ::cmd_begin_debug_label = LOAD_VK_FUNC(
+                vkCmdBeginDebugUtilsLabelEXT, device
+            );
         }
 
-        if (nullptr == vkCmdEndDebugUtilsLabelEXT) {
-            DebugLabel::vkCmdEndDebugUtilsLabelEXT =
-                reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
-                    vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelEXT")
-                );
+        if (nullptr == ::cmd_end_debug_label) {
+            ::cmd_end_debug_label = LOAD_VK_FUNC(
+                vkCmdEndDebugUtilsLabelEXT, device
+            );
         }
     }
 
@@ -63,14 +67,14 @@ namespace mirinae {
     }
 
     void DebugLabel::record_begin(VkCommandBuffer cmdbuf) const {
-        if (nullptr != DebugLabel::vkCmdBeginDebugUtilsLabelEXT) {
-            DebugLabel::vkCmdBeginDebugUtilsLabelEXT(cmdbuf, &info_);
+        if (::cmd_begin_debug_label) {
+            ::cmd_begin_debug_label(cmdbuf, &info_);
         }
     }
 
     void DebugLabel::record_end(VkCommandBuffer cmdbuf) {
-        if (nullptr != DebugLabel::vkCmdEndDebugUtilsLabelEXT) {
-            DebugLabel::vkCmdEndDebugUtilsLabelEXT(cmdbuf);
+        if (::cmd_end_debug_label) {
+            ::cmd_end_debug_label(cmdbuf);
         }
     }
 
@@ -79,10 +83,6 @@ namespace mirinae {
 
 // DebugAnnoName
 namespace mirinae {
-
-    PFN_vkSetDebugUtilsObjectNameEXT DebugAnnoName::set_debug_object_name_ =
-        nullptr;
-
 
     DebugAnnoName::DebugAnnoName() {
         info_ = {};
@@ -94,11 +94,10 @@ namespace mirinae {
     }
 
     void DebugAnnoName::load_funcs(VkDevice device) {
-        if (nullptr == set_debug_object_name_) {
-            set_debug_object_name_ =
-                reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
-                    vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT")
-                );
+        if (nullptr == ::set_debug_object_name_) {
+            ::set_debug_object_name_ = LOAD_VK_FUNC(
+                vkSetDebugUtilsObjectNameEXT, device
+            );
         }
     }
 
@@ -118,8 +117,8 @@ namespace mirinae {
     }
 
     void DebugAnnoName::apply(VkDevice device) const {
-        if (set_debug_object_name_)
-            set_debug_object_name_(device, &info_);
+        if (::set_debug_object_name_)
+            ::set_debug_object_name_(device, &info_);
     }
 
 }  // namespace mirinae
