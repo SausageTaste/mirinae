@@ -13,6 +13,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/texture.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/uniform.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkcomposition.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkdebug.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkdevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkmajorplayers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/terrain.cpp
@@ -39,8 +40,8 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_diffuse.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_sky.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_specular.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/specular.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/sky_atmos.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/specular.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/gbuf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/skinned.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/static.cpp
