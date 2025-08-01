@@ -3,6 +3,7 @@
 #include "mirinae/renderpass/builder.hpp"
 
 #include "mirinae/render/meshdata.hpp"
+#include "mirinae/render/vkdebug.hpp"
 
 
 // AttachDescView
@@ -170,6 +171,13 @@ namespace mirinae {
     ) {
         modules_.push_back(this->load_spv(spv_path, device_));
         this->add_stage(stage, modules_.back());
+
+        mirinae::DebugAnnoName{}
+            .set_name(spv_path.filename().u8string().c_str())
+            .set_type(VK_OBJECT_TYPE_SHADER_MODULE)
+            .set_handle(modules_.back())
+            .apply(device_.logi_device());
+
         return *this;
     }
 
