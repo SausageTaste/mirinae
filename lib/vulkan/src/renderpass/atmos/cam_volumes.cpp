@@ -245,6 +245,7 @@ namespace {
 
                     builder.image(img->img_.image());
                     img->view_.reset(builder, device);
+                    img->set_dbg_names(device);
                 }
             }
 

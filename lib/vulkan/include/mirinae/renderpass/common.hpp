@@ -190,8 +190,10 @@ namespace mirinae {
         class Image {
 
         public:
-            Image(const str& id) : id_(id) {}
-            const std::string& id() const { return id_; }
+            Image(const str& id);
+            const std::string& id() const;
+
+            void set_dbg_names(VulkanDevice& device);
 
             mirinae::Image img_;
             mirinae::ImageView view_;

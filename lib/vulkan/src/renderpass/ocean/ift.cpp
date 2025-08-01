@@ -478,6 +478,7 @@ namespace {
                     .mip_levels(img_info.mip_levels())
                     .image(butterfly_cache_->img_.image());
                 butterfly_cache_->view_.reset(iv_builder, device_);
+                butterfly_cache_->set_dbg_names(device_);
             }
 
             // Storage images

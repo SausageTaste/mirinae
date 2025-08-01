@@ -5,6 +5,7 @@
 #include <set>
 
 #include "mirinae/lightweight/task.hpp"
+#include "mirinae/render/cmdbuf.hpp"
 
 
 namespace {
@@ -499,6 +500,30 @@ namespace mirinae {
         FrameIndex f_index, uint32_t threadnum, VulkanDevice& device
     ) {
         return pimpl_->get(f_index, threadnum, device);
+    }
+
+}  // namespace mirinae
+
+
+// RenderTargetManager::Image
+namespace mirinae {
+
+    RenderTargetManager::Image::Image(const str& id) : id_(id) {}
+
+    const std::string& RenderTargetManager::Image::id() const { return id_; }
+
+    void RenderTargetManager::Image::set_dbg_names(VulkanDevice& device) {
+        mirinae::DebugAnnoName{}
+            .set_name(id_.c_str())
+            .set_type(VK_OBJECT_TYPE_IMAGE)
+            .set_handle(img_.image())
+            .apply(device.logi_device());
+
+        mirinae::DebugAnnoName{}
+            .set_type(VK_OBJECT_TYPE_IMAGE_VIEW)
+            .set_handle(view_.get())
+            .set_name(id_.c_str())
+            .apply(device.logi_device());
     }
 
 }  // namespace mirinae

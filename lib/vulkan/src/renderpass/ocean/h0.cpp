@@ -259,6 +259,7 @@ namespace {
 
                 iv_builder.image(img->img_.image());
                 img->view_.reset(iv_builder, device_);
+                img->set_dbg_names(device_);
             }
 
             // Storage images
@@ -282,6 +283,7 @@ namespace {
                         img->img_.init(cinfo.get(), device.mem_alloc());
                         builder.image(img->img_.image());
                         img->view_.reset(builder, device);
+                        img->set_dbg_names(device_);
                         frame_data_[i].hk_[j] = img;
                     }
                 }

@@ -261,6 +261,7 @@ namespace {
 
                         builder.format(cinfo.format());
                         img->view_.reset(builder, device);
+                        img->set_dbg_names(device_);
 
                         fd.disp_[j] = std::move(img);
                     }
@@ -278,6 +279,7 @@ namespace {
 
                         builder.format(cinfo.format());
                         img->view_.reset(builder, device);
+                        img->set_dbg_names(device_);
 
                         fd.deri_[j] = std::move(img);
                     }
@@ -294,6 +296,7 @@ namespace {
 
                     builder.format(cinfo.format());
                     img->view_.reset(builder, device);
+                    img->set_dbg_names(device_);
 
                     turb_[j] = std::move(img);
                 }
