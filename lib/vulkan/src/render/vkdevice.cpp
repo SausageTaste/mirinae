@@ -163,6 +163,21 @@ namespace {
         }
     }
 
+    void select_features(
+        VkPhysicalDeviceFeatures& dst, const VkPhysicalDeviceFeatures& src
+    ) {
+        // Required
+        dst.tessellationShader = src.tessellationShader;
+        // Optional
+        dst.depthClamp = src.depthClamp;
+        dst.fillModeNonSolid = src.fillModeNonSolid;
+        dst.samplerAnisotropy = src.samplerAnisotropy;
+        // KTX
+        dst.textureCompressionASTC_LDR = src.textureCompressionASTC_LDR;
+        dst.textureCompressionBC = src.textureCompressionBC;
+        dst.textureCompressionETC2 = src.textureCompressionETC2;
+    }
+
 }  // namespace
 
 
@@ -255,6 +270,36 @@ namespace {
     }
 
 
+    class PhysDeviceFeatures {
+
+    public:
+        void init(VkPhysicalDevice phys_device) {
+            vkGetPhysicalDeviceFeatures(phys_device, &features_);
+        }
+
+        void clear() { features_ = {}; }
+
+        const VkPhysicalDeviceFeatures& get() const { return features_; }
+
+        void fill_report(dal::ValuesReport& report) const {
+            report.add(0, "Features");
+            if (features_.samplerAnisotropy)
+                report.add_value("Anisotropic");
+            if (features_.geometryShader)
+                report.add_value("Geometry");
+            if (features_.tessellationShader)
+                report.add_value("Tessellation");
+            if (features_.textureCompressionETC2)
+                report.add_value("ETC2");
+            if (features_.textureCompressionASTC_LDR)
+                report.add_value("ASTC");
+        }
+
+    private:
+        VkPhysicalDeviceFeatures features_{};
+    };
+
+
     class PhysDevice {
 
     public:
@@ -266,8 +311,8 @@ namespace {
             }
 
             handle_ = handle;
+            features_.init(handle);
             vkGetPhysicalDeviceProperties(handle_, &properties_);
-            vkGetPhysicalDeviceFeatures(handle_, &features_);
 
             const auto queue_family = ::get_queue_family_props(handle_);
             for (int i = 0; i < queue_family.size(); ++i) {
@@ -286,7 +331,7 @@ namespace {
         void clear() {
             handle_ = nullptr;
             properties_ = {};
-            features_ = {};
+            features_.clear();
             graphics_family_index_ = std::nullopt;
             present_family_index_ = std::nullopt;
         }
@@ -327,17 +372,7 @@ namespace {
                     break;
             }
 
-            report.add(0, "Features");
-            if (features_.samplerAnisotropy)
-                report.add_value("Anisotropic");
-            if (features_.geometryShader)
-                report.add_value("Geometry");
-            if (features_.tessellationShader)
-                report.add_value("Tessellation");
-            if (features_.textureCompressionETC2)
-                report.add_value("ETC2");
-            if (features_.textureCompressionASTC_LDR)
-                report.add_value("ASTC");
+            features_.fill_report(report);
 
             const auto queue_family = ::get_queue_family_props(handle_);
             report.add(0, "Queue family count", queue_family.size());
@@ -462,18 +497,8 @@ namespace {
                    VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
         }
 
-        bool is_anisotropic_filtering_supported() const {
-            return features_.samplerAnisotropy;
-        }
-
-        bool is_depth_clamp_supported() const { return features_.depthClamp; }
-
         auto max_sampler_anisotropy() const {
             return properties_.limits.maxSamplerAnisotropy;
-        }
-
-        bool is_tessellation_supported() const {
-            return features_.tessellationShader;
         }
 
         std::vector<VkExtensionProperties> get_extensions() const {
@@ -547,7 +572,9 @@ namespace {
             return props.check_optimal_tiling_feature(common_texture_ops);
         }
 
-        auto& features() const { return features_; }
+        const VkPhysicalDeviceFeatures& features() const {
+            return features_.get();
+        }
 
     private:
         static bool is_queue_flag_applicable(const VkQueueFlags flags) {
@@ -561,8 +588,8 @@ namespace {
 
         VkPhysicalDevice handle_ = nullptr;
         VkPhysicalDeviceProperties properties_{};
-        VkPhysicalDeviceFeatures features_{};
         VkPhysicalDeviceLimits limits_{};
+        ::PhysDeviceFeatures features_;
         std::optional<uint32_t> graphics_family_index_;
         std::optional<uint32_t> present_family_index_;
     };
@@ -813,14 +840,8 @@ namespace {
                 queueCreateInfo.pQueuePriorities = &queue_priority;
             }
 
-            VkPhysicalDeviceFeatures deviceFeatures{};
-            {
-                deviceFeatures.samplerAnisotropy =
-                    phys_dev.is_anisotropic_filtering_supported();
-                deviceFeatures.depthClamp = phys_dev.is_depth_clamp_supported();
-                deviceFeatures.tessellationShader =
-                    phys_dev.is_tessellation_supported();
-            }
+            features_ = {};
+            ::select_features(features_, phys_dev.features());
 
             const auto char_extension = ::make_char_vec(ext);
 
@@ -830,7 +851,7 @@ namespace {
             createInfo.queueCreateInfoCount = queueCreateInfos.size();
             createInfo.ppEnabledExtensionNames = char_extension.data();
             createInfo.enabledExtensionCount = char_extension.size();
-            createInfo.pEnabledFeatures = &deviceFeatures;
+            createInfo.pEnabledFeatures = &features_;
 
             VK_CHECK(
                 vkCreateDevice(phys_dev.get(), &createInfo, nullptr, &device_)
@@ -869,11 +890,13 @@ namespace {
         VkDevice get() { return device_; }
         VkQueue graphics_queue() { return graphics_queue_; }
         VkQueue present_queue() { return present_queue_; }
+        const VkPhysicalDeviceFeatures& features() const { return features_; }
 
     private:
         VkDevice device_ = nullptr;
         VkQueue graphics_queue_ = nullptr;
         VkQueue present_queue_ = nullptr;
+        VkPhysicalDeviceFeatures features_;
     };
 
 
@@ -964,7 +987,7 @@ namespace {
         }
 
         VkSampler build(const ::PhysDevice& pd, ::LogiDevice& ld) {
-            cinfo_.anisotropyEnable = pd.is_anisotropic_filtering_supported();
+            cinfo_.anisotropyEnable = pd.features().samplerAnisotropy;
             cinfo_.maxAnisotropy = pd.max_sampler_anisotropy();
 
             VkSampler output = VK_NULL_HANDLE;
@@ -1199,22 +1222,18 @@ namespace mirinae {
         return pimpl_->logi_device_.present_queue();
     }
 
+    const VkPhysicalDeviceFeatures& VulkanDevice::features() const {
+        return pimpl_->logi_device_.features();
+    }
+
     void VulkanDevice::wait_idle() { pimpl_->logi_device_.wait_idle(); }
 
     VkPhysicalDevice VulkanDevice::phys_device() {
         return pimpl_->phys_device_.get();
     }
 
-    const VkPhysicalDeviceFeatures& VulkanDevice::phys_device_features() const {
-        return pimpl_->phys_device_.features();
-    }
-
     std::optional<uint32_t> VulkanDevice::graphics_queue_family_index() {
         return pimpl_->phys_device_.graphics_family_index();
-    }
-
-    bool VulkanDevice::has_supp_depth_clamp() const {
-        return pimpl_->phys_device_.is_depth_clamp_supported();
     }
 
     ISamplerManager& VulkanDevice::samplers() { return pimpl_->samplers_; }

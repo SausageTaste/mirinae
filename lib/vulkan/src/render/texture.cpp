@@ -579,7 +579,7 @@ namespace {
         )
             : task_sche_(task_sche)
             , filesys_(&device.filesys())
-            , device_features_(device.phys_device_features()) {}
+            , device_features_(device.features()) {}
 
         bool add_task(const fs::path& path) {
             if (this->has_task(path))
@@ -649,7 +649,7 @@ namespace {
                 ::ImageLoadTask task(
                     ":asset/textures/missing_texture.ktx",
                     device.filesys(),
-                    device.phys_device_features()
+                    device.features()
                 );
                 while (task.tick() == sung::TaskStatus::running) {
                 }

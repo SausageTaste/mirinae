@@ -443,7 +443,7 @@ namespace {
                     .add_attrib_ivec4(offsetof(Vertex, joint_indices_));
 
                 builder.rasterization_state()
-                    .depth_clamp_enable(device.has_supp_depth_clamp())
+                    .depth_clamp_enable(device.features().depthClamp)
                     .depth_bias(0, 1);
 
                 builder.depth_stencil_state()

@@ -44,13 +44,12 @@ namespace mirinae {
         VkDevice logi_device();
         VkQueue graphics_queue();
         VkQueue present_queue();
+        const VkPhysicalDeviceFeatures& features() const;
         void wait_idle();
 
         // Physical device
         VkPhysicalDevice phys_device();
-        const VkPhysicalDeviceFeatures& phys_device_features() const;
         std::optional<uint32_t> graphics_queue_family_index();
-        bool has_supp_depth_clamp() const;
 
         // Sub-systems
         ISamplerManager& samplers();

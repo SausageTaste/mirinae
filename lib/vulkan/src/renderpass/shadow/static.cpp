@@ -478,7 +478,7 @@ namespace {
                     .add_attrib_vec2(offsetof(Vertex, texcoord_));
 
                 builder.rasterization_state()
-                    .depth_clamp_enable(device.has_supp_depth_clamp())
+                    .depth_clamp_enable(device.features().depthClamp)
                     .depth_bias(0, 1);
 
                 builder.depth_stencil_state()

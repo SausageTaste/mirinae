@@ -329,7 +329,7 @@ namespace {
                 builder.tes_state().patch_ctrl_points(4);
 
                 builder.rasterization_state()
-                    .depth_clamp_enable(device.has_supp_depth_clamp())
+                    .depth_clamp_enable(device.features().depthClamp)
                     .depth_bias(0, 1);
 
                 builder.depth_stencil_state()

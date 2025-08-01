@@ -444,7 +444,7 @@ namespace {
 
                 builder.rasterization_state()
                     .polygon_mode(VK_POLYGON_MODE_FILL)
-                    .depth_clamp_enable(device.has_supp_depth_clamp())
+                    .depth_clamp_enable(device.features().depthClamp)
                     .depth_bias(0, 1);
 
                 builder.depth_stencil_state()
