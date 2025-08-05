@@ -12,14 +12,14 @@ namespace mirinae {
         key_map_.emplace(SDL_SCANCODE_S, ActionType::move_backward);
         key_map_.emplace(SDL_SCANCODE_A, ActionType::move_left);
         key_map_.emplace(SDL_SCANCODE_D, ActionType::move_right);
+        key_map_.emplace(SDL_SCANCODE_E, ActionType::translate_up);
+        key_map_.emplace(SDL_SCANCODE_Q, ActionType::translate_down);
 
         key_map_.emplace(SDL_SCANCODE_UP, ActionType::look_up);
         key_map_.emplace(SDL_SCANCODE_DOWN, ActionType::look_down);
         key_map_.emplace(SDL_SCANCODE_LEFT, ActionType::look_left);
         key_map_.emplace(SDL_SCANCODE_RIGHT, ActionType::look_right);
 
-        key_map_.emplace(SDL_SCANCODE_SPACE, ActionType::translate_up);
-        key_map_.emplace(SDL_SCANCODE_LALT, ActionType::translate_down);
         key_map_.emplace(SDL_SCANCODE_LSHIFT, ActionType::sprint);
     }
 

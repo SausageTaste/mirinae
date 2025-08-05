@@ -82,8 +82,8 @@ All you need to run the app are *executable* files, *shared library* files, and 
 |- |-
 |WASD |Move
 |Arrow keys |Look around
-|Space |Ascend
-|Left alt |Descend
+|E |Ascend
+|Q |Descend
 |Left shift |Move faster
 |` |ImGui console
 |Alt + Enter |Toggle fullscreen
