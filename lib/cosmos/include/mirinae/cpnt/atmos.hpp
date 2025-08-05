@@ -16,6 +16,7 @@ namespace mirinae {
 
     public:
         void set_default_values();
+        void render_imgui();
 
         float3& ground_albedo();
         float& radius_bottom();

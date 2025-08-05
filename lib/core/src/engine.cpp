@@ -11,6 +11,7 @@
 #include <entt/entity/registry.hpp>
 #include <sung/basic/cvar.hpp>
 
+#include "mirinae/cpnt/atmos.hpp"
 #include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/envmap.hpp"
 #include "mirinae/cpnt/identifier.hpp"
@@ -455,6 +456,8 @@ namespace {
                     this->render_cpnt(*c, "Ocean");
                 if (auto c = this->reg().try_get<cpnt::AtmosphereSimple>(e))
                     this->render_cpnt(*c, "Atmosphere Simple");
+                if (auto c = this->reg().try_get<cpnt::AtmosphereEpic>(e))
+                    this->render_cpnt(*c, "Atmosphere Epic");
                 if (auto c = this->reg().try_get<cpnt::Envmap>(e))
                     this->render_cpnt(*c, "Envmap");
                 if (auto c = this->reg().try_get<cpnt::Transform>(e))
@@ -931,6 +934,15 @@ namespace {
                 atm.fog_color_ = { 0.556, 0.707, 0.846 };
                 atm.sky_tex_path_ = ":asset/textures/empty_sky.hdr";
                 atm.mie_anisotropy_ = 0.8;
+            }
+
+            {
+                const auto entt = reg.create();
+
+                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
+                i.set_name("Atmosphere Epic");
+
+                auto& atm = reg.emplace<mirinae::cpnt::AtmosphereEpic>(entt);
             }
 
             // https://manticorp.github.io/unrealheightmap/#latitude/36.271/longitude/-112.357/zoom/14/outputzoom/14/width/4096/height/4096
