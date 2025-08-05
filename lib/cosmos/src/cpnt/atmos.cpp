@@ -25,12 +25,6 @@ namespace {
         return reinterpret_cast<float3&>(v);
     }
 
-    void set_xyz(float4& dst, const float3& src) {
-        dst.x = src.x;
-        dst.y = src.y;
-        dst.z = src.z;
-    }
-
     bool render_color_intensity(mirinae::ColorIntensity& ci, void* id) {
         bool output = false;
 
@@ -81,12 +75,12 @@ namespace mirinae {
     }
 
     void CLS::render_imgui() {
-        ImGui::ColorEdit3("Ground Albedo", &ground_albedo_[0]);
+        ImGui::ColorEdit3("Ground Albedo", &this->ground_albedo()[0]);
         ImGui::DragFloat(
-            "Radius Bottom", &ground_albedo_[3], 0.1f, 0.0f, 10000.0f
+            "Radius Bottom", &this->radius_bottom(), 0.1f, 0.0f, 10000.0f
         );
         ImGui::DragFloat(
-            "Radius Top", &rayleigh_scattering_[3], 0.1f, 0.0f, 10000.0f
+            "Radius Top", &this->radius_top(), 0.1f, 0.0f, 10000.0f
         );
 
         // Rayleigh scattering
@@ -95,15 +89,17 @@ namespace mirinae {
         {
             ImGui::Text("Rayleigh scattering coefficients");
             ColorIntensity ci;
-            ci.set_scaled_color(rayleigh_scattering_);
-            if (render_color_intensity(ci, &rayleigh_scattering_)) {
-                set_xyz(rayleigh_scattering_, ci.scaled_color());
+            ci.set_scaled_color(this->rayleigh_scattering());
+            if (render_color_intensity(ci, &this->rayleigh_scattering())) {
+                this->rayleigh_scattering() = ci.scaled_color();
             }
         }
 
-        ImGui::PushID(&mie_scattering_);
+        ImGui::PushID(&this->mie_density_exp_scale());
         ImGui::Text("Rayleigh density exp scale");
-        ImGui::DragFloat("", &mie_scattering_.w, 0.01f, -10.0f, 0.0f);
+        ImGui::DragFloat(
+            "", &this->mie_density_exp_scale(), 0.01f, -10.0f, 0.0f
+        );
         ImGui::PopID();
 
         // Mie scattering
@@ -112,38 +108,40 @@ namespace mirinae {
         {
             ImGui::Text("Mie scattering");
             ColorIntensity ci;
-            ci.set_scaled_color(mie_scattering_);
-            if (render_color_intensity(ci, &mie_scattering_)) {
-                set_xyz(mie_scattering_, ci.scaled_color());
+            ci.set_scaled_color(this->mie_scattering());
+            if (render_color_intensity(ci, &this->mie_scattering())) {
+                this->mie_scattering() = ci.scaled_color();
             }
         }
 
         {
             ImGui::Text("Mie extinction");
             ColorIntensity ci;
-            ci.set_scaled_color(mie_extinction_);
-            if (render_color_intensity(ci, &mie_extinction_)) {
-                set_xyz(mie_extinction_, ci.scaled_color());
+            ci.set_scaled_color(this->mie_extinction());
+            if (render_color_intensity(ci, &this->mie_extinction())) {
+                this->mie_extinction() = ci.scaled_color();
             }
         }
 
         {
             ImGui::Text("Mie absorption");
             ColorIntensity ci;
-            ci.set_scaled_color(mie_absorption_);
-            if (render_color_intensity(ci, &mie_absorption_)) {
-                set_xyz(mie_absorption_, ci.scaled_color());
+            ci.set_scaled_color(this->mie_absorption());
+            if (render_color_intensity(ci, &this->mie_absorption())) {
+                this->mie_absorption() = ci.scaled_color();
             }
         }
 
-        ImGui::PushID(&mie_absorption_);
+        ImGui::PushID(&this->mie_density_exp_scale());
         ImGui::Text("Mie density exp scale");
-        ImGui::DragFloat("", &mie_absorption_.w, 0.01f, -10.0f, 0.0f);
+        ImGui::DragFloat(
+            "", &this->mie_density_exp_scale(), 0.01f, -10.0f, 0.0f
+        );
         ImGui::PopID();
 
-        ImGui::PushID(&mie_extinction_);
+        ImGui::PushID(&this->mie_phase_g());
         ImGui::Text("Mie phase G");
-        ImGui::DragFloat("", &mie_extinction_.w, 0.01f, -10.0f, 0.0f);
+        ImGui::DragFloat("", &this->mie_phase_g(), 0.01f, -10.0f, 0.0f);
         ImGui::PopID();
     }
 
