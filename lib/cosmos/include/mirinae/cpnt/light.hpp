@@ -7,32 +7,11 @@
 #include <glm/vec3.hpp>
 #include <sung/basic/angle.hpp>
 
+#include "mirinae/math/color.hpp"
 #include "mirinae/math/mamath.hpp"
 
 
 namespace mirinae {
-
-    class ColorIntensity {
-
-    public:
-        using T = float;
-        using Vec3 = glm::tvec3<T>;
-
-        Vec3& color() { return color_; }
-        T& intensity() { return intensity_; }
-        Vec3 scaled_color() const;
-
-        void set_scaled_color(const Vec3& color);
-        void set_scaled_color(T r, T g, T b);
-        void set_scaled_color(T rgb);
-
-        void normalize_color();
-
-    private:
-        Vec3 color_{ 0 };
-        T intensity_ = 0;
-    };
-
 
     class DirectionalLight {
 

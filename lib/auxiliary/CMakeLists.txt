@@ -5,6 +5,7 @@ add_library(mirinae_aux STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lightweight/skin_anim.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lightweight/task.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lightweight/text_data.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/math/color.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/math/mamath.cpp
 )
 target_include_directories(mirinae_aux PUBLIC

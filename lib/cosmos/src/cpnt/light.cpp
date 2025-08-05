@@ -8,12 +8,6 @@
 
 namespace {
 
-    float max3(float a, float b, float c) {
-        return std::max(std::max(a, b), c);
-    }
-
-    float max3(const glm::vec3& v) { return ::max3(v.r, v.g, v.b); }
-
     void render_color_intensity(mirinae::ColorIntensity& ci) {
         ImGui::PushID(&ci);
         ImGui::ColorEdit3("Color", &ci.color()[0]);
@@ -29,53 +23,6 @@ namespace {
     }
 
 }  // namespace
-
-
-// ColorIntensity
-namespace mirinae {
-
-    ColorIntensity::Vec3 ColorIntensity::scaled_color() const {
-        return color_ * intensity_;
-    }
-
-    void ColorIntensity::set_scaled_color(const Vec3& color) {
-        color_ = color;
-        intensity_ = 1;
-        this->normalize_color();
-    }
-
-    void ColorIntensity::set_scaled_color(T r, T g, T b) {
-        color_.x = r;
-        color_.y = g;
-        color_.z = b;
-        intensity_ = 1;
-        this->normalize_color();
-    }
-
-    void ColorIntensity::set_scaled_color(T rgb) {
-        color_.x = rgb;
-        color_.y = rgb;
-        color_.z = rgb;
-        intensity_ = 1;
-        this->normalize_color();
-    }
-
-    void ColorIntensity::normalize_color() {
-        constexpr T EPSILON = static_cast<T>(0.0001);
-
-        if (color_.x <= EPSILON && color_.y <= EPSILON && color_.z <= EPSILON) {
-            color_ = glm::tvec3<T>{ 0 };
-            intensity_ = 0;
-            return;
-        }
-
-        const auto max = ::max3(color_);
-        color_ /= max;
-        intensity_ *= max;
-        return;
-    }
-
-}  // namespace mirinae
 
 
 // DirectionalLight
