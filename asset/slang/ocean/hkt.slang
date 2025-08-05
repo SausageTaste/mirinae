@@ -41,22 +41,22 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     }
 
     const float w = dispersion(mag);
-    let exp_iwt = Complex::from_exp(w * u_pc.time);
-    let h0k_texel = in_hk[cascade][global_idx];
-    let h = Complex(h0k_texel.xy) * exp_iwt + Complex(h0k_texel.zw) * exp_iwt.conj();
-    let ih = Complex(-h.imag, h.real);  // ih = i * h
-    let minus_h = h * -1.0;             // -h
+    const Complex exp_iwt = Complex::from_exp(w * u_pc.time);
+    const float4 h0k_texel = in_hk[cascade][global_idx];
+    const Complex h = Complex(h0k_texel.xy) * exp_iwt + Complex(h0k_texel.zw) * exp_iwt.conj();
+    const Complex ih = Complex(-h.imag, h.real);  // ih = i * h
+    const Complex minus_h = h * -1.0;             // -h
 
-    let Dx = ih * (k.x * mag_rcp);
-    let Dy = h;
-    let Dz = ih * (k.y * mag_rcp);
+    const Complex Dx = ih * (k.x * mag_rcp);
+    const Complex Dy = h;
+    const Complex Dz = ih * (k.y * mag_rcp);
 
-    let dDx_dx = minus_h * (k.x * k.x * mag_rcp);  // Dx * i * k.x
-    let dDy_dx = ih * k.x;                         // Likewise
-    let dDz_dx = minus_h * (k.x * k.y * mag_rcp);
+    const Complex dDx_dx = minus_h * (k.x * k.x * mag_rcp);  // Dx * i * k.x
+    const Complex dDy_dx = ih * k.x;                         // Likewise
+    const Complex dDz_dx = minus_h * (k.x * k.y * mag_rcp);
 
-    let dDy_dz = ih * k.y;
-    let dDz_dz = minus_h * (k.y * k.y * mag_rcp);
+    const Complex dDy_dz = ih * k.y;
+    const Complex dDz_dz = minus_h * (k.y * k.y * mag_rcp);
 
     out_hkt_1[cascade][global_idx] = float4(
         Dx.add_i_times(Dz).to_float2(), Dy.add_i_times(dDz_dx).to_float2()
