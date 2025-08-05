@@ -877,7 +877,6 @@ namespace {
             }
 
             // Ocean
-            /*
             {
                 const auto entt = reg.create();
 
@@ -885,7 +884,7 @@ namespace {
                 i.set_name("Ocean");
 
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.height_ = -50;
+                ocean.height_ = 800;
                 ocean.wind_speed_ = 1;
                 ocean.fetch_ = 100000;
                 ocean.spread_blend_ = 0.284;
@@ -920,7 +919,6 @@ namespace {
                 cas->amplitude_ = 0.3;
                 cas->L_ = cas->lod_scale_;
             }
-            */
 
             // Atmosphere
             {
