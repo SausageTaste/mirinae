@@ -34,6 +34,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     params.tex_res_ = tex_res;
     params.world_pos_ = float3(0, viewHeight, 0);
     params.world_dir_ = normalize(mul(view_inv3, (HViewPos.xyz / HViewPos.w)));
+    params.sun_illuminance_ = 10;
     params.pv_inv_ = u_pc.pv_inv_;
     params.sample_count_ini_ = 30;
     params.variable_sample_count_ = true;

@@ -75,6 +75,7 @@ float4 gen_texel(uint3 dispatch_id) {
     params.world_pos_ = world_pos;
     params.world_dir_ = world_dir;
     params.sun_dir_ = u_pc.sun_direction.xyz;
+    params.sun_illuminance_ = 10;
     params.pv_inv_ = u_pc.pv_inv;
     params.sample_count_ini_ = max(1, (slice_id + 1) * 2);
     params.mie_ray_phase_ = true;
