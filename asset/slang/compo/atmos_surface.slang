@@ -121,7 +121,7 @@ float4 frag_main(VSOutput input) {
                           F0,
                           -view_dir_v,
                           ubuf_sh.dlight_dir.xyz,
-                          float3(1)
+                          float3(10)
                       );
     }
 

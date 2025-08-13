@@ -848,7 +848,7 @@ namespace {
                 auto& cam = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
                 cam.proj_.near_ = 0.1;
                 cam.proj_.far_ = 100000.000;
-                cam.exposure_ = 10;
+                cam.exposure_ = 1;
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = {

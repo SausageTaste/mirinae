@@ -30,6 +30,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     params.world_pos_.y = viewHeight;
     params.world_dir_ = float3(0, cos_angle, sqrt(1 - cos_angle * cos_angle));
     params.pv_inv_ = u_pc.pv_inv_;
+    params.sun_illuminance_ = 10;
     // Can go a low as 10 sample but energy lost starts to be visible.
     params.sample_count_ini_ = 40;
     let ss = IntegrateScatteredLuminance(NullTransLut(), NullMulScatLut(), Atmosphere, params);
