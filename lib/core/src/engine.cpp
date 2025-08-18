@@ -1059,7 +1059,7 @@ namespace {
                 auto& mdl = reg.emplace<mirinae::cpnt::MdlActorSkinned>(entt);
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 0, 2000, 0 };
+                tform.pos_ = { 438, 1875, -66 };
 
 #if true
                 cosmos_->cam_ctrl().anim_idle_ = "idle_normal_1";
@@ -1088,7 +1088,6 @@ namespace {
             }
 
             // City
-            /*
             {
                 const auto entt = reg.create();
 
@@ -1099,12 +1098,11 @@ namespace {
                 mdl.model_path_ = "Sung/city.dun/city.dmd";
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 0, 1289, 0 };
+                tform.pos_ = { 510, 1874, -23 };
                 tform.set_scale(0.65);
 
                 cosmos_->phys_world().give_body_triangles(entt, reg);
             }
-            */
 
             // Script
             /*
