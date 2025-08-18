@@ -57,6 +57,8 @@ FSOutput frag_main(VSOutput input) {
 
     var normal = normal_texel.xyz * 2 - 1;
     normal = mul(input.tbn_, normal);
+    // if (dot(input.pos_v_.xyz, normal) > 0)
+    //     normal = -normal;
     normal = normalize(normal) * 0.5 + 0.5;
 
     FSOutput output;
