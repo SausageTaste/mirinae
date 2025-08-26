@@ -1,3 +1,6 @@
+import "../module/coordinates";
+
+
 struct VSInput {
     float3 pos_;
     float2 texco_;
@@ -9,8 +12,24 @@ struct VSOutput {
 };
 
 struct TescFactors {
-    float tess_factors[4] : SV_TessFactor;
-    float inside_tess_factors[2] : SV_InsideTessFactor;
+    [mutating]
+    void set_zero() {
+        tess_factors_[0] = 0;
+        tess_factors_[1] = 0;
+        tess_factors_[2] = 0;
+        tess_factors_[3] = 0;
+        inside_tess_factors_[0] = 0;
+        inside_tess_factors_[1] = 0;
+    }
+
+    [mutating]
+    void interpolate_inside_factors() {
+        inside_tess_factors_[0] = (tess_factors_[1] + tess_factors_[3]) * 0.5;
+        inside_tess_factors_[1] = (tess_factors_[0] + tess_factors_[2]) * 0.5;
+    }
+
+    float tess_factors_[4] : SV_TessFactor;
+    float inside_tess_factors_[2] : SV_InsideTessFactor;
 };
 
 struct HSOutput {
@@ -45,38 +64,42 @@ VSOutput vert_main(VSInput input) {
 
 
 TescFactors PatchConstantFunction(InputPatch<VSOutput, 4> patch) {
-    float4 p00 = mul(u_pc.pvm_, float4(patch[0].pos_, 1));
-    float4 p01 = mul(u_pc.pvm_, float4(patch[1].pos_, 1));
-    float4 p11 = mul(u_pc.pvm_, float4(patch[2].pos_, 1));
-    float4 p10 = mul(u_pc.pvm_, float4(patch[3].pos_, 1));
-    p00 /= p00.w;
-    p01 /= p01.w;
-    p11 /= p11.w;
-    p10 /= p10.w;
+    TescFactors output;
 
-    p00.xy = (p00.xy * 0.5 + 0.5) * u_pc.fbuf_size_;
-    p01.xy = (p01.xy * 0.5 + 0.5) * u_pc.fbuf_size_;
-    p11.xy = (p11.xy * 0.5 + 0.5) * u_pc.fbuf_size_;
-    p10.xy = (p10.xy * 0.5 + 0.5) * u_pc.fbuf_size_;
+    let height_vec = float3(0, u_pc.height_scale_, 0);
+    let points = float2[](
+        persp_mul(u_pc.pvm_, patch[0].pos_).xy,
+        persp_mul(u_pc.pvm_, patch[1].pos_).xy,
+        persp_mul(u_pc.pvm_, patch[2].pos_).xy,
+        persp_mul(u_pc.pvm_, patch[3].pos_).xy,
+        persp_mul(u_pc.pvm_, patch[0].pos_ + height_vec).xy,
+        persp_mul(u_pc.pvm_, patch[1].pos_ + height_vec).xy,
+        persp_mul(u_pc.pvm_, patch[2].pos_ + height_vec).xy,
+        persp_mul(u_pc.pvm_, patch[3].pos_ + height_vec).xy,
+    );
 
-    let edge0 = distance(p00.xy, p01.xy);
-    let edge1 = distance(p01.xy, p11.xy);
-    let edge2 = distance(p11.xy, p10.xy);
-    let edge3 = distance(p10.xy, p00.xy);
+    if (!is_is_screen(points)) {
+        output.set_zero();
+        return output;
+    }
+
+    const float2 half_fbuf = u_pc.fbuf_size_ * 0.5;
+    const float2 s00 = (points[0] * half_fbuf + half_fbuf);
+    const float2 s01 = (points[1] * half_fbuf + half_fbuf);
+    const float2 s11 = (points[2] * half_fbuf + half_fbuf);
+    const float2 s10 = (points[3] * half_fbuf + half_fbuf);
+
+    const float edge0 = distance(s00, s01);
+    const float edge1 = distance(s01, s11);
+    const float edge2 = distance(s11, s10);
+    const float edge3 = distance(s10, s00);
 
     let MAX_TESS_LEVEL = 64;
-    let tess_level0 = clamp(edge3 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
-    let tess_level1 = clamp(edge0 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
-    let tess_level2 = clamp(edge1 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
-    let tess_level3 = clamp(edge2 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
-
-    TescFactors output;
-    output.tess_factors[0] = tess_level0;
-    output.tess_factors[1] = tess_level1;
-    output.tess_factors[2] = tess_level2;
-    output.tess_factors[3] = tess_level3;
-    output.inside_tess_factors[0] = (tess_level1 + tess_level3) * 0.5;
-    output.inside_tess_factors[1] = (tess_level0 + tess_level2) * 0.5;
+    output.tess_factors_[0] = clamp(edge3 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
+    output.tess_factors_[1] = clamp(edge0 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
+    output.tess_factors_[2] = clamp(edge1 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
+    output.tess_factors_[3] = clamp(edge2 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
+    output.interpolate_inside_factors();
     return output;
 }
 
