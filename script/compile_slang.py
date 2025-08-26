@@ -85,9 +85,14 @@ def __gen_one_slang_cmds(file_path):
     basic_cmd = [
         SLANGC_PATH,
         file_path,
-        "-O3",
         "-profile", "glsl_450",
     ]
+
+    if False:
+        basic_cmd.append("-O3")
+    else:
+        basic_cmd.append("-g3")
+        basic_cmd.append("-gdwarf")
 
     for func_name in found_entry_points:
         suffix = func_name.strip("_main")
