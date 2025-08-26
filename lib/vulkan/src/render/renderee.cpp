@@ -2,6 +2,7 @@
 
 #include "mirinae/render/renderee.hpp"
 
+#include <numeric>
 #include <set>
 
 #include <daltools/dmd/parser.h>
@@ -315,7 +316,8 @@ namespace mirinae {
         std::swap(desc_sets_, rhs.desc_sets_);
     }
 
-    OverlayRenderUnit& OverlayRenderUnit::operator=(OverlayRenderUnit&& rhs
+    OverlayRenderUnit& OverlayRenderUnit::operator=(
+        OverlayRenderUnit&& rhs
     ) noexcept {
         std::swap(desc_pool_, rhs.desc_pool_);
         std::swap(uniform_buf_, rhs.uniform_buf_);
@@ -571,6 +573,10 @@ namespace {
                     dst_vertex.uv_ = src_vertex.uv_;
                     dst_vertex.joint_indices_ = src_vertex.joint_indices_;
                     dst_vertex.joint_weights_ = src_vertex.joint_weights_;
+
+                    this->refine_joint_data(
+                        dst_vertex.joint_indices_, dst_vertex.joint_weights_
+                    );
                 }
 
                 {
@@ -607,12 +613,32 @@ namespace {
             return units_indexed_;
         }
 
-        const std::vector<mirinae::VerticesSkinnedPair>& units_indexed_joint(
-        ) const {
+        const std::vector<mirinae::VerticesSkinnedPair>&
+        units_indexed_joint() const {
             return units_indexed_joint_;
         }
 
     private:
+        static void refine_joint_data(glm::ivec4& indices, glm::vec4& weights) {
+            for (int i = 0; i < 4; ++i) {
+                if (indices[i] < 0) {
+                    indices[i] = 0;
+                    weights[i] = 0;
+                }
+            }
+
+            const auto weight_sum = std::reduce(&weights[0], &weights[0] + 4);
+            if (0 == weight_sum) {
+                indices = glm::ivec4(0);
+                weights = glm::vec4(0);
+                return;
+            }
+
+            for (int i = 0; i < 4; ++i) {
+                weights[i] /= weight_sum;
+            }
+        }
+
         dal::Filesystem& filesys_;
         dal::path path_;
         std::vector<std::byte> raw_data_;
@@ -792,7 +818,8 @@ namespace {
             if (loading)
                 return dal::ReqResult::loading;
 
-            auto output = std::make_shared<mirinae::RenderModelSkinned>(device_
+            auto output = std::make_shared<mirinae::RenderModelSkinned>(
+                device_
             );
 
             for (size_t i = 0; i < dmd->units_indexed_joint_.size(); ++i) {
