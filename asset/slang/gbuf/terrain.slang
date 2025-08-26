@@ -105,10 +105,10 @@ TescFactors PatchConstantFunction(InputPatch<VSOutput, 4> patch) {
     const float edge3 = distance(s10, s00);
 
     let MAX_TESS_LEVEL = 64;
-    output.tess_factors_[0] = clamp(edge3 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
-    output.tess_factors_[1] = clamp(edge0 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
-    output.tess_factors_[2] = clamp(edge1 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
-    output.tess_factors_[3] = clamp(edge2 * u_pc.tess_factor_, 0, MAX_TESS_LEVEL);
+    output.tess_factors_[0] = clamp(edge3 * u_pc.tess_factor_, 1, MAX_TESS_LEVEL);
+    output.tess_factors_[1] = clamp(edge0 * u_pc.tess_factor_, 1, MAX_TESS_LEVEL);
+    output.tess_factors_[2] = clamp(edge1 * u_pc.tess_factor_, 1, MAX_TESS_LEVEL);
+    output.tess_factors_[3] = clamp(edge2 * u_pc.tess_factor_, 1, MAX_TESS_LEVEL);
     output.interpolate_inside_factors();
     return output;
 }
