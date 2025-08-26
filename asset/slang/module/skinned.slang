@@ -1,7 +1,7 @@
 module skinned;
 
 
-public static const int MAX_JOINTS = 256;
+public static const int MAX_JOINTS = 128;
 
 
 public float4x4 make_joint_transform(int4 j_ids, float4 j_weights, float4x4 j_tforms[MAX_JOINTS]) {
