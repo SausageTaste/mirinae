@@ -66,13 +66,13 @@ layout(set = 2, binding = 0) ConstantBuffer<U_GbufActorSkinned> u_gbuf_actor;
 [shader("vertex")]
 VSOutput vert_main(VSInput input) {
     let joint_mat = make_joint_transform(input.j_ids_, input.j_weights_, u_gbuf_actor.j_tforms_);
-    let pvmj = mul(u_gbuf_actor.pvm_, joint_mat);
-    let vmj = mul(u_gbuf_actor.view_model_, joint_mat);
+    let after_joint = mul(joint_mat, float4(input.pos_, 1));
+    let vmj3 = mul(float3x3(u_gbuf_actor.view_model_), float3x3(joint_mat));
 
     VSOutput output;
-    output.tbn_ = make_tbn_mat(input.normal_, input.tangent_, float3x3(vmj));
-    output.pos_ = mul(pvmj, float4(input.pos_, 1));
-    output.frag_pos_v_ = mul(vmj, float4(input.pos_, 1)).xyz;
+    output.tbn_ = make_tbn_mat(input.normal_, input.tangent_, vmj3);
+    output.pos_ = mul(u_gbuf_actor.pvm_, after_joint);
+    output.frag_pos_v_ = mul(u_gbuf_actor.view_model_, after_joint).xyz;
     output.texco_ = input.texcoord_;
     return output;
 }
