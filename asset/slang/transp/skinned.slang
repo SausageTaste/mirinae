@@ -160,7 +160,7 @@ float4 frag_main(VSOutput input, float4 screen_pos: SV_Position) : SV_Target {
                           F0,
                           -view_dir_v,
                           u_main.dlight_dir.xyz,
-                          float3(1)
+                          float3(10)
                       );
     }
 
