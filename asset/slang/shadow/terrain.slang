@@ -1,4 +1,4 @@
-import "../module/coordinates";
+import "../module/tess";
 
 
 struct VSInput {
@@ -9,27 +9,6 @@ struct VSInput {
 struct VSOutput {
     float3 pos_ : SV_POSITION;
     float2 texco_;
-};
-
-struct TescFactors {
-    [mutating]
-    void set_zero() {
-        tess_factors_[0] = 0;
-        tess_factors_[1] = 0;
-        tess_factors_[2] = 0;
-        tess_factors_[3] = 0;
-        inside_tess_factors_[0] = 0;
-        inside_tess_factors_[1] = 0;
-    }
-
-    [mutating]
-    void interpolate_inside_factors() {
-        inside_tess_factors_[0] = (tess_factors_[1] + tess_factors_[3]) * 0.5;
-        inside_tess_factors_[1] = (tess_factors_[0] + tess_factors_[2]) * 0.5;
-    }
-
-    float tess_factors_[4] : SV_TessFactor;
-    float inside_tess_factors_[2] : SV_InsideTessFactor;
 };
 
 struct HSOutput {
