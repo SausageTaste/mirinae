@@ -26,6 +26,7 @@
 #include "mirinae/renderpass/envmap/envmap.hpp"
 #include "mirinae/renderpass/gbuf/gbuf.hpp"
 #include "mirinae/renderpass/misc/misc.hpp"
+#include "mirinae/renderpass/misc/skin_anim.hpp"
 #include "mirinae/renderpass/ocean/ocean.hpp"
 #include "mirinae/renderpass/shadow/shadow.hpp"
 #include "mirinae/renderpass/transp/transp.hpp"
@@ -1124,6 +1125,10 @@ namespace {
                 );
 
                 mirinae::RpCreateBundle cbundle{ *cosmos_, rp_res_, device_ };
+
+                render_passes_.push_back(
+                    mirinae::rp::create_rp_skin_anim(cbundle)
+                );
 
                 render_passes_.push_back(
                     mirinae::rp::create_rp_atmos_trans_lut(cbundle)
