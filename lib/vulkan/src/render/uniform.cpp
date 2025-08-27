@@ -118,6 +118,16 @@ namespace mirinae {
             .finish_binding();
     }
 
+    DescLayoutBuilder& DescLayoutBuilder::add_sbuf(
+        VkShaderStageFlags stage_flags, uint32_t count
+    ) {
+        return this->new_binding()
+            .set_type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+            .set_count(count)
+            .set_stage(stage_flags)
+            .finish_binding();
+    }
+
     DescLayoutBuilder& DescLayoutBuilder::add_img(
         VkShaderStageFlags stage_flags, uint32_t count
     ) {
@@ -422,6 +432,25 @@ namespace mirinae {
     }
 
     DescWriter& DescWriter::add_buf_write(
+        VkDescriptorSet descset, uint32_t binding
+    ) {
+        const auto& buf_info = buffer_info_.back();
+        buffer_info_.emplace_back();
+
+        auto& write = write_info_.emplace_back();
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = descset;
+        write.dstBinding = binding;
+        write.dstArrayElement = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        write.descriptorCount = buf_info.size();
+        write.pImageInfo = nullptr;
+        write.pBufferInfo = buf_info.data();
+
+        return *this;
+    }
+
+    DescWriter& DescWriter::add_storage_buf_write(
         VkDescriptorSet descset, uint32_t binding
     ) {
         const auto& buf_info = buffer_info_.back();

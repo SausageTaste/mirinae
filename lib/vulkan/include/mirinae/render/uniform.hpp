@@ -176,6 +176,9 @@ namespace mirinae {
             return this->add_ubuf(VK_SHADER_STAGE_FRAGMENT_BIT, cnt);
         }
 
+        // Storage buffer
+        DescLayoutBuilder& add_sbuf(VkShaderStageFlags, uint32_t cnt);
+
         // Combined image sampler
         DescLayoutBuilder& add_img(VkShaderStageFlags, uint32_t cnt);
         DescLayoutBuilder& add_img_tesc(uint32_t cnt);
@@ -278,6 +281,7 @@ namespace mirinae {
         DescWriter& add_storage_img_info(VkImageView img_view);
 
         DescWriter& add_buf_write(VkDescriptorSet, uint32_t binding);
+        DescWriter& add_storage_buf_write(VkDescriptorSet, uint32_t binding);
 
         DescWriter& add_sampled_img_write(VkDescriptorSet, uint32_t binding);
         DescWriter& add_storage_img_write(VkDescriptorSet, uint32_t binding);
