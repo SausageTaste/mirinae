@@ -9,6 +9,7 @@
 #include <sung/basic/stringtool.hpp>
 
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 
 
 namespace {
@@ -182,7 +183,9 @@ namespace mirinae {
             max_flight_count, desclayout.layout(), device.logi_device()
         );
 
-        uniform_buf_.init_ubuf(sizeof(U_GbufModel), device.mem_alloc());
+        mirinae::BufferCreateInfo ubuf_cinfo;
+        ubuf_cinfo.preset_ubuf(sizeof(U_GbufModel));
+        uniform_buf_.init(ubuf_cinfo, device.mem_alloc());
         uniform_buf_.set_data(
             &ubuf_data, sizeof(U_GbufModel), device.mem_alloc()
         );
@@ -254,7 +257,9 @@ namespace mirinae {
             max_flight_count, desclayout.layout(), device.logi_device()
         );
 
-        uniform_buf_.init_ubuf(sizeof(U_GbufModel), device.mem_alloc());
+        BufferCreateInfo ubuf_cinfo;
+        ubuf_cinfo.preset_ubuf(sizeof(U_GbufModel));
+        uniform_buf_.init(ubuf_cinfo, device.mem_alloc());
         uniform_buf_.set_data(
             &ubuf_data, sizeof(U_GbufModel), device.mem_alloc()
         );
@@ -341,9 +346,11 @@ namespace mirinae {
             max_flight_count, desclayout.layout(), device_.logi_device()
         );
 
+        BufferCreateInfo ubuf_cinfo;
+        ubuf_cinfo.preset_ubuf(sizeof(U_OverlayMain));
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();
-            ubuf.init_ubuf(sizeof(U_OverlayMain), device_.mem_alloc());
+            ubuf.init(ubuf_cinfo, device_.mem_alloc());
         }
 
         DescWriteInfoBuilder builder;
@@ -903,9 +910,11 @@ namespace mirinae {
             max_flight_count, desclayout.layout(), device_.logi_device()
         );
 
+        BufferCreateInfo ubuf_cinfo;
+        ubuf_cinfo.preset_ubuf(sizeof(U_GbufActor));
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();
-            ubuf.init_ubuf(sizeof(U_GbufActor), device_.mem_alloc());
+            ubuf.init(ubuf_cinfo, device_.mem_alloc());
         }
 
         DescWriteInfoBuilder builder;
@@ -955,9 +964,11 @@ namespace mirinae {
             max_flight_count, desclayout.layout(), device_.logi_device()
         );
 
+        BufferCreateInfo ubuf_cinfo;
+        ubuf_cinfo.preset_ubuf(sizeof(U_GbufActorSkinned));
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& ubuf = uniform_buf_.emplace_back();
-            ubuf.init_ubuf(sizeof(U_GbufActorSkinned), device_.mem_alloc());
+            ubuf.init(ubuf_cinfo, device_.mem_alloc());
         }
 
         DescWriteInfoBuilder builder;

@@ -7,6 +7,7 @@
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/ocean/common.hpp"
 
@@ -232,10 +233,11 @@ namespace {
                 iv_builder.format(img_info.format())
                     .mip_levels(img_info.mip_levels());
 
+                mirinae::BufferCreateInfo buf_cinfo;
+                buf_cinfo.preset_staging(noise_data.size());
+
                 mirinae::Buffer staging_buffer;
-                staging_buffer.init_staging(
-                    noise_data.size(), device_.mem_alloc()
-                );
+                staging_buffer.init(buf_cinfo, device_.mem_alloc());
                 staging_buffer.set_data(
                     noise_data.data(), noise_data.size(), device_.mem_alloc()
                 );

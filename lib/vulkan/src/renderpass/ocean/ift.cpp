@@ -9,6 +9,7 @@
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/ocean/common.hpp"
 
@@ -443,10 +444,11 @@ namespace {
                     .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                     .add_usage_sampled();
 
+                mirinae::BufferCreateInfo buf_cinfo;
+                buf_cinfo.preset_staging(bufffly_img.data_size());
+
                 mirinae::Buffer staging_buffer;
-                staging_buffer.init_staging(
-                    bufffly_img.data_size(), device_.mem_alloc()
-                );
+                staging_buffer.init(buf_cinfo, device_.mem_alloc());
                 staging_buffer.set_data(
                     bufffly_img.data(),
                     bufffly_img.data_size(),

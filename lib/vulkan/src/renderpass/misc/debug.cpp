@@ -4,6 +4,7 @@
 
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
@@ -56,12 +57,12 @@ namespace {
             }
 
             if (buf_.size() < buf_size) {
-                mirinae::BufferCreateInfo cinfo{ device.mem_alloc() };
+                mirinae::BufferCreateInfo cinfo;
                 cinfo.set_size(buf_size)
                     .add_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT)
                     .add_usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
                     .add_alloc_flag_host_access_seq_write();
-                buf_.init(cinfo);
+                buf_.init(cinfo, device.mem_alloc());
             }
 
             buf_.set_data(vertices, buf_size, device.mem_alloc());

@@ -10,6 +10,7 @@
 
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/enum_str.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
 
@@ -205,8 +206,11 @@ namespace {
             id_ = id;
             img_data_ = img_data;
 
+            mirinae::BufferCreateInfo staging_buf_cinfo;
+            staging_buf_cinfo.preset_staging(image.data_size());
+
             mirinae::Buffer staging_buffer;
-            staging_buffer.init_staging(image.data_size(), device_.mem_alloc());
+            staging_buffer.init(staging_buf_cinfo, device_.mem_alloc());
             staging_buffer.set_data(
                 image.data(), image.data_size(), device_.mem_alloc()
             );
@@ -263,8 +267,11 @@ namespace {
             id_ = id;
             img_data_ = img_data;
 
+            mirinae::BufferCreateInfo staging_buf_cinfo;
+            staging_buf_cinfo.preset_staging(image.data_size());
+
             mirinae::Buffer staging_buffer;
-            staging_buffer.init_staging(image.data_size(), device_.mem_alloc());
+            staging_buffer.init(staging_buf_cinfo, device_.mem_alloc());
             staging_buffer.set_data(
                 image.data(), image.data_size(), device_.mem_alloc()
             );

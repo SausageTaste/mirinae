@@ -2,6 +2,7 @@
 
 #include <sung/basic/mesh_builder.hpp>
 
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderee/terrain.hpp"
 
 
@@ -144,12 +145,12 @@ namespace mirinae {
         {
             const auto data_size = sizeof(::MeshBuilder::Vertex) *
                                    mesh_buil.vtx().size();
-            mirinae::BufferCreateInfo cinfo{ device.mem_alloc() };
+            mirinae::BufferCreateInfo cinfo;
             cinfo.set_size(data_size)
                 .add_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT)
                 .add_usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
                 .add_alloc_flag_host_access_seq_write();
-            vtx_buf_.init(cinfo);
+            vtx_buf_.init(cinfo, device.mem_alloc());
 
             vtx_buf_.set_data(
                 mesh_buil.vtx().data(), data_size, device.mem_alloc()
@@ -159,12 +160,12 @@ namespace mirinae {
         // Index buffer
         {
             const auto data_size = sizeof(uint32_t) * mesh_buil.idx().size();
-            mirinae::BufferCreateInfo cinfo{ device.mem_alloc() };
+            mirinae::BufferCreateInfo cinfo;
             cinfo.set_size(data_size)
                 .add_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT)
                 .add_usage(VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
                 .add_alloc_flag_host_access_seq_write();
-            idx_buf_.init(cinfo);
+            idx_buf_.init(cinfo, device.mem_alloc());
 
             idx_buf_.set_data(
                 mesh_buil.idx().data(), data_size, device.mem_alloc()

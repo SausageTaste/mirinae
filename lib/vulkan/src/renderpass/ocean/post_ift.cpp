@@ -8,6 +8,7 @@
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/ocean/common.hpp"
 

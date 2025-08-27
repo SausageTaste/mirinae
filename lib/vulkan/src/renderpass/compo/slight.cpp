@@ -10,6 +10,7 @@
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/draw_set.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
@@ -516,11 +517,14 @@ namespace {
                 device.logi_device()
             );
 
+            mirinae::BufferCreateInfo buf_cinfo;
+            buf_cinfo.preset_ubuf(sizeof(U_CompoSlightMain));
+
             mirinae::DescWriter writer;
             for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& fd = fdata[i];
                 fd.desc_set_ = desc_sets[i];
-                fd.ubuf_.init_ubuf<U_CompoSlightMain>(device.mem_alloc());
+                fd.ubuf_.init(buf_cinfo, device.mem_alloc());
 
                 // Depth
                 writer.add_img_info()

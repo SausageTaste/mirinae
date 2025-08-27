@@ -1,5 +1,6 @@
 #include "mirinae/vulkan_pch.h"
 
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/render/vkcomposition.hpp"
 
 
@@ -14,8 +15,11 @@ namespace {
         VkQueue graphics_q,
         VkDevice logi_device
     ) {
+        mirinae::BufferCreateInfo buf_cinfo;
+        buf_cinfo.preset_staging(src_size);
+
         mirinae::Buffer staging_buffer;
-        staging_buffer.init_staging(src_size, allocator);
+        staging_buffer.init(buf_cinfo, allocator);
         staging_buffer.set_data(src, src_size, allocator);
 
         auto cmdbuf = cmdpool.alloc(logi_device);
@@ -45,9 +49,12 @@ namespace mirinae {
         VkQueue graphics_q,
         VkDevice logi_device
     ) {
+        BufferCreateInfo buf_cinfo;
+
         // Vertices data size
         const auto v_s = sizeof(VertexStatic) * vertices.vertices_.size();
-        vertex_buf_.init_vertices(v_s, allocator);
+        buf_cinfo.preset_vertices(v_s);
+        vertex_buf_.init(buf_cinfo, allocator);
         ::set_buffer_data(
             vertex_buf_,
             vertices.vertices_.data(),
@@ -60,7 +67,8 @@ namespace mirinae {
 
         // Indices data size
         const auto i_s = sizeof(VertIndexType_t) * vertices.indices_.size();
-        index_buf_.init_indices(i_s, allocator);
+        buf_cinfo.preset_indices(i_s);
+        index_buf_.init(buf_cinfo, allocator);
         ::set_buffer_data(
             index_buf_,
             vertices.indices_.data(),
@@ -81,9 +89,12 @@ namespace mirinae {
         VkQueue graphics_q,
         VkDevice logi_device
     ) {
+        BufferCreateInfo buf_cinfo;
+
         // Vertices data size
         const auto v_s = sizeof(VertexSkinned) * vertices.vertices_.size();
-        vertex_buf_.init_vertices(v_s, allocator);
+        buf_cinfo.preset_vertices(v_s);
+        vertex_buf_.init(buf_cinfo, allocator);
         ::set_buffer_data(
             vertex_buf_,
             vertices.vertices_.data(),
@@ -96,7 +107,8 @@ namespace mirinae {
 
         // Indices data size
         const auto i_s = sizeof(VertIndexType_t) * vertices.indices_.size();
-        index_buf_.init_indices(i_s, allocator);
+        buf_cinfo.preset_indices(i_s);
+        index_buf_.init(buf_cinfo, allocator);
         ::set_buffer_data(
             index_buf_,
             vertices.indices_.data(),

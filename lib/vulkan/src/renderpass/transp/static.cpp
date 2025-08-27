@@ -10,6 +10,7 @@
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/draw_set.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
@@ -368,8 +369,11 @@ namespace {
 
             // Ubuf
             for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                mirinae::BufferCreateInfo buf_cinfo;
+                buf_cinfo.preset_ubuf(sizeof(::U_TranspFrame));
+
                 auto& fd = frame_data_.at(i);
-                fd.ubuf_.init_ubuf<::U_TranspFrame>(device.mem_alloc());
+                fd.ubuf_.init(buf_cinfo, device.mem_alloc());
             }
 
             // Desc sets

@@ -5,6 +5,7 @@
 #include <entt/entity/entity.hpp>
 
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 
 
 // ColorCubeMap

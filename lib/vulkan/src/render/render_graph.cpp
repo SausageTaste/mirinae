@@ -3,6 +3,7 @@
 #include "mirinae/render/render_graph.hpp"
 
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
@@ -109,8 +110,8 @@ namespace mirinae::rg {
         double ratio_w, double ratio_h
     ) {
         size_type_ = ImageSizeType::relative_to_swapchain;
-        width_ = ratio_w * REL_SIZE_VALUE_FACTOR;
-        height_ = ratio_h * REL_SIZE_VALUE_FACTOR;
+        width_ = static_cast<uint32_t>(ratio_w * REL_SIZE_VALUE_FACTOR);
+        height_ = static_cast<uint32_t>(ratio_h * REL_SIZE_VALUE_FACTOR);
         return *this;
     }
 
@@ -640,8 +641,6 @@ namespace mirinae::rg {
                         .new_layout(VK_IMAGE_LAYOUT_GENERAL)
                         .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                         .set_signle_mip_layer();
-
-
                 }
 
                 break;

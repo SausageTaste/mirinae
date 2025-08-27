@@ -25,41 +25,13 @@ namespace mirinae {
     VulkanMemoryAllocator create_vma_allocator(
         VkInstance instance, VkPhysicalDevice phys_device, VkDevice logi_device
     );
+
     void destroy_vma_allocator(VulkanMemoryAllocator allocator);
 
 
-    class BufferCreateInfo {
-
-    public:
-        BufferCreateInfo(VulkanMemoryAllocator allocator);
-
-        BufferCreateInfo& reset();
-
-        BufferCreateInfo& set_size(VkDeviceSize size);
-        BufferCreateInfo& set_usage(VkBufferUsageFlags usage);
-        BufferCreateInfo& add_usage(VkBufferUsageFlags usage);
-        BufferCreateInfo& reset_usage();
-
-        BufferCreateInfo& prefer_device();
-        BufferCreateInfo& prefer_host();
-
-        // VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-        BufferCreateInfo& add_alloc_flag_host_access_seq_write();
-
-        BufferCreateInfo& preset_staging(VkDeviceSize size);
-        BufferCreateInfo& preset_ubuf(VkDeviceSize size);
-        BufferCreateInfo& preset_vertices(VkDeviceSize size);
-        BufferCreateInfo& preset_indices(VkDeviceSize size);
-
-        bool build(VkBuffer& out_buffer, VmaAllocation& out_alloc) const;
-
-        VulkanMemoryAllocator allocator() const { return allocator_; }
-        VkDeviceSize size() const { return buffer_.size; }
-
-    private:
-        VkBufferCreateInfo buffer_ = {};
-        VmaAllocationCreateInfo alloc_ = {};
-        VulkanMemoryAllocator allocator_ = nullptr;
+    struct BufferCinfoBundle {
+        VkBufferCreateInfo buf_info_;
+        VmaAllocationCreateInfo alloc_info_;
     };
 
 
@@ -72,17 +44,7 @@ namespace mirinae {
         Buffer(Buffer&& rhs) noexcept;
         Buffer& operator=(Buffer&& rhs) noexcept;
 
-        void init(const BufferCreateInfo& cinfo);
-        void init_staging(VkDeviceSize size, VulkanMemoryAllocator allocator);
-        void init_ubuf(VkDeviceSize size, VulkanMemoryAllocator allocator);
-        void init_vertices(VkDeviceSize size, VulkanMemoryAllocator allocator);
-        void init_indices(VkDeviceSize size, VulkanMemoryAllocator allocator);
-
-        template <typename TData>
-        void init_ubuf(VulkanMemoryAllocator allocator) {
-            return this->init_ubuf(sizeof(TData), allocator);
-        }
-
+        void init(const BufferCinfoBundle& cinfo, VulkanMemoryAllocator);
         void destroy(VulkanMemoryAllocator allocator);
 
         VkBuffer get() const { return buffer_; }
@@ -106,41 +68,6 @@ namespace mirinae {
         VkBuffer buffer_ = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;
         VkDeviceSize size_ = 0;
-    };
-
-
-    class ImageCreateInfo {
-
-    public:
-        ImageCreateInfo();
-        const VkImageCreateInfo& get() const { return info_; }
-
-        VkFormat format() const { return info_.format; }
-        uint32_t mip_levels() const { return info_.mipLevels; }
-
-        ImageCreateInfo& set_dimensions(uint32_t len) {
-            return this->set_dimensions(len, len);
-        }
-        ImageCreateInfo& set_dimensions(uint32_t width, uint32_t height);
-        ImageCreateInfo& set_dim3(uint32_t x, uint32_t y, uint32_t z);
-        ImageCreateInfo& set_type(VkImageType type);
-        ImageCreateInfo& set_format(VkFormat format);
-        ImageCreateInfo& set_arr_layers(uint32_t arr_layers);
-
-        ImageCreateInfo& reset_usage();
-        ImageCreateInfo& add_usage(VkImageUsageFlags usage);
-        ImageCreateInfo& add_usage_sampled();
-
-        ImageCreateInfo& reset_flags();
-        ImageCreateInfo& add_flag(VkImageCreateFlags flags);
-
-        ImageCreateInfo& set_mip_levels(uint32_t v);
-        ImageCreateInfo& deduce_mip_levels();
-
-        ImageCreateInfo& fetch_from_image(const dal::IImage2D& img, bool srgb);
-
-    private:
-        VkImageCreateInfo info_ = {};
     };
 
 

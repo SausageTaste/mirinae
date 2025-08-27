@@ -10,6 +10,7 @@
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/draw_set.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
@@ -508,6 +509,9 @@ namespace {
                     device.logi_device()
                 );
 
+                mirinae::BufferCreateInfo buf_cinfo;
+                buf_cinfo.preset_ubuf(sizeof(U_CompoDlightShadowMap));
+
                 mirinae::DescWriter writer;
                 for (uint32_t i_fd = 0; i_fd < FD_COUNT; i_fd++) {
                     const mirinae::FrameIndex f_idx(i_fd);
@@ -516,9 +520,7 @@ namespace {
                     for (uint32_t i_sh = 0; i_sh < dlights.count(); ++i_sh) {
                         auto& sh = fd.shadows_.emplace_back();
                         sh.desc_set_ = desc_sets.at(i_sh * FD_COUNT + i_fd);
-                        sh.ubuf_.init_ubuf<U_CompoDlightShadowMap>(
-                            device.mem_alloc()
-                        );
+                        sh.ubuf_.init(buf_cinfo, device.mem_alloc());
 
                         // Shadow map
                         writer.add_img_info()
@@ -632,11 +634,14 @@ namespace {
                 device.logi_device()
             );
 
+            mirinae::BufferCreateInfo buf_cinfo;
+            buf_cinfo.preset_ubuf(sizeof(U_CompoAtmosSurfMain));
+
             mirinae::DescWriter writer;
             for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& fd = fdata[i];
                 fd.desc_set_ = desc_sets[i];
-                fd.ubuf_.init_ubuf<U_CompoAtmosSurfMain>(device.mem_alloc());
+                fd.ubuf_.init(buf_cinfo, device.mem_alloc());
 
                 // Depth
                 writer.add_img_info()

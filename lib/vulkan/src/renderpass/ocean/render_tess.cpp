@@ -12,6 +12,7 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/ocean/common.hpp"
 
@@ -800,8 +801,11 @@ namespace {
 
             // Ubuf
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                mirinae::BufferCreateInfo buf_cinfo;
+                buf_cinfo.preset_ubuf(sizeof(U_OceanTessParams));
+
                 auto& fd = frame_data_[i];
-                fd.ubuf_.init_ubuf<U_OceanTessParams>(device.mem_alloc());
+                fd.ubuf_.init(buf_cinfo, device.mem_alloc());
             }
 
             // Descriptor layout
