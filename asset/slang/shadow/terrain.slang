@@ -67,27 +67,27 @@ TescFactors PatchConstantFunction(InputPatch<VSOutput, 4> patch) {
     TescFactors output;
 
     let height_vec = float3(0, u_pc.height_scale_, 0);
-    let points = float2[](
-        persp_mul(u_pc.pvm_, patch[0].pos_).xy,
-        persp_mul(u_pc.pvm_, patch[1].pos_).xy,
-        persp_mul(u_pc.pvm_, patch[2].pos_).xy,
-        persp_mul(u_pc.pvm_, patch[3].pos_).xy,
-        persp_mul(u_pc.pvm_, patch[0].pos_ + height_vec).xy,
-        persp_mul(u_pc.pvm_, patch[1].pos_ + height_vec).xy,
-        persp_mul(u_pc.pvm_, patch[2].pos_ + height_vec).xy,
-        persp_mul(u_pc.pvm_, patch[3].pos_ + height_vec).xy,
+    let points = float3[](
+        persp_mul(u_pc.pvm_, patch[0].pos_).xyz,
+        persp_mul(u_pc.pvm_, patch[1].pos_).xyz,
+        persp_mul(u_pc.pvm_, patch[2].pos_).xyz,
+        persp_mul(u_pc.pvm_, patch[3].pos_).xyz,
+        persp_mul(u_pc.pvm_, patch[0].pos_ + height_vec).xyz,
+        persp_mul(u_pc.pvm_, patch[1].pos_ + height_vec).xyz,
+        persp_mul(u_pc.pvm_, patch[2].pos_ + height_vec).xyz,
+        persp_mul(u_pc.pvm_, patch[3].pos_ + height_vec).xyz,
     );
 
-    if (!is_is_screen(points)) {
+    if (!are_in_screen(points)) {
         output.set_zero();
         return output;
     }
 
     const float2 half_fbuf = u_pc.fbuf_size_ * 0.5;
-    const float2 s00 = (points[0] * half_fbuf + half_fbuf);
-    const float2 s01 = (points[1] * half_fbuf + half_fbuf);
-    const float2 s11 = (points[2] * half_fbuf + half_fbuf);
-    const float2 s10 = (points[3] * half_fbuf + half_fbuf);
+    const float2 s00 = (points[0].xy * half_fbuf + half_fbuf);
+    const float2 s01 = (points[1].xy * half_fbuf + half_fbuf);
+    const float2 s11 = (points[2].xy * half_fbuf + half_fbuf);
+    const float2 s10 = (points[3].xy * half_fbuf + half_fbuf);
 
     const float edge0 = distance(s00, s01);
     const float edge1 = distance(s01, s11);
