@@ -819,9 +819,7 @@ namespace { namespace task {
                 udata.joint_transforms_, mirinae::MAX_JOINTS, scene.clock()
             );
 
-            actor->udpate_ubuf(
-                rp_ctxt.f_index_.get(), udata, device.mem_alloc()
-            );
+            actor->update_ubuf(rp_ctxt.f_index_.get(), udata);
 
             return true;
         }

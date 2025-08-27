@@ -935,60 +935,6 @@ namespace mirinae {
 }  // namespace mirinae
 
 
-// RenderActorSkinned
-namespace mirinae {
-
-    RenderActorSkinned::RenderActorSkinned(VulkanDevice& vulkan_device)
-        : device_(vulkan_device) {}
-
-    RenderActorSkinned::~RenderActorSkinned() { this->destroy(); }
-
-    void RenderActorSkinned::init(
-        uint32_t max_flight_count, DesclayoutManager& desclayouts
-    ) {
-        auto& desclayout = desclayouts.get("gbuf:actor_skinned");
-        desc_pool_.init(
-            max_flight_count, desclayout.size_info(), device_.logi_device()
-        );
-        desc_sets_ = desc_pool_.alloc(
-            max_flight_count, desclayout.layout(), device_.logi_device()
-        );
-
-        BufferCreateInfo ubuf_cinfo;
-        ubuf_cinfo.preset_ubuf(sizeof(U_GbufActorSkinned));
-        for (uint32_t i = 0; i < max_flight_count; ++i) {
-            auto& ubuf = uniform_buf_.emplace_back();
-            ubuf.init(ubuf_cinfo, device_.mem_alloc());
-        }
-
-        DescWriteInfoBuilder builder;
-        for (size_t i = 0; i < max_flight_count; i++) {
-            builder.set_descset(desc_sets_.at(i)).add_ubuf(uniform_buf_.at(i));
-        }
-        builder.apply_all(device_.logi_device());
-    }
-
-    void RenderActorSkinned::destroy() {
-        uniform_buf_.clear();
-        desc_pool_.destroy(device_.logi_device());
-    }
-
-    void RenderActorSkinned::udpate_ubuf(
-        uint32_t index,
-        const U_GbufActorSkinned& data,
-        VulkanMemoryAllocator mem_alloc
-    ) {
-        auto& ubuf = uniform_buf_.at(index);
-        ubuf.set_data(&data, sizeof(U_GbufActorSkinned));
-    }
-
-    VkDescriptorSet RenderActorSkinned::get_desc_set(size_t index) const {
-        return desc_sets_.at(index);
-    }
-
-}  // namespace mirinae
-
-
 // Free functions
 namespace mirinae {
 

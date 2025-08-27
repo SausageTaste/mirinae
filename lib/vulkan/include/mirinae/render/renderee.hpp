@@ -192,28 +192,4 @@ namespace mirinae {
         VulkanDevice& device_;
     };
 
-
-    class RenderActorSkinned : public IRenActor {
-
-    public:
-        RenderActorSkinned(VulkanDevice& vulkan_device);
-        ~RenderActorSkinned();
-
-        void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
-        void destroy();
-
-        void udpate_ubuf(
-            uint32_t index,
-            const U_GbufActorSkinned& data,
-            VulkanMemoryAllocator mem_alloc
-        );
-        VkDescriptorSet get_desc_set(size_t index) const;
-
-    private:
-        DescPool desc_pool_;
-        std::vector<Buffer> uniform_buf_;
-        std::vector<VkDescriptorSet> desc_sets_;
-        VulkanDevice& device_;
-    };
-
 }  // namespace mirinae

@@ -5,6 +5,7 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/ocean.hpp"
 #include "mirinae/render/renderee.hpp"
+#include "mirinae/renderee/ren_actor_skinned.hpp"
 
 
 namespace mirinae {
