@@ -93,8 +93,28 @@ namespace mirinae {
         return *this;
     }
 
+    BufferCreateInfo& BufferCreateInfo::set_usage(VkBufferUsageFlags usage) {
+        buffer_.usage = usage;
+        return *this;
+    }
+
     BufferCreateInfo& BufferCreateInfo::add_usage(VkBufferUsageFlags usage) {
         buffer_.usage |= usage;
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::reset_usage() {
+        buffer_.usage = 0;
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::prefer_device() {
+        alloc_.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        return *this;
+    }
+
+    BufferCreateInfo& BufferCreateInfo::prefer_host() {
+        alloc_.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
         return *this;
     }
 

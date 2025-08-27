@@ -36,7 +36,12 @@ namespace mirinae {
         BufferCreateInfo& reset();
 
         BufferCreateInfo& set_size(VkDeviceSize size);
+        BufferCreateInfo& set_usage(VkBufferUsageFlags usage);
         BufferCreateInfo& add_usage(VkBufferUsageFlags usage);
+        BufferCreateInfo& reset_usage();
+
+        BufferCreateInfo& prefer_device();
+        BufferCreateInfo& prefer_host();
 
         // VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
         BufferCreateInfo& add_alloc_flag_host_access_seq_write();
