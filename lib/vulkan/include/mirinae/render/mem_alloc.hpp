@@ -45,19 +45,17 @@ namespace mirinae {
         Buffer& operator=(Buffer&& rhs) noexcept;
 
         void init(const BufferCinfoBundle& cinfo, VulkanMemoryAllocator);
-        void destroy(VulkanMemoryAllocator allocator);
+        void destroy();
 
         VkBuffer get() const { return buffer_; }
         VkBuffer buffer() const { return buffer_; }
         VkDeviceSize size() const;
 
-        void set_data(
-            const void* data, size_t size, VulkanMemoryAllocator allocator
-        );
+        void set_data(const void* data, size_t size);
 
         template <typename T>
-        void set_data(const T& data, VulkanMemoryAllocator allocator) {
-            this->set_data(&data, sizeof(T), allocator);
+        void set_data(const T& data) {
+            this->set_data(&data, sizeof(T));
         }
 
         void record_copy_cmd(
@@ -65,6 +63,7 @@ namespace mirinae {
         );
 
     private:
+        VulkanMemoryAllocator allocator_ = nullptr;
         VkBuffer buffer_ = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;
         VkDeviceSize size_ = 0;

@@ -238,9 +238,7 @@ namespace {
 
                 mirinae::Buffer staging_buffer;
                 staging_buffer.init(buf_cinfo, device_.mem_alloc());
-                staging_buffer.set_data(
-                    noise_data.data(), noise_data.size(), device_.mem_alloc()
-                );
+                staging_buffer.set_data(noise_data.data(), noise_data.size());
 
                 auto img = rp_res.ren_img_.new_img("ocean_noise", name_s());
                 MIRINAE_ASSERT(nullptr != img);
@@ -257,7 +255,7 @@ namespace {
                     staging_buffer.buffer()
                 );
                 cmd_pool.end_single_time(cmdbuf, device_);
-                staging_buffer.destroy(device_.mem_alloc());
+                staging_buffer.destroy();
 
                 iv_builder.image(img->img_.image());
                 img->view_.reset(iv_builder, device_);

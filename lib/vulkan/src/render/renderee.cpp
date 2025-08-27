@@ -186,9 +186,7 @@ namespace mirinae {
         mirinae::BufferCreateInfo ubuf_cinfo;
         ubuf_cinfo.preset_ubuf(sizeof(U_GbufModel));
         uniform_buf_.init(ubuf_cinfo, device.mem_alloc());
-        uniform_buf_.set_data(
-            &ubuf_data, sizeof(U_GbufModel), device.mem_alloc()
-        );
+        uniform_buf_.set_data(&ubuf_data, sizeof(U_GbufModel));
 
         DescWriteInfoBuilder builder;
         for (size_t i = 0; i < max_flight_count; i++) {
@@ -213,7 +211,7 @@ namespace mirinae {
         VulkanMemoryAllocator mem_alloc, VkDevice logi_device
     ) {
         vert_index_pair_.destroy(mem_alloc);
-        uniform_buf_.destroy(mem_alloc);
+        uniform_buf_.destroy();
         desc_pool_.destroy(logi_device);
     }
 
@@ -260,9 +258,7 @@ namespace mirinae {
         BufferCreateInfo ubuf_cinfo;
         ubuf_cinfo.preset_ubuf(sizeof(U_GbufModel));
         uniform_buf_.init(ubuf_cinfo, device.mem_alloc());
-        uniform_buf_.set_data(
-            &ubuf_data, sizeof(U_GbufModel), device.mem_alloc()
-        );
+        uniform_buf_.set_data(&ubuf_data, sizeof(U_GbufModel));
 
         DescWriteInfoBuilder builder;
         for (size_t i = 0; i < max_flight_count; i++) {
@@ -287,7 +283,7 @@ namespace mirinae {
         VulkanMemoryAllocator mem_alloc, VkDevice logi_device
     ) {
         vert_index_pair_.destroy(mem_alloc);
-        uniform_buf_.destroy(mem_alloc);
+        uniform_buf_.destroy();
         desc_pool_.destroy(logi_device);
     }
 
@@ -364,15 +360,13 @@ namespace mirinae {
     }
 
     void OverlayRenderUnit::destroy() {
-        for (auto& ubuf : uniform_buf_) ubuf.destroy(device_.mem_alloc());
         uniform_buf_.clear();
-
         desc_pool_.destroy(device_.logi_device());
     }
 
     void OverlayRenderUnit::udpate_ubuf(uint32_t index) {
         auto& ubuf = uniform_buf_.at(index);
-        ubuf.set_data(&ubuf_data_, sizeof(U_OverlayMain), device_.mem_alloc());
+        ubuf.set_data(&ubuf_data_, sizeof(U_OverlayMain));
     }
 
     VkDescriptorSet OverlayRenderUnit::get_desc_set(size_t index) {
@@ -925,17 +919,13 @@ namespace mirinae {
     }
 
     void RenderActor::destroy() {
-        for (auto& ubuf : uniform_buf_) ubuf.destroy(device_.mem_alloc());
         uniform_buf_.clear();
-
         desc_pool_.destroy(device_.logi_device());
     }
 
-    void RenderActor::udpate_ubuf(
-        uint32_t index, const U_GbufActor& data, VulkanMemoryAllocator mem_alloc
-    ) {
+    void RenderActor::udpate_ubuf(uint32_t index, const U_GbufActor& data) {
         auto& ubuf = uniform_buf_.at(index);
-        ubuf.set_data(&data, sizeof(U_GbufActor), mem_alloc);
+        ubuf.set_data(&data, sizeof(U_GbufActor));
     }
 
     VkDescriptorSet RenderActor::get_desc_set(size_t index) const {
@@ -979,9 +969,7 @@ namespace mirinae {
     }
 
     void RenderActorSkinned::destroy() {
-        for (auto& ubuf : uniform_buf_) ubuf.destroy(device_.mem_alloc());
         uniform_buf_.clear();
-
         desc_pool_.destroy(device_.logi_device());
     }
 
@@ -991,7 +979,7 @@ namespace mirinae {
         VulkanMemoryAllocator mem_alloc
     ) {
         auto& ubuf = uniform_buf_.at(index);
-        ubuf.set_data(&data, sizeof(U_GbufActorSkinned), mem_alloc);
+        ubuf.set_data(&data, sizeof(U_GbufActorSkinned));
     }
 
     VkDescriptorSet RenderActorSkinned::get_desc_set(size_t index) const {

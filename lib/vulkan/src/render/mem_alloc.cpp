@@ -73,18 +73,17 @@ namespace mirinae {
 // Buffer
 namespace mirinae {
 
-    Buffer::~Buffer() {
-        if (buffer_ != VK_NULL_HANDLE)
-            SPDLOG_WARN("VMA Buffer object leaking");
-    }
+    Buffer::~Buffer() { this->destroy(); }
 
     Buffer::Buffer(Buffer&& rhs) noexcept {
+        std::swap(allocator_, rhs.allocator_);
         std::swap(buffer_, rhs.buffer_);
         std::swap(allocation_, rhs.allocation_);
         std::swap(size_, rhs.size_);
     }
 
     Buffer& Buffer::operator=(Buffer&& rhs) noexcept {
+        std::swap(allocator_, rhs.allocator_);
         std::swap(buffer_, rhs.buffer_);
         std::swap(allocation_, rhs.allocation_);
         std::swap(size_, rhs.size_);
@@ -94,7 +93,8 @@ namespace mirinae {
     void Buffer::init(
         const BufferCinfoBundle& cinfo, VulkanMemoryAllocator allocator
     ) {
-        this->destroy(allocator);
+        this->destroy();
+        allocator_ = allocator;
 
         const auto res = vmaCreateBuffer(
             allocator->get(),
@@ -110,22 +110,27 @@ namespace mirinae {
         size_ = cinfo.buf_info_.size;
     }
 
-    void Buffer::destroy(VulkanMemoryAllocator allocator) {
+    void Buffer::destroy() {
+        if (!allocator_)
+            return;
+
         if (buffer_ != VK_NULL_HANDLE) {
-            vmaDestroyBuffer(allocator->get(), buffer_, allocation_);
+            vmaDestroyBuffer(allocator_->get(), buffer_, allocation_);
             buffer_ = VK_NULL_HANDLE;
         }
+
+        allocator_ = nullptr;
     }
 
     VkDeviceSize Buffer::size() const { return size_; }
 
-    void Buffer::set_data(
-        const void* data, size_t size, VulkanMemoryAllocator allocator
-    ) {
+    void Buffer::set_data(const void* data, size_t size) {
+        MIRINAE_ASSERT(nullptr != allocator_);
+
         void* ptr;
-        vmaMapMemory(allocator->get(), allocation_, &ptr);
+        vmaMapMemory(allocator_->get(), allocation_, &ptr);
         memcpy(ptr, data, std::min<size_t>(size, this->size()));
-        vmaUnmapMemory(allocator->get(), allocation_);
+        vmaUnmapMemory(allocator_->get(), allocation_);
     }
 
     void Buffer::record_copy_cmd(

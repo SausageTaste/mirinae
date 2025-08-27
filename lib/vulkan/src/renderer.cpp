@@ -686,9 +686,7 @@ namespace { namespace task {
             udata.view_model = vm;
             udata.pvm = pvm;
 
-            actor->udpate_ubuf(
-                rp_ctxt.f_index_.get(), udata, device.mem_alloc()
-            );
+            actor->udpate_ubuf(rp_ctxt.f_index_.get(), udata);
 
             return true;
         }

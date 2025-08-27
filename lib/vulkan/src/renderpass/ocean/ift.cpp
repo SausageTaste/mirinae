@@ -450,9 +450,7 @@ namespace {
                 mirinae::Buffer staging_buffer;
                 staging_buffer.init(buf_cinfo, device_.mem_alloc());
                 staging_buffer.set_data(
-                    bufffly_img.data(),
-                    bufffly_img.data_size(),
-                    device_.mem_alloc()
+                    bufffly_img.data(), bufffly_img.data_size()
                 );
 
                 butterfly_cache_ = rp_res.ren_img_.new_img(
@@ -473,7 +471,7 @@ namespace {
                     staging_buffer.buffer()
                 );
                 cmd_pool.end_single_time(cmdbuf, device_);
-                staging_buffer.destroy(device_.mem_alloc());
+                staging_buffer.destroy();
 
                 mirinae::ImageViewBuilder iv_builder;
                 iv_builder.format(img_info.format())

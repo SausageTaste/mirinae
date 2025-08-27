@@ -189,7 +189,7 @@ namespace { namespace task {
                     .set_mie_anisotropy(atmos.mie_anisotropy_);
                 break;
             }
-            fd.ubuf_.set_data(ubuf, device.mem_alloc());
+            fd.ubuf_.set_data(ubuf);
         }
 
         static void update_ubuf_shadow(
@@ -223,7 +223,7 @@ namespace { namespace task {
                     .set_cascade_depths(cascades.far_depths_.data())
                     .set_dlight_dir(light.calc_to_light_dir(view_mat, tform))
                     .set_dlight_color(light.color_.scaled_color());
-                sh_data.ubuf_.set_data(ubuf_sh, device.mem_alloc());
+                sh_data.ubuf_.set_data(ubuf_sh);
             }
         }
 
@@ -527,11 +527,11 @@ namespace {
 
         ~RpStatesCompoDlight() override {
             for (auto& fd : frame_data_) {
-                fd.ubuf_.destroy(device_.mem_alloc());
+                fd.ubuf_.destroy();
                 fd.fbuf_.destroy(device_.logi_device());
 
                 for (auto& sh_data : fd.shadows_) {
-                    sh_data.ubuf_.destroy(device_.mem_alloc());
+                    sh_data.ubuf_.destroy();
                 }
             }
 

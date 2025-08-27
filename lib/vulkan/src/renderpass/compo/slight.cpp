@@ -202,7 +202,7 @@ namespace { namespace task {
                     .set_mie_anisotropy(atmos.mie_anisotropy_);
                 break;
             }
-            fd.ubuf_.set_data(ubuf, device.mem_alloc());
+            fd.ubuf_.set_data(ubuf);
         }
 
         static void record_barriers_shadow(
@@ -456,7 +456,7 @@ namespace {
 
         ~RpStatesCompoSlight() override {
             for (auto& fd : frame_data_) {
-                fd.ubuf_.destroy(device_.mem_alloc());
+                fd.ubuf_.destroy();
                 fd.fbuf_.destroy(device_.logi_device());
             }
 

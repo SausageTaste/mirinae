@@ -198,7 +198,7 @@ namespace {
                 break;
             }
 
-            fd.ubuf_.set_data(ubuf, device.mem_alloc());
+            fd.ubuf_.set_data(ubuf);
         }
 
         static void record_barriers(
@@ -498,7 +498,7 @@ namespace {
         ~RpMasterTranspSkinned() {
             for (auto& fd : frame_data_) {
                 fd.fbuf_.destroy(device_.logi_device());
-                fd.ubuf_.destroy(device_.mem_alloc());
+                fd.ubuf_.destroy();
             }
 
             desc_pool_.destroy(device_.logi_device());

@@ -211,9 +211,7 @@ namespace {
 
             mirinae::Buffer staging_buffer;
             staging_buffer.init(staging_buf_cinfo, device_.mem_alloc());
-            staging_buffer.set_data(
-                image.data(), image.data_size(), device_.mem_alloc()
-            );
+            staging_buffer.set_data(image.data(), image.data_size());
 
             mirinae::ImageCreateInfo img_info;
             img_info.fetch_from_image(image, srgb)
@@ -233,7 +231,7 @@ namespace {
                 staging_buffer.buffer()
             );
             cmd_pool.end_single_time(cmdbuf, device_);
-            staging_buffer.destroy(device_.mem_alloc());
+            staging_buffer.destroy();
 
             mirinae::ImageViewBuilder iv_builder;
             iv_builder.format(texture_.format())
@@ -272,9 +270,7 @@ namespace {
 
             mirinae::Buffer staging_buffer;
             staging_buffer.init(staging_buf_cinfo, device_.mem_alloc());
-            staging_buffer.set_data(
-                image.data(), image.data_size(), device_.mem_alloc()
-            );
+            staging_buffer.set_data(image.data(), image.data_size());
 
             mirinae::ImageCreateInfo img_info;
             img_info.fetch_from_image(image, srgb)
@@ -294,7 +290,7 @@ namespace {
                 staging_buffer.buffer()
             );
             cmd_pool.end_single_time(cmdbuf, device_);
-            staging_buffer.destroy(device_.mem_alloc());
+            staging_buffer.destroy();
 
             mirinae::ImageViewBuilder iv_builder;
             iv_builder.format(texture_.format())

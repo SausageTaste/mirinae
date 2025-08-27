@@ -20,7 +20,7 @@ namespace {
 
         mirinae::Buffer staging_buffer;
         staging_buffer.init(buf_cinfo, allocator);
-        staging_buffer.set_data(src, src_size, allocator);
+        staging_buffer.set_data(src, src_size);
 
         auto cmdbuf = cmdpool.alloc(logi_device);
         dst.record_copy_cmd(staging_buffer, cmdbuf, logi_device);
@@ -33,7 +33,7 @@ namespace {
 
         vkQueueWaitIdle(graphics_q);
         cmdpool.free(cmdbuf, logi_device);
-        staging_buffer.destroy(allocator);
+        staging_buffer.destroy();
     }
 
 }  // namespace
@@ -123,8 +123,8 @@ namespace mirinae {
     }
 
     void VertexIndexPair::destroy(VulkanMemoryAllocator allocator) {
-        vertex_buf_.destroy(allocator);
-        index_buf_.destroy(allocator);
+        vertex_buf_.destroy();
+        index_buf_.destroy();
         vertex_count_ = 0;
     }
 

@@ -151,10 +151,7 @@ namespace mirinae {
                 .add_usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
                 .add_alloc_flag_host_access_seq_write();
             vtx_buf_.init(cinfo, device.mem_alloc());
-
-            vtx_buf_.set_data(
-                mesh_buil.vtx().data(), data_size, device.mem_alloc()
-            );
+            vtx_buf_.set_data(mesh_buil.vtx().data(), data_size);
         }
 
         // Index buffer
@@ -166,10 +163,7 @@ namespace mirinae {
                 .add_usage(VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
                 .add_alloc_flag_host_access_seq_write();
             idx_buf_.init(cinfo, device.mem_alloc());
-
-            idx_buf_.set_data(
-                mesh_buil.idx().data(), data_size, device.mem_alloc()
-            );
+            idx_buf_.set_data(mesh_buil.idx().data(), data_size);
         }
 
         vtx_count_ = static_cast<uint32_t>(mesh_buil.idx().size());
@@ -177,8 +171,8 @@ namespace mirinae {
 
     RenUnitTerrain::~RenUnitTerrain() {
         desc_pool_.destroy(device_.logi_device());
-        vtx_buf_.destroy(device_.mem_alloc());
-        idx_buf_.destroy(device_.mem_alloc());
+        vtx_buf_.destroy();
+        idx_buf_.destroy();
     }
 
     bool RenUnitTerrain::is_ready() const {

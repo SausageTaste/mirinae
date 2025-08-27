@@ -65,13 +65,11 @@ namespace {
                 buf_.init(cinfo, device.mem_alloc());
             }
 
-            buf_.set_data(vertices, buf_size, device.mem_alloc());
+            buf_.set_data(vertices, buf_size);
             vertex_count_ = vertex_count;
         }
 
-        void destroy(mirinae::VulkanDevice& device) {
-            buf_.destroy(device.mem_alloc());
-        }
+        void destroy(mirinae::VulkanDevice& device) { buf_.destroy(); }
 
         void record_bind(VkCommandBuffer cmdbuf) const {
             VkBuffer vertex_buffers[] = { buf_.buffer() };

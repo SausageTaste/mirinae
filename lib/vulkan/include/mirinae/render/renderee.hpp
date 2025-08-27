@@ -182,11 +182,7 @@ namespace mirinae {
         void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
         void destroy();
 
-        void udpate_ubuf(
-            uint32_t index,
-            const U_GbufActor& data,
-            VulkanMemoryAllocator mem_alloc
-        );
+        void udpate_ubuf(uint32_t index, const U_GbufActor& data);
         VkDescriptorSet get_desc_set(size_t index) const;
 
     private:

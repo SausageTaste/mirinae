@@ -566,7 +566,7 @@ namespace { namespace task {
                 break;
             }
 
-            fd.ubuf_.set_data(ubuf, device.mem_alloc());
+            fd.ubuf_.set_data(ubuf);
         }
 
         static void record_barriers(
@@ -956,7 +956,7 @@ namespace {
                     rp_res_.ren_img_.free_img(fd.turb_map_[i]->id(), name_s());
                 }
 
-                fd.ubuf_.destroy(device_.mem_alloc());
+                fd.ubuf_.destroy();
                 fd.fbuf_.destroy(device_.logi_device());
                 fd.desc_set_ = VK_NULL_HANDLE;
             }
