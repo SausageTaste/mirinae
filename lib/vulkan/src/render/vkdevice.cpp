@@ -390,19 +390,19 @@ namespace {
                     report.add_value("Transfer");
             }
 
+            auto& limits = properties_.limits;
+
             report.add(0, "Compute shader")
                 .new_entry(2, "Max work group size")
-                .set_value(properties_.limits.maxComputeWorkGroupSize[0])
-                .add_value(properties_.limits.maxComputeWorkGroupSize[1])
-                .add_value(properties_.limits.maxComputeWorkGroupSize[1])
+                .set_value(limits.maxComputeWorkGroupSize[0])
+                .add_value(limits.maxComputeWorkGroupSize[1])
+                .add_value(limits.maxComputeWorkGroupSize[2])
                 .new_entry(2, "Max work group count")
-                .set_value(properties_.limits.maxComputeWorkGroupCount[0])
-                .add_value(properties_.limits.maxComputeWorkGroupCount[1])
-                .add_value(properties_.limits.maxComputeWorkGroupCount[2])
+                .set_value(limits.maxComputeWorkGroupCount[0])
+                .add_value(limits.maxComputeWorkGroupCount[1])
+                .add_value(limits.maxComputeWorkGroupCount[2])
                 .new_entry(2, "Max work group invocations")
-                .set_value(properties_.limits.maxComputeWorkGroupInvocations);
-
-            auto& limits = properties_.limits;
+                .set_value(limits.maxComputeWorkGroupInvocations);
 
             report.add(0, "Limits")
                 .new_entry(2, "Image 2D dimension")
@@ -418,7 +418,9 @@ namespace {
                 .new_entry(2, "Per stage descriptor samplers")
                 .set_value(limits.maxPerStageDescriptorSamplers)
                 .new_entry(2, "Per stage descriptor uniform buffers")
-                .set_value(limits.maxPerStageDescriptorUniformBuffers);
+                .set_value(limits.maxPerStageDescriptorUniformBuffers)
+                .new_entry(2, "Ubuf alignment")
+                .set_value(limits.minUniformBufferOffsetAlignment);
 
             static const std::vector<VkFormat> formats{
                 VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK,
@@ -576,6 +578,10 @@ namespace {
             return features_.get();
         }
 
+        const VkPhysicalDeviceLimits& limits() const {
+            return properties_.limits;
+        }
+
     private:
         static bool is_queue_flag_applicable(const VkQueueFlags flags) {
             if (0 == (flags & VK_QUEUE_GRAPHICS_BIT))
@@ -588,7 +594,6 @@ namespace {
 
         VkPhysicalDevice handle_ = nullptr;
         VkPhysicalDeviceProperties properties_{};
-        VkPhysicalDeviceLimits limits_{};
         ::PhysDeviceFeatures features_;
         std::optional<uint32_t> graphics_family_index_;
         std::optional<uint32_t> present_family_index_;
@@ -1236,6 +1241,16 @@ namespace mirinae {
         return pimpl_->phys_device_.graphics_family_index();
     }
 
+    const VkPhysicalDeviceLimits& VulkanDevice::limits() const {
+        return pimpl_->phys_device_.limits();
+    }
+
+    size_t VulkanDevice::pad_ubuf(size_t original) const {
+        return align_up(
+            original, this->limits().minUniformBufferOffsetAlignment
+        );
+    }
+
     ISamplerManager& VulkanDevice::samplers() { return pimpl_->samplers_; }
 
     IImageFormats& VulkanDevice::img_formats() { return pimpl_->img_formats_; }
@@ -1400,6 +1415,23 @@ namespace mirinae {
                 );
                 return std::nullopt;
         }
+    }
+
+}  // namespace mirinae
+
+
+// Free functions
+namespace mirinae {
+
+    // https://vkguide.dev/docs/chapter-4/descriptors_code_more/
+    size_t align_up(size_t original_size, size_t min_alignment) {
+        // Calculate required alignment based on minimum device offset alignment
+        size_t aligned_size = original_size;
+        if (min_alignment > 0) {
+            aligned_size = (aligned_size + min_alignment - 1) &
+                           ~(min_alignment - 1);
+        }
+        return aligned_size;
     }
 
 }  // namespace mirinae

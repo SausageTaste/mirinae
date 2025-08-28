@@ -17,6 +17,9 @@ namespace mirinae {
     using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
 
 
+    size_t align_up(size_t original_size, size_t min_alignment);
+
+
     struct ISamplerManager {
         virtual ~ISamplerManager() = default;
         virtual VkSampler get_linear() = 0;
@@ -50,6 +53,8 @@ namespace mirinae {
         // Physical device
         VkPhysicalDevice phys_device();
         std::optional<uint32_t> graphics_queue_family_index();
+        const VkPhysicalDeviceLimits& limits() const;
+        size_t pad_ubuf(size_t original) const;
 
         // Sub-systems
         ISamplerManager& samplers();
