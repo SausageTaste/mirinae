@@ -802,12 +802,12 @@ namespace { namespace task {
             );
             for (auto& src_unit : ren_model.runits_) {
                 auto& dst_unit = runit_info.emplace_back();
-                dst_unit.vert_buf_size_ = src_unit.vk_buffers().vtx().size();
+                dst_unit.src_vtx_buf_ = &src_unit.vk_buffers().vtx();
                 dst_unit.transparent_ = false;
             }
             for (auto& src_unit : ren_model.runits_alpha_) {
                 auto& dst_unit = runit_info.emplace_back();
-                dst_unit.vert_buf_size_ = src_unit.vk_buffers().vtx().size();
+                dst_unit.src_vtx_buf_ = &src_unit.vk_buffers().vtx();
                 dst_unit.transparent_ = true;
             }
 

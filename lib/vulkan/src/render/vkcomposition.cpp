@@ -93,7 +93,9 @@ namespace mirinae {
 
         // Vertices data size
         const auto v_s = sizeof(VertexSkinned) * vertices.vertices_.size();
-        buf_cinfo.preset_vertices(v_s);
+        buf_cinfo.preset_vertices(v_s).add_usage(
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
         vertex_buf_.init(buf_cinfo, allocator);
         ::set_buffer_data(
             vertex_buf_,

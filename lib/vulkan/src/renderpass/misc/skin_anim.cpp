@@ -2,15 +2,22 @@
 
 #include "mirinae/renderpass/misc/misc.hpp"
 
+#include <entt/entity/registry.hpp>
+
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/draw_set.hpp"
 #include "mirinae/render/mem_cinfo.hpp"
+#include "mirinae/render/renderee.hpp"
+#include "mirinae/renderee/ren_actor_skinned.hpp"
 #include "mirinae/renderpass/builder.hpp"
 
 
 namespace {
+
+    namespace cpnt = mirinae::cpnt;
+
 
     struct U_SkinAnim {
         float time_ = 0;
@@ -20,6 +27,71 @@ namespace {
     struct FrameData {};
 
     using FrameDataArr = std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
+
+
+    class DrawSheet {
+
+    public:
+        void clear() {
+            opa_.clear();
+            trs_.clear();
+        }
+
+        void fetch(const entt::registry& reg) {
+            for (const auto e : reg.view<cpnt::MdlActorSkinned>()) {
+                auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
+                if (!mactor.model_)
+                    continue;
+                auto renmdl = mactor.get_model<mirinae::RenderModelSkinned>();
+                if (!renmdl)
+                    continue;
+                auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
+                if (!actor)
+                    continue;
+
+                glm::dmat4 model_mat(1);
+                if (auto tfrom = reg.try_get<cpnt::Transform>(e))
+                    model_mat = tfrom->make_model_mat();
+
+                const auto unit_count = renmdl->runits_.size();
+                for (size_t i = 0; i < unit_count; ++i) {
+                    if (!mactor.visibility_.get(i))
+                        continue;
+
+                    auto& dst = opa_.emplace_back();
+                    dst.unit_ = &renmdl->runits_[i];
+                    dst.actor_ = actor;
+                    dst.model_mat_ = model_mat;
+                    dst.unit_idx_ = i;
+                }
+
+                const auto unit_trs_count = renmdl->runits_alpha_.size();
+                for (size_t i = 0; i < unit_trs_count; ++i) {
+                    if (!mactor.visibility_.get(i + unit_count))
+                        continue;
+
+                    auto& dst = trs_.emplace_back();
+                    dst.unit_ = &renmdl->runits_alpha_[i];
+                    dst.actor_ = actor;
+                    dst.model_mat_ = model_mat;
+                    dst.unit_idx_ = i;
+                }
+            }
+        }
+
+        struct RenderPair {
+            const mirinae::RenderUnitSkinned* unit_ = nullptr;
+            const mirinae::RenderActorSkinned* actor_ = nullptr;
+            glm::dmat4 model_mat_{ 1 };
+            size_t unit_idx_ = 0;
+        };
+
+        auto& opa() const { return opa_; }
+
+    private:
+        std::vector<RenderPair> opa_;
+        std::vector<RenderPair> trs_;
+    };
 
 }  // namespace
 
@@ -76,12 +148,13 @@ namespace {
 
         static bool record(
             const VkCommandBuffer cmdbuf,
-            const mirinae::DrawSetSkinned& draw_set,
+            const ::DrawSheet& draw_set,
             const mirinae::IPipelinePair& rp,
             const mirinae::RpCtxt& ctxt,
             mirinae::VulkanDevice& device
         ) {
             mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
+            descset_info.bind_point(VK_PIPELINE_BIND_POINT_COMPUTE);
 
             ::U_SkinAnim push_const;
             push_const.time_ = static_cast<float>(ctxt.dt_);
@@ -93,15 +166,15 @@ namespace {
             for (auto& pair : draw_set.opa()) {
                 auto& unit = *pair.unit_;
                 auto& actor = *pair.actor_;
+                auto& ac_unit = actor.get_runit(ctxt.f_index_, pair.unit_idx_);
 
                 unit.record_bind_vert_buf(cmdbuf);
 
-                descset_info.set(actor.get_desc_set(ctxt.f_index_.get()))
-                    .record(cmdbuf);
+                descset_info.set(ac_unit.descset_).record(cmdbuf);
 
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())
-                    .add_stage_vert()
+                    .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .record(cmdbuf, push_const);
 
                 vkCmdDispatch(cmdbuf, unit.vertex_count(), 1, 1);
@@ -114,7 +187,7 @@ namespace {
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
-        mirinae::DrawSetSkinned draw_set_;
+        ::DrawSheet draw_set_;
 
         const entt::registry* reg_ = nullptr;
         const mirinae::IPipelinePair* rp_ = nullptr;
@@ -170,7 +243,16 @@ namespace {
             : cosmos_(bundle.cosmos_)
             , rp_res_(bundle.rp_res_)
             , device_(bundle.device_) {
-            const auto& desclay = rp_res_.desclays_.get("gbuf:actor_skinned");
+            // Desc layout
+            {
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
+                builder.add_sbuf(VK_SHADER_STAGE_COMPUTE_BIT, 1)
+                    .add_sbuf(VK_SHADER_STAGE_COMPUTE_BIT, 1)
+                    .add_ubuf(VK_SHADER_STAGE_COMPUTE_BIT, 1);
+                rp_res_.desclays_.add(builder, device_.logi_device());
+            }
+
+            const auto& desclay = rp_res_.desclays_.get("skin_anim:main");
 
             // Pipeline
             {
@@ -191,7 +273,7 @@ namespace {
             pipe_layout_.destroy(device_);
         }
 
-        std::string_view name() const override { return "skin anim"; }
+        std::string_view name() const override { return "skin_anim"; }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto task = std::make_unique<RpTask>();

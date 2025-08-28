@@ -7,8 +7,10 @@ struct U_GbufActorSkinned {
     float4x4 pvm_;
 }
 
-layout(set = 0, binding = 0) ConstantBuffer<U_GbufActorSkinned> u_gbuf_model;
-layout(set = 0, binding = 1) RWStructuredBuffer<float4> out_vertices;
+
+layout(set = 0, binding = 0) RWStructuredBuffer<float> out_vertices;
+layout(set = 0, binding = 1) StructuredBuffer<float> in_vertices;
+layout(set = 0, binding = 2) ConstantBuffer<U_GbufActorSkinned> u_gbuf_model;
 
 [push_constant]
 cbuffer U_SkinAnim {
@@ -17,9 +19,68 @@ cbuffer U_SkinAnim {
 u_pc;
 
 
+/*
+struct VertexStatic {
+    glm::vec3 pos_;
+    glm::vec3 normal_;
+    glm::vec3 tangent_;
+    glm::vec2 texcoord_;
+};
+
+
+struct VertexSkinned {
+    glm::ivec4 joint_indices_;
+    glm::vec4 joint_weights_;
+    glm::vec3 pos_;
+    glm::vec3 normal_;
+    glm::vec3 tangent_;
+    glm::vec2 uv_;
+};
+*/
+
+
 [shader("compute")]
 [numthreads(1, 1, 1)]
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
-    let idx = dispatch_id.x;
-    out_vertices[idx] = float4(u_pc.time_, 0, 0, 1);
+    let vertex_idx = dispatch_id.x;
+
+    const int VTX_STATIC_SIZE = 3 + 3 + 3 + 2;
+    const int VTX_SKINNED_SIZE = 4 + 4 + VTX_STATIC_SIZE;
+
+    const int input_v_idx = vertex_idx * VTX_SKINNED_SIZE;
+    let joint_indices = int4(
+        reinterpret<int>(in_vertices[input_v_idx + 0]),
+        reinterpret<int>(in_vertices[input_v_idx + 1]),
+        reinterpret<int>(in_vertices[input_v_idx + 2]),
+        reinterpret<int>(in_vertices[input_v_idx + 3])
+    );
+    let joint_weights = float4(
+        in_vertices[input_v_idx + 4],
+        in_vertices[input_v_idx + 5],
+        in_vertices[input_v_idx + 6],
+        in_vertices[input_v_idx + 7]
+    );
+    let pos = float3(
+        in_vertices[input_v_idx + 8], in_vertices[input_v_idx + 9], in_vertices[input_v_idx + 10]
+    );
+    let normal = float3(
+        in_vertices[input_v_idx + 11], in_vertices[input_v_idx + 12], in_vertices[input_v_idx + 13]
+    );
+    let tangent = float3(
+        in_vertices[input_v_idx + 14], in_vertices[input_v_idx + 15], in_vertices[input_v_idx + 16]
+    );
+    let texco = float2(in_vertices[input_v_idx + 17], in_vertices[input_v_idx + 18]);
+
+    const int output_vtx_idx = vertex_idx * VTX_STATIC_SIZE;
+    out_vertices[output_vtx_idx + 0] = pos.x;
+    out_vertices[output_vtx_idx + 1] = pos.y;
+    out_vertices[output_vtx_idx + 2] = pos.z;
+    out_vertices[output_vtx_idx + 3] = normal.x;
+    out_vertices[output_vtx_idx + 4] = normal.y;
+    out_vertices[output_vtx_idx + 5] = normal.z;
+    out_vertices[output_vtx_idx + 6] = tangent.x;
+    out_vertices[output_vtx_idx + 7] = tangent.y;
+    out_vertices[output_vtx_idx + 8] = tangent.z;
+    out_vertices[output_vtx_idx + 9] = texco.x;
+    out_vertices[output_vtx_idx + 10] = texco.y;
 }

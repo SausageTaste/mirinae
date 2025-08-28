@@ -10,8 +10,13 @@ namespace mirinae {
 
     public:
         struct RenUnitInfo {
-            size_t vert_buf_size_ = 0;  // In bytes
+            const mirinae::Buffer* src_vtx_buf_=nullptr;
             bool transparent_ = false;
+        };
+
+        struct RenUnit {
+            mirinae::Buffer vertex_buf_;
+            VkDescriptorSet descset_;
         };
 
     public:
@@ -27,6 +32,7 @@ namespace mirinae {
 
         void update_ubuf(uint32_t index, const U_GbufActorSkinned& data);
         VkDescriptorSet get_desc_set(size_t index) const;
+        const RenUnit& get_runit(FrameIndex f_idx, size_t unit_idx) const;
 
     private:
         struct FrameData;

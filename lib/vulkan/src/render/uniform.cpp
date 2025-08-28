@@ -461,7 +461,7 @@ namespace mirinae {
         write.dstSet = descset;
         write.dstBinding = binding;
         write.dstArrayElement = 0;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         write.descriptorCount = buf_info.size();
         write.pImageInfo = nullptr;
         write.pBufferInfo = buf_info.data();
