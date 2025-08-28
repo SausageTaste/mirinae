@@ -408,7 +408,7 @@ namespace mirinae {
         return BufferInfoView(buffer_info_.back().emplace_back());
     }
 
-    DescWriter& DescWriter::add_buf_info(mirinae::Buffer& buffer) {
+    DescWriter& DescWriter::add_buf_info(const mirinae::Buffer& buffer) {
         this->add_buf_info()
             .set_buffer(buffer.get())
             .set_range(buffer.size())
