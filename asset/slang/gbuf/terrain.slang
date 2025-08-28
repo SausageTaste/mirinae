@@ -129,7 +129,7 @@ DSOutput tese_main(
     }
 
     {
-        let height = u_height_map.Sample(output.texco_).r * u_pc.height_scale_;
+        let height = u_height_map.SampleLevel(output.texco_, 0).r * u_pc.height_scale_;
 
         let p00 = patch[0].pos_.xyz;
         let p01 = patch[1].pos_.xyz;
