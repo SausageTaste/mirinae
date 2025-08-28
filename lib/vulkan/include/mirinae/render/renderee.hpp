@@ -69,6 +69,8 @@ namespace mirinae {
         void record_bind_vert_buf(VkCommandBuffer cmdbuf) const;
         uint32_t vertex_count() const;
 
+        const VertexIndexPair& vk_buffers() const { return vert_index_pair_; }
+
     private:
         std::string name_;
         DescPool desc_pool_;

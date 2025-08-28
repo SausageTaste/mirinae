@@ -30,6 +30,9 @@ namespace mirinae {
 
         uint32_t vertex_count() const;
 
+        const Buffer& vtx() const { return vertex_buf_; }
+        const Buffer& idx() const { return index_buf_; }
+
     private:
         mirinae::Buffer vertex_buf_;
         mirinae::Buffer index_buf_;
