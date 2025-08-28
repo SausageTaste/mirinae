@@ -9,10 +9,20 @@ namespace mirinae {
     class RenderActorSkinned : public IRenActor {
 
     public:
+        struct RenUnitInfo {
+            size_t vert_buf_size_ = 0;  // In bytes
+            bool transparent_ = false;
+        };
+
+    public:
         RenderActorSkinned(VulkanDevice& vulkan_device);
         ~RenderActorSkinned();
 
-        void init(uint32_t max_flight_count, DesclayoutManager& desclayouts);
+        void init(
+            const uint32_t max_flight_count,
+            const std::vector<RenUnitInfo>& runit_info,
+            const DesclayoutManager& desclayouts
+        );
         void destroy();
 
         void update_ubuf(uint32_t index, const U_GbufActorSkinned& data);

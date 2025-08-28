@@ -728,6 +728,7 @@ namespace { namespace task {
             namespace cpnt = mirinae::cpnt;
 
             auto& reg = *scene_->reg_;
+            auto& desclay = rp_res_->desclays_;
             auto view = reg.view<cpnt::MdlActorSkinned>();
             auto begin = view.begin() + range.start;
             auto end = view.begin() + range.end;
@@ -736,22 +737,28 @@ namespace { namespace task {
                 const auto e = *it;
                 auto& mactor = reg.get<cpnt::MdlActorSkinned>(e);
 
-                if (!this->load_model(mactor, *model_mgr_))
+                auto ren_model = this->prep_model(mactor, *model_mgr_);
+                if (!ren_model)
                     continue;
 
-                if (!this->create_actor(mactor, rp_res_->desclays_, *device_))
+                auto ren_actor = this->prep_actor(
+                    desclay, *ren_model, mactor, *device_
+                );
+                if (!ren_actor)
                     continue;
 
-                this->update_ubuf(e, mactor, *scene_, *rp_ctxt_, *device_);
+                this->update_ubuf(
+                    e, *rp_ctxt_, *scene_, mactor.anim_state_, *ren_actor
+                );
             }
         }
 
-        static bool load_model(
+        static mirinae::RenderModelSkinned* prep_model(
             mirinae::cpnt::MdlActorSkinned& mactor,
             mirinae::IModelManager& model_mgr
         ) {
             if (mactor.model_)
-                return true;
+                return mactor.get_model<mirinae::RenderModelSkinned>();
 
             std::lock_guard<std::mutex> lock(g_model_mtx);
 
@@ -777,34 +784,49 @@ namespace { namespace task {
             mactor.model_ = model;
             mactor.anim_state_.set_skel_anim(model->skel_anim_);
 
-            return true;
+            return model.get();
         }
 
-        static bool create_actor(
+        static mirinae::RenderActorSkinned* prep_actor(
+            const mirinae::DesclayoutManager& desclayout,
+            const mirinae::RenderModelSkinned& ren_model,
             mirinae::cpnt::MdlActorSkinned& mactor,
-            mirinae::DesclayoutManager& desclayout,
             mirinae::VulkanDevice& device
         ) {
             if (mactor.actor_)
-                return true;
+                return mactor.get_actor<mirinae::RenderActorSkinned>();
+
+            std::vector<mirinae::RenderActorSkinned::RenUnitInfo> runit_info;
+            runit_info.reserve(
+                ren_model.runits_.size() + ren_model.runits_alpha_.size()
+            );
+            for (auto& src_unit : ren_model.runits_) {
+                auto& dst_unit = runit_info.emplace_back();
+                dst_unit.vert_buf_size_ = src_unit.vk_buffers().vtx().size();
+                dst_unit.transparent_ = false;
+            }
+            for (auto& src_unit : ren_model.runits_alpha_) {
+                auto& dst_unit = runit_info.emplace_back();
+                dst_unit.vert_buf_size_ = src_unit.vk_buffers().vtx().size();
+                dst_unit.transparent_ = true;
+            }
 
             std::lock_guard<std::mutex> lock(g_actor_mtx);
 
             auto a = std::make_shared<mirinae::RenderActorSkinned>(device);
-            a->init(mirinae::MAX_FRAMES_IN_FLIGHT, desclayout);
+            a->init(mirinae::MAX_FRAMES_IN_FLIGHT, runit_info, desclayout);
             mactor.actor_ = a;
-            return true;
+            return a.get();
         }
 
         static bool update_ubuf(
             const entt::entity e,
-            mirinae::cpnt::MdlActorSkinned& mactor,
-            const mirinae::Scene& scene,
             const mirinae::RpCtxt& rp_ctxt,
-            mirinae::VulkanDevice& device
+            const mirinae::Scene& scene,
+            const mirinae::SkinAnimState& anim_state,
+            mirinae::RenderActorSkinned& ren_actor
         ) {
             auto& reg = *scene.reg_;
-            auto actor = mactor.get_actor<mirinae::RenderActorSkinned>();
 
             glm::dmat4 model_mat(1);
             if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e))
@@ -815,13 +837,11 @@ namespace { namespace task {
             mirinae::U_GbufActorSkinned udata;
             udata.view_model = vm;
             udata.pvm = pvm;
-
-            mactor.anim_state_.sample_anim(
+            anim_state.sample_anim(
                 udata.joint_transforms_, mirinae::MAX_JOINTS, scene.clock()
             );
 
-            actor->update_ubuf(rp_ctxt.f_index_.get(), udata);
-
+            ren_actor.update_ubuf(rp_ctxt.f_index_.get(), udata);
             return true;
         }
 
