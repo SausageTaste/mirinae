@@ -29,7 +29,7 @@ struct U_GbufModel {
     float metallic;
 };
 
-struct U_TranspSkinnedFrame {
+struct U_TranspFrame {
     float4x4 view;
     float4x4 view_inv;
     float4x4 proj;
@@ -41,11 +41,17 @@ struct U_TranspSkinnedFrame {
     float4 dlight_color;
     float4 dlight_cascade_depths;
 
+    // Spotlight
+    float4x4 slight_mat;
+    float4 slight_pos_n_inner_angle;
+    float4 slight_dir_n_outer_angle;
+    float4 slight_color_n_max_dist;
+
     float mie_anisotropy;
 };
 
 
-layout(set = 0, binding = 0) ConstantBuffer<U_TranspSkinnedFrame> u_main;
+layout(set = 0, binding = 0) ConstantBuffer<U_TranspFrame> u_main;
 layout(set = 0, binding = 1) Sampler2DShadow u_dlight_shadow_maps[1];
 layout(set = 0, binding = 2) Sampler2DShadow u_slight_shadow_maps[1];
 layout(set = 0, binding = 3) SamplerCube u_env_diffuse;
@@ -154,6 +160,37 @@ float4 frag_main(VSOutput input, float4 screen_pos: SV_Position) : SV_Target {
                           -view_dir_v,
                           u_main.dlight_dir.xyz,
                           float3(10)
+                      );
+    }
+
+    // Spotlight
+    {
+        let light_pos_v = u_main.slight_pos_n_inner_angle.xyz;
+        let to_light_v = normalize(light_pos_v - frag_pos_v);
+        let to_light_dir_v = u_main.slight_dir_n_outer_angle.xyz;
+
+        let attenuation = calc_attenuation(frag_distance, u_main.slight_color_n_max_dist.w) *
+                          calc_slight_attenuation(
+                              frag_pos_v,
+                              light_pos_v,
+                              -to_light_dir_v,
+                              u_main.slight_pos_n_inner_angle.w,
+                              u_main.slight_dir_n_outer_angle.w
+                          );
+
+        let texco = make_shadow_texco(frag_pos_v, u_main.slight_mat);
+        let lit = u_slight_shadow_maps[0].SampleCmp(texco.xy, texco.z);
+
+        output.xyz += attenuation * lit *
+                      calc_pbr_illumination(
+                          roughness,
+                          metallic,
+                          albedo,
+                          normal_v,
+                          F0,
+                          -view_dir_v,
+                          to_light_v,
+                          u_main.slight_color_n_max_dist.xyz
                       );
     }
 

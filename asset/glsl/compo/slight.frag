@@ -63,6 +63,7 @@ void main() {
     f_color = vec4(0, 0, 0, 1);
 
     // Volumetric scattering
+    /*
     {
         const int SAMPLE_COUNT = 5;
         const float INTENSITY = 0.2;
@@ -91,6 +92,7 @@ void main() {
             f_color.xyz += u_pc.color_n_max_dist.xyz * (light_factor * lit * attenuation);
         }
     }
+    */
 
     // Spotlight
     {

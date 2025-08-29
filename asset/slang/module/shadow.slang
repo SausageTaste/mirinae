@@ -32,6 +32,14 @@ public bool check_shadow_texco_range(const float3 texco) {
 }
 
 
+public float3 make_shadow_texco(float3 frag_pos_v, float4x4 light_mat) {
+    let frag_pos_in_dlight = mul(light_mat, float4(frag_pos_v, 1));
+    let proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
+    let sample_coord = proj_coords.xy * 0.5 + 0.5;
+    return float3(sample_coord, proj_coords.z);
+}
+
+
 public float3 make_shadow_texco(float3 frag_pos_v, float4x4 light_mat, uint selected_cascade) {
     let frag_pos_in_dlight = mul(light_mat, float4(frag_pos_v, 1));
     let proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;

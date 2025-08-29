@@ -61,6 +61,49 @@ namespace {
             return *this;
         }
 
+        // Slight
+
+        U_TranspFrame& set_slight_mat(const glm::mat4& v) {
+            slight_mat_ = v;
+            return *this;
+        }
+
+        U_TranspFrame& set_slight_pos(const glm::vec3& v) {
+            slight_pos_n_inner_angle_.x = v.x;
+            slight_pos_n_inner_angle_.y = v.y;
+            slight_pos_n_inner_angle_.z = v.z;
+            return *this;
+        }
+
+        U_TranspFrame& set_slight_dir(const glm::vec3& v) {
+            slight_dir_n_outer_angle_.x = v.x;
+            slight_dir_n_outer_angle_.y = v.y;
+            slight_dir_n_outer_angle_.z = v.z;
+            return *this;
+        }
+
+        U_TranspFrame& set_slight_color(const glm::vec3& v) {
+            slight_color_n_max_dist_.x = v.r;
+            slight_color_n_max_dist_.y = v.g;
+            slight_color_n_max_dist_.z = v.b;
+            return *this;
+        }
+
+        U_TranspFrame& set_slight_inner_angle(sung::TAngle<double> angle) {
+            slight_pos_n_inner_angle_.w = angle.cos();
+            return *this;
+        }
+
+        U_TranspFrame& set_slight_outer_angle(sung::TAngle<double> angle) {
+            slight_dir_n_outer_angle_.w = angle.cos();
+            return *this;
+        }
+
+        U_TranspFrame& set_slight_max_dist(float v) {
+            slight_color_n_max_dist_.w = v;
+            return *this;
+        }
+
         // Misc
 
         template <typename T>
@@ -80,6 +123,12 @@ namespace {
         glm::vec4 dlight_dir_;
         glm::vec4 dlight_color_;
         glm::vec4 dlight_cascade_depths_;
+
+        // Spotlight
+        glm::mat4 slight_mat_;
+        glm::vec4 slight_pos_n_inner_angle_;
+        glm::vec4 slight_dir_n_outer_angle_;
+        glm::vec4 slight_color_n_max_dist_;
 
         float mie_anisotropy_;
     };
@@ -195,6 +244,24 @@ namespace {
                     .set_dlight_cascade_depths(cascades.far_depths_.data())
                     .set_dlight_dir(light.calc_to_light_dir(view_mat, tform))
                     .set_dlight_color(light.color_.scaled_color());
+                break;
+            }
+
+            for (size_t i = 0; i < shadows.slight_count(); ++i) {
+                const auto ett = shadows.slight_entt_at(i);
+                if (entt::null == ett)
+                    continue;
+
+                const auto& light = reg.get<cpnt::SLight>(ett);
+                const auto& tform = reg.get<cpnt::Transform>(ett);
+
+                ubuf.set_slight_mat(light.make_light_mat(tform) * view_inv)
+                    .set_slight_pos(view_mat * glm::dvec4(tform.pos_, 1))
+                    .set_slight_dir(light.calc_to_light_dir(view_mat, tform))
+                    .set_slight_color(light.color_.scaled_color())
+                    .set_slight_inner_angle(light.inner_angle_)
+                    .set_slight_outer_angle(light.outer_angle_)
+                    .set_slight_max_dist(100);
                 break;
             }
 
