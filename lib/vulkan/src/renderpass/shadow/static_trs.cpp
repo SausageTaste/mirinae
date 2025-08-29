@@ -224,6 +224,10 @@ namespace { namespace task {
                 if (!slight)
                     continue;
 
+                auto light_mat = slight->make_proj_mat();
+                if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e))
+                    light_mat = light_mat * tform->make_view_mat();
+
                 mirinae::ImageMemoryBarrier{}
                     .image(shadow.tex_->image())
                     .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
@@ -237,10 +241,6 @@ namespace { namespace task {
                         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                     );
-
-                auto light_mat = slight->make_proj_mat();
-                if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e))
-                    light_mat = light_mat * tform->make_view_mat();
 
                 mirinae::RenderPassBeginInfo{}
                     .rp(rp.render_pass())
@@ -268,15 +268,14 @@ namespace { namespace task {
                     auto& unit = *pair.unit_;
                     auto& actor = *pair.actor_;
 
-                    auto unit_desc = unit.get_desc_set(ctxt.f_index_.get());
                     unit.record_bind_vert_buf(cmdbuf);
-
-                    descset_info.first_set(1)
-                        .set(unit.get_desc_set(ctxt.f_index_.get()))
-                        .record(cmdbuf);
 
                     descset_info.first_set(0)
                         .set(actor.get_desc_set(ctxt.f_index_.get()))
+                        .record(cmdbuf);
+
+                    descset_info.first_set(1)
+                        .set(unit.get_desc_set(ctxt.f_index_.get()))
                         .record(cmdbuf);
 
                     mirinae::U_ShadowPushConst push_const;
@@ -314,108 +313,6 @@ namespace { namespace task {
 
                     descset_info.first_set(1)
                         .set(unit.get_desc_set(ctxt.f_index_.get()))
-                        .record(cmdbuf);
-
-                    mirinae::U_ShadowPushConst push_const;
-                    push_const.pvm_ = light_mat * pair.model_mat_;
-
-                    mirinae::PushConstInfo{}
-                        .layout(rp.pipe_layout())
-                        .add_stage_vert()
-                        .record(cmdbuf, push_const);
-
-                    vkCmdDrawIndexed(cmdbuf, unit.vertex_count(), 1, 0, 0, 0);
-                }
-
-                vkCmdEndRenderPass(cmdbuf);
-            }
-
-            for (size_t i = 0; i < slights.size(); ++i) {
-                const auto& shadow = slights.at(i);
-                const auto e = shadow.entt_;
-                auto slight = reg.try_get<mirinae::cpnt::SLight>(e);
-                if (!slight)
-                    continue;
-
-                auto light_mat = slight->make_proj_mat();
-                if (auto tform = reg.try_get<mirinae::cpnt::Transform>(e))
-                    light_mat = light_mat * tform->make_view_mat();
-
-                mirinae::ImageMemoryBarrier{}
-                    .image(shadow.tex_->image())
-                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                    .set_signle_mip_layer()
-                    .record_single(
-                        cmdbuf,
-                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                    );
-
-                mirinae::RenderPassBeginInfo{}
-                    .rp(rp.render_pass())
-                    .fbuf(shadow.fbuf())
-                    .wh(shadow.tex_->extent())
-                    .clear_value_count(rp.clear_value_count())
-                    .clear_values(rp.clear_values())
-                    .record_begin(cmdbuf);
-
-                vkCmdBindPipeline(
-                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-                );
-                vkCmdSetDepthBias(cmdbuf, 0, 0, -6);
-
-                mirinae::Viewport{}
-                    .set_wh(shadow.width(), shadow.height())
-                    .record_single(cmdbuf);
-                mirinae::Rect2D{}
-                    .set_wh(shadow.width(), shadow.height())
-                    .record_scissor(cmdbuf);
-
-                mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
-
-                for (auto& pair : draw_set.trs()) {
-                    auto& unit = *pair.unit_;
-                    auto& actor = *pair.actor_;
-
-                    unit.record_bind_vert_buf(cmdbuf);
-
-                    descset_info.set(actor.get_desc_set(ctxt.f_index_.get()))
-                        .record(cmdbuf);
-
-                    mirinae::U_ShadowPushConst push_const;
-                    push_const.pvm_ = light_mat * pair.model_mat_;
-
-                    mirinae::PushConstInfo{}
-                        .layout(rp.pipe_layout())
-                        .add_stage_vert()
-                        .record(cmdbuf, push_const);
-
-                    vkCmdDrawIndexed(cmdbuf, unit.vertex_count(), 1, 0, 0, 0);
-                }
-
-                for (auto& pair : draw_set.skin_trs()) {
-                    auto& unit = *pair.unit_;
-                    auto& actor = *pair.actor_;
-                    auto& ac_unit = actor.get_runit_trs(pair.runit_idx_);
-
-                    const auto vertex_buffers =
-                        ac_unit.vertex_buf(ctxt.f_index_).buffer();
-                    VkDeviceSize offsets[] = { 0 };
-                    vkCmdBindVertexBuffers(
-                        cmdbuf, 0, 1, &vertex_buffers, offsets
-                    );
-                    vkCmdBindIndexBuffer(
-                        cmdbuf,
-                        unit.vk_buffers().idx().buffer(),
-                        0,
-                        VK_INDEX_TYPE_UINT32
-                    );
-
-                    descset_info.set(actor.get_descset(ctxt.f_index_))
                         .record(cmdbuf);
 
                     mirinae::U_ShadowPushConst push_const;
