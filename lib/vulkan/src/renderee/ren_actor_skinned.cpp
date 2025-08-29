@@ -25,7 +25,6 @@ namespace mirinae {
         Buffer ubuf_static_;   // U_GbufActor
         Buffer ubuf_skinned_;  // U_GbufActorSkinned
         VkDescriptorSet descset_static_;
-        VkDescriptorSet descset_skinned_;
     };
 
 
@@ -62,19 +61,15 @@ namespace mirinae {
         const auto runit_count = static_cast<uint32_t>(runit_info.size());
 
         auto& desclayout_static = desclayouts.get("gbuf:actor");
-        auto& desclayout_skinned = desclayouts.get("gbuf:actor_skinned");
         auto& desclayout_anim = desclayouts.get("skin_anim:main");
 
         desc_pool_.init(
-            (2 * max_flight_count) + (runit_count * max_flight_count),
+            max_flight_count + (runit_count * max_flight_count),
             desclayout_anim.size_info(),
             device_.logi_device()
         );
         auto descsets_static = desc_pool_.alloc(
             max_flight_count, desclayout_static.layout(), device_.logi_device()
-        );
-        auto descsets_skinned = desc_pool_.alloc(
-            max_flight_count, desclayout_skinned.layout(), device_.logi_device()
         );
         auto descsets_anim = desc_pool_.alloc(
             runit_count * max_flight_count,
@@ -101,17 +96,10 @@ namespace mirinae {
 
             fd.descset_static_ = descsets_static.back();
             descsets_static.pop_back();
-
-            fd.descset_skinned_ = descsets_skinned.back();
-            descsets_skinned.pop_back();
-
             MIRINAE_ASSERT(VK_NULL_HANDLE != fd.descset_static_);
-            MIRINAE_ASSERT(VK_NULL_HANDLE != fd.descset_skinned_);
 
             dw.add_buf_info(fd.ubuf_static_)
                 .add_buf_write(fd.descset_static_, 0);
-            dw.add_buf_info(fd.ubuf_skinned_)
-                .add_buf_write(fd.descset_skinned_, 0);
         }
 
         for (auto& src_unit : runit_info) {

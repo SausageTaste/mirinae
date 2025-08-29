@@ -4,8 +4,6 @@ import "../module/skinned";
 
 struct U_GbufActorSkinned {
     float4x4 j_tforms_[MAX_JOINTS];
-    float4x4 view_model_;
-    float4x4 pvm_;
 }
 
 

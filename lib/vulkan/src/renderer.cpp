@@ -840,8 +840,6 @@ namespace { namespace task {
             udata_static.pvm = pvm;
 
             mirinae::U_GbufActorSkinned udata_skinned;
-            udata_skinned.view_model = udata_static.view_model;
-            udata_skinned.pvm = udata_static.pvm;
             anim_state.sample_anim(
                 udata_skinned.joint_transforms_,
                 mirinae::MAX_JOINTS,

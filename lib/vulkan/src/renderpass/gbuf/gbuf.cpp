@@ -31,26 +31,6 @@ namespace { namespace gbuf {
 }}  // namespace ::gbuf
 
 
-// gbuf skin
-namespace { namespace gbuf_skin {
-
-    VkDescriptorSetLayout create_desclayout_model(
-        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
-    ) {
-        return desclayouts.get("gbuf:model").layout();
-    }
-
-    VkDescriptorSetLayout create_desclayout_actor(
-        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
-    ) {
-        mirinae::DescLayoutBuilder builder{ "gbuf:actor_skinned" };
-        builder.add_ubuf(VK_SHADER_STAGE_VERTEX_BIT, 1);  // U_GbufActorSkinned
-        return desclayouts.add(builder, device.logi_device());
-    }
-
-}}  // namespace ::gbuf_skin
-
-
 // gbuf terrain
 namespace { namespace gbuf_terrain {
 
@@ -78,8 +58,6 @@ namespace mirinae::rp::gbuf {
     ) {
         ::gbuf::create_desclayout_actor(desclayouts, device);
         ::gbuf::create_desclayout_model(desclayouts, device);
-        ::gbuf_skin::create_desclayout_actor(desclayouts, device);
-        ::gbuf_skin::create_desclayout_model(desclayouts, device);
         ::gbuf_terrain::create_desclayout_main(desclayouts, device);
     }
 

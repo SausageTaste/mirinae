@@ -31,8 +31,6 @@ namespace mirinae {
 
     struct U_GbufActorSkinned {
         glm::mat4 joint_transforms_[MAX_JOINTS];
-        glm::mat4 view_model;
-        glm::mat4 pvm;
     };
 
     static_assert(sizeof(U_GbufActorSkinned) < 65536);
