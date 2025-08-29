@@ -1,5 +1,3 @@
-import "../module/lighting";
-
 
 layout(set = 0, binding = 0) RWStructuredBuffer<float> out_vertices;
 layout(set = 0, binding = 1) StructuredBuffer<float> in_vertices;
@@ -16,7 +14,7 @@ const static int VTX_STATIC_SIZE = 3 + 3 + 3 + 2;
 const static int VTX_SKINNED_SIZE = 4 + 4 + VTX_STATIC_SIZE;
 
 
-public float4x4 make_joint_transform(int4 j_ids, float4 j_weights) {
+float4x4 make_joint_transform(int4 j_ids, float4 j_weights) {
     float4x4 joint_transform = float4x4(0);
     for (int i = 0; i < 4; i++) {
         let idx = max(j_ids[i], 0);
