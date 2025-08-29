@@ -64,8 +64,8 @@ namespace mirinae {
         struct SkinnedActor {
             const RenderUnitSkinned* unit_ = nullptr;
             const RenderActorSkinned* actor_ = nullptr;
-            const Buffer* vtx_buf_ = nullptr;
             glm::dmat4 model_mat_{ 1 };
+            size_t runit_idx_ = 0;
         };
 
         void fetch(const entt::registry& reg);

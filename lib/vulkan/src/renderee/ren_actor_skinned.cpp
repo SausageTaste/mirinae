@@ -12,8 +12,10 @@ namespace mirinae {
     class CLS::FrameData {
 
     public:
-        Buffer ubuf_;
-        VkDescriptorSet descset_;
+        Buffer ubuf_static_;   // U_GbufActor
+        Buffer ubuf_skinned_;  // U_GbufActorSkinned
+        VkDescriptorSet descset_static_;
+        VkDescriptorSet descset_skinned_;
     };
 
 
@@ -47,27 +49,34 @@ namespace mirinae {
         const std::vector<RenUnitInfo>& runit_info,
         const DesclayoutManager& desclayouts
     ) {
-        const auto desc_count = static_cast<uint32_t>(
-            max_flight_count * runit_info.size()
-        );
+        const auto runit_count = static_cast<uint32_t>(runit_info.size());
 
-        auto& desclayout = desclayouts.get("gbuf:actor_skinned");
-        auto& desclayout_ren = desclayouts.get("skin_anim:main");
+        auto& desclayout_static = desclayouts.get("gbuf:actor");
+        auto& desclayout_skinned = desclayouts.get("gbuf:actor_skinned");
+        auto& desclayout_anim = desclayouts.get("skin_anim:main");
 
         desc_pool_.init(
-            max_flight_count + desc_count,
-            desclayout_ren.size_info(),
+            (2 * max_flight_count) + (runit_count * max_flight_count),
+            desclayout_anim.size_info(),
             device_.logi_device()
         );
-        auto descsets = desc_pool_.alloc(
-            max_flight_count, desclayout.layout(), device_.logi_device()
+        auto descsets_static = desc_pool_.alloc(
+            max_flight_count, desclayout_static.layout(), device_.logi_device()
         );
-        auto descsets_ren = desc_pool_.alloc(
-            desc_count, desclayout_ren.layout(), device_.logi_device()
+        auto descsets_skinned = desc_pool_.alloc(
+            max_flight_count, desclayout_skinned.layout(), device_.logi_device()
+        );
+        auto descsets_anim = desc_pool_.alloc(
+            runit_count * max_flight_count,
+            desclayout_anim.layout(),
+            device_.logi_device()
         );
 
-        BufferCreateInfo ubuf_cinfo;
-        ubuf_cinfo.preset_ubuf(sizeof(U_GbufActorSkinned));
+        BufferCreateInfo ubuf_static_cinfo;
+        ubuf_static_cinfo.preset_ubuf(sizeof(U_GbufActor));
+
+        BufferCreateInfo ubuf_skinned_cinfo;
+        ubuf_skinned_cinfo.preset_ubuf(sizeof(U_GbufActorSkinned));
 
         BufferCreateInfo vbuf_cinfo;
         vbuf_cinfo.set_usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
@@ -77,13 +86,22 @@ namespace mirinae {
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& fd = frame_data_.emplace_back();
-            fd.ubuf_.init(ubuf_cinfo, device_.mem_alloc());
+            fd.ubuf_static_.init(ubuf_static_cinfo, device_.mem_alloc());
+            fd.ubuf_skinned_.init(ubuf_skinned_cinfo, device_.mem_alloc());
 
-            fd.descset_ = descsets.back();
-            descsets.pop_back();
-            MIRINAE_ASSERT(VK_NULL_HANDLE != fd.descset_);
+            fd.descset_static_ = descsets_static.back();
+            descsets_static.pop_back();
 
-            dw.add_buf_info(fd.ubuf_).add_buf_write(fd.descset_, 0);
+            fd.descset_skinned_ = descsets_skinned.back();
+            descsets_skinned.pop_back();
+
+            MIRINAE_ASSERT(VK_NULL_HANDLE != fd.descset_static_);
+            MIRINAE_ASSERT(VK_NULL_HANDLE != fd.descset_skinned_);
+
+            dw.add_buf_info(fd.ubuf_static_)
+                .add_buf_write(fd.descset_static_, 0);
+            dw.add_buf_info(fd.ubuf_skinned_)
+                .add_buf_write(fd.descset_skinned_, 0);
         }
 
         for (auto& src_unit : runit_info) {
@@ -96,15 +114,16 @@ namespace mirinae {
                 vbuf_cinfo.set_size(src_unit.src_vtx_buf_->size());
                 dst_fd.vtx_buf_.init(vbuf_cinfo, device_.mem_alloc());
 
-                dst_fd.descset_ = descsets_ren.back();
-                descsets_ren.pop_back();
+                dst_fd.descset_ = descsets_anim.back();
+                descsets_anim.pop_back();
                 MIRINAE_ASSERT(VK_NULL_HANDLE != dst_fd.descset_);
 
                 dw.add_buf_info(dst_fd.vtx_buf_)
                     .add_storage_buf_write(dst_fd.descset_, 0);
                 dw.add_buf_info(*src_unit.src_vtx_buf_)
                     .add_storage_buf_write(dst_fd.descset_, 1);
-                dw.add_buf_info(fd.ubuf_).add_buf_write(dst_fd.descset_, 2);
+                dw.add_buf_info(fd.ubuf_skinned_)
+                    .add_buf_write(dst_fd.descset_, 2);
             }
         }
 
@@ -116,13 +135,22 @@ namespace mirinae {
         desc_pool_.destroy(device_.logi_device());
     }
 
-    void CLS::update_ubuf(uint32_t index, const U_GbufActorSkinned& data) {
-        auto& ubuf = frame_data_.at(index).ubuf_;
-        ubuf.set_data(&data, sizeof(U_GbufActorSkinned));
+    void CLS::update_ubuf(
+        const FrameIndex f_index,
+        const U_GbufActor& static_data,
+        const U_GbufActorSkinned& skinned_data
+    ) {
+        auto& fd = frame_data_.at(f_index.get());
+        fd.ubuf_static_.set_data(&static_data, sizeof(U_GbufActor));
+        fd.ubuf_skinned_.set_data(&skinned_data, sizeof(U_GbufActorSkinned));
+    }
+
+    VkDescriptorSet CLS::get_descset_static(FrameIndex f_index) const {
+        return frame_data_.at(f_index.get()).descset_static_;
     }
 
     VkDescriptorSet CLS::get_desc_set(size_t index) const {
-        return frame_data_.at(index).descset_;
+        return frame_data_.at(index).descset_skinned_;
     }
 
     const CLS::IRenUnit& CLS::get_runit(size_t unit_idx) const {

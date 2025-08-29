@@ -30,7 +30,13 @@ namespace mirinae {
         );
         void destroy();
 
-        void update_ubuf(uint32_t index, const U_GbufActorSkinned& data);
+        void update_ubuf(
+            const FrameIndex f_index,
+            const U_GbufActor& static_data,
+            const U_GbufActorSkinned& skinned_data
+        );
+
+        VkDescriptorSet get_descset_static(FrameIndex f_index) const;
         VkDescriptorSet get_desc_set(size_t f_index) const;
         const IRenUnit& get_runit(size_t unit_idx) const;
 

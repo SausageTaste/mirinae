@@ -232,6 +232,7 @@ namespace mirinae {
                 dst.unit_ = &renmdl->runits_[i];
                 dst.actor_ = actor;
                 dst.model_mat_ = model_mat;
+                dst.runit_idx_ = i;
             }
 
             const auto unit_trs_count = renmdl->runits_alpha_.size();
@@ -243,6 +244,7 @@ namespace mirinae {
                 dst.unit_ = &renmdl->runits_alpha_[i];
                 dst.actor_ = actor;
                 dst.model_mat_ = model_mat;
+                dst.runit_idx_ = i;
             }
         }
     }

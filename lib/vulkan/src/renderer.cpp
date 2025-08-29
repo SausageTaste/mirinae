@@ -834,14 +834,23 @@ namespace { namespace task {
             const auto vm = rp_ctxt.main_cam_.view() * model_mat;
             const auto pvm = rp_ctxt.main_cam_.proj() * vm;
 
-            mirinae::U_GbufActorSkinned udata;
-            udata.view_model = vm;
-            udata.pvm = pvm;
+            mirinae::U_GbufActor udata_static;
+            udata_static.model = model_mat;
+            udata_static.view_model = vm;
+            udata_static.pvm = pvm;
+
+            mirinae::U_GbufActorSkinned udata_skinned;
+            udata_skinned.view_model = udata_static.view_model;
+            udata_skinned.pvm = udata_static.pvm;
             anim_state.sample_anim(
-                udata.joint_transforms_, mirinae::MAX_JOINTS, scene.clock()
+                udata_skinned.joint_transforms_,
+                mirinae::MAX_JOINTS,
+                scene.clock()
             );
 
-            ren_actor.update_ubuf(rp_ctxt.f_index_.get(), udata);
+            ren_actor.update_ubuf(
+                rp_ctxt.f_index_, udata_static, udata_skinned
+            );
             return true;
         }
 

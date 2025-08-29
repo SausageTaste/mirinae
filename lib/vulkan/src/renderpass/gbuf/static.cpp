@@ -113,6 +113,33 @@ namespace {
                 vkCmdDrawIndexed(cmdbuf, unit.vertex_count(), 1, 0, 0, 0);
             }
 
+            for (auto& pair : draw_set.skin_opa()) {
+                auto& unit = *pair.unit_;
+                auto& actor = *pair.actor_;
+                auto& ac_unit = actor.get_runit(pair.runit_idx_);
+
+                descset_info.first_set(0)
+                    .set(unit.get_desc_set(ctxt.f_index_.get()))
+                    .record(cmdbuf);
+
+                const auto vertex_buffers =
+                    ac_unit.vertex_buf(ctxt.f_index_).buffer();
+                VkDeviceSize offsets[] = { 0 };
+                vkCmdBindVertexBuffers(cmdbuf, 0, 1, &vertex_buffers, offsets);
+                vkCmdBindIndexBuffer(
+                    cmdbuf,
+                    unit.vk_buffers().idx().buffer(),
+                    0,
+                    VK_INDEX_TYPE_UINT32
+                );
+
+                descset_info.first_set(1)
+                    .set(actor.get_descset_static(ctxt.f_index_))
+                    .record(cmdbuf);
+
+                vkCmdDrawIndexed(cmdbuf, unit.vertex_count(), 1, 0, 0, 0);
+            }
+
             vkCmdEndRenderPass(cmdbuf);
         }
 

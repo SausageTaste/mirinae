@@ -1,3 +1,4 @@
+import "../module/lighting";
 import "../module/skinned";
 
 
@@ -60,16 +61,23 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
         in_vertices[input_v_idx + 6],
         in_vertices[input_v_idx + 7]
     );
-    let pos = float3(
+    var pos = float3(
         in_vertices[input_v_idx + 8], in_vertices[input_v_idx + 9], in_vertices[input_v_idx + 10]
     );
-    let normal = float3(
+    var normal = float3(
         in_vertices[input_v_idx + 11], in_vertices[input_v_idx + 12], in_vertices[input_v_idx + 13]
     );
-    let tangent = float3(
+    var tangent = float3(
         in_vertices[input_v_idx + 14], in_vertices[input_v_idx + 15], in_vertices[input_v_idx + 16]
     );
     let texco = float2(in_vertices[input_v_idx + 17], in_vertices[input_v_idx + 18]);
+
+    let jmat = make_joint_transform(joint_indices, joint_weights, u_gbuf_model.j_tforms_);
+    let jmat3 = float3x3(jmat);
+
+    pos = mul(jmat, float4(pos, 1)).xyz;
+    normal = normalize(mul(jmat3, normal));
+    tangent = normalize(mul(jmat3, tangent));
 
     const int output_vtx_idx = vertex_idx * VTX_STATIC_SIZE;
     out_vertices[output_vtx_idx + 0] = pos.x;
