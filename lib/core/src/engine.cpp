@@ -797,7 +797,6 @@ namespace {
             */
 
             // SLight
-            /*
             {
                 const auto e = reg.create();
 
@@ -810,17 +809,9 @@ namespace {
                 s.outer_angle_.set_deg(25);
 
                 auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
-                t.pos_ = { -10.90, 1321.80, -45.40 };
-                t.rot_ = glm::normalize(
-                    glm::dquat{
-                        0.830827,
-                        -0.495304,
-                        0.220694,
-                        -0.125276,
-                    }
-                );
+                t.set_pos(469, 1875, -80);
+                t.set_rotation(0.997859, -0.065403, 0, 0);
             }
-            */
 
             // VPLight
             {

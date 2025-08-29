@@ -49,9 +49,21 @@ namespace mirinae {
     public:
         using Angle = sung::TAngle<T>;
 
+        void set_pos(T x, T y, T z) {
+            pos_.x = x;
+            pos_.y = y;
+            pos_.z = z;
+        }
+
         void rotate(Angle angle, const glm::tvec3<T>& axis) {
             rot_ = rotate_quat(rot_, angle, axis);
         }
+
+        void set_rotation(T w, T x, T y, T z) {
+            rot_ = glm::quat(w, x, y, z);
+            rot_ = glm::normalize(rot_);
+        }
+
         void reset_rotation() { rot_ = glm::quat(1, 0, 0, 0); }
 
         void set_scale(T x) {
