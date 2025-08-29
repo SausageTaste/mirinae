@@ -765,20 +765,20 @@ namespace { namespace task {
             const auto& mdl_path = mactor.model_path_;
             const auto res = model_mgr.request_skinned(mdl_path);
             if (dal::ReqResult::loading == res) {
-                return false;
+                return nullptr;
             } else if (dal::ReqResult::ready != res) {
                 const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
                 mactor.model_path_ =
                     "Sung/missing_static_mdl.dun/missing_static_mdl.dmd";
-                return false;
+                return nullptr;
             }
 
             auto model = model_mgr.get_skinned(mdl_path);
             if (!model) {
                 const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
-                return false;
+                return nullptr;
             }
 
             mactor.model_ = model;
