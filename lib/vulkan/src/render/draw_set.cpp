@@ -229,7 +229,7 @@ namespace mirinae {
                     continue;
 
                 auto& dst = skin_opa_.emplace_back();
-                dst.unit_ = &renmdl->runits_[i];
+                dst.unit_ = &renmdl->runits_.at(i);
                 dst.actor_ = actor;
                 dst.model_mat_ = model_mat;
                 dst.runit_idx_ = i;
@@ -241,7 +241,7 @@ namespace mirinae {
                     continue;
 
                 auto& dst = skin_trs_.emplace_back();
-                dst.unit_ = &renmdl->runits_alpha_[i];
+                dst.unit_ = &renmdl->runits_alpha_.at(i);
                 dst.actor_ = actor;
                 dst.model_mat_ = model_mat;
                 dst.runit_idx_ = i;
@@ -252,6 +252,8 @@ namespace mirinae {
     void DrawSetStatic::clear() {
         opa_.clear();
         trs_.clear();
+        skin_opa_.clear();
+        skin_trs_.clear();
     }
 
 }  // namespace mirinae
