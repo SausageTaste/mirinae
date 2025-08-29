@@ -2,6 +2,7 @@
 
 #include <sung/basic/mesh_builder.hpp>
 
+#include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/renderee/terrain.hpp"
 
@@ -198,12 +199,8 @@ namespace mirinae {
     }
 
     void RenUnitTerrain::draw_indexed(VkCommandBuffer cmdbuf) const {
-        VkBuffer vertex_buffers = vtx_buf_.buffer();
-        VkDeviceSize offsets = 0;
-        vkCmdBindVertexBuffers(cmdbuf, 0, 1, &vertex_buffers, &offsets);
-        vkCmdBindIndexBuffer(
-            cmdbuf, idx_buf_.buffer(), 0, VK_INDEX_TYPE_UINT32
-        );
+        BindVertBufInfo<1>{}.set_at<0>(vtx_buf_.buffer()).record(cmdbuf);
+        bind_idx_buf(cmdbuf, idx_buf_.buffer());
         vkCmdDrawIndexed(cmdbuf, vtx_count_, 1, 0, 0, 0);
     }
 

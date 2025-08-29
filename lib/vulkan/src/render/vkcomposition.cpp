@@ -1,5 +1,6 @@
 #include "mirinae/vulkan_pch.h"
 
+#include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/render/vkcomposition.hpp"
 
@@ -133,12 +134,8 @@ namespace mirinae {
     void VertexIndexPair::record_bind(VkCommandBuffer cmdbuf) const {
         static_assert(sizeof(VertIndexType_t) == 4);
 
-        VkBuffer vertex_buffers[] = { vertex_buf_.buffer() };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(cmdbuf, 0, 1, vertex_buffers, offsets);
-        vkCmdBindIndexBuffer(
-            cmdbuf, index_buf_.buffer(), 0, VK_INDEX_TYPE_UINT32
-        );
+        BindVertBufInfo<1>{}.set_at<0>(vertex_buf_.buffer()).record(cmdbuf);
+        bind_idx_buf(cmdbuf, index_buf_.buffer());
     }
 
     uint32_t VertexIndexPair::vertex_count() const {

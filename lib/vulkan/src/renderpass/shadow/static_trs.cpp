@@ -77,6 +77,8 @@ namespace { namespace task {
             const entt::registry& reg,
             const mirinae::DlightShadowMapBundle& dlights
         ) {
+            const auto f_idx = ctxt.f_index_;
+
             for (uint32_t i = 0; i < dlights.count(); ++i) {
                 auto& shadow = dlights.at(i);
                 auto dlight = reg.try_get<mirinae::cpnt::DLight>(shadow.entt());
@@ -168,17 +170,11 @@ namespace { namespace task {
                         auto& actor = *pair.actor_;
                         auto& ac_unit = actor.get_runit_trs(pair.runit_idx_);
 
-                        const auto vertex_buffers =
-                            ac_unit.vertex_buf(ctxt.f_index_).buffer();
-                        VkDeviceSize offsets[] = { 0 };
-                        vkCmdBindVertexBuffers(
-                            cmdbuf, 0, 1, &vertex_buffers, offsets
-                        );
-                        vkCmdBindIndexBuffer(
-                            cmdbuf,
-                            unit.vk_buffers().idx().buffer(),
-                            0,
-                            VK_INDEX_TYPE_UINT32
+                        mirinae::BindVertBufInfo<1>{}
+                            .set_at<0>(ac_unit.vertex_buf(f_idx).buffer())
+                            .record(cmdbuf);
+                        mirinae::bind_idx_buf(
+                            cmdbuf, unit.vk_buffers().idx().buffer()
                         );
 
                         descset_info.first_set(1)
@@ -294,17 +290,11 @@ namespace { namespace task {
                     auto& actor = *pair.actor_;
                     auto& ac_unit = actor.get_runit_trs(pair.runit_idx_);
 
-                    const auto vertex_buffers =
-                        ac_unit.vertex_buf(ctxt.f_index_).buffer();
-                    VkDeviceSize offsets[] = { 0 };
-                    vkCmdBindVertexBuffers(
-                        cmdbuf, 0, 1, &vertex_buffers, offsets
-                    );
-                    vkCmdBindIndexBuffer(
-                        cmdbuf,
-                        unit.vk_buffers().idx().buffer(),
-                        0,
-                        VK_INDEX_TYPE_UINT32
+                    mirinae::BindVertBufInfo<1>{}
+                        .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_).get())
+                        .record(cmdbuf);
+                    mirinae::bind_idx_buf(
+                        cmdbuf, unit.vk_buffers().idx().buffer()
                     );
 
                     descset_info.first_set(0)

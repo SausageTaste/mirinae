@@ -303,6 +303,30 @@ namespace mirinae {
     };
 
 
+    template <size_t N>
+    class BindVertBufInfo {
+
+    public:
+        template <size_t Idx>
+        BindVertBufInfo& set_at(VkBuffer buffer, VkDeviceSize offset = 0) {
+            static_assert(Idx < N, "Idx out of range");
+            buffers_[Idx] = buffer;
+            offsets_[Idx] = offset;
+            return *this;
+        }
+
+        void record(VkCommandBuffer cmdbuf) {
+            vkCmdBindVertexBuffers(
+                cmdbuf, 0, N, buffers_.data(), offsets_.data()
+            );
+        }
+
+    public:
+        std::array<VkBuffer, N> buffers_;
+        std::array<VkDeviceSize, N> offsets_;
+    };
+
+
     class DescSetBindInfo {
 
     public:
@@ -403,6 +427,15 @@ namespace mirinae {
         std::vector<uint32_t> image_indices_;
     };
 
+
+    inline void bind_idx_buf(
+        const VkCommandBuffer cmdbuf,
+        const VkBuffer buf,
+        const VkDeviceSize offset = 0,
+        const VkIndexType type = VK_INDEX_TYPE_UINT32
+    ) {
+        vkCmdBindIndexBuffer(cmdbuf, buf, offset, type);
+    }
 
     void begin_cmdbuf(VkCommandBuffer cmdbuf);
     void begin_cmdbuf(VkCommandBuffer cmdbuf, const DebugLabel& label);

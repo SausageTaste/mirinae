@@ -269,16 +269,10 @@ namespace {
                 auto& actor = *pair.actor_;
                 auto& ac_unit = actor.get_runit_trs(pair.runit_idx_);
 
-                const auto vertex_buffers =
-                    ac_unit.vertex_buf(ctxt.f_index_).buffer();
-                VkDeviceSize offsets[] = { 0 };
-                vkCmdBindVertexBuffers(cmdbuf, 0, 1, &vertex_buffers, offsets);
-                vkCmdBindIndexBuffer(
-                    cmdbuf,
-                    unit.vk_buffers().idx().buffer(),
-                    0,
-                    VK_INDEX_TYPE_UINT32
-                );
+                mirinae::BindVertBufInfo<1>{}
+                    .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_).get())
+                    .record(cmdbuf);
+                mirinae::bind_idx_buf(cmdbuf, unit.vk_buffers().idx().buffer());
 
                 descset_info.first_set(1)
                     .set(unit.get_desc_set(ctxt.f_index_.get()))

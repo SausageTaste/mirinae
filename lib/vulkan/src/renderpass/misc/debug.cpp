@@ -72,9 +72,9 @@ namespace {
         void destroy(mirinae::VulkanDevice& device) { buf_.destroy(); }
 
         void record_bind(VkCommandBuffer cmdbuf) const {
-            VkBuffer vertex_buffers[] = { buf_.buffer() };
-            VkDeviceSize offsets[] = { 0 };
-            vkCmdBindVertexBuffers(cmdbuf, 0, 1, vertex_buffers, offsets);
+            mirinae::BindVertBufInfo<1>{}
+                .set_at<0>(buf_.buffer())
+                .record(cmdbuf);
         }
 
         size_t vertex_count() const { return vertex_count_; }
