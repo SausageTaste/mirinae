@@ -844,18 +844,14 @@ namespace { namespace task {
             udata_static.view_model = vm;
             udata_static.pvm = pvm;
 
-            mirinae::U_GbufActorSkinned udata_skinned;
+            std::array<glm::mat4, 256> joint_palette;
             anim_state.sample_anim(
-                udata_skinned.joint_transforms_,
-                mirinae::MAX_JOINTS,
-                scene.clock()
+                joint_palette.data(), joint_palette.size(), scene.clock()
             );
 
-            ren_actor.update_ubuf(
-                rp_ctxt.f_index_,
-                udata_static,
-                udata_skinned.joint_transforms_,
-                mirinae::MAX_JOINTS
+            ren_actor.update_ubuf(rp_ctxt.f_index_, udata_static);
+            ren_actor.update_joint_palette(
+                rp_ctxt.f_index_, joint_palette.data(), joint_palette.size()
             );
             return true;
         }

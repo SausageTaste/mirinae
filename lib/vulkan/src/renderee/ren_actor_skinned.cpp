@@ -140,13 +140,18 @@ namespace mirinae {
     }
 
     void CLS::update_ubuf(
+        const FrameIndex f_index, const U_GbufActor& static_data
+    ) {
+        auto& fd = frame_data_.at(f_index.get());
+        fd.ubuf_static_.set_data(&static_data, sizeof(U_GbufActor));
+    }
+
+    void CLS::update_joint_palette(
         const FrameIndex f_index,
-        const U_GbufActor& static_data,
         const glm::mat4* const joint_palette,
         const size_t joint_count
     ) {
         auto& fd = frame_data_.at(f_index.get());
-        fd.ubuf_static_.set_data(&static_data, sizeof(U_GbufActor));
         fd.joint_palette_.set_data(
             joint_palette, joint_count * sizeof(glm::mat4)
         );

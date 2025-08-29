@@ -27,15 +27,6 @@ namespace mirinae {
     };
 
 
-    constexpr uint32_t MAX_JOINTS = 128;
-
-    struct U_GbufActorSkinned {
-        glm::mat4 joint_transforms_[MAX_JOINTS];
-    };
-
-    static_assert(sizeof(U_GbufActorSkinned) < 65536);
-
-
     struct U_ShadowPushConst {
         glm::mat4 pvm_;
     };

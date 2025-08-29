@@ -32,8 +32,11 @@ namespace mirinae {
         void destroy();
 
         void update_ubuf(
+            const FrameIndex f_index, const U_GbufActor& static_data
+        );
+
+        void update_joint_palette(
             const FrameIndex f_index,
-            const U_GbufActor& static_data,
             const glm::mat4* const joint_palette,
             const size_t joint_count
         );
