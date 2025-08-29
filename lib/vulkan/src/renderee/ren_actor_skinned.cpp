@@ -105,7 +105,9 @@ namespace mirinae {
         }
 
         for (auto& src_unit : runit_info) {
-            auto& dst_unit = runits_.emplace_back();
+            auto& dst_unit = (src_unit.transparent_)
+                                 ? runits_trs_.emplace_back()
+                                 : runits_.emplace_back();
 
             for (uint32_t i = 0; i < max_flight_count; ++i) {
                 const auto& fd = frame_data_.at(i);
@@ -155,6 +157,10 @@ namespace mirinae {
 
     const CLS::IRenUnit& CLS::get_runit(size_t unit_idx) const {
         return runits_.at(unit_idx);
+    }
+
+    const CLS::IRenUnit& CLS::get_runit_trs(size_t unit_idx) const {
+        return runits_trs_.at(unit_idx);
     }
 
 #undef CLS

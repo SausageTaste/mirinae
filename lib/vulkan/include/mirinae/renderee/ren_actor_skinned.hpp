@@ -39,6 +39,7 @@ namespace mirinae {
         VkDescriptorSet get_descset_static(FrameIndex f_index) const;
         VkDescriptorSet get_desc_set(size_t f_index) const;
         const IRenUnit& get_runit(size_t unit_idx) const;
+        const IRenUnit& get_runit_trs(size_t unit_idx) const;
 
     private:
         class FrameData;
@@ -47,6 +48,7 @@ namespace mirinae {
         DescPool desc_pool_;
         std::vector<FrameData> frame_data_;
         std::vector<RenUnit> runits_;
+        std::vector<RenUnit> runits_trs_;
         VulkanDevice& device_;
     };
 
