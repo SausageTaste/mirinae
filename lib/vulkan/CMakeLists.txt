@@ -45,7 +45,6 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/sky_atmos.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/specular.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/gbuf.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/skinned.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/static.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/misc/debug.cpp
@@ -57,12 +56,9 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/post_ift.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/render_tess.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/bundles.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/skinned_trs.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/skinned.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/static_trs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/static.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/terrain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/transp/skinned.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/transp/static.cpp
 )
 target_include_directories(mirinae_vulkan PUBLIC

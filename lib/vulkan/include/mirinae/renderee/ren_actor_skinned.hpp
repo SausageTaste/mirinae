@@ -37,7 +37,6 @@ namespace mirinae {
         );
 
         VkDescriptorSet get_descset_static(FrameIndex f_index) const;
-        VkDescriptorSet get_desc_set(size_t f_index) const;
         const IRenUnit& get_runit(size_t unit_idx) const;
         const IRenUnit& get_runit_trs(size_t unit_idx) const;
 

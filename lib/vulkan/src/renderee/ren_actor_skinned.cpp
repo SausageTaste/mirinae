@@ -151,10 +151,6 @@ namespace mirinae {
         return frame_data_.at(f_index.get()).descset_static_;
     }
 
-    VkDescriptorSet CLS::get_desc_set(size_t index) const {
-        return frame_data_.at(index).descset_skinned_;
-    }
-
     const CLS::IRenUnit& CLS::get_runit(size_t unit_idx) const {
         return runits_.at(unit_idx);
     }

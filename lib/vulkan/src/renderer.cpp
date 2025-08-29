@@ -1119,13 +1119,6 @@ namespace {
                     .add_out_atta(rg.get_img("gbuf normal"))
                     .add_out_atta(rg.get_img("gbuf material"));
 
-                rg.new_pass("gbuf skinned")
-                    .set_impl_f(mirinae::rp::create_rpimpl_gbuf_skinned)
-                    .add_inout_atta(rg.get_img("gbuf depth"))
-                    .add_inout_atta(rg.get_img("gbuf albedo"))
-                    .add_inout_atta(rg.get_img("gbuf normal"))
-                    .add_inout_atta(rg.get_img("gbuf material"));
-
                 rg.new_pass("gbuf terrain")
                     .set_impl_f(mirinae::rp::create_rpimpl_gbuf_terrain)
                     .add_inout_atta(rg.get_img("gbuf depth"))

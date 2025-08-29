@@ -226,3 +226,12 @@ namespace mirinae {
     }
 
 }  // namespace mirinae
+
+
+namespace mirinae::rp {
+
+    HShadowMaps create_shadow_maps_bundle(mirinae::VulkanDevice& device) {
+        return std::make_shared<ShadowMapBundle>(device);
+    }
+
+}  // namespace mirinae::rp
