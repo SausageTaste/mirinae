@@ -18,9 +18,14 @@ namespace {
 
     namespace cpnt = mirinae::cpnt;
 
+    uint32_t ceil_div(uint32_t n, uint32_t d) {
+        return (n + d - uint32_t(1)) / d;
+    };
+
 
     struct U_SkinAnim {
         float time_ = 0;
+        int32_t vertex_count_ = 0;
     };
 
 
@@ -87,6 +92,7 @@ namespace {
         };
 
         auto& opa() const { return opa_; }
+        auto& trs() const { return trs_; }
 
     private:
         std::vector<RenderPair> opa_;
@@ -172,12 +178,31 @@ namespace {
 
                 descset_info.set(ac_unit.descset(ctxt.f_index_)).record(cmdbuf);
 
+                push_const.vertex_count_ = unit.vertex_count();
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())
                     .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .record(cmdbuf, push_const);
 
-                vkCmdDispatch(cmdbuf, unit.vertex_count(), 1, 1);
+                vkCmdDispatch(cmdbuf, ceil_div(unit.vertex_count(), 128), 1, 1);
+            }
+
+            for (auto& pair : draw_set.trs()) {
+                auto& unit = *pair.unit_;
+                auto& actor = *pair.actor_;
+                auto& ac_unit = actor.get_runit_trs(pair.unit_idx_);
+
+                unit.record_bind_vert_buf(cmdbuf);
+
+                descset_info.set(ac_unit.descset(ctxt.f_index_)).record(cmdbuf);
+
+                push_const.vertex_count_ = unit.vertex_count();
+                mirinae::PushConstInfo{}
+                    .layout(rp.pipe_layout())
+                    .add_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .record(cmdbuf, push_const);
+
+                vkCmdDispatch(cmdbuf, ceil_div(unit.vertex_count(), 128), 1, 1);
             }
 
             return true;

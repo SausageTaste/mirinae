@@ -16,6 +16,7 @@ layout(set = 0, binding = 2) ConstantBuffer<U_GbufActorSkinned> u_gbuf_model;
 [push_constant]
 cbuffer U_SkinAnim {
     float time_;
+    int vertex_count_;
 }
 u_pc;
 
@@ -41,9 +42,11 @@ struct VertexSkinned {
 
 
 [shader("compute")]
-[numthreads(1, 1, 1)]
+[numthreads(128, 1, 1)]
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let vertex_idx = dispatch_id.x;
+    if (vertex_idx >= u_pc.vertex_count_)
+        return;
 
     const int VTX_STATIC_SIZE = 3 + 3 + 3 + 2;
     const int VTX_SKINNED_SIZE = 4 + 4 + VTX_STATIC_SIZE;
