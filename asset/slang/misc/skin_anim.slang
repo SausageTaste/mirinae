@@ -19,7 +19,7 @@ const static int VTX_SKINNED_SIZE = 4 + 4 + VTX_STATIC_SIZE;
 public float4x4 make_joint_transform(int4 j_ids, float4 j_weights) {
     float4x4 joint_transform = float4x4(0);
     for (int i = 0; i < 4; i++) {
-        let idx = clamp(j_ids[i], 0, 512);
+        let idx = max(j_ids[i], 0);
         joint_transform += j_weights[i] * in_joint_palette[idx];
     }
 
