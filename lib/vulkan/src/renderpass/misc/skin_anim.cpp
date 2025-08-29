@@ -166,11 +166,11 @@ namespace {
             for (auto& pair : draw_set.opa()) {
                 auto& unit = *pair.unit_;
                 auto& actor = *pair.actor_;
-                auto& ac_unit = actor.get_runit(ctxt.f_index_, pair.unit_idx_);
+                auto& ac_unit = actor.get_runit(pair.unit_idx_);
 
                 unit.record_bind_vert_buf(cmdbuf);
 
-                descset_info.set(ac_unit.descset_).record(cmdbuf);
+                descset_info.set(ac_unit.descset(ctxt.f_index_)).record(cmdbuf);
 
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())

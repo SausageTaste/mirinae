@@ -10,13 +10,13 @@ namespace mirinae {
 
     public:
         struct RenUnitInfo {
-            const mirinae::Buffer* src_vtx_buf_=nullptr;
+            const Buffer* src_vtx_buf_ = nullptr;
             bool transparent_ = false;
         };
 
-        struct RenUnit {
-            mirinae::Buffer vertex_buf_;
-            VkDescriptorSet descset_;
+        struct IRenUnit {
+            virtual const Buffer& vertex_buf(FrameIndex f_idx) const = 0;
+            virtual VkDescriptorSet descset(FrameIndex f_idx) const = 0;
         };
 
     public:
@@ -31,14 +31,16 @@ namespace mirinae {
         void destroy();
 
         void update_ubuf(uint32_t index, const U_GbufActorSkinned& data);
-        VkDescriptorSet get_desc_set(size_t index) const;
-        const RenUnit& get_runit(FrameIndex f_idx, size_t unit_idx) const;
+        VkDescriptorSet get_desc_set(size_t f_index) const;
+        const IRenUnit& get_runit(size_t unit_idx) const;
 
     private:
-        struct FrameData;
+        class FrameData;
+        class RenUnit;
 
         DescPool desc_pool_;
         std::vector<FrameData> frame_data_;
+        std::vector<RenUnit> runits_;
         VulkanDevice& device_;
     };
 

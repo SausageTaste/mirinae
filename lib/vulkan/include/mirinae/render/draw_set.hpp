@@ -61,15 +61,26 @@ namespace mirinae {
             glm::dmat4 model_mat_{ 1 };
         };
 
+        struct SkinnedActor {
+            const RenderUnitSkinned* unit_ = nullptr;
+            const RenderActorSkinned* actor_ = nullptr;
+            const Buffer* vtx_buf_ = nullptr;
+            glm::dmat4 model_mat_{ 1 };
+        };
+
         void fetch(const entt::registry& reg);
         void clear();
 
         const std::vector<StaticActor>& opa() const { return opa_; }
         const std::vector<StaticActor>& trs() const { return trs_; }
+        const std::vector<SkinnedActor>& skin_opa() const { return skin_opa_; }
+        const std::vector<SkinnedActor>& skin_trs() const { return skin_trs_; }
 
     private:
         std::vector<StaticActor> opa_;
         std::vector<StaticActor> trs_;
+        std::vector<SkinnedActor> skin_opa_;
+        std::vector<SkinnedActor> skin_trs_;
     };
 
 
