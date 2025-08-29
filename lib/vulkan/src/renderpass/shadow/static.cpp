@@ -266,6 +266,41 @@ namespace { namespace task {
                             cmdbuf, unit.vertex_count(), 1, 0, 0, 0
                         );
                     }
+
+                    for (auto& pair : draw_set.skin_opa()) {
+                        auto& unit = *pair.unit_;
+                        auto& actor = *pair.actor_;
+                        auto& ac_unit = actor.get_runit(pair.runit_idx_);
+
+                        const auto vertex_buffers =
+                            ac_unit.vertex_buf(ctxt.f_index_).buffer();
+                        VkDeviceSize offsets[] = { 0 };
+                        vkCmdBindVertexBuffers(
+                            cmdbuf, 0, 1, &vertex_buffers, offsets
+                        );
+                        vkCmdBindIndexBuffer(
+                            cmdbuf,
+                            unit.vk_buffers().idx().buffer(),
+                            0,
+                            VK_INDEX_TYPE_UINT32
+                        );
+
+                        descset_info.first_set(0)
+                            .set(actor.get_descset_static(ctxt.f_index_))
+                            .record(cmdbuf);
+
+                        mirinae::U_ShadowPushConst push_const;
+                        push_const.pvm_ = cascade.light_mat_ * pair.model_mat_;
+
+                        mirinae::PushConstInfo{}
+                            .layout(rp.pipe_layout())
+                            .add_stage_vert()
+                            .record(cmdbuf, push_const);
+
+                        vkCmdDrawIndexed(
+                            cmdbuf, unit.vertex_count(), 1, 0, 0, 0
+                        );
+                    }
                 }
 
                 vkCmdEndRenderPass(cmdbuf);
@@ -333,10 +368,41 @@ namespace { namespace task {
                     auto& unit = *pair.unit_;
                     auto& actor = *pair.actor_;
 
-                    auto unit_desc = unit.get_desc_set(ctxt.f_index_.get());
                     unit.record_bind_vert_buf(cmdbuf);
 
                     descset_info.set(actor.get_desc_set(ctxt.f_index_.get()))
+                        .record(cmdbuf);
+
+                    mirinae::U_ShadowPushConst push_const;
+                    push_const.pvm_ = light_mat * pair.model_mat_;
+
+                    mirinae::PushConstInfo{}
+                        .layout(rp.pipe_layout())
+                        .add_stage_vert()
+                        .record(cmdbuf, push_const);
+
+                    vkCmdDrawIndexed(cmdbuf, unit.vertex_count(), 1, 0, 0, 0);
+                }
+
+                for (auto& pair : draw_set.skin_opa()) {
+                    auto& unit = *pair.unit_;
+                    auto& actor = *pair.actor_;
+                    auto& ac_unit = actor.get_runit(pair.runit_idx_);
+
+                    const auto vertex_buffers =
+                        ac_unit.vertex_buf(ctxt.f_index_).buffer();
+                    VkDeviceSize offsets[] = { 0 };
+                    vkCmdBindVertexBuffers(
+                        cmdbuf, 0, 1, &vertex_buffers, offsets
+                    );
+                    vkCmdBindIndexBuffer(
+                        cmdbuf,
+                        unit.vk_buffers().idx().buffer(),
+                        0,
+                        VK_INDEX_TYPE_UINT32
+                    );
+
+                    descset_info.set(actor.get_descset_static(ctxt.f_index_))
                         .record(cmdbuf);
 
                     mirinae::U_ShadowPushConst push_const;

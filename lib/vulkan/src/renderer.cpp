@@ -1224,15 +1224,7 @@ namespace {
                 );
 
                 render_passes_.push_back(
-                    mirinae::rp::create_rp_shadow_skinned(cbundle)
-                );
-
-                render_passes_.push_back(
                     mirinae::rp::create_rp_shadow_static_trs(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_shadow_skinned_trs(cbundle)
                 );
 
                 render_passes_.push_back(
@@ -1241,10 +1233,6 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::gbuf::create_rp_gbuf_static(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::gbuf::create_rp_gbuf_skinned(cbundle)
                 );
 
                 render_passes_.push_back(
@@ -1283,10 +1271,6 @@ namespace {
 
                 render_passes_.push_back(
                     mirinae::rp::create_rp_states_transp_static(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_states_transp_skinned(cbundle)
                 );
 
                 render_passes_.push_back(
