@@ -19,24 +19,55 @@ cbuffer U_SkinAnim {
 u_pc;
 
 
-/*
-struct VertexStatic {
-    glm::vec3 pos_;
-    glm::vec3 normal_;
-    glm::vec3 tangent_;
-    glm::vec2 texcoord_;
-};
+const static int VTX_STATIC_SIZE = 3 + 3 + 3 + 2;
+const static int VTX_SKINNED_SIZE = 4 + 4 + VTX_STATIC_SIZE;
 
 
-struct VertexSkinned {
-    glm::ivec4 joint_indices_;
-    glm::vec4 joint_weights_;
-    glm::vec3 pos_;
-    glm::vec3 normal_;
-    glm::vec3 tangent_;
-    glm::vec2 uv_;
+struct Fetcher {
+    __init(int base_idx) {
+        base_idx_ = base_idx;
+    }
+
+    float get_f(int offset) {
+        return in_vertices[base_idx_ + offset];
+    }
+
+    float2 get_f2(int offset) {
+        return float2(in_vertices[base_idx_ + offset], in_vertices[base_idx_ + offset + 1]);
+    }
+
+    float3 get_f3(int offset) {
+        return float3(
+            in_vertices[base_idx_ + offset],
+            in_vertices[base_idx_ + offset + 1],
+            in_vertices[base_idx_ + offset + 2]
+        );
+    }
+
+    float4 get_f4(int offset) {
+        return float4(
+            in_vertices[base_idx_ + offset],
+            in_vertices[base_idx_ + offset + 1],
+            in_vertices[base_idx_ + offset + 2],
+            in_vertices[base_idx_ + offset + 3]
+        );
+    }
+
+    int get_i(int offset) {
+        return reinterpret<int>(in_vertices[base_idx_ + offset]);
+    }
+
+    int4 get_i4(int offset) {
+        return int4(
+            reinterpret<int>(in_vertices[base_idx_ + offset]),
+            reinterpret<int>(in_vertices[base_idx_ + offset + 1]),
+            reinterpret<int>(in_vertices[base_idx_ + offset + 2]),
+            reinterpret<int>(in_vertices[base_idx_ + offset + 3])
+        );
+    }
+
+    private int base_idx_;
 };
-*/
 
 
 [shader("compute")]
@@ -46,34 +77,15 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     if (vertex_idx >= u_pc.vertex_count_)
         return;
 
-    const int VTX_STATIC_SIZE = 3 + 3 + 3 + 2;
-    const int VTX_SKINNED_SIZE = 4 + 4 + VTX_STATIC_SIZE;
+    let fetcher = Fetcher(vertex_idx * VTX_SKINNED_SIZE);
+    let j_indices = fetcher.get_i4(0);
+    let j_weights = fetcher.get_f4(4);
+    var pos = fetcher.get_f3(8);
+    var normal = fetcher.get_f3(11);
+    var tangent = fetcher.get_f3(14);
+    let texco = fetcher.get_f2(17);
 
-    const int input_v_idx = vertex_idx * VTX_SKINNED_SIZE;
-    let joint_indices = int4(
-        reinterpret<int>(in_vertices[input_v_idx + 0]),
-        reinterpret<int>(in_vertices[input_v_idx + 1]),
-        reinterpret<int>(in_vertices[input_v_idx + 2]),
-        reinterpret<int>(in_vertices[input_v_idx + 3])
-    );
-    let joint_weights = float4(
-        in_vertices[input_v_idx + 4],
-        in_vertices[input_v_idx + 5],
-        in_vertices[input_v_idx + 6],
-        in_vertices[input_v_idx + 7]
-    );
-    var pos = float3(
-        in_vertices[input_v_idx + 8], in_vertices[input_v_idx + 9], in_vertices[input_v_idx + 10]
-    );
-    var normal = float3(
-        in_vertices[input_v_idx + 11], in_vertices[input_v_idx + 12], in_vertices[input_v_idx + 13]
-    );
-    var tangent = float3(
-        in_vertices[input_v_idx + 14], in_vertices[input_v_idx + 15], in_vertices[input_v_idx + 16]
-    );
-    let texco = float2(in_vertices[input_v_idx + 17], in_vertices[input_v_idx + 18]);
-
-    let jmat = make_joint_transform(joint_indices, joint_weights, u_gbuf_model.j_tforms_);
+    let jmat = make_joint_transform(j_indices, j_weights, u_gbuf_model.j_tforms_);
     let jmat3 = float3x3(jmat);
 
     pos = mul(jmat, float4(pos, 1)).xyz;
