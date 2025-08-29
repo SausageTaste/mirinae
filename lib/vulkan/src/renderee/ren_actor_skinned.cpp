@@ -157,7 +157,7 @@ namespace mirinae {
         );
     }
 
-    VkDescriptorSet CLS::get_descset_static(FrameIndex f_index) const {
+    VkDescriptorSet CLS::get_descset(FrameIndex f_index) const {
         return frame_data_.at(f_index.get()).descset_static_;
     }
 

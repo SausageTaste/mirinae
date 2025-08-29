@@ -41,7 +41,7 @@ namespace mirinae {
             const size_t joint_count
         );
 
-        VkDescriptorSet get_descset_static(FrameIndex f_index) const;
+        VkDescriptorSet get_descset(FrameIndex f_index) const;
         const IRenUnit& get_runit(size_t unit_idx) const;
         const IRenUnit& get_runit_trs(size_t unit_idx) const;
 

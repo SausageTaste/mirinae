@@ -285,7 +285,7 @@ namespace {
                     .record(cmdbuf);
 
                 descset_info.first_set(2)
-                    .set(actor.get_descset_static(ctxt.f_index_))
+                    .set(actor.get_descset(ctxt.f_index_))
                     .record(cmdbuf);
 
                 vkCmdDrawIndexed(cmdbuf, unit.vertex_count(), 1, 0, 0, 0);

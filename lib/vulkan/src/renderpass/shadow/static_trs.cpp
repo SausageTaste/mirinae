@@ -186,7 +186,7 @@ namespace { namespace task {
                             .record(cmdbuf);
 
                         descset_info.first_set(0)
-                            .set(actor.get_descset_static(ctxt.f_index_))
+                            .set(actor.get_descset(ctxt.f_index_))
                             .record(cmdbuf);
 
                         mirinae::U_ShadowPushConst push_const;
@@ -309,7 +309,7 @@ namespace { namespace task {
                     );
 
                     descset_info.first_set(0)
-                        .set(actor.get_descset_static(ctxt.f_index_))
+                        .set(actor.get_descset(ctxt.f_index_))
                         .record(cmdbuf);
 
                     descset_info.first_set(1)
@@ -415,7 +415,7 @@ namespace { namespace task {
                         VK_INDEX_TYPE_UINT32
                     );
 
-                    descset_info.set(actor.get_descset_static(ctxt.f_index_))
+                    descset_info.set(actor.get_descset(ctxt.f_index_))
                         .record(cmdbuf);
 
                     mirinae::U_ShadowPushConst push_const;
