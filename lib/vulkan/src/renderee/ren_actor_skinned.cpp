@@ -4,6 +4,16 @@
 #include "mirinae/renderee/ren_actor_skinned.hpp"
 
 
+namespace {
+
+    constexpr size_t conv_size(size_t a) {
+        return a * sizeof(mirinae::VertexStatic) /
+               sizeof(mirinae::VertexSkinned);
+    }
+
+}  // namespace
+
+
 // RenderActorSkinned
 namespace mirinae {
 
@@ -113,7 +123,7 @@ namespace mirinae {
                 const auto& fd = frame_data_.at(i);
                 auto& dst_fd = dst_unit.frame_data_.emplace_back();
 
-                vbuf_cinfo.set_size(src_unit.src_vtx_buf_->size());
+                vbuf_cinfo.set_size(conv_size(src_unit.src_vtx_buf_->size()));
                 dst_fd.vtx_buf_.init(vbuf_cinfo, device_.mem_alloc());
 
                 dst_fd.descset_ = descsets_anim.back();
