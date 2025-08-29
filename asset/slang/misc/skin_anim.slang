@@ -7,7 +7,6 @@ layout(set = 0, binding = 2) StructuredBuffer<float4x4> in_joint_palette;
 
 [push_constant]
 cbuffer U_SkinAnim {
-    float time_;
     int vertex_count_;
 }
 u_pc;

@@ -24,7 +24,6 @@ namespace {
 
 
     struct U_SkinAnim {
-        float time_ = 0;
         int32_t vertex_count_ = 0;
     };
 
@@ -162,12 +161,11 @@ namespace {
             mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
             descset_info.bind_point(VK_PIPELINE_BIND_POINT_COMPUTE);
 
-            ::U_SkinAnim push_const;
-            push_const.time_ = static_cast<float>(ctxt.dt_);
-
             vkCmdBindPipeline(
                 cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, rp.pipeline()
             );
+
+            ::U_SkinAnim push_const;
 
             for (auto& pair : draw_set.opa()) {
                 auto& unit = *pair.unit_;
