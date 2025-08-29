@@ -208,7 +208,7 @@ namespace {
             return true;
         }
 
-        const mirinae::DebugLabel DEBUG_LABEL{ "Skin anim" };
+        const mirinae::DebugLabel DEBUG_LABEL{ "Skin anim", 0.3, 0.3, 0.3 };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
