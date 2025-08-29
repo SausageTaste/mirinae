@@ -7,7 +7,9 @@
 // RenderActorSkinned
 namespace mirinae {
 
-    class RenderActorSkinned::FrameData {
+#define CLS RenderActorSkinned
+
+    class CLS::FrameData {
 
     public:
         Buffer ubuf_;
@@ -15,22 +17,19 @@ namespace mirinae {
     };
 
 
-    class RenderActorSkinned::RenUnit
-        : public mirinae::RenderActorSkinned::IRenUnit {
+    class CLS::RenUnit : public CLS::IRenUnit {
 
     public:
-        const mirinae::Buffer& vertex_buf(
-            mirinae::FrameIndex f_idx
-        ) const override {
+        const Buffer& vertex_buf(FrameIndex f_idx) const override {
             return frame_data_.at(f_idx.get()).vtx_buf_;
         }
 
-        VkDescriptorSet descset(mirinae::FrameIndex f_idx) const override {
+        VkDescriptorSet descset(FrameIndex f_idx) const override {
             return frame_data_.at(f_idx.get()).descset_;
         }
 
         struct FrameData {
-            mirinae::Buffer vtx_buf_;
+            Buffer vtx_buf_;
             VkDescriptorSet descset_;
         };
 
@@ -38,12 +37,12 @@ namespace mirinae {
     };
 
 
-    RenderActorSkinned::RenderActorSkinned(VulkanDevice& vulkan_device)
+    CLS::RenderActorSkinned(VulkanDevice& vulkan_device)
         : device_(vulkan_device) {}
 
-    RenderActorSkinned::~RenderActorSkinned() { this->destroy(); }
+    CLS::~RenderActorSkinned() { this->destroy(); }
 
-    void RenderActorSkinned::init(
+    void CLS::init(
         const uint32_t max_flight_count,
         const std::vector<RenUnitInfo>& runit_info,
         const DesclayoutManager& desclayouts
@@ -112,26 +111,24 @@ namespace mirinae {
         dw.apply_all(device_.logi_device());
     }
 
-    void RenderActorSkinned::destroy() {
+    void CLS::destroy() {
         frame_data_.clear();
         desc_pool_.destroy(device_.logi_device());
     }
 
-    void RenderActorSkinned::update_ubuf(
-        uint32_t index, const U_GbufActorSkinned& data
-    ) {
+    void CLS::update_ubuf(uint32_t index, const U_GbufActorSkinned& data) {
         auto& ubuf = frame_data_.at(index).ubuf_;
         ubuf.set_data(&data, sizeof(U_GbufActorSkinned));
     }
 
-    VkDescriptorSet RenderActorSkinned::get_desc_set(size_t index) const {
+    VkDescriptorSet CLS::get_desc_set(size_t index) const {
         return frame_data_.at(index).descset_;
     }
 
-    const RenderActorSkinned::IRenUnit& RenderActorSkinned::get_runit(
-        size_t unit_idx
-    ) const {
+    const CLS::IRenUnit& CLS::get_runit(size_t unit_idx) const {
         return runits_.at(unit_idx);
     }
+
+#undef CLS
 
 }  // namespace mirinae
