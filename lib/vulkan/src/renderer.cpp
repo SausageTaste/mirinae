@@ -814,7 +814,12 @@ namespace { namespace task {
             std::lock_guard<std::mutex> lock(g_actor_mtx);
 
             auto a = std::make_shared<mirinae::RenderActorSkinned>(device);
-            a->init(mirinae::MAX_FRAMES_IN_FLIGHT, runit_info, desclayout);
+            a->init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                ren_model.skel_anim_->joint_count(),
+                runit_info,
+                desclayout
+            );
             mactor.actor_ = a;
             return a.get();
         }
@@ -847,7 +852,10 @@ namespace { namespace task {
             );
 
             ren_actor.update_ubuf(
-                rp_ctxt.f_index_, udata_static, udata_skinned
+                rp_ctxt.f_index_,
+                udata_static,
+                udata_skinned.joint_transforms_,
+                mirinae::MAX_JOINTS
             );
             return true;
         }

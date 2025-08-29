@@ -1,15 +1,9 @@
 import "../module/lighting";
-import "../module/skinned";
-
-
-struct U_GbufActorSkinned {
-    float4x4 j_tforms_[MAX_JOINTS];
-}
 
 
 layout(set = 0, binding = 0) RWStructuredBuffer<float> out_vertices;
 layout(set = 0, binding = 1) StructuredBuffer<float> in_vertices;
-layout(set = 0, binding = 2) ConstantBuffer<U_GbufActorSkinned> u_gbuf_model;
+layout(set = 0, binding = 2) StructuredBuffer<float4x4> in_joint_palette;
 
 [push_constant]
 cbuffer U_SkinAnim {
@@ -21,6 +15,17 @@ u_pc;
 
 const static int VTX_STATIC_SIZE = 3 + 3 + 3 + 2;
 const static int VTX_SKINNED_SIZE = 4 + 4 + VTX_STATIC_SIZE;
+
+
+public float4x4 make_joint_transform(int4 j_ids, float4 j_weights) {
+    float4x4 joint_transform = float4x4(0);
+    for (int i = 0; i < 4; i++) {
+        let idx = clamp(j_ids[i], 0, 512);
+        joint_transform += j_weights[i] * in_joint_palette[idx];
+    }
+
+    return joint_transform;
+}
 
 
 struct Fetcher {
@@ -85,7 +90,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     var tangent = fetcher.get_f3(14);
     let texco = fetcher.get_f2(17);
 
-    let jmat = make_joint_transform(j_indices, j_weights, u_gbuf_model.j_tforms_);
+    let jmat = make_joint_transform(j_indices, j_weights);
     let jmat3 = float3x3(jmat);
 
     pos = mul(jmat, float4(pos, 1)).xyz;

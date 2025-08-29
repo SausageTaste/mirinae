@@ -24,6 +24,8 @@ namespace mirinae {
     public:
         std::optional<size_t> find_anim_idx(const std::string& name);
 
+        size_t joint_count() const { return skel_.joints_.size(); }
+
     public:
         dal::parser::Skeleton skel_;
         std::vector<dal::parser::Animation> anims_;

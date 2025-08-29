@@ -273,7 +273,7 @@ namespace {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
                 builder.add_sbuf(VK_SHADER_STAGE_COMPUTE_BIT, 1)
                     .add_sbuf(VK_SHADER_STAGE_COMPUTE_BIT, 1)
-                    .add_ubuf(VK_SHADER_STAGE_COMPUTE_BIT, 1);
+                    .add_sbuf(VK_SHADER_STAGE_COMPUTE_BIT, 1);
                 rp_res_.desclays_.add(builder, device_.logi_device());
             }
 

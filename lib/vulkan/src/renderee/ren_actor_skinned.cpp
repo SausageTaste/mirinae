@@ -22,8 +22,8 @@ namespace mirinae {
     class CLS::FrameData {
 
     public:
-        Buffer ubuf_static_;   // U_GbufActor
-        Buffer ubuf_skinned_;  // U_GbufActorSkinned
+        Buffer ubuf_static_;  // U_GbufActor
+        Buffer joint_palette_;
         VkDescriptorSet descset_static_;
     };
 
@@ -55,6 +55,7 @@ namespace mirinae {
 
     void CLS::init(
         const uint32_t max_flight_count,
+        const size_t joint_count,
         const std::vector<RenUnitInfo>& runit_info,
         const DesclayoutManager& desclayouts
     ) {
@@ -65,7 +66,7 @@ namespace mirinae {
 
         desc_pool_.init(
             max_flight_count + (runit_count * max_flight_count),
-            desclayout_anim.size_info(),
+            desclayout_static.size_info() + desclayout_anim.size_info(),
             device_.logi_device()
         );
         auto descsets_static = desc_pool_.alloc(
@@ -80,8 +81,9 @@ namespace mirinae {
         BufferCreateInfo ubuf_static_cinfo;
         ubuf_static_cinfo.preset_ubuf(sizeof(U_GbufActor));
 
-        BufferCreateInfo ubuf_skinned_cinfo;
-        ubuf_skinned_cinfo.preset_ubuf(sizeof(U_GbufActorSkinned));
+        BufferCreateInfo sbuf_joints_cinfo;
+        sbuf_joints_cinfo.set_usage(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+            .add_alloc_flag_host_access_seq_write();
 
         BufferCreateInfo vbuf_cinfo;
         vbuf_cinfo.set_usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
@@ -92,7 +94,9 @@ namespace mirinae {
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& fd = frame_data_.emplace_back();
             fd.ubuf_static_.init(ubuf_static_cinfo, device_.mem_alloc());
-            fd.ubuf_skinned_.init(ubuf_skinned_cinfo, device_.mem_alloc());
+
+            sbuf_joints_cinfo.set_size(joint_count * sizeof(glm::mat4));
+            fd.joint_palette_.init(sbuf_joints_cinfo, device_.mem_alloc());
 
             fd.descset_static_ = descsets_static.back();
             descsets_static.pop_back();
@@ -122,8 +126,8 @@ namespace mirinae {
                     .add_storage_buf_write(dst_fd.descset_, 0);
                 dw.add_buf_info(*src_unit.src_vtx_buf_)
                     .add_storage_buf_write(dst_fd.descset_, 1);
-                dw.add_buf_info(fd.ubuf_skinned_)
-                    .add_buf_write(dst_fd.descset_, 2);
+                dw.add_buf_info(fd.joint_palette_)
+                    .add_storage_buf_write(dst_fd.descset_, 2);
             }
         }
 
@@ -138,11 +142,14 @@ namespace mirinae {
     void CLS::update_ubuf(
         const FrameIndex f_index,
         const U_GbufActor& static_data,
-        const U_GbufActorSkinned& skinned_data
+        const glm::mat4* const joint_palette,
+        const size_t joint_count
     ) {
         auto& fd = frame_data_.at(f_index.get());
         fd.ubuf_static_.set_data(&static_data, sizeof(U_GbufActor));
-        fd.ubuf_skinned_.set_data(&skinned_data, sizeof(U_GbufActorSkinned));
+        fd.joint_palette_.set_data(
+            joint_palette, joint_count * sizeof(glm::mat4)
+        );
     }
 
     VkDescriptorSet CLS::get_descset_static(FrameIndex f_index) const {

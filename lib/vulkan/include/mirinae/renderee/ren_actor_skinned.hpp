@@ -25,6 +25,7 @@ namespace mirinae {
 
         void init(
             const uint32_t max_flight_count,
+            const size_t joint_count,
             const std::vector<RenUnitInfo>& runit_info,
             const DesclayoutManager& desclayouts
         );
@@ -33,7 +34,8 @@ namespace mirinae {
         void update_ubuf(
             const FrameIndex f_index,
             const U_GbufActor& static_data,
-            const U_GbufActorSkinned& skinned_data
+            const glm::mat4* const joint_palette,
+            const size_t joint_count
         );
 
         VkDescriptorSet get_descset_static(FrameIndex f_index) const;
