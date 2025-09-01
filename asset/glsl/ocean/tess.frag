@@ -5,8 +5,9 @@
 #include "../utils/normal_mapping.glsl"
 
 layout (location = 0) in vec4 i_lod_scales;
-layout (location = 1) in vec3 i_frag_pos;
-layout (location = 2) in vec2 i_uv;
+layout (location = 1) in vec4 i_frag_pos_scrn;
+layout (location = 2) in vec3 i_frag_pos;
+layout (location = 3) in vec2 i_uv;
 
 layout (location = 0) out vec4 f_color;
 
@@ -40,7 +41,9 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
 layout (set = 0, binding = 1) uniform sampler2D u_disp_map[3];
 layout (set = 0, binding = 2) uniform sampler2D u_deri_map[3];
 layout (set = 0, binding = 3) uniform sampler2D u_turb_map[3];
-layout (set = 0, binding = 4) uniform sampler2D u_sky_tex;
+layout (set = 0, binding = 4) uniform sampler2D u_sky_view_lut;
+layout (set = 0, binding = 5) uniform sampler3D u_cam_scat_vol;
+layout (set = 0, binding = 6) uniform sampler2D u_sky_tex;
 
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
@@ -94,6 +97,81 @@ vec3 oceanRadiance(vec3 V, vec3 N, vec3 L, float seaRoughness, vec3 sunL, vec3 s
 }
 
 
+const float PLANET_BOTTOM = 6360;
+const float AP_SLICE_COUNT = 32;
+const float AP_SLICE_COUNT_RCP = 1.0 / AP_SLICE_COUNT;
+
+float AerialPerspectiveDepthToSlice(float depth) {
+    const float AP_KM_PER_SLICE = 4;
+    const float M_PER_SLICE_RCP = 1.0 / (AP_KM_PER_SLICE * 1000.0);
+    return depth * M_PER_SLICE_RCP;
+}
+
+float fromUnitToSubUvs(float u, float resolution) {
+    return (u + 0.5 / resolution) * (resolution / (resolution + 1.0));
+}
+
+vec2 SkyViewLutParamsToUv(
+    bool IntersectGround,
+    float viewZenithCosAngle,
+    float lightViewCosAngle,
+    float viewHeight
+) {
+    vec2 uv;
+
+    const float Vhorizon = sqrt(
+        viewHeight * viewHeight - PLANET_BOTTOM * PLANET_BOTTOM
+    );
+    const float CosBeta = Vhorizon / viewHeight;  // GroundToHorizonCos
+    const float Beta = acos(CosBeta);
+    const float ZenithHorizonAngle = PI - Beta;
+
+    if (!IntersectGround) {
+        float coord = acos(viewZenithCosAngle) / ZenithHorizonAngle;
+        coord = 1.0 - coord;
+        coord = sqrt(coord);
+        coord = 1.0 - coord;
+        uv.y = coord * 0.5, 0, 0.5;
+    } else {
+        float coord = (acos(viewZenithCosAngle) - ZenithHorizonAngle) / Beta;
+        coord = sqrt(coord);
+        uv.y = coord * 0.5 + 0.5;
+    }
+
+    {
+        float coord = -lightViewCosAngle * 0.5 + 0.5;
+        coord = sqrt(coord);
+        uv.x = coord;
+    }
+
+    // Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage
+    // visible)
+    uv = vec2(fromUnitToSubUvs(uv.x, 192), fromUnitToSubUvs(uv.y, 108));
+    return uv;
+}
+
+float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR) {
+    float a = dot(rd, rd);
+    vec3 s0_r0 = r0 - s0;
+    float b = 2.0 * dot(rd, s0_r0);
+    float c = dot(s0_r0, s0_r0) - (sR * sR);
+    float delta = b * b - 4.0 * a * c;
+    if (delta < 0.0 || a == 0.0) {
+        return -1.0;
+    }
+    float sol0 = (-b - sqrt(delta)) / (2.0 * a);
+    float sol1 = (-b + sqrt(delta)) / (2.0 * a);
+    if (sol0 < 0.0 && sol1 < 0.0) {
+        return -1.0;
+    }
+    if (sol0 < 0.0) {
+        return max(0.0, sol1);
+    } else if (sol1 < 0.0) {
+        return max(0.0, sol0);
+    }
+    return max(0.0, min(sol0, sol1));
+}
+
 void main() {
     const mat4 view_inv = inverse(u_pc.view);
     const mat3 view_inv3 = mat3(view_inv);
@@ -117,9 +195,11 @@ void main() {
         derivatives.y / (1.0 + derivatives.w)
     );
     const vec3 world_normal = normalize(vec3(-slope.x, 1, -slope.y));
+    const vec3 normal_w = normalize(mat3(u_pc.model) * world_normal);
     const vec3 world_view = normalize(view_inv3 * (-i_frag_pos));
+    const vec3 frag_pos_w = (view_inv * vec4(i_frag_pos, 1)).xyz;
     const vec3 normal = normalize(mat3(u_pc.view * u_pc.model) * world_normal);
-    const vec3 light_dir = view_inv3 * (u_params.dlight_dir.xyz);
+    const vec3 light_dir = normalize(view_inv3 * u_params.dlight_dir.xyz);
 
     vec3 light = vec3(0);
 
@@ -131,6 +211,7 @@ void main() {
     light += surfaceColor;
 
     // Foam
+    /*
     {
         float jacobian =
               texture(u_turb_map[0], i_uv / u_params.len_lod_scales[0]).x * u_params.jacobian_scale[0]
@@ -154,13 +235,75 @@ void main() {
 
         light = mix(light, foam_light, jacobian);
     }
+    */
 
     // Fog
+    /*
     {
         const float x = frag_dist * u_params.fog_color_density.w;
         const float xx = x * x;
         const float fog_factor = 1.0 / exp(xx);
         light = mix(u_params.fog_color_density.xyz, light, fog_factor);
+    }
+    */
+
+    // Aerial perspective
+    {
+        const float t_depth = length(i_frag_pos);
+        float slice = AerialPerspectiveDepthToSlice(t_depth);
+        float weight = 1;
+        if (slice < 0.5) {
+            // We multiply by weight to fade to 0 at depth 0. That works for luminance and opacity.
+            weight = clamp(slice * 2, 0, 1);
+            slice = 0.5;
+        }
+        const vec2 texco = i_frag_pos_scrn.xy / i_frag_pos_scrn.w * 0.5 + 0.5;
+        const float w = sqrt(slice * AP_SLICE_COUNT_RCP);  // squared distribution
+        const vec4 cam_scat_texel = textureLod(u_cam_scat_vol, vec3(texco, w), 0);
+        light = cam_scat_texel.xyz * weight;
+    }
+
+    // Sky
+    {
+        const vec3 frag_pos_v = i_frag_pos;
+        const vec3 cam_dir_v = normalize(frag_pos_v);
+        const vec3 cam_dir_w = normalize(view_inv3 * cam_dir_v);
+
+        vec3 cam_dir_reflec_w = reflect(cam_dir_w, normal_w);
+        if (cam_dir_reflec_w.y < 0) {
+            cam_dir_reflec_w.y = 0;
+            cam_dir_reflec_w = normalize(cam_dir_reflec_w);
+        }
+
+        const float planet_radius = PLANET_BOTTOM * 1000;
+        const vec3 view_pos_w = (view_inv * vec4(0, 0, 0, 1)).xyz;
+        const vec3 cam_pos_e = view_pos_w + vec3(0, planet_radius, 0);
+        const float cam_height_e = length(cam_pos_e);
+
+        const vec3 up_dir_e = normalize(cam_pos_e);
+        const float view_zenith_cos_angle = dot(cam_dir_reflec_w, up_dir_e);
+
+        const vec3 sun_dir_w = light_dir;
+
+        // assumes non parallel vectors
+        const vec3 side_dir_e = normalize(cross(up_dir_e, cam_dir_w));
+        // aligns toward the sun light but perpendicular to up vector
+        const vec3 forward_dir_e = normalize(cross(side_dir_e, up_dir_e));
+        const vec2 light_on_plane = normalize(
+            vec2(dot(sun_dir_w, forward_dir_e), dot(sun_dir_w, side_dir_e))
+        );
+        const float light_view_cos_angle = light_on_plane.x;
+        const bool intersect_ground = raySphereIntersectNearest(cam_pos_e, cam_dir_reflec_w, vec3(0), planet_radius) >= 0;
+
+        const vec2 uv = SkyViewLutParamsToUv(
+            intersect_ground,
+            view_zenith_cos_angle,
+            light_view_cos_angle,
+            cam_height_e / 1000.0
+        );
+
+        const vec4 sky_view_texel = textureLod(u_sky_view_lut, uv, 0);
+        light += sky_view_texel.xyz;
     }
 
     f_color.xyz = light;

@@ -8,8 +8,9 @@ layout (location = 0) in vec3 i_normal[];
 layout (location = 1) in vec2 i_uv[];
 
 layout (location = 0) out vec4 o_lod_scales;
-layout (location = 1) out vec3 o_frag_pos;
-layout (location = 2) out vec2 o_uv;
+layout (location = 1) out vec4 o_frag_pos_scrn;
+layout (location = 2) out vec3 o_frag_pos;
+layout (location = 3) out vec2 o_uv;
 
 
 layout (push_constant) uniform U_OceanTessPushConst {
@@ -87,7 +88,8 @@ void main() {
     o_lod_scales = vec4(lod_c0, lod_c1, lod_c2, max(displacement.y - largeWavesBias * 0.8 - u_params.sss_base, 0) / u_params.sss_scale);
 
     o_frag_pos = (u_pc.view * u_pc.model * vec4(p, 1)).xyz;
-    gl_Position = u_pc.pvm * vec4(p, 1);
+    o_frag_pos_scrn = u_pc.pvm * vec4(p, 1);
+    gl_Position = o_frag_pos_scrn;
 
     o_uv = tex_coord;
 }
