@@ -25,6 +25,11 @@ float dispersion(float mag) {
 }
 
 
+float4 pack_compl(Complex c1, Complex c2, Complex c3, Complex c4) {
+    return float4(c1.add_i_times(c2).to_float2(), c3.add_i_times(c4).to_float2());
+}
+
+
 [shader("compute")]
 [numthreads(16, 16, 1)]
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
@@ -44,8 +49,8 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     const Complex exp_iwt = Complex::from_exp(w * u_pc.time);
     const float4 h0k_texel = in_hk[cascade][global_idx];
     const Complex h = Complex(h0k_texel.xy) * exp_iwt + Complex(h0k_texel.zw) * exp_iwt.conj();
-    const Complex ih = Complex(-h.imag, h.real);  // ih = i * h
-    const Complex minus_h = h * -1.0;             // -h
+    const Complex ih = h.mul_i();
+    const Complex minus_h = -h;
 
     const Complex Dx = ih * (k.x * mag_rcp);
     const Complex Dy = h;
@@ -58,10 +63,6 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     const Complex dDy_dz = ih * k.y;
     const Complex dDz_dz = minus_h * (k.y * k.y * mag_rcp);
 
-    out_hkt_1[cascade][global_idx] = float4(
-        Dx.add_i_times(Dz).to_float2(), Dy.add_i_times(dDz_dx).to_float2()
-    );
-    out_hkt_2[cascade][global_idx] = float4(
-        dDy_dx.add_i_times(dDy_dz).to_float2(), dDx_dx.add_i_times(dDz_dz).to_float2()
-    );
+    out_hkt_1[cascade][global_idx] = pack_compl(Dx, Dz, Dy, dDz_dx);
+    out_hkt_2[cascade][global_idx] = pack_compl(dDy_dx, dDy_dz, dDx_dx, dDz_dz);
 }

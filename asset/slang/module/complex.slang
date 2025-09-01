@@ -33,6 +33,11 @@ public struct Complex {
         return Complex(this.real - rhs.imag, this.imag + rhs.real);
     }
 
+    // this * i
+    public Complex mul_i() {
+        return Complex(-this.imag, this.real);
+    }
+
     public Complex conj() {
         return Complex(value_.x, -value_.y);
     }
@@ -43,6 +48,11 @@ public struct Complex {
 
     private float2 value_;
 };
+
+
+public __prefix Complex operator -(Complex a) {
+    return Complex(-a.real, -a.imag);
+}
 
 
 public Complex operator +(Complex a, Complex b) {
