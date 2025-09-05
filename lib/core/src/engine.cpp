@@ -878,13 +878,13 @@ namespace {
                 i.set_name("Ocean");
 
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.height_ = 800;
+                ocean.height_ = 1500;
                 ocean.wind_speed_ = 1;
-                ocean.fetch_ = 100000;
-                ocean.spread_blend_ = 0.284;
-                ocean.swell_ = 0.284;
+                ocean.fetch_ = 1000000;
+                ocean.spread_blend_ = 0.4;
+                ocean.swell_ = 0.4;
                 ocean.depth_ = 500;
-                ocean.roughness_ = 0.01;
+                ocean.roughness_ = 0.02;
 
                 constexpr double len_scale0 = 250;
                 constexpr double len_scale1 = 17;
