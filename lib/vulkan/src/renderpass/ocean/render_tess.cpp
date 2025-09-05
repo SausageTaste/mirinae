@@ -254,6 +254,7 @@ namespace {
         std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> disp_map_;
         std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> deri_map_;
         std::array<mirinae::HRpImage, mirinae::CASCADE_COUNT> turb_map_;
+        mirinae::HRpImage trans_lut_;
         mirinae::HRpImage sky_view_lut_;
         mirinae::HRpImage cam_scat_vol_;
         mirinae::Buffer ubuf_;
@@ -767,18 +768,18 @@ namespace {
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 auto& fd = frame_data_[i];
 
+                fd.trans_lut_ = rp_res_.ren_img_.get_img_reader(
+                    fmt::format("atmos trans LUT:trans_lut_f#{}", i), name_s()
+                );
                 fd.sky_view_lut_ = rp_res_.ren_img_.get_img_reader(
                     fmt::format("sky view LUT:sky_view_lut_f#{}", i), name_s()
                 );
                 fd.cam_scat_vol_ = rp_res_.ren_img_.get_img_reader(
                     fmt::format("atmos cam volume:cam_vol_f#{}", i), name_s()
                 );
-                MIRINAE_ASSERT(nullptr != fd.sky_view_lut_);
-                MIRINAE_ASSERT(nullptr != fd.cam_scat_vol_);
 
-                fd.cam_scat_vol_ = rp_res_.ren_img_.get_img_reader(
-                    fmt::format("atmos cam volume:cam_vol_f#{}", i), name_s()
-                );
+                MIRINAE_ASSERT(nullptr != fd.trans_lut_);
+                MIRINAE_ASSERT(nullptr != fd.sky_view_lut_);
                 MIRINAE_ASSERT(nullptr != fd.cam_scat_vol_);
 
                 for (size_t j = 0; j < mirinae::CASCADE_COUNT; j++) {
@@ -853,6 +854,12 @@ namespace {
                     .new_binding()  // Turbulance map
                     .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .set_count(3)
+                    .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .finish_binding();
+                builder
+                    .new_binding()  // Transmission LUT
+                    .set_type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .set_count(1)
                     .set_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                     .finish_binding();
                 builder
@@ -937,24 +944,30 @@ namespace {
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 3);
 
+                    // Transmission LUT
+                    writer.add_img_info()
+                        .set_img_view(fd.trans_lut_->view_.get())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 4);
                     // Sky View LUT
                     writer.add_img_info()
                         .set_img_view(fd.sky_view_lut_->view_.get())
-                        .set_sampler(device.samplers().get_cubemap())
+                        .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 4);
+                    writer.add_sampled_img_write(fd.desc_set_, 5);
                     // Cam Scat Vol
                     writer.add_img_info()
                         .set_img_view(fd.cam_scat_vol_->view_.get())
                         .set_sampler(device.samplers().get_cubemap())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 5);
+                    writer.add_sampled_img_write(fd.desc_set_, 6);
                     // Sky Texture
                     writer.add_img_info()
                         .set_img_view(sky_tex_->image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 6);
+                    writer.add_sampled_img_write(fd.desc_set_, 7);
                 }
                 writer.apply_all(device.logi_device());
             }

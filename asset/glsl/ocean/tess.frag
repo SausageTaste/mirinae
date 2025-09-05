@@ -41,9 +41,10 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
 layout (set = 0, binding = 1) uniform sampler2D u_disp_map[3];
 layout (set = 0, binding = 2) uniform sampler2D u_deri_map[3];
 layout (set = 0, binding = 3) uniform sampler2D u_turb_map[3];
-layout (set = 0, binding = 4) uniform sampler2D u_sky_view_lut;
-layout (set = 0, binding = 5) uniform sampler3D u_cam_scat_vol;
-layout (set = 0, binding = 6) uniform sampler2D u_sky_tex;
+layout (set = 0, binding = 4) uniform sampler2D u_trans_lut;
+layout (set = 0, binding = 5) uniform sampler2D u_sky_view_lut;
+layout (set = 0, binding = 6) uniform sampler3D u_cam_scat_vol;
+layout (set = 0, binding = 7) uniform sampler2D u_sky_tex;
 
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
@@ -98,6 +99,7 @@ vec3 oceanRadiance(vec3 V, vec3 N, vec3 L, float seaRoughness, vec3 sunL, vec3 s
 
 
 const float PLANET_BOTTOM = 6360;
+const float PLANET_TOP = 6460;
 const float AP_SLICE_COUNT = 32;
 const float AP_SLICE_COUNT_RCP = 1.0 / AP_SLICE_COUNT;
 
@@ -172,6 +174,40 @@ float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR) {
     return max(0.0, min(sol0, sol1));
 }
 
+
+vec2 LutTransmittanceParamsToUv(float viewHeight, float viewZenithCosAngle) {
+    float H = sqrt(
+        max(0.0, PLANET_TOP * PLANET_TOP - PLANET_BOTTOM * PLANET_BOTTOM)
+    );
+    float rho = sqrt(
+        max(0.0, viewHeight * viewHeight - PLANET_BOTTOM * PLANET_BOTTOM)
+    );
+
+    float discriminant = viewHeight * viewHeight * (viewZenithCosAngle * viewZenithCosAngle - 1.0) +
+                         PLANET_TOP * PLANET_TOP;
+    float d = max(
+        0.0, (-viewHeight * viewZenithCosAngle + sqrt(discriminant))
+    );  // Distance to atmosphere boundary
+
+    float d_min = PLANET_TOP - viewHeight;
+    float d_max = rho + H;
+    float x_mu = (d - d_min) / (d_max - d_min);
+    float x_r = rho / H;
+
+    return vec2(x_mu, x_r);
+}
+
+
+vec3 get_transmittance(vec3 frag_pos_w, vec3 dlight_dir_w) {
+    const vec3 frag_pos_e = frag_pos_w + vec3(0, PLANET_BOTTOM * 1000, 0);
+    const float frag_height_e = length(frag_pos_e);
+    const vec3 frag_up_dir_e = normalize(frag_pos_e);
+    const float view_zenith_cos_angle = dot(dlight_dir_w, frag_up_dir_e);
+    const vec2 lut_trans_uv = LutTransmittanceParamsToUv(frag_height_e / 1000, view_zenith_cos_angle);
+    return textureLod(u_trans_lut, lut_trans_uv, 0).xyz;
+}
+
+
 void main() {
     const mat4 view_inv = inverse(u_pc.view);
     const mat3 view_inv3 = mat3(view_inv);
@@ -202,6 +238,7 @@ void main() {
     const vec3 cam_dir_v = normalize(i_frag_pos_v);
     const vec3 cam_dir_w = normalize(view_inv3 * cam_dir_v);
     const vec3 cam_pos_w = view_inv[3].xyz;
+    const vec3 sun_trans = get_transmittance(frag_pos_w, to_sun_dir_w);
 
     vec3 light = vec3(0);
 
@@ -235,7 +272,7 @@ void main() {
             intersect_ground,
             view_zenith_cos_angle,
             light_view_cos_angle,
-            cam_height_e / 1000.0
+            cam_height_e / 1000
         );
 
         const vec4 sky_view_texel = textureLod(u_sky_view_lut, uv, 0);
@@ -244,10 +281,19 @@ void main() {
 
     {
         const vec3 to_cam_w = -cam_dir_w;
-        light += oceanRadiance(to_cam_w, normal_m, to_sun_dir_w, roughness, u_params.dlight_color.xyz, sky_color, albedo);
+        light += oceanRadiance(
+            to_cam_w,
+            normal_m,
+            to_sun_dir_w,
+            roughness,
+            sun_trans * 10,
+            sky_color,
+            albedo
+        );
     }
 
     // Foam
+    /*
     {
         float jacobian =
               texture(u_turb_map[0], i_uv / u_params.len_lod_scales[0]).x * u_params.jacobian_scale[0]
@@ -271,6 +317,7 @@ void main() {
 
         light = mix(light, foam_light, jacobian);
     }
+    */
 
     // Aerial perspective
     {
