@@ -4,6 +4,7 @@
 
 #include <sung/basic/linalg.hpp>
 
+#include "mirinae/render/mem_alloc.hpp"
 #include "mirinae/render/vkdebug.hpp"
 
 
@@ -312,6 +313,14 @@ namespace mirinae {
             static_assert(Idx < N, "Idx out of range");
             buffers_[Idx] = buffer;
             offsets_[Idx] = offset;
+            return *this;
+        }
+
+        template <size_t Idx>
+        BindVertBufInfo& set_at(const BufferSpan& buf_part) {
+            static_assert(Idx < N, "Idx out of range");
+            buffers_[Idx] = buf_part.buf_;
+            offsets_[Idx] = buf_part.offset_;
             return *this;
         }
 

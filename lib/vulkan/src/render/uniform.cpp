@@ -416,6 +416,14 @@ namespace mirinae {
         return *this;
     }
 
+    DescWriter& DescWriter::add_buf_span_info(const BufferSpan& buffer) {
+        this->add_buf_info()
+            .set_buffer(buffer.buf_)
+            .set_range(buffer.size_)
+            .set_offset(buffer.offset_);
+        return *this;
+    }
+
     DescWriter::ImageInfoView DescWriter::add_img_info() {
         if (img_info_.empty())
             img_info_.emplace_back();

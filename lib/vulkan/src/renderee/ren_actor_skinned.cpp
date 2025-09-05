@@ -31,7 +31,7 @@ namespace mirinae {
     class CLS::RenUnit : public CLS::IRenUnit {
 
     public:
-        const Buffer& vertex_buf(FrameIndex f_idx) const override {
+        const BufferSpan& vertex_buf(FrameIndex f_idx) const override {
             return frame_data_.at(f_idx.get()).vtx_buf_;
         }
 
@@ -40,11 +40,12 @@ namespace mirinae {
         }
 
         struct FrameData {
-            Buffer vtx_buf_;
+            BufferSpan vtx_buf_;
             VkDescriptorSet descset_;
         };
 
         std::vector<FrameData> frame_data_;
+        Buffer vtx_buf_;
     };
 
 
@@ -111,18 +112,24 @@ namespace mirinae {
                                  ? runits_trs_.emplace_back()
                                  : runits_.emplace_back();
 
+            const auto buf_size = conv_size(src_unit.src_vtx_buf_->size());
+            const auto padded_size = device_.pad_ubuf(buf_size);
+            vbuf_cinfo.set_size(padded_size * max_flight_count);
+            dst_unit.vtx_buf_.init(vbuf_cinfo, device_.mem_alloc());
+
             for (uint32_t i = 0; i < max_flight_count; ++i) {
                 const auto& fd = frame_data_.at(i);
                 auto& dst_fd = dst_unit.frame_data_.emplace_back();
 
-                vbuf_cinfo.set_size(conv_size(src_unit.src_vtx_buf_->size()));
-                dst_fd.vtx_buf_.init(vbuf_cinfo, device_.mem_alloc());
+                dst_fd.vtx_buf_.buf_ = dst_unit.vtx_buf_.get();
+                dst_fd.vtx_buf_.offset_ = padded_size * i;
+                dst_fd.vtx_buf_.size_ = buf_size;
 
                 dst_fd.descset_ = descsets_anim.back();
                 descsets_anim.pop_back();
                 MIRINAE_ASSERT(VK_NULL_HANDLE != dst_fd.descset_);
 
-                dw.add_buf_info(dst_fd.vtx_buf_)
+                dw.add_buf_span_info(dst_fd.vtx_buf_)
                     .add_storage_buf_write(dst_fd.descset_, 0);
                 dw.add_buf_info(*src_unit.src_vtx_buf_)
                     .add_storage_buf_write(dst_fd.descset_, 1);

@@ -265,6 +265,7 @@ namespace mirinae {
 
         BufferInfoView add_buf_info();
         DescWriter& add_buf_info(const mirinae::Buffer& buffer);
+        DescWriter& add_buf_span_info(const BufferSpan& buffer);
 
         ImageInfoView add_img_info();
         DescWriter& add_storage_img_info(VkImageView img_view);

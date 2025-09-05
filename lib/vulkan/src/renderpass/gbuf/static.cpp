@@ -123,7 +123,7 @@ namespace {
                     .record(cmdbuf);
 
                 mirinae::BindVertBufInfo<1>{}
-                    .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_).buffer())
+                    .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_))
                     .record(cmdbuf);
                 mirinae::bind_idx_buf(cmdbuf, unit.vk_buffers().idx().buffer());
 

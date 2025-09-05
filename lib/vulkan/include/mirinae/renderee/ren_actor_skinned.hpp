@@ -15,7 +15,7 @@ namespace mirinae {
         };
 
         struct IRenUnit {
-            virtual const Buffer& vertex_buf(FrameIndex f_idx) const = 0;
+            virtual const BufferSpan& vertex_buf(FrameIndex f_idx) const = 0;
             virtual VkDescriptorSet descset(FrameIndex f_idx) const = 0;
         };
 

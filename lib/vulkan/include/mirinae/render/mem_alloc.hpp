@@ -70,6 +70,13 @@ namespace mirinae {
     };
 
 
+    struct BufferSpan {
+        VkBuffer buf_ = VK_NULL_HANDLE;
+        VkDeviceSize offset_ = 0;
+        VkDeviceSize size_ = 0;
+    };
+
+
     class Image {
 
     public:

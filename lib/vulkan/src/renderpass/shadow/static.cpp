@@ -273,7 +273,7 @@ namespace { namespace task {
                         auto& ac_unit = actor.get_runit(pair.runit_idx_);
 
                         mirinae::BindVertBufInfo<1>{}
-                            .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_).get())
+                            .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_))
                             .record(cmdbuf);
                         mirinae::bind_idx_buf(
                             cmdbuf, unit.vk_buffers().idx().buffer()
@@ -384,7 +384,7 @@ namespace { namespace task {
                     auto& ac_unit = actor.get_runit(pair.runit_idx_);
 
                     mirinae::BindVertBufInfo<1>{}
-                        .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_).get())
+                        .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_))
                         .record(cmdbuf);
                     mirinae::bind_idx_buf(
                         cmdbuf, unit.vk_buffers().idx().buffer()
