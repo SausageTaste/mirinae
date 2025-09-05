@@ -317,6 +317,14 @@ namespace mirinae {
         }
 
         template <size_t Idx>
+        BindVertBufInfo& set_at(const Buffer& buffer, VkDeviceSize offset = 0) {
+            static_assert(Idx < N, "Idx out of range");
+            buffers_[Idx] = buffer.get();
+            offsets_[Idx] = offset;
+            return *this;
+        }
+
+        template <size_t Idx>
         BindVertBufInfo& set_at(const BufferSpan& buf_part) {
             static_assert(Idx < N, "Idx out of range");
             buffers_[Idx] = buf_part.buf_;
@@ -437,14 +445,19 @@ namespace mirinae {
     };
 
 
-    inline void bind_idx_buf(
+    void bind_idx_buf(
         const VkCommandBuffer cmdbuf,
         const VkBuffer buf,
         const VkDeviceSize offset = 0,
         const VkIndexType type = VK_INDEX_TYPE_UINT32
-    ) {
-        vkCmdBindIndexBuffer(cmdbuf, buf, offset, type);
-    }
+    );
+
+    void bind_idx_buf(
+        const VkCommandBuffer cmdbuf,
+        const Buffer& buf,
+        const VkDeviceSize offset = 0,
+        const VkIndexType type = VK_INDEX_TYPE_UINT32
+    );
 
     void begin_cmdbuf(VkCommandBuffer cmdbuf);
     void begin_cmdbuf(VkCommandBuffer cmdbuf, const DebugLabel& label);

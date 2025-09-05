@@ -339,7 +339,7 @@ namespace {
                 mirinae::BindVertBufInfo<1>{}
                     .set_at<0>(ac_unit.vertex_buf(ctxt.f_index_))
                     .record(cmdbuf);
-                mirinae::bind_idx_buf(cmdbuf, unit.vk_buffers().idx().buffer());
+                mirinae::bind_idx_buf(cmdbuf, unit.vk_buffers().idx());
 
                 descset_info.first_set(1)
                     .set(unit.get_desc_set(ctxt.f_index_.get()))

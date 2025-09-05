@@ -397,6 +397,24 @@ namespace mirinae {
 
 namespace mirinae {
 
+    void bind_idx_buf(
+        const VkCommandBuffer cmdbuf,
+        const VkBuffer buf,
+        const VkDeviceSize offset,
+        const VkIndexType type
+    ) {
+        vkCmdBindIndexBuffer(cmdbuf, buf, offset, type);
+    }
+
+    void bind_idx_buf(
+        const VkCommandBuffer cmdbuf,
+        const Buffer& buf,
+        const VkDeviceSize offset,
+        const VkIndexType type
+    ) {
+        vkCmdBindIndexBuffer(cmdbuf, buf.buffer(), offset, type);
+    }
+
     void begin_cmdbuf(VkCommandBuffer cmdbuf) {
         VkCommandBufferBeginInfo info{};
         info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

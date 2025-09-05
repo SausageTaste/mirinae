@@ -134,8 +134,8 @@ namespace mirinae {
     void VertexIndexPair::record_bind(VkCommandBuffer cmdbuf) const {
         static_assert(sizeof(VertIndexType_t) == 4);
 
-        BindVertBufInfo<1>{}.set_at<0>(vertex_buf_.buffer()).record(cmdbuf);
-        bind_idx_buf(cmdbuf, index_buf_.buffer());
+        BindVertBufInfo<1>{}.set_at<0>(vertex_buf_).record(cmdbuf);
+        bind_idx_buf(cmdbuf, index_buf_);
     }
 
     uint32_t VertexIndexPair::vertex_count() const {

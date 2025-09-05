@@ -200,8 +200,8 @@ namespace mirinae {
     }
 
     void RenUnitTerrain::draw_indexed(VkCommandBuffer cmdbuf) const {
-        BindVertBufInfo<1>{}.set_at<0>(vtx_buf_.buffer()).record(cmdbuf);
-        bind_idx_buf(cmdbuf, idx_buf_.buffer());
+        BindVertBufInfo<1>{}.set_at<0>(vtx_buf_).record(cmdbuf);
+        bind_idx_buf(cmdbuf, idx_buf_);
         vkCmdDrawIndexed(cmdbuf, vtx_count_, 1, 0, 0, 0);
     }
 
