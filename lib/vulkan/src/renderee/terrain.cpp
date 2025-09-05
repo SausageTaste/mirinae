@@ -40,7 +40,8 @@ namespace {
                 if (criterion.texco_ != vtx.texco_)
                     continue;
 
-                return idx;
+                MIRINAE_ASSERT(idx < std::numeric_limits<uint32_t>::max());
+                return static_cast<uint32_t>(idx);
             }
 
             return std::nullopt;
