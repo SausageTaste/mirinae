@@ -1003,12 +1003,18 @@ namespace {
         }
 
         ~RpStatesOceanTess() override {
+            auto& ren_img = rp_res_.ren_img_;
+
             for (auto& fd : frame_data_) {
                 for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++) {
-                    rp_res_.ren_img_.free_img(fd.disp_map_[i]->id(), name_s());
-                    rp_res_.ren_img_.free_img(fd.deri_map_[i]->id(), name_s());
-                    rp_res_.ren_img_.free_img(fd.turb_map_[i]->id(), name_s());
+                    ren_img.free_img(fd.disp_map_[i]->id(), name_s());
+                    ren_img.free_img(fd.deri_map_[i]->id(), name_s());
+                    ren_img.free_img(fd.turb_map_[i]->id(), name_s());
                 }
+
+                ren_img.free_img(fd.trans_lut_->id(), name_s());
+                ren_img.free_img(fd.sky_view_lut_->id(), name_s());
+                ren_img.free_img(fd.cam_scat_vol_->id(), name_s());
 
                 fd.ubuf_.destroy();
                 fd.fbuf_.destroy(device_.logi_device());
