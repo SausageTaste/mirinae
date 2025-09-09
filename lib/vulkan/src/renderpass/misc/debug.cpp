@@ -455,11 +455,9 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<mirinae::IRpBase> create_rp_debug(
-        RpCreateBundle& bundle, const DebugRender& debug_ren
-    ) {
+    std::unique_ptr<mirinae::IRpBase> create_rp_debug(RpCreateBundle& bundle) {
         return std::make_unique<RenderPassDebug>(
-            debug_ren, bundle.cosmos_, bundle.rp_res_, bundle.device_
+            bundle.debug_ren_, bundle.cosmos_, bundle.rp_res_, bundle.device_
         );
     }
 

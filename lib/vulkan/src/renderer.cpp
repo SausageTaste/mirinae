@@ -1148,7 +1148,9 @@ namespace {
                     rp_res_.desclays_, device_
                 );
 
-                mirinae::RpCreateBundle cbundle{ *cosmos_, rp_res_, device_ };
+                mirinae::RpCreateBundle cbundle{
+                    *cosmos_, rp_res_, ren_ctxt.debug_ren_, device_
+                };
 
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
@@ -1186,13 +1188,10 @@ namespace {
                     mirinae::rp::create_rp_ocean_tess,
                     mirinae::rp::compo::create_rps_vplight,
                     mirinae::rp::create_rp_states_transp_static,
+                    mirinae::rp::create_rp_debug,
                 };
                 for (auto func : rp_factories)
                     render_passes_.push_back(func(cbundle));
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_debug(cbundle, ren_ctxt.debug_ren_)
-                );
             }
 
             cmd_pool_.init(

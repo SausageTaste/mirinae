@@ -539,12 +539,19 @@ namespace mirinae {
 
     struct RpCreateBundle {
         RpCreateBundle(
-            CosmosSimulator& cosmos, RpResources& rp_res, VulkanDevice& device
+            CosmosSimulator& cosmos,
+            RpResources& rp_res,
+            DebugRender& debug_ren,
+            VulkanDevice& device
         )
-            : cosmos_(cosmos), rp_res_(rp_res), device_(device) {}
+            : cosmos_(cosmos)
+            , rp_res_(rp_res)
+            , debug_ren_(debug_ren)
+            , device_(device) {}
 
         CosmosSimulator& cosmos_;
         RpResources& rp_res_;
+        DebugRender& debug_ren_;
         VulkanDevice& device_;
     };
 

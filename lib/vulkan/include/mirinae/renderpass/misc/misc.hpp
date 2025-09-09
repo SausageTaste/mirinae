@@ -6,8 +6,6 @@
 
 namespace mirinae::rp {
 
-    std::unique_ptr<mirinae::IRpBase> create_rp_debug(
-        RpCreateBundle& bundle, const DebugRender& debug_ren
-    );
+    std::unique_ptr<mirinae::IRpBase> create_rp_debug(RpCreateBundle& bundle);
 
 }  // namespace mirinae::rp
