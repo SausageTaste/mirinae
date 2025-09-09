@@ -1,18 +1,15 @@
 import multiprocessing as mp
 import os
 import shutil
-import time
 import subprocess
+import time
 
 import utils
 
 
 START_TIME = time.time()
-
 ROOT_DIR = utils.find_root_dir()
-ASSET_DIR = os.path.join(ROOT_DIR, "asset")
 SLANG_DIR = os.path.join(ROOT_DIR, "asset", "slang")
-INCLUDE_DIRECTIVE = "#include"
 
 ENTRY_POINTS = {
     "vert_main",
