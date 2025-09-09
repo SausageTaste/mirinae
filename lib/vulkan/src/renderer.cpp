@@ -1150,62 +1150,6 @@ namespace {
 
                 mirinae::RpCreateBundle cbundle{ *cosmos_, rp_res_, device_ };
 
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_skin_anim(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_atmos_trans_lut(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_atmos_multi_scat(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_sky_view_lut(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_atmos_cam_vol(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_ocean_h0(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_ocean_hkt(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_ocean_butterfly(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_ocean_post_ift(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_envmap(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_env_sky_atmos(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_env_mip_chain(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_env_diffuse(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_env_specular(cbundle)
-                );
-
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );
@@ -1214,59 +1158,37 @@ namespace {
                 );
                 rp_states_imgui_.init(swapchain_);
 
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_shadow_static(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_shadow_static_trs(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_shadow_terrain(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::gbuf::create_rp_gbuf_static(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::gbuf::create_rp_gbuf_terrain(cbundle)
-                );
-
-                /*
-                render_passes_.push_back(
-                    mirinae::rp::compo::create_rps_dlight(cbundle)
-                );
-                */
-
-                render_passes_.push_back(
-                    mirinae::rp::compo::create_rps_atmos_surface(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::compo::create_rps_slight(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::compo::create_rps_envmap(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::compo::create_rps_sky_atmos(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_ocean_tess(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::compo::create_rps_vplight(cbundle)
-                );
-
-                render_passes_.push_back(
-                    mirinae::rp::create_rp_states_transp_static(cbundle)
-                );
+                const auto rp_factories = {
+                    mirinae::rp::create_rp_skin_anim,
+                    mirinae::rp::create_rp_atmos_trans_lut,
+                    mirinae::rp::create_rp_atmos_multi_scat,
+                    mirinae::rp::create_rp_sky_view_lut,
+                    mirinae::rp::create_rp_atmos_cam_vol,
+                    mirinae::rp::create_rp_ocean_h0,
+                    mirinae::rp::create_rp_ocean_hkt,
+                    mirinae::rp::create_rp_ocean_butterfly,
+                    mirinae::rp::create_rp_ocean_post_ift,
+                    mirinae::rp::create_rp_envmap,
+                    mirinae::rp::create_rp_env_sky_atmos,
+                    mirinae::rp::create_rp_env_mip_chain,
+                    mirinae::rp::create_rp_env_diffuse,
+                    mirinae::rp::create_rp_env_specular,
+                    mirinae::rp::create_rp_shadow_static,
+                    mirinae::rp::create_rp_shadow_static_trs,
+                    mirinae::rp::create_rp_shadow_terrain,
+                    mirinae::rp::gbuf::create_rp_gbuf_static,
+                    mirinae::rp::gbuf::create_rp_gbuf_terrain,
+                    // mirinae::rp::compo::create_rps_dlight,
+                    mirinae::rp::compo::create_rps_atmos_surface,
+                    mirinae::rp::compo::create_rps_slight,
+                    mirinae::rp::compo::create_rps_envmap,
+                    mirinae::rp::compo::create_rps_sky_atmos,
+                    mirinae::rp::create_rp_ocean_tess,
+                    mirinae::rp::compo::create_rps_vplight,
+                    mirinae::rp::create_rp_states_transp_static,
+                };
+                for (auto func : rp_factories)
+                    render_passes_.push_back(func(cbundle));
 
                 render_passes_.push_back(
                     mirinae::rp::create_rp_debug(cbundle, ren_ctxt.debug_ren_)
