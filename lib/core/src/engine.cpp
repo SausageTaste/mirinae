@@ -531,7 +531,11 @@ namespace {
     class ImGuiMainWin : public IWindowDialog {
 
     public:
-        ImGuiMainWin(mirinae::HCosmos& cosmos, dal::HFilesys& filesys)
+        ImGuiMainWin(
+            mirinae::HCosmos cosmos,
+            dal::HFilesys filesys,
+            std::shared_ptr<mirinae::ScriptEngine> script
+        )
             : entt_(cosmos) {
             show_ = false;
             this->set_init_size(680, 640);
@@ -542,6 +546,8 @@ namespace {
 
             cvars_.set_init_size(360, 480);
             cvars_.set_init_pos(50, 50);
+
+            console_.give_script(script);
 
             const auto font_path = ":asset/font/SeoulNamsanM.ttf";
             if (auto data = filesys->read_file(font_path)) {
@@ -619,22 +625,33 @@ namespace {
                         input_buf_.size(),
                         ImGuiInputTextFlags_EnterReturnsTrue
                     )) {
-                    g_texts.push_back(input_buf_.data());
-                    input_buf_.fill(0);
-                    scroll_to_bottom_ = true;
+                    this->enter_text();
                     ImGui::SetKeyboardFocusHere(-1);  // Keep focus on input box
                 }
 
                 ImGui::SameLine();
                 if (ImGui::Button("Submit")) {
-                    g_texts.push_back(input_buf_.data());
-                    input_buf_.fill(0);
+                    this->enter_text();
                 }
             }
 
             void scroll_to_bottom() { scroll_to_bottom_ = true; }
 
+            void give_script(std::shared_ptr<mirinae::ScriptEngine> script) {
+                script_ = script;
+            }
+
         private:
+            void enter_text() {
+                g_texts.push_back(input_buf_.data());
+                input_buf_.fill(0);
+                scroll_to_bottom_ = true;
+
+                if (script_)
+                    script_->exec(g_texts.back().c_str());
+            }
+
+            std::shared_ptr<mirinae::ScriptEngine> script_;
             std::array<char, 256> input_buf_{};
             bool scroll_to_bottom_ = false;
         };
@@ -1111,7 +1128,7 @@ namespace {
             // ImGui Widgets
             {
                 imgui_main_ = std::make_shared<ImGuiMainWin>(
-                    cosmos_, ecinfo_.filesys_
+                    cosmos_, ecinfo_.filesys_, script_
                 );
                 cosmos_->imgui_.push_back(imgui_main_);
             }
