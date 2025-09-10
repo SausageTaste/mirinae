@@ -1,0 +1,383 @@
+#include "mirinae/renderpass/bloom.hpp"
+
+#include <entt/entity/registry.hpp>
+
+#include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/light.hpp"
+#include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/task.hpp"
+#include "mirinae/render/cmdbuf.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
+#include "mirinae/render/vkmajorplayers.hpp"
+#include "mirinae/renderpass/builder.hpp"
+#include "mirinae/renderpass/common.hpp"
+
+
+namespace {
+
+    constexpr int32_t TEX_RES = 32;
+
+
+    struct U_BloomDownPushConst {
+        glm::vec2 src_resolution_;
+    };
+
+
+    struct FrameData {
+        mirinae::HRpImage downsamples_;
+        mirinae::Fbuf fbuf_;
+        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
+    };
+
+    using FrameDataArr = std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
+
+}  // namespace
+
+
+// Tasks
+namespace {
+
+    class DrawTasks : public mirinae::DependingTask {
+
+    public:
+        DrawTasks() { fence_.succeed(this); }
+
+        void init(
+            const entt::registry& reg,
+            const mirinae::IRenPass& rp,
+            const ::FrameDataArr& frame_data,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            reg_ = &reg;
+            rp_ = &rp;
+            frame_data_ = &frame_data;
+            cmd_pool_ = &cmd_pool;
+            device_ = &device;
+        }
+
+        void prepare(const mirinae::RpCtxt& ctxt) { ctxt_ = &ctxt; }
+
+        enki::ITaskSet& fence() { return fence_; }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) {
+            if (VK_NULL_HANDLE != cmdbuf_) {
+                out.push_back(cmdbuf_);
+            }
+        }
+
+    private:
+        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
+            if (cmdbuf_ == VK_NULL_HANDLE)
+                return;
+
+            auto& fd = frame_data_->at(ctxt_->f_index_.get());
+
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
+            this->record(cmdbuf_, fd, *reg_, *rp_, *ctxt_);
+            mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
+        }
+
+        static void record(
+            const VkCommandBuffer cmdbuf,
+            const ::FrameData& fd,
+            const entt::registry& reg,
+            const mirinae::IRenPass& rp,
+            const mirinae::RpCtxt& ctxt
+        ) {
+            const auto fbuf_ext = fd.downsamples_->img_.extent2d();
+
+            mirinae::RenderPassBeginInfo{}
+                .rp(rp.render_pass())
+                .fbuf(fd.fbuf_.get())
+                .wh(fbuf_ext)
+                .clear_value_count(rp.clear_value_count())
+                .clear_values(rp.clear_values())
+                .record_begin(cmdbuf);
+
+            vkCmdBindPipeline(
+                cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+            );
+
+            mirinae::DescSetBindInfo{}
+                .bind_point(VK_PIPELINE_BIND_POINT_GRAPHICS)
+                .layout(rp.pipe_layout())
+                .add(fd.desc_set_)
+                .record(cmdbuf);
+
+            ::U_BloomDownPushConst pc;
+
+            mirinae::PushConstInfo{}
+                .layout(rp.pipe_layout())
+                .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                .record(cmdbuf, pc);
+
+            vkCmdDraw(cmdbuf, 3, 1, 0, 0);
+            vkCmdEndRenderPass(cmdbuf);
+        }
+
+        const mirinae::DebugLabel DEBUG_LABEL{ "Bloom Downsample", 1, 1, 1 };
+
+        mirinae::FenceTask fence_;
+        VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
+
+        const ::FrameDataArr* frame_data_ = nullptr;
+        const entt::registry* reg_ = nullptr;
+        const mirinae::IRenPass* rp_ = nullptr;
+        const mirinae::RpCtxt* ctxt_ = nullptr;
+        mirinae::RpCommandPool* cmd_pool_ = nullptr;
+        mirinae::VulkanDevice* device_ = nullptr;
+    };
+
+
+    class RpTask : public mirinae::IRpTask {
+
+    public:
+        RpTask() {}
+
+        void init(
+            const entt::registry& reg,
+            const mirinae::IRenPass& rp,
+            const ::FrameDataArr& frame_data,
+            mirinae::RpCommandPool& cmd_pool,
+            mirinae::VulkanDevice& device
+        ) {
+            record_tasks_.init(reg, rp, frame_data, cmd_pool, device);
+        }
+
+        std::string_view name() const override { return "multi scattering CS"; }
+
+        void prepare(const mirinae::RpCtxt& ctxt) override {
+            record_tasks_.prepare(ctxt);
+        }
+
+        void collect_cmdbuf(std::vector<VkCommandBuffer>& out) override {
+            record_tasks_.collect_cmdbuf(out);
+        }
+
+        enki::ITaskSet* record_task() override { return &record_tasks_; }
+
+        enki::ITaskSet* record_fence() override {
+            return &record_tasks_.fence();
+        }
+
+    private:
+        DrawTasks record_tasks_;
+    };
+
+}  // namespace
+
+
+namespace {
+
+    class RpStates
+        : public mirinae::IRpBase
+        , public mirinae::RenPassBundle<1> {
+
+    public:
+        RpStates(
+            mirinae::CosmosSimulator& cosmos,
+            mirinae::RpResources& rp_res,
+            mirinae::VulkanDevice& device
+        )
+            : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
+            auto& gbuf = rp_res_.gbuf_;
+            mirinae::CommandPool cmd_pool;
+            cmd_pool.init(device);
+
+            // Create images
+            {
+                mirinae::ImageCreateInfo cinfo;
+                cinfo.set_dimensions(gbuf.width() / 2, gbuf.height() / 2)
+                    .set_type(VK_IMAGE_TYPE_2D)
+                    .set_format(device.img_formats().rgb_hdr())
+                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
+                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                    .deduce_mip_levels();
+
+                mirinae::ImageViewBuilder builder;
+                builder.format(cinfo.format())
+                    .view_type(VK_IMAGE_VIEW_TYPE_2D)
+                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT);
+
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    const auto img_name = fmt::format("downsamples_f#{}", i);
+                    auto img = rp_res.ren_img_.new_img(img_name, name_s());
+                    img->img_.init(cinfo.get(), device.mem_alloc());
+                    frame_data_.at(i).downsamples_ = img;
+
+                    builder.image(img->img_.image());
+                    img->view_.reset(builder, device);
+                    img->set_dbg_names(device);
+                }
+            }
+
+            // Image transitions
+            {
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.set_src_access(0)
+                    .set_dst_access(VK_ACCESS_SHADER_WRITE_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .new_layout(VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .set_signle_mip_layer();
+
+                cmd_pool.init(device);
+                auto cmdbuf = cmd_pool.begin_single_time(device);
+                for (auto& fd : frame_data_) {
+                    barrier.image(fd.downsamples_->img_.image())
+                        .mip_count(fd.downsamples_->img_.mip_levels());
+                    barrier.record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT
+                    );
+                }
+                cmd_pool.end_single_time(cmdbuf, device);
+                cmd_pool.destroy(device.logi_device());
+            }
+
+            // Desc layouts
+            {
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
+                builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+                rp_res.desclays_.add(builder, device.logi_device());
+            }
+
+            auto& layout = rp_res.desclays_.get(name_s() + ":main");
+
+            // Desciptor Sets
+            {
+                desc_pool_.init(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    layout.size_info(),
+                    device.logi_device()
+                );
+
+                auto desc_sets = desc_pool_.alloc(
+                    mirinae::MAX_FRAMES_IN_FLIGHT,
+                    layout.layout(),
+                    device.logi_device()
+                );
+
+                mirinae::DescWriter writer;
+                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    auto& fd = frame_data_[i];
+                    fd.desc_set_ = desc_sets[i];
+
+                    writer.add_img_info()
+                        .set_img_view(gbuf.compo(i).image_view())
+                        .set_sampler(device.samplers().get_linear())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 0);
+                }
+                writer.apply_all(device.logi_device());
+            }
+
+            // Pipeline layout
+            {
+                mirinae::PipelineLayoutBuilder{}
+                    .desc(layout.layout())
+                    .add_frag_flag()
+                    .build(pipe_layout_, device);
+            }
+
+            // Render pass
+            {
+                mirinae::RenderPassBuilder builder;
+
+                builder.attach_desc()
+                    .add(device.img_formats().rgb_hdr())
+                    .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .load_op(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+                    .stor_op(VK_ATTACHMENT_STORE_OP_STORE);
+
+                builder.color_attach_ref().add_color_attach(0);
+
+                builder.depth_attach_ref().clear();
+
+                builder.subpass_dep().add().preset_single();
+
+                render_pass_.reset(builder.build(device.logi_device()), device);
+            }
+
+            // Pipeline
+            {
+                mirinae::PipelineBuilder builder{ device };
+
+                builder.shader_stages()
+                    .add_vert(":asset/spv/bloom_downsample_vert.spv")
+                    .add_frag(":asset/spv/bloom_downsample_frag.spv");
+
+                builder.dynamic_state().add_viewport().add_scissor();
+
+                pipeline_.reset(
+                    builder.build(render_pass_, pipe_layout_), device
+                );
+            }
+
+            // Framebuffers
+            {
+                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                    auto& img = *frame_data_.at(i).downsamples_;
+
+                    mirinae::FbufCinfo fbuf_cinfo;
+                    fbuf_cinfo.set_rp(render_pass_)
+                        .set_dim(img.img_.extent2d())
+                        .add_attach(img.view_.get());
+                    frame_data_.at(i).fbuf_.reset(
+                        fbuf_cinfo.build(device), device.logi_device()
+                    );
+                }
+            }
+
+            cmd_pool.destroy(device.logi_device());
+        }
+
+        ~RpStates() override {
+            for (auto& fd : frame_data_) {
+                rp_res_.ren_img_.free_img(fd.downsamples_->id(), name_s());
+                fd.fbuf_.destroy(device_.logi_device());
+                fd.desc_set_ = VK_NULL_HANDLE;
+            }
+
+            desc_pool_.destroy(device_.logi_device());
+            this->destroy_render_pass_elements(device_);
+        }
+
+        std::string_view name() const override { return "bloom downsample"; }
+
+        std::unique_ptr<mirinae::IRpTask> create_task() override {
+            auto out = std::make_unique<::RpTask>();
+            out->init(
+                cosmos_.reg(), *this, frame_data_, rp_res_.cmd_pool_, device_
+            );
+            return out;
+        }
+
+        VkPipeline pipeline() const override { return pipeline_; }
+        VkPipelineLayout pipe_layout() const override { return pipe_layout_; }
+
+    private:
+        mirinae::VulkanDevice& device_;
+        mirinae::CosmosSimulator& cosmos_;
+        mirinae::RpResources& rp_res_;
+
+        ::FrameDataArr frame_data_;
+        mirinae::DescPool desc_pool_;
+    };
+
+}  // namespace
+
+
+namespace mirinae::rp {
+
+    std::unique_ptr<IRpBase> create_bloom_upsample(RpCreateBundle& bundle) {
+        return std::make_unique<RpStates>(
+            bundle.cosmos_, bundle.rp_res_, bundle.device_
+        );
+    }
+
+}  // namespace mirinae::rp

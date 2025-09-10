@@ -21,6 +21,7 @@
 #include "mirinae/render/render_graph.hpp"
 #include "mirinae/render/renderpass.hpp"
 #include "mirinae/renderpass/atmos/sky.hpp"
+#include "mirinae/renderpass/bloom.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/compo.hpp"
 #include "mirinae/renderpass/envmap/envmap.hpp"
@@ -1188,6 +1189,7 @@ namespace {
                     mirinae::rp::create_rp_ocean_tess,
                     mirinae::rp::compo::create_rps_vplight,
                     mirinae::rp::create_rp_states_transp_static,
+                    mirinae::rp::create_bloom_upsample,
                     mirinae::rp::create_rp_debug,
                 };
                 for (auto func : rp_factories)
