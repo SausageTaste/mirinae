@@ -296,7 +296,7 @@ namespace {
                     engine.on_mouse_event(me);
                 }
             } else {
-                SPDLOG_WARN("Unhandled event: {}", e.type);
+                // SPDLOG_WARN("Unhandled event: {}", e.type);
             }
 
             return SDL_AppResult::SDL_APP_CONTINUE;
