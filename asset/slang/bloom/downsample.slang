@@ -9,7 +9,7 @@ struct VSOutput {
 
 [push_constant]
 cbuffer U_BloomDownPushConst {
-    float2 src_resolution_;
+    float dummy_;
 }
 u_pc;
 
@@ -42,14 +42,14 @@ float4 frag_main(VSOutput input) {
     float3 e = u_compo.Sample(input.texco_, int2(0, 0)).rgb;
     float3 f = u_compo.Sample(input.texco_, int2(2, 0)).rgb;
 
-    float3 g = u_compo.Sample(input.texco_, int2(-2,-2)).rgb;
-    float3 h = u_compo.Sample(input.texco_, int2(0,-2)).rgb;
-    float3 i = u_compo.Sample(input.texco_, int2(2,-2)).rgb;
+    float3 g = u_compo.Sample(input.texco_, int2(-2, -2)).rgb;
+    float3 h = u_compo.Sample(input.texco_, int2(0, -2)).rgb;
+    float3 i = u_compo.Sample(input.texco_, int2(2, -2)).rgb;
 
     float3 j = u_compo.Sample(input.texco_, int2(-1, 1)).rgb;
     float3 k = u_compo.Sample(input.texco_, int2(1, 1)).rgb;
-    float3 l = u_compo.Sample(input.texco_, int2(-1,-1)).rgb;
-    float3 m = u_compo.Sample(input.texco_, int2(1,-1)).rgb;
+    float3 l = u_compo.Sample(input.texco_, int2(-1, -1)).rgb;
+    float3 m = u_compo.Sample(input.texco_, int2(1, -1)).rgb;
 
     // Apply weighted distribution:
     // 0.5 + 0.125 + 0.125 + 0.125 + 0.125 = 1
