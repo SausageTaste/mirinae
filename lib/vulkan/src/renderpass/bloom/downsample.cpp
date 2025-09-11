@@ -100,6 +100,9 @@ namespace {
                 cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
             );
 
+            mirinae::Viewport{ fbuf_ext }.record_single(cmdbuf);
+            mirinae::Rect2D{ fbuf_ext }.record_scissor(cmdbuf);
+
             mirinae::DescSetBindInfo{}
                 .bind_point(VK_PIPELINE_BIND_POINT_GRAPHICS)
                 .layout(rp.pipe_layout())
@@ -107,6 +110,7 @@ namespace {
                 .record(cmdbuf);
 
             ::U_BloomDownPushConst pc;
+            pc.src_resolution_ = glm::vec2{ 1600, 900 };
 
             mirinae::PushConstInfo{}
                 .layout(rp.pipe_layout())
@@ -268,7 +272,7 @@ namespace {
 
                     writer.add_img_info()
                         .set_img_view(gbuf.compo(i).image_view())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device.samplers().get_linear_clamp())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 0);
                 }
@@ -291,7 +295,7 @@ namespace {
                     .add(device.img_formats().rgb_hdr())
                     .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-                    .load_op(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+                    .load_op(VK_ATTACHMENT_LOAD_OP_CLEAR)
                     .stor_op(VK_ATTACHMENT_STORE_OP_STORE);
 
                 builder.color_attach_ref().add_color_attach(0);
@@ -310,6 +314,8 @@ namespace {
                 builder.shader_stages()
                     .add_vert(":asset/spv/bloom_downsample_vert.spv")
                     .add_frag(":asset/spv/bloom_downsample_frag.spv");
+
+                builder.color_blend_state().add(false, 1);
 
                 builder.dynamic_state().add_viewport().add_scissor();
 
@@ -331,6 +337,11 @@ namespace {
                         fbuf_cinfo.build(device), device.logi_device()
                     );
                 }
+            }
+
+            // Misc
+            {
+                clear_values_[0].color = { 0, 0, 0, 1 };
             }
 
             cmd_pool.destroy(device.logi_device());
