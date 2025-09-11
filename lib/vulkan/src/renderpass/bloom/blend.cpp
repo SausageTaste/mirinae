@@ -84,16 +84,16 @@ namespace {
         ) {
             mirinae::ImageMemoryBarrier{}
                 .image(fd.upsamples_->img_.image())
-                .set_src_access(VK_ACCESS_SHADER_WRITE_BIT)
-                .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .set_src_acc(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT)
+                .add_src_acc(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .set_dst_acc(VK_ACCESS_SHADER_READ_BIT)
                 .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .set_signle_mip_layer()
-                .mip_count(fd.upsamples_->img_.mip_levels())
                 .record_single(
                     cmdbuf,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                 );
 
@@ -238,7 +238,7 @@ namespace {
 
                     writer.add_img_info()
                         .set_img_view(fd.upsamples_->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device.samplers().get_linear_clamp())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 0);
                 }
