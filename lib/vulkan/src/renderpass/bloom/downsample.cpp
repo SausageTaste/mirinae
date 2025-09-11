@@ -438,7 +438,7 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_bloom_upsample(RpCreateBundle& bundle) {
+    std::unique_ptr<IRpBase> create_bloom_downsample(RpCreateBundle& bundle) {
         return std::make_unique<RpStates>(
             bundle.cosmos_, bundle.rp_res_, bundle.device_
         );
