@@ -27,6 +27,6 @@ VSOutput vert_main(int vtx_id: SV_VertexID) {
 
 [shader("fragment")]
 float4 frag_main(VSOutput input) {
-    let texel = u_downsampled.SampleLevel(input.texco_, 10);
-    return float4(texel.xyz, 1);
+    let texel = u_downsampled.SampleLevel(input.texco_, 0);
+    return float4(texel.xyz, u_pc.strength_);
 }

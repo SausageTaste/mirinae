@@ -3,6 +3,7 @@
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
@@ -73,13 +74,14 @@ namespace {
             auto& fd = frame_data_->at(ctxt_->f_index_.get());
 
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
-            this->record(cmdbuf_, fd, *rp_);
+            this->record(cmdbuf_, fd, *reg_, *rp_);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void record(
             const VkCommandBuffer cmdbuf,
             const ::FrameData& fd,
+            const entt::registry& reg,
             const mirinae::IRenPass& rp
         ) {
             mirinae::ImageMemoryBarrier{}
@@ -119,6 +121,11 @@ namespace {
                 .record(cmdbuf);
 
             ::U_BloomBlendPushConst pc;
+            for (auto e : reg.view<mirinae::cpnt::StandardCamera>()) {
+                const auto& cam = reg.get<mirinae::cpnt::StandardCamera>(e);
+                pc.strength_ = cam.bloom_strength_;
+                break;
+            }
 
             mirinae::PushConstInfo{}
                 .layout(rp.pipe_layout())
@@ -282,7 +289,7 @@ namespace {
                     .add_vert(":asset/spv/bloom_blend_vert.spv")
                     .add_frag(":asset/spv/bloom_blend_frag.spv");
 
-                builder.color_blend_state().add(false, 1);
+                builder.color_blend_state().add(true).set_alpha_blend();
 
                 builder.dynamic_state().add_viewport().add_scissor();
 

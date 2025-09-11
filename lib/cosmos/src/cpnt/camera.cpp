@@ -30,6 +30,23 @@ namespace mirinae::cpnt {
 
         ImGui::SliderFloat("Gamma", &gamma_, 0, 3);
         gamma_ = std::round(gamma_ * 10.f) / 10.f;
+
+        ImGui::SliderFloat(
+            "Bloom Radius",
+            &bloom_radius_,
+            0,
+            1,
+            nullptr,
+            ImGuiSliderFlags_Logarithmic
+        );
+        ImGui::SliderFloat(
+            "Bloom Strength",
+            &bloom_strength_,
+            0,
+            1,
+            nullptr,
+            ImGuiSliderFlags_Logarithmic
+        );
     }
 
 }  // namespace mirinae::cpnt

@@ -34,22 +34,22 @@ float4 frag_main(VSOutput input) {
     // - l - m -
     // g - h - i
     // === ('e' is the current texel) ===
-    float3 a = u_compo.Sample(input.texco_, int2(-2, 2)).rgb;
-    float3 b = u_compo.Sample(input.texco_, int2(0, 2)).rgb;
-    float3 c = u_compo.Sample(input.texco_, int2(2, 2)).rgb;
+    float3 a = u_compo.SampleLevel(input.texco_, 0, int2(-2, 2)).rgb;
+    float3 b = u_compo.SampleLevel(input.texco_, 0, int2(0, 2)).rgb;
+    float3 c = u_compo.SampleLevel(input.texco_, 0, int2(2, 2)).rgb;
 
-    float3 d = u_compo.Sample(input.texco_, int2(-2, 0)).rgb;
-    float3 e = u_compo.Sample(input.texco_, int2(0, 0)).rgb;
-    float3 f = u_compo.Sample(input.texco_, int2(2, 0)).rgb;
+    float3 d = u_compo.SampleLevel(input.texco_, 0, int2(-2, 0)).rgb;
+    float3 e = u_compo.SampleLevel(input.texco_, 0, int2(0, 0)).rgb;
+    float3 f = u_compo.SampleLevel(input.texco_, 0, int2(2, 0)).rgb;
 
-    float3 g = u_compo.Sample(input.texco_, int2(-2, -2)).rgb;
-    float3 h = u_compo.Sample(input.texco_, int2(0, -2)).rgb;
-    float3 i = u_compo.Sample(input.texco_, int2(2, -2)).rgb;
+    float3 g = u_compo.SampleLevel(input.texco_, 0, int2(-2, -2)).rgb;
+    float3 h = u_compo.SampleLevel(input.texco_, 0, int2(0, -2)).rgb;
+    float3 i = u_compo.SampleLevel(input.texco_, 0, int2(2, -2)).rgb;
 
-    float3 j = u_compo.Sample(input.texco_, int2(-1, 1)).rgb;
-    float3 k = u_compo.Sample(input.texco_, int2(1, 1)).rgb;
-    float3 l = u_compo.Sample(input.texco_, int2(-1, -1)).rgb;
-    float3 m = u_compo.Sample(input.texco_, int2(1, -1)).rgb;
+    float3 j = u_compo.SampleLevel(input.texco_, 0, int2(-1, 1)).rgb;
+    float3 k = u_compo.SampleLevel(input.texco_, 0, int2(1, 1)).rgb;
+    float3 l = u_compo.SampleLevel(input.texco_, 0, int2(-1, -1)).rgb;
+    float3 m = u_compo.SampleLevel(input.texco_, 0, int2(1, -1)).rgb;
 
     // Apply weighted distribution:
     // 0.5 + 0.125 + 0.125 + 0.125 + 0.125 = 1

@@ -17,7 +17,6 @@ namespace {
 
     struct U_BloomUpPushConst {
         float filter_radius_ = 0.005;
-        int32_t mip_level_;
     };
 
 
@@ -187,6 +186,13 @@ namespace {
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt
         ) {
+            ::U_BloomUpPushConst pc;
+            for (auto e : reg.view<mirinae::cpnt::StandardCamera>()) {
+                const auto& cam = reg.get<mirinae::cpnt::StandardCamera>(e);
+                pc.filter_radius_ = cam.bloom_radius_;
+                break;
+            }
+
             for (int i = 0; i < fd.levels_.size() - 1; ++i) {
                 const auto dst_mip = fd.levels_.size() - 2 - i;
                 const auto data_mip = fd.levels_.size() - 1 - i;
@@ -229,8 +235,6 @@ namespace {
                     .layout(rp.pipe_layout())
                     .add(stage.desc_set_)
                     .record(cmdbuf);
-
-                ::U_BloomUpPushConst pc;
 
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())
