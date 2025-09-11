@@ -1191,6 +1191,7 @@ namespace {
                     mirinae::rp::create_rp_states_transp_static,
                     mirinae::rp::create_bloom_downsample,
                     mirinae::rp::create_bloom_upsample,
+                    mirinae::rp::create_bloom_blend,
                     mirinae::rp::create_rp_debug,
                 };
                 for (auto func : rp_factories)
