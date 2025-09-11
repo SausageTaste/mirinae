@@ -332,6 +332,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .desc(layout.layout())
                     .add_frag_flag()
+                    .pc<U_BloomDownPushConst>()
                     .build(pipe_layout_, device);
             }
 
