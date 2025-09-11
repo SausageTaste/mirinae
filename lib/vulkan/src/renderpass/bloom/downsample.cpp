@@ -170,7 +170,7 @@ namespace {
             record_tasks_.init(reg, rp, frame_data, cmd_pool, device);
         }
 
-        std::string_view name() const override { return "multi scattering CS"; }
+        std::string_view name() const override { return "bloom downsample"; }
 
         void prepare(const mirinae::RpCtxt& ctxt) override {
             record_tasks_.prepare(ctxt);

@@ -223,7 +223,7 @@ namespace {
             }
         }
 
-        const mirinae::DebugLabel DEBUG_LABEL{ "Bloom Downsample", 1, 1, 1 };
+        const mirinae::DebugLabel DEBUG_LABEL{ "Bloom Upsample", 1, 1, 1 };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
@@ -252,7 +252,7 @@ namespace {
             record_tasks_.init(reg, rp, frame_data, cmd_pool, device);
         }
 
-        std::string_view name() const override { return "multi scattering CS"; }
+        std::string_view name() const override { return "bloom upsample"; }
 
         void prepare(const mirinae::RpCtxt& ctxt) override {
             record_tasks_.prepare(ctxt);
