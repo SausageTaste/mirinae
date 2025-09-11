@@ -86,7 +86,7 @@ namespace {
                 .image(fd.upsamples_->img_.image())
                 .set_src_access(VK_ACCESS_SHADER_WRITE_BIT)
                 .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
-                .old_layout(VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .set_signle_mip_layer()

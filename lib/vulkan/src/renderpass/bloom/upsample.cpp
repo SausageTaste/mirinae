@@ -127,7 +127,7 @@ namespace {
                 .image(fd.downsamples_->img_.image())
                 .set_src_access(VK_ACCESS_SHADER_WRITE_BIT)
                 .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
-                .old_layout(VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL)
+                .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
                 .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .set_signle_mip_layer()
@@ -168,7 +168,7 @@ namespace {
                 .set_src_access(VK_ACCESS_TRANSFER_WRITE_BIT)
                 .set_dst_access(VK_ACCESS_SHADER_WRITE_BIT)
                 .old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                .new_layout(VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL)
+                .new_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .set_signle_mip_layer()
                 .mip_count(fd.upsamples_->img_.mip_levels())
@@ -189,6 +189,22 @@ namespace {
             for (int i = 0; i < fd.levels_.size() - 1; ++i) {
                 const auto mip_idx = fd.levels_.size() - 2 - i;
                 auto& stage = fd.levels_.at(mip_idx);
+
+                mirinae::ImageMemoryBarrier{}
+                    .image(fd.upsamples_->img_.image())
+                    .set_src_access(VK_ACCESS_SHADER_WRITE_BIT)
+                    .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mip_base(mip_idx + 1)
+                    .mip_count(1)
+                    .set_signle_mip_layer()
+                    .record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                    );
 
                 mirinae::RenderPassBeginInfo{}
                     .rp(rp.render_pass())
@@ -312,6 +328,7 @@ namespace {
                     .set_format(device.img_formats().rgb_hdr())
                     .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
                     .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                    .add_usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                     .deduce_mip_levels();
 
                 mirinae::ImageViewBuilder builder;
@@ -348,9 +365,9 @@ namespace {
             {
                 mirinae::ImageMemoryBarrier barrier;
                 barrier.set_src_access(0)
-                    .set_dst_access(VK_ACCESS_SHADER_WRITE_BIT)
+                    .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
                     .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .new_layout(VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL)
+                    .new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
                     .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                     .set_signle_mip_layer();
 
@@ -466,16 +483,9 @@ namespace {
             {
                 for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
                     auto& fd = frame_data_.at(i);
-                    auto& img = *frame_data_.at(i).upsamples_;
 
                     for (auto& stage : fd.levels_) {
-                        mirinae::FbufCinfo fbuf_cinfo;
-                        fbuf_cinfo.set_rp(render_pass_)
-                            .set_dim(stage.extent_)
-                            .add_attach(stage.view_.get());
-                        stage.fbuf_.reset(
-                            fbuf_cinfo.build(device), device.logi_device()
-                        );
+                        stage.create_fbuf(render_pass_, device);
                     }
                 }
             }
