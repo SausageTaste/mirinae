@@ -431,7 +431,7 @@ namespace {
                         desc_sets.pop_back();
 
                         writer.add_img_info()
-                            .set_img_view(lvl.view_.get())
+                            .set_img_view(lvl_next.view_.get())
                             .set_sampler(device.samplers().get_linear_clamp())
                             .set_layout(
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
