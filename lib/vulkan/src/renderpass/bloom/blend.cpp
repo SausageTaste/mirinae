@@ -224,33 +224,7 @@ namespace {
             auto& layout = rp_res.desclays_.get("bloom blend:main");
 
             // Descriptor Sets
-            {
-                desc_pool_.init(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    layout.size_info(),
-                    device.logi_device()
-                );
-
-                auto desc_sets = desc_pool_.alloc(
-                    mirinae::MAX_FRAMES_IN_FLIGHT,
-                    layout.layout(),
-                    device.logi_device()
-                );
-
-                mirinae::DescWriter writer;
-                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                    auto& fd = frame_data_.at(i);
-                    fd.desc_set_ = desc_sets.back();
-                    desc_sets.pop_back();
-
-                    writer.add_img_info()
-                        .set_img_view(fd.upsamples_->view_.get())
-                        .set_sampler(device.samplers().get_linear_clamp())
-                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_, 0);
-                }
-                writer.apply_all(device.logi_device());
-            }
+            this->recreate_desc_sets(layout);
 
             // Pipeline layout
             {
@@ -299,20 +273,7 @@ namespace {
             }
 
             // Framebuffers
-            {
-                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
-                    auto& fd = frame_data_.at(i);
-                    fd.extent_ = gbuf.extent();
-
-                    mirinae::FbufCinfo fbuf_cinfo;
-                    fbuf_cinfo.set_rp(render_pass_)
-                        .set_dim(fd.extent_)
-                        .add_attach(gbuf.compo(i).image_view());
-                    fd.fbuf_.reset(
-                        fbuf_cinfo.build(device), device.logi_device()
-                    );
-                }
-            }
+            this->recreate_framebuffers();
 
             // Misc
             {
@@ -334,6 +295,13 @@ namespace {
 
         std::string_view name() const override { return "bloom blend"; }
 
+        void on_resize(uint32_t width, uint32_t height) override {
+            auto& layout = rp_res_.desclays_.get("bloom upsample:main");
+
+            this->recreate_desc_sets(layout);
+            this->recreate_framebuffers();
+        }
+
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<::RpTask>();
             out->init(
@@ -342,10 +310,51 @@ namespace {
             return out;
         }
 
-        VkPipeline pipeline() const override { return pipeline_; }
-        VkPipelineLayout pipe_layout() const override { return pipe_layout_; }
-
     private:
+        void recreate_desc_sets(const mirinae::DescLayout& layout) {
+            desc_pool_.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                layout.size_info(),
+                device_.logi_device()
+            );
+
+            auto desc_sets = desc_pool_.alloc(
+                mirinae::MAX_FRAMES_IN_FLIGHT,
+                layout.layout(),
+                device_.logi_device()
+            );
+
+            mirinae::DescWriter writer;
+            for (auto& fd : frame_data_) {
+                fd.desc_set_ = desc_sets.back();
+                desc_sets.pop_back();
+
+                writer.add_img_info()
+                    .set_img_view(fd.upsamples_->view_.get())
+                    .set_sampler(device_.samplers().get_linear_clamp())
+                    .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                writer.add_sampled_img_write(fd.desc_set_, 0);
+            }
+            writer.apply_all(device_.logi_device());
+        }
+
+        void recreate_framebuffers() {
+            auto& gbuf = rp_res_.gbuf_;
+
+            for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                auto& fd = frame_data_.at(i);
+                fd.extent_ = gbuf.extent();
+
+                mirinae::FbufCinfo fbuf_cinfo;
+                fbuf_cinfo.set_rp(render_pass_)
+                    .set_dim(fd.extent_)
+                    .add_attach(gbuf.compo(i).image_view());
+                fd.fbuf_.reset(
+                    fbuf_cinfo.build(device_), device_.logi_device()
+                );
+            }
+        }
+
         mirinae::VulkanDevice& device_;
         mirinae::CosmosSimulator& cosmos_;
         mirinae::RpResources& rp_res_;

@@ -46,6 +46,13 @@ namespace {
             VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
         };
 
+        void clear_levels(mirinae::VulkanDevice& device) {
+            for (auto& lvl : stages_down_) {
+                lvl.destroy(device);
+            }
+            stages_down_.clear();
+        }
+
         std::vector<DownsampleStage> stages_down_;
         mirinae::HRpImage downsamples_;
     };
@@ -244,74 +251,16 @@ namespace {
             mirinae::CommandPool cmd_pool;
             cmd_pool.init(device);
 
+            // Allocate images
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& fd = frame_data_.at(i);
+
+                const auto img_name = fmt::format("downsamples_f#{}", i);
+                fd.downsamples_ = rp_res.ren_img_.new_img(img_name, name_s());
+            }
+
             // Create images
-            {
-                const auto img_width = gbuf.width() / 2;
-                const auto img_height = gbuf.height() / 2;
-
-                mirinae::ImageCreateInfo cinfo;
-                cinfo.set_dimensions(img_width, img_height)
-                    .set_type(VK_IMAGE_TYPE_2D)
-                    .set_format(device.img_formats().rgb_hdr())
-                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
-                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-                    .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
-                    .deduce_mip_levels();
-
-                mirinae::ImageViewBuilder builder;
-                builder.format(cinfo.format())
-                    .view_type(VK_IMAGE_VIEW_TYPE_2D)
-                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .base_arr_layer(0)
-                    .arr_layers(1);
-
-                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                    auto& fd = frame_data_.at(i);
-
-                    const auto img_name = fmt::format("downsamples_f#{}", i);
-                    auto img = rp_res.ren_img_.new_img(img_name, name_s());
-                    img->img_.init(cinfo.get(), device.mem_alloc());
-                    fd.downsamples_ = img;
-
-                    builder.image(img->img_.image());
-                    img->view_.reset(builder, device);
-                    img->set_dbg_names(device);
-
-                    for (size_t j = 0; j < img->img_.mip_levels(); j++) {
-                        auto& stage = fd.stages_down_.emplace_back();
-
-                        builder.mip_levels(1).base_mip_level(j);
-                        stage.view_.reset(builder, device);
-                        stage.extent_.width = std::max(1u, img_width >> j);
-                        stage.extent_.height = std::max(1u, img_height >> j);
-                    }
-                }
-            }
-
-            // Image transitions
-            {
-                mirinae::ImageMemoryBarrier barrier;
-                barrier.set_src_access(0)
-                    .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
-                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .set_signle_mip_layer();
-
-                cmd_pool.init(device);
-                auto cmdbuf = cmd_pool.begin_single_time(device);
-                for (auto& fd : frame_data_) {
-                    barrier.image(fd.downsamples_->img_.image())
-                        .mip_count(fd.downsamples_->img_.mip_levels());
-                    barrier.record_single(
-                        cmdbuf,
-                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-                    );
-                }
-                cmd_pool.end_single_time(cmdbuf, device);
-                cmd_pool.destroy(device.logi_device());
-            }
+            this->recreate_images(cmd_pool);
 
             // Desc layouts
             {
@@ -320,47 +269,10 @@ namespace {
                 rp_res.desclays_.add(builder, device.logi_device());
             }
 
-            auto& layout = rp_res.desclays_.get(name_s() + ":main");
+            auto& layout = rp_res.desclays_.get("bloom downsample:main");
 
             // Descriptor Sets
-            {
-                const auto mip_levels =
-                    frame_data_.at(0).downsamples_->img_.mip_levels();
-                const auto alloc_count = mirinae::MAX_FRAMES_IN_FLIGHT *
-                                         mip_levels;
-
-                desc_pool_.init(
-                    alloc_count, layout.size_info(), device.logi_device()
-                );
-
-                auto desc_sets = desc_pool_.alloc(
-                    alloc_count, layout.layout(), device.logi_device()
-                );
-
-                mirinae::DescWriter writer;
-                for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                    auto& fd = frame_data_[i];
-
-                    for (size_t j = 0; j < fd.stages_down_.size(); j++) {
-                        auto& stage = fd.stages_down_[j];
-                        stage.desc_set_ = desc_sets.back();
-                        desc_sets.pop_back();
-
-                        const auto view =
-                            (j >= 1) ? fd.stages_down_[j - 1].view_.get()
-                                     : rp_res_.gbuf_.compo(i).image_view();
-
-                        writer.add_img_info()
-                            .set_img_view(view)
-                            .set_sampler(device.samplers().get_linear_clamp())
-                            .set_layout(
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                            );
-                        writer.add_sampled_img_write(stage.desc_set_, 0);
-                    }
-                }
-                writer.apply_all(device.logi_device());
-            }
+            this->recreate_desc_sets(layout);
 
             // Pipeline layout
             {
@@ -409,22 +321,7 @@ namespace {
             }
 
             // Framebuffers
-            {
-                for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
-                    auto& fd = frame_data_.at(i);
-                    auto& img = *frame_data_.at(i).downsamples_;
-
-                    for (auto& stage : fd.stages_down_) {
-                        mirinae::FbufCinfo fbuf_cinfo;
-                        fbuf_cinfo.set_rp(render_pass_)
-                            .set_dim(stage.extent_)
-                            .add_attach(stage.view_.get());
-                        stage.fbuf_.reset(
-                            fbuf_cinfo.build(device), device.logi_device()
-                        );
-                    }
-                }
-            }
+            this->recreate_framebuffers();
 
             // Misc
             {
@@ -449,6 +346,19 @@ namespace {
 
         std::string_view name() const override { return "bloom downsample"; }
 
+        void on_resize(uint32_t width, uint32_t height) override {
+            auto& layout = rp_res_.desclays_.get("bloom downsample:main");
+
+            mirinae::CommandPool cmd_pool;
+            cmd_pool.init(device_);
+
+            this->recreate_images(cmd_pool);
+            this->recreate_desc_sets(layout);
+            this->recreate_framebuffers();
+
+            cmd_pool.destroy(device_.logi_device());
+        }
+
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<::RpTask>();
             out->init(
@@ -457,10 +367,136 @@ namespace {
             return out;
         }
 
-        VkPipeline pipeline() const override { return pipeline_; }
-        VkPipelineLayout pipe_layout() const override { return pipe_layout_; }
-
     private:
+        void recreate_images(mirinae::CommandPool& cmd_pool) {
+            auto& gbuf = rp_res_.gbuf_;
+
+            const auto img_format = device_.img_formats().rgb_hdr();
+            const auto img_width = gbuf.width() / 2;
+            const auto img_height = gbuf.height() / 2;
+
+            // Create images
+            {
+                mirinae::ImageCreateInfo cinfo;
+                cinfo.set_dimensions(img_width, img_height)
+                    .set_type(VK_IMAGE_TYPE_2D)
+                    .set_format(img_format)
+                    .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT)
+                    .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                    .add_usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                    .deduce_mip_levels();
+
+                for (auto& fd : frame_data_) {
+                    fd.downsamples_->img_.init(
+                        cinfo.get(), device_.mem_alloc()
+                    );
+                }
+            }
+
+            // Create views
+            {
+                mirinae::ImageViewBuilder builder;
+                builder.format(img_format)
+                    .view_type(VK_IMAGE_VIEW_TYPE_2D)
+                    .aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .base_arr_layer(0)
+                    .arr_layers(1);
+
+                for (auto& fd : frame_data_) {
+                    auto& rp_img = *fd.downsamples_;
+                    auto& img = rp_img.img_;
+                    auto& view = rp_img.view_;
+
+                    builder.image(img.image())
+                        .base_mip_level(0)
+                        .mip_levels(img.mip_levels());
+                    view.reset(builder, device_);
+                    rp_img.set_dbg_names(device_);
+
+                    fd.clear_levels(device_);
+                    for (size_t j = 0; j < img.mip_levels(); j++) {
+                        auto& stage = fd.stages_down_.emplace_back();
+
+                        builder.base_mip_level(j).mip_levels(1);
+                        stage.view_.reset(builder, device_);
+
+                        stage.extent_.width = std::max(1u, img_width >> j);
+                        stage.extent_.height = std::max(1u, img_height >> j);
+                    }
+                }
+            }
+
+            // Image transitions
+            {
+                mirinae::ImageMemoryBarrier barrier;
+                barrier.set_src_access(0)
+                    .set_dst_access(VK_ACCESS_TRANSFER_READ_BIT)
+                    .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                    .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .set_signle_mip_layer();
+
+                auto cmdbuf = cmd_pool.begin_single_time(device_);
+                for (auto& fd : frame_data_) {
+                    auto& img = fd.downsamples_->img_;
+
+                    barrier.image(img.image())
+                        .mip_count(img.mip_levels())
+                        .record_single(
+                            cmdbuf,
+                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                        );
+                }
+                cmd_pool.end_single_time(cmdbuf, device_);
+            }
+        }
+
+        void recreate_desc_sets(const mirinae::DescLayout& layout) {
+            const auto mip_levels =
+                frame_data_.front().downsamples_->img_.mip_levels();
+            const auto alloc_count = mirinae::MAX_FRAMES_IN_FLIGHT * mip_levels;
+
+            desc_pool_.destroy(device_.logi_device());
+            desc_pool_.init(
+                alloc_count, layout.size_info(), device_.logi_device()
+            );
+
+            auto desc_sets = desc_pool_.alloc(
+                alloc_count, layout.layout(), device_.logi_device()
+            );
+
+            mirinae::DescWriter writer;
+            for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                auto& fd = frame_data_[i];
+
+                for (size_t j = 0; j < fd.stages_down_.size(); j++) {
+                    auto& stage = fd.stages_down_[j];
+                    stage.desc_set_ = desc_sets.back();
+                    desc_sets.pop_back();
+
+                    const auto view = (j >= 1)
+                                          ? fd.stages_down_[j - 1].view_.get()
+                                          : rp_res_.gbuf_.compo(i).image_view();
+
+                    writer.add_img_info()
+                        .set_img_view(view)
+                        .set_sampler(device_.samplers().get_linear_clamp())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(stage.desc_set_, 0);
+                }
+            }
+            writer.apply_all(device_.logi_device());
+        }
+
+        void recreate_framebuffers() {
+            for (auto& fd : frame_data_) {
+                for (auto& stage : fd.stages_down_) {
+                    stage.create_fbuf(render_pass_, device_);
+                }
+            }
+        }
+
         mirinae::VulkanDevice& device_;
         mirinae::CosmosSimulator& cosmos_;
         mirinae::RpResources& rp_res_;
