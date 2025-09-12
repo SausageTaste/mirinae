@@ -34,11 +34,24 @@ float3 get_sun_luminance(const float3 cam_pos_e, float3 cam_dir_w, const float p
         );
         if (t < 0.0) {  // no intersection
             // arbitrary. But fine, not use when comparing the models
-            return float3(1000000.0);
+            return float3(10000);
         }
     }
 
     return float3(0);
+}
+
+
+float3 get_transmittance(float3 pos_e, AtmosphereParameters atmos_params) {
+    const float planet_radius = atmos_params.radius_bottom * 1000;
+    const float frag_height_e = length(pos_e);
+    const float3 frag_up_dir_e = normalize(pos_e);
+    const float3 dlight_dir_w = normalize(u_pc.sun_direction_w.xyz);
+    const float view_zenith_cos_angle = dot(dlight_dir_w, frag_up_dir_e);
+    const float2 lut_trans_uv = LutTransmittanceParamsToUv(
+        atmos_params, frag_height_e * M_TO_KM, view_zenith_cos_angle
+    );
+    return u_trans_lut.SampleLevel(lut_trans_uv, 0).xyz;
 }
 
 
@@ -91,6 +104,7 @@ float4 frag_main(VSOutput input) {
 
     const float4 sky_view_texel = u_sky_view_lut.SampleLevel(uv, 0);
     const float3 color = sky_view_texel.rgb +
-                         get_sun_luminance(cam_pos_e, cam_dir_w, planet_radius);
+                         get_sun_luminance(cam_pos_e, cam_dir_w, planet_radius) *
+                             get_transmittance(cam_pos_e, atmos_params);
     return float4(color, 1);
 }
