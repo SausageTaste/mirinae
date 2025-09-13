@@ -5,6 +5,12 @@
 
 namespace mirinae::cpnt {
 
+    StandardCamera::StandardCamera()
+        : exposure_(1)
+        , gamma_(1)
+        , bloom_radius_(0.005)
+        , bloom_strength_(0.02) {}
+
     void StandardCamera::render_imgui() {
         float angle = (float)proj_.fov_.deg();
         ImGui::SliderFloat(
@@ -35,15 +41,15 @@ namespace mirinae::cpnt {
             "Bloom Radius",
             &bloom_radius_,
             0,
-            1,
-            nullptr,
+            0.05,
+            "%.6f",
             ImGuiSliderFlags_Logarithmic
         );
         ImGui::SliderFloat(
             "Bloom Strength",
             &bloom_strength_,
             0,
-            1,
+            2,
             nullptr,
             ImGuiSliderFlags_Logarithmic
         );
