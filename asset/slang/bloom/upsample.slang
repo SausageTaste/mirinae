@@ -10,6 +10,7 @@ struct VSOutput {
 [push_constant]
 cbuffer U_BloomUpPushConst {
     float filter_radius_;
+    float aspect_ratio_rcp_;
 }
 u_pc;
 
@@ -29,7 +30,8 @@ VSOutput vert_main(int vtx_id: SV_VertexID) {
 float4 frag_main(VSOutput input) {
     // The filter kernel is applied with a radius, specified in texture
     // coordinates, so that the radius will vary across mip resolutions.
-    let r = u_pc.filter_radius_;
+    let y = u_pc.filter_radius_;
+    let x = y * u_pc.aspect_ratio_rcp_;
 
     let level = 0;
 
@@ -38,17 +40,17 @@ float4 frag_main(VSOutput input) {
     // d - e - f
     // g - h - i
     // === ('e' is the current texel) ===
-    float3 a = u_downsampled.SampleLevel(input.texco_ + float2(-r, r), level).rgb;
-    float3 b = u_downsampled.SampleLevel(input.texco_ + float2(0, r), level).rgb;
-    float3 c = u_downsampled.SampleLevel(input.texco_ + float2(r, r), level).rgb;
+    float3 a = u_downsampled.SampleLevel(input.texco_ + float2(-x, y), level).rgb;
+    float3 b = u_downsampled.SampleLevel(input.texco_ + float2(0, y), level).rgb;
+    float3 c = u_downsampled.SampleLevel(input.texco_ + float2(x, y), level).rgb;
 
-    float3 d = u_downsampled.SampleLevel(input.texco_ + float2(-r, 0), level).rgb;
+    float3 d = u_downsampled.SampleLevel(input.texco_ + float2(-x, 0), level).rgb;
     float3 e = u_downsampled.SampleLevel(input.texco_, level).rgb;
-    float3 f = u_downsampled.SampleLevel(input.texco_ + float2(r, 0), level).rgb;
+    float3 f = u_downsampled.SampleLevel(input.texco_ + float2(x, 0), level).rgb;
 
-    float3 g = u_downsampled.SampleLevel(input.texco_ + float2(-r, -r), level).rgb;
-    float3 h = u_downsampled.SampleLevel(input.texco_ + float2(0, -r), level).rgb;
-    float3 i = u_downsampled.SampleLevel(input.texco_ + float2(r, -r), level).rgb;
+    float3 g = u_downsampled.SampleLevel(input.texco_ + float2(-x, -y), level).rgb;
+    float3 h = u_downsampled.SampleLevel(input.texco_ + float2(0, -y), level).rgb;
+    float3 i = u_downsampled.SampleLevel(input.texco_ + float2(x, -y), level).rgb;
 
     // Apply weighted distribution, by using a 3x3 tent filter:
     //  1   | 1 2 1 |

@@ -16,7 +16,16 @@
 namespace {
 
     struct U_BloomUpPushConst {
+        template <typename T>
+        U_BloomUpPushConst& aspect_ratio(T width, T height) {
+            const auto v = static_cast<double>(height) /
+                           static_cast<double>(width);
+            aspect_ratio_rcp_ = static_cast<float>(v);
+            return *this;
+        }
+
         float filter_radius_ = 0.005;
+        float aspect_ratio_rcp_ = 1.0;
     };
 
 
@@ -242,6 +251,8 @@ namespace {
                     .layout(rp.pipe_layout())
                     .add(stage.desc_set_)
                     .record(cmdbuf);
+
+                pc.aspect_ratio(stage.extent_.width, stage.extent_.height);
 
                 mirinae::PushConstInfo{}
                     .layout(rp.pipe_layout())
