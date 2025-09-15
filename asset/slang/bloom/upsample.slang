@@ -28,37 +28,23 @@ VSOutput vert_main(int vtx_id: SV_VertexID) {
 
 [shader("fragment")]
 float4 frag_main(VSOutput input) {
-    // The filter kernel is applied with a radius, specified in texture
-    // coordinates, so that the radius will vary across mip resolutions.
-    let y = u_pc.filter_radius_;
-    let x = y * u_pc.aspect_ratio_rcp_;
+    const float y = u_pc.filter_radius_;
+    const float x = y * u_pc.aspect_ratio_rcp_;
 
-    let level = 0;
+    const float3 a = u_downsampled.Sample(input.texco_ + float2(-x, y)).rgb;
+    const float3 b = u_downsampled.Sample(input.texco_ + float2(0, y)).rgb;
+    const float3 c = u_downsampled.Sample(input.texco_ + float2(x, y)).rgb;
 
-    // Take 9 samples around current texel:
-    // a - b - c
-    // d - e - f
-    // g - h - i
-    // === ('e' is the current texel) ===
-    float3 a = u_downsampled.SampleLevel(input.texco_ + float2(-x, y), level).rgb;
-    float3 b = u_downsampled.SampleLevel(input.texco_ + float2(0, y), level).rgb;
-    float3 c = u_downsampled.SampleLevel(input.texco_ + float2(x, y), level).rgb;
+    const float3 d = u_downsampled.Sample(input.texco_ + float2(-x, 0)).rgb;
+    const float3 e = u_downsampled.Sample(input.texco_).rgb;
+    const float3 f = u_downsampled.Sample(input.texco_ + float2(x, 0)).rgb;
 
-    float3 d = u_downsampled.SampleLevel(input.texco_ + float2(-x, 0), level).rgb;
-    float3 e = u_downsampled.SampleLevel(input.texco_, level).rgb;
-    float3 f = u_downsampled.SampleLevel(input.texco_ + float2(x, 0), level).rgb;
+    const float3 g = u_downsampled.Sample(input.texco_ + float2(-x, -y)).rgb;
+    const float3 h = u_downsampled.Sample(input.texco_ + float2(0, -y)).rgb;
+    const float3 i = u_downsampled.Sample(input.texco_ + float2(x, -y)).rgb;
 
-    float3 g = u_downsampled.SampleLevel(input.texco_ + float2(-x, -y), level).rgb;
-    float3 h = u_downsampled.SampleLevel(input.texco_ + float2(0, -y), level).rgb;
-    float3 i = u_downsampled.SampleLevel(input.texco_ + float2(x, -y), level).rgb;
-
-    // Apply weighted distribution, by using a 3x3 tent filter:
-    //  1   | 1 2 1 |
-    // -- * | 2 4 2 |
-    // 16   | 1 2 1 |
-    var upsample = e * 4.0;
-    upsample += (b + d + f + h) * 2.0;
-    upsample += (a + c + g + i);
-    upsample *= 1.0 / 16.0;
+    var upsample = e * (4.0 / 16.0);
+    upsample += (b + d + f + h) * (2.0 / 16.0);
+    upsample += (a + c + g + i) * (1.0 / 16.0);
     return float4(upsample, 1);
 }
