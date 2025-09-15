@@ -18,11 +18,6 @@ namespace {
     constexpr int32_t TEX_RES = 32;
 
 
-    struct U_BloomDownPushConst {
-        float dummy_;
-    };
-
-
     struct FrameData {
         struct DownsampleStage {
             void destroy(mirinae::VulkanDevice& device) {
@@ -154,13 +149,6 @@ namespace {
                     .add(stage.desc_set_)
                     .record(cmdbuf);
 
-                ::U_BloomDownPushConst pc;
-
-                mirinae::PushConstInfo{}
-                    .layout(rp.pipe_layout())
-                    .add_stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .record(cmdbuf, pc);
-
                 vkCmdDraw(cmdbuf, 3, 1, 0, 0);
                 vkCmdEndRenderPass(cmdbuf);
 
@@ -278,8 +266,6 @@ namespace {
             {
                 mirinae::PipelineLayoutBuilder{}
                     .desc(layout.layout())
-                    .add_frag_flag()
-                    .pc<U_BloomDownPushConst>()
                     .build(pipe_layout_, device);
             }
 

@@ -7,12 +7,6 @@ struct VSOutput {
 };
 
 
-[push_constant]
-cbuffer U_BloomDownPushConst {
-    float dummy_;
-}
-u_pc;
-
 layout(set = 0, binding = 0) Sampler2D u_compo;
 
 
