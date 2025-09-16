@@ -497,7 +497,7 @@ namespace {
                         constexpr auto LAYOUT =
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                         w.add_img_info()
-                            .set_img_view(dlights.at(i_dl).view(f_idx))
+                            .set_img_view(dlights.at(i_dl).view_whole(f_idx))
                             .set_layout(LAYOUT)
                             .set_sampler(device.samplers().get_shadow());
                         break;

@@ -209,7 +209,6 @@ namespace { namespace task {
                     continue;
 
                 auto& sh_data = fd.shadows_.at(i);
-                const auto shadow_view = dlight.view(ctxt.f_index_);
                 const auto& light = reg.get<mirinae::cpnt::DLight>(e);
                 const auto& tform = reg.get<mirinae::cpnt::Transform>(e);
                 const auto& cascades = light.cascades_;
@@ -486,7 +485,7 @@ namespace {
 
                         // Shadow map
                         writer.add_img_info()
-                            .set_img_view(dlights.at(i_sh).view(f_idx))
+                            .set_img_view(dlights.at(i_sh).view_whole(f_idx))
                             .set_sampler(device.samplers().get_shadow())
                             .set_layout(
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL

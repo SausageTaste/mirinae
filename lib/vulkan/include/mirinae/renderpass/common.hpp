@@ -127,9 +127,10 @@ namespace mirinae {
         struct IDlightShadowMap {
             virtual ~IDlightShadowMap() = default;
 
-            virtual VkImage img(mirinae::FrameIndex f_idx) const = 0;
-            virtual VkImageView view(mirinae::FrameIndex f_idx) const = 0;
-            virtual VkFramebuffer fbuf(mirinae::FrameIndex f_idx) const = 0;
+            virtual VkImage img(FrameIndex) const = 0;
+            virtual VkImageView view_whole(FrameIndex) const = 0;
+            virtual VkImageView view_layer(FrameIndex, uint32_t idx) const = 0;
+            virtual VkFramebuffer fbuf(FrameIndex, uint32_t idx) const = 0;
             virtual entt::entity entt() const = 0;
         };
 

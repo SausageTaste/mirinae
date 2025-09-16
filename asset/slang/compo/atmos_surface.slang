@@ -38,7 +38,7 @@ layout(set = 0, binding = 6) Sampler2D u_sky_view_lut;
 layout(set = 0, binding = 7) Sampler3D u_cam_scat_vol;
 layout(set = 0, binding = 8) ConstantBuffer<U_CompoAtmosSurfMain> u_main;
 
-layout(set = 1, binding = 0) Sampler2DShadow u_shadow_map;
+layout(set = 1, binding = 0) Sampler2DArrayShadow u_shadow_map;
 layout(set = 1, binding = 1) ConstantBuffer<U_CompoDlightShadowMap> ubuf_sh;
 
 
@@ -106,11 +106,9 @@ float4 frag_main(VSOutput input) {
         const uint selected_dlight = select_cascade(depth_texel, ubuf_sh.cascade_depths);
 
         float lit = 1;
-        const float3 texco = make_shadow_texco(
-            frag_pos_v, ubuf_sh.light_mats[selected_dlight], selected_dlight
-        );
+        const float3 texco = make_shadow_texco(frag_pos_v, ubuf_sh.light_mats[selected_dlight]);
         if (check_shadow_texco_range(texco))
-            lit = u_shadow_map.SampleCmp(texco.xy, texco.z);
+            lit = u_shadow_map.SampleCmp(float3(texco.xy, selected_dlight), texco.z);
 
         output.xyz += lit * transmittance *
                       calc_pbr_illumination(

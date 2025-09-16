@@ -4,6 +4,7 @@
 
 #include <entt/entity/entity.hpp>
 
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/render/texture.hpp"
 
 
@@ -14,33 +15,76 @@ namespace mirinae {
 
     public:
         void init_img(uint32_t w, uint32_t h, VulkanDevice& device) {
-            tex_ = create_tex_depth(w, h, device);
+            this->destroy(device);
+
+            mirinae::ImageCreateInfo img_info;
+            img_info.set_dimensions(w, h)
+                .set_format(device.img_formats().depth_map())
+                .add_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+                .add_usage_sampled()
+                .set_arr_layers(4);
+            img_.init(img_info.get(), device.mem_alloc());
+
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.image(img_.image())
+                .format(device.img_formats().depth_map())
+                .view_type(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                .aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .base_arr_layer(0)
+                .arr_layers(layers_.size());
+            view_.reset(iv_builder, device);
+
+            for (uint32_t i = 0; i < layers_.size(); ++i) {
+                iv_builder.view_type(VK_IMAGE_VIEW_TYPE_2D)
+                    .base_arr_layer(i)
+                    .arr_layers(1);
+                layers_.at(i).view_.reset(iv_builder, device);
+            }
         }
 
         void init_fbuf(VkRenderPass render_pass, VulkanDevice& device) {
             FbufCinfo fbuf_info;
-            fbuf_info.set_rp(render_pass)
-                .clear_attach()
-                .add_attach(tex_->image_view())
-                .set_dim(tex_->width(), tex_->height());
-            fbuf_.init(fbuf_info.get(), device.logi_device());
+            fbuf_info.set_rp(render_pass).set_dim(img_.width(), img_.height());
+
+            for (auto& layer : layers_) {
+                fbuf_info.clear_attach().add_attach(layer.view_.get());
+                layer.fbuf_.init(fbuf_info.get(), device.logi_device());
+            }
         }
 
         void destroy(VulkanDevice& device) {
-            fbuf_.destroy(device.logi_device());
-            tex_.reset();
+            for (auto& layer : layers_) {
+                layer.fbuf_.destroy(device.logi_device());
+                layer.view_.destroy(device);
+            }
+
+            img_.destroy(device.mem_alloc());
         }
 
-        VkImage img() const { return tex_->image(); }
-        VkImageView view() const { return tex_->image_view(); }
-        VkFramebuffer fbuf() const { return fbuf_.get(); }
+        VkImage img() const { return img_.image(); }
 
-        uint32_t width() const { return tex_->width(); }
-        uint32_t height() const { return tex_->height(); }
+        VkImageView view_whole() const { return view_.get(); }
+
+        VkImageView view_layer(uint32_t layer) const {
+            return layers_.at(layer).view_.get();
+        }
+
+        VkFramebuffer fbuf_layer(uint32_t layer) const {
+            return layers_.at(layer).fbuf_.get();
+        }
+
+        uint32_t width() const { return img_.width(); }
+        uint32_t height() const { return img_.height(); }
 
     private:
-        std::unique_ptr<ITexture> tex_;
-        Fbuf fbuf_;
+        struct Layer {
+            mirinae::ImageView view_;
+            Fbuf fbuf_;
+        };
+
+        std::array<Layer, 4> layers_;
+        mirinae::Image img_;
+        mirinae::ImageView view_;
     };
 
 }  // namespace mirinae
@@ -83,12 +127,20 @@ namespace mirinae {
         return images_.at(f_idx).img();
     }
 
-    VkImageView DlightShadowMap::view(FrameIndex f_idx) const {
-        return images_.at(f_idx).view();
+    VkImageView DlightShadowMap::view_whole(FrameIndex f_idx) const {
+        return images_.at(f_idx).view_whole();
     }
 
-    VkFramebuffer DlightShadowMap::fbuf(FrameIndex f_idx) const {
-        return images_.at(f_idx).fbuf();
+    VkImageView DlightShadowMap::view_layer(
+        FrameIndex f_idx, uint32_t layer
+    ) const {
+        return images_.at(f_idx).view_layer(layer);
+    }
+
+    VkFramebuffer DlightShadowMap::fbuf(
+        FrameIndex f_idx, uint32_t layer
+    ) const {
+        return images_.at(f_idx).fbuf_layer(layer);
     }
 
     entt::entity DlightShadowMap::entt() const { return entt_; }

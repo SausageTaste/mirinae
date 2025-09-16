@@ -29,8 +29,9 @@ namespace mirinae {
         void destroy(VulkanDevice& device);
 
         VkImage img(FrameIndex f_idx) const override;
-        VkImageView view(FrameIndex f_idx) const override;
-        VkFramebuffer fbuf(FrameIndex f_idx) const override;
+        VkImageView view_whole(FrameIndex f_idx) const override;
+        VkImageView view_layer(FrameIndex f_idx, uint32_t layer) const override;
+        VkFramebuffer fbuf(FrameIndex f_idx, uint32_t layer) const override;
 
         entt::entity entt() const override;
         void set_entt(entt::entity entt);

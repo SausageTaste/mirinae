@@ -99,44 +99,31 @@ namespace { namespace task {
                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                     );
 
-                mirinae::RenderPassBeginInfo{}
-                    .rp(rp.render_pass())
-                    .fbuf(shadow.fbuf(ctxt.f_index_))
-                    .wh(shadow.extent2d())
-                    .clear_value_count(rp.clear_value_count())
-                    .clear_values(rp.clear_values())
-                    .record_begin(cmdbuf);
-
-                vkCmdBindPipeline(
-                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-                );
-                vkCmdSetDepthBias(cmdbuf, -10, 0, -5);
-
-                const auto half_width = shadow.width() / 2.0;
-                const auto half_height = shadow.height() / 2.0;
-                const std::array<glm::dvec2, 4> offsets{
-                    glm::dvec2{ 0, 0 },
-                    glm::dvec2{ half_width, 0 },
-                    glm::dvec2{ 0, half_height },
-                    glm::dvec2{ half_width, half_height },
-                };
+                const auto fbuf_size = shadow.extent2d();
+                const mirinae::Viewport viewport{ fbuf_size };
+                const mirinae::Rect2D rect2d{ fbuf_size };
 
                 mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
 
-                for (size_t cascade_i = 0; cascade_i < 4; ++cascade_i) {
-                    const auto& cascade = dlight->cascades_.cascades_.at(
-                        cascade_i
-                    );
-                    auto& offset = offsets.at(cascade_i);
+                const auto layer_count = dlight->cascades_.cascades_.size();
+                for (size_t layer = 0; layer < layer_count; ++layer) {
+                    auto& cascade = dlight->cascades_.cascades_.at(layer);
 
-                    mirinae::Viewport{}
-                        .set_xy(offset)
-                        .set_wh(half_width, half_height)
-                        .record_single(cmdbuf);
-                    mirinae::Rect2D{}
-                        .set_xy(offset)
-                        .set_wh(half_width, half_height)
-                        .record_scissor(cmdbuf);
+                    mirinae::RenderPassBeginInfo{}
+                        .rp(rp.render_pass())
+                        .fbuf(shadow.fbuf(ctxt.f_index_, layer))
+                        .wh(fbuf_size)
+                        .clear_value_count(rp.clear_value_count())
+                        .clear_values(rp.clear_values())
+                        .record_begin(cmdbuf);
+
+                    vkCmdBindPipeline(
+                        cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                    );
+                    vkCmdSetDepthBias(cmdbuf, -10, 0, -5);
+
+                    viewport.record_single(cmdbuf);
+                    rect2d.record_scissor(cmdbuf);
 
                     for (auto& pair : draw_set.trs()) {
                         auto& unit = *pair.unit_;

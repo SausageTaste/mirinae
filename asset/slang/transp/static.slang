@@ -52,7 +52,7 @@ struct U_TranspFrame {
 
 
 layout(set = 0, binding = 0) ConstantBuffer<U_TranspFrame> u_main;
-layout(set = 0, binding = 1) Sampler2DShadow u_dlight_shadow_maps[1];
+layout(set = 0, binding = 1) Sampler2DArrayShadow u_dlight_shadow_maps[1];
 layout(set = 0, binding = 2) Sampler2DShadow u_slight_shadow_maps[1];
 layout(set = 0, binding = 3) SamplerCube u_env_diffuse;
 layout(set = 0, binding = 4) SamplerCube u_env_specular;
@@ -142,13 +142,11 @@ float4 frag_main(VSOutput input, float4 screen_pos: SV_Position) : SV_Target {
             frag_pos_w, dlight_dir_w, SamplerTransLut(u_trans_lut), atmos_params
         );
         let selected_dlight = select_cascade(depth, u_main.dlight_cascade_depths);
-        let texco = make_shadow_texco(
-            frag_pos_v, u_main.dlight_mats[selected_dlight], selected_dlight
-        );
+        let texco = make_shadow_texco(frag_pos_v, u_main.dlight_mats[selected_dlight]);
 
         float lit = 1;
         if (is_shadow_texco_in_range(texco))
-            lit = u_dlight_shadow_maps[0].SampleCmp(texco.xy, texco.z);
+            lit = u_dlight_shadow_maps[0].SampleCmp(float3(texco.xy, selected_dlight), texco.z);
 
         output.xyz += lit * transmittance *
                       calc_pbr_illumination(

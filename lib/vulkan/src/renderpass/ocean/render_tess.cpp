@@ -898,11 +898,12 @@ namespace {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
-                    writer  // U_OceanTessParams
-                        .add_buf_info(fd.ubuf_)
-                        .add_buf_write(fd.desc_set_, 0);
-                    writer  // Height maps
-                        .add_img_info()
+                    // U_OceanTessParams
+                    writer.add_buf_info(fd.ubuf_).add_buf_write(
+                        fd.desc_set_, 0
+                    );
+                    // Height maps
+                    writer.add_img_info()
                         .set_img_view(fd.disp_map_[0]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
@@ -915,8 +916,8 @@ namespace {
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 1);
-                    writer  // Normal maps
-                        .add_img_info()
+                    // Normal maps
+                    writer.add_img_info()
                         .set_img_view(fd.deri_map_[0]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
@@ -929,8 +930,8 @@ namespace {
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 2);
-                    writer  // Turbulance maps
-                        .add_img_info()
+                    // Turbulance maps
+                    writer.add_img_info()
                         .set_img_view(fd.turb_map_[0]->view_.get())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
@@ -943,7 +944,6 @@ namespace {
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 3);
-
                     // Transmission LUT
                     writer.add_img_info()
                         .set_img_view(fd.trans_lut_->view_.get())
