@@ -307,9 +307,11 @@ namespace { namespace task {
                     .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                     .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                     .new_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+                    .add_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
                     .set_dst_acc(VK_ACCESS_SHADER_READ_BIT)
                     .set_signle_mip_layer()
+                    .layer_count(4)
                     .record_single(
                         cmdbuf,
                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |

@@ -79,29 +79,33 @@ namespace { namespace task {
         ) {
             const auto f_idx = ctxt.f_index_;
 
+            mirinae::ImageMemoryBarrier mem_barrier{};
+            mem_barrier.set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+                .add_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+                .add_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                .set_signle_mip_layer();
+
             for (uint32_t i = 0; i < dlights.count(); ++i) {
                 auto& shadow = dlights.at(i);
                 auto dlight = reg.try_get<mirinae::cpnt::DLight>(shadow.entt());
                 if (!dlight)
                     continue;
 
-                mirinae::ImageMemoryBarrier{}
-                    .image(shadow.img(ctxt.f_index_))
-                    .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                    .old_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .set_src_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                    .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                    .set_signle_mip_layer()
-                    .record_single(
-                        cmdbuf,
-                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                    );
+                mem_barrier.image(shadow.img(ctxt.f_index_));
 
                 const auto fbuf_size = shadow.extent2d();
                 const mirinae::Viewport viewport{ fbuf_size };
                 const mirinae::Rect2D rect2d{ fbuf_size };
+
+                mirinae::RenderPassBeginInfo rp_info{};
+                rp_info.rp(rp.render_pass())
+                    .wh(fbuf_size)
+                    .clear_value_count(rp.clear_value_count())
+                    .clear_values(rp.clear_values());
 
                 mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
 
@@ -109,12 +113,15 @@ namespace { namespace task {
                 for (size_t layer = 0; layer < layer_count; ++layer) {
                     auto& cascade = dlight->cascades_.cascades_.at(layer);
 
-                    mirinae::RenderPassBeginInfo{}
-                        .rp(rp.render_pass())
-                        .fbuf(shadow.fbuf(ctxt.f_index_, layer))
-                        .wh(fbuf_size)
-                        .clear_value_count(rp.clear_value_count())
-                        .clear_values(rp.clear_values())
+                    mem_barrier.layer_base(layer).record_single(
+                        cmdbuf,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                    );
+
+                    rp_info.fbuf(shadow.fbuf(ctxt.f_index_, layer))
                         .record_begin(cmdbuf);
 
                     vkCmdBindPipeline(
@@ -182,9 +189,9 @@ namespace { namespace task {
                             cmdbuf, unit.vertex_count(), 1, 0, 0, 0
                         );
                     }
-                }
 
-                vkCmdEndRenderPass(cmdbuf);
+                    vkCmdEndRenderPass(cmdbuf);
+                }
             }
         }
 

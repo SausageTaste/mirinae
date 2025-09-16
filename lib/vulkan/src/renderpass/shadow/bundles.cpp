@@ -59,6 +59,7 @@ namespace mirinae {
             }
 
             img_.destroy(device.mem_alloc());
+            view_.destroy(device);
         }
 
         VkImage img() const { return img_.image(); }
@@ -78,13 +79,13 @@ namespace mirinae {
 
     private:
         struct Layer {
-            mirinae::ImageView view_;
+            ImageView view_;
             Fbuf fbuf_;
         };
 
         std::array<Layer, 4> layers_;
-        mirinae::Image img_;
-        mirinae::ImageView view_;
+        Image img_;
+        ImageView view_;
     };
 
 }  // namespace mirinae
