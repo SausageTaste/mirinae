@@ -1047,6 +1047,20 @@ namespace {
             return *this;
         }
 
+        SamplerBuilder& mipmap_mode(VkSamplerMipmapMode mode) {
+            cinfo_.mipmapMode = mode;
+            return *this;
+        }
+
+        SamplerBuilder& max_lod(float lod) {
+            cinfo_.maxLod = lod;
+            return *this;
+        }
+        SamplerBuilder& min_lod(float lod) {
+            cinfo_.minLod = lod;
+            return *this;
+        }
+
     private:
         VkSamplerCreateInfo cinfo_;
     };
@@ -1088,10 +1102,13 @@ namespace {
             {
                 ::SamplerBuilder sampler_builder;
                 sampler_builder
-                    .address_mode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
+                    .address_mode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
                     .border_color(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
                     .compare_enable(true)
-                    .compare_op(VK_COMPARE_OP_GREATER);
+                    .compare_op(VK_COMPARE_OP_GREATER)
+                    .mipmap_mode(VK_SAMPLER_MIPMAP_MODE_NEAREST)
+                    .max_lod(0)
+                    .min_lod(0);
                 data_.push_back(sampler_builder.build(pd, ld));
             }
 
