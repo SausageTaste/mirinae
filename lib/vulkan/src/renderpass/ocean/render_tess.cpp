@@ -137,6 +137,34 @@ namespace {
             return this->texco_scale(idx, v.x, v.y);
         }
 
+        U_OceanTessParams& set_light_mat(size_t idx, const glm::mat4& m) {
+            light_mats_[idx] = m;
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTessParams& set_dlight_cascade_depths(const T* arr) {
+            dlight_cascade_depths_.x = static_cast<float>(arr[0]);
+            dlight_cascade_depths_.y = static_cast<float>(arr[1]);
+            dlight_cascade_depths_.z = static_cast<float>(arr[2]);
+            dlight_cascade_depths_.w = static_cast<float>(arr[3]);
+            return *this;
+        }
+
+        U_OceanTessParams& set_dlight_dir(const glm::dvec3& v) {
+            dlight_dir_.x = static_cast<float>(v.x);
+            dlight_dir_.y = static_cast<float>(v.y);
+            dlight_dir_.z = static_cast<float>(v.z);
+            return *this;
+        }
+
+        U_OceanTessParams& set_dlight_color(const glm::vec3& v) {
+            dlight_color_.x = v.r;
+            dlight_color_.y = v.g;
+            dlight_color_.z = v.b;
+            return *this;
+        }
+
         U_OceanTessParams& dlight_color(const glm::vec3& dir) {
             dlight_color_.x = dir.x;
             dlight_color_.y = dir.y;
@@ -234,7 +262,9 @@ namespace {
         }
 
     private:
+        glm::mat4 light_mats_[4];
         glm::vec4 texco_offset_rot_[mirinae::CASCADE_COUNT];
+        glm::vec4 dlight_cascade_depths_;
         glm::vec4 dlight_color_;
         glm::vec4 dlight_dir_;
         glm::vec4 fog_color_density_;
@@ -538,6 +568,7 @@ namespace { namespace task {
             namespace cpnt = mirinae::cpnt;
 
             const auto view_mat = ctxt.main_cam_.view();
+            const auto view_inv = ctxt.main_cam_.view_inv();
 
             U_OceanTessParams ubuf;
             ubuf.foam_bias(ocean_entt.foam_bias_)
@@ -564,7 +595,15 @@ namespace { namespace task {
             for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
                 auto& light = reg.get<cpnt::DLight>(e);
                 auto& tform = reg.get<cpnt::Transform>(e);
-                ubuf.dlight_color(light.color_.scaled_color())
+                auto& cascades = light.cascades_;
+                auto& casc_arr = cascades.cascades_;
+
+                ubuf.set_light_mat(0, casc_arr[0].light_mat_ * view_inv)
+                    .set_light_mat(1, casc_arr[1].light_mat_ * view_inv)
+                    .set_light_mat(2, casc_arr[2].light_mat_ * view_inv)
+                    .set_light_mat(3, casc_arr[3].light_mat_ * view_inv)
+                    .set_dlight_cascade_depths(cascades.far_depths_.data())
+                    .dlight_color(light.color_.scaled_color())
                     .dlight_dir(light.calc_to_light_dir(view_mat, tform));
                 break;
             }
@@ -876,11 +915,15 @@ namespace {
                     .finish_binding();
                 builder  // Sky texture
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+                builder  // DLight shadow maps
+                    .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
                 rp_res.desclays_.add(builder, device.logi_device());
             }
 
             // Desciptor Sets
             {
+                auto& dlights = rp_res_.shadow_maps_->dlights();
+
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     rp_res.desclays_.get(name_s() + ":main").size_info(),
@@ -895,6 +938,7 @@ namespace {
 
                 mirinae::DescWriter writer;
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                    const mirinae::FrameIndex f_idx(i);
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
 
@@ -968,6 +1012,12 @@ namespace {
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 7);
+                    // DLight shadow maps
+                    writer.add_img_info()
+                        .set_img_view(dlights.at(0).view_whole(f_idx))
+                        .set_sampler(device.samplers().get_shadow())
+                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    writer.add_sampled_img_write(fd.desc_set_, 8);
                 }
                 writer.apply_all(device.logi_device());
             }

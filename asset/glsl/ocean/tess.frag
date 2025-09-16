@@ -23,7 +23,9 @@ layout (push_constant) uniform U_OceanTessPushConst {
 } u_pc;
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
+    mat4 light_mats[4];
     vec4 texco_offset_rot_[3];
+    vec4 dlight_cascade_depths;
     vec4 dlight_color;
     vec4 dlight_dir;
     vec4 fog_color_density;
@@ -45,6 +47,7 @@ layout (set = 0, binding = 4) uniform sampler2D u_trans_lut;
 layout (set = 0, binding = 5) uniform sampler2D u_sky_view_lut;
 layout (set = 0, binding = 6) uniform sampler3D u_cam_scat_vol;
 layout (set = 0, binding = 7) uniform sampler2D u_sky_tex;
+layout (set = 0, binding = 8) uniform sampler2DArrayShadow u_shadow_map;
 
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
@@ -208,6 +211,25 @@ vec3 get_transmittance(vec3 frag_pos_w, vec3 dlight_dir_w) {
 }
 
 
+vec3 make_shadow_texco(vec3 frag_pos_v, mat4 light_mat) {
+    vec4 frag_pos_in_dlight = light_mat * vec4(frag_pos_v, 1);
+    vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
+    vec2 sample_coord = proj_coords.xy * 0.5 + 0.5;
+    return vec3(sample_coord, proj_coords.z);
+}
+
+
+uint select_cascade(float depth) {
+    for (uint i = 0; i < 3; ++i) {
+        if (u_params.dlight_cascade_depths[i] < depth) {
+            return i;
+        }
+    }
+
+    return 3;
+}
+
+
 void main() {
     const mat4 view_inv = inverse(u_pc.view);
     const mat3 view_inv3 = mat3(view_inv);
@@ -241,6 +263,13 @@ void main() {
     const vec3 sun_trans = get_transmittance(frag_pos_w, to_sun_dir_w);
 
     vec3 light = vec3(0);
+
+    float lit = 1;
+    {
+        const uint selected_dlight = select_cascade(gl_FragCoord.z);
+        const vec3 texco = make_shadow_texco(i_frag_pos_v, u_params.light_mats[selected_dlight]);
+        lit = texture(u_shadow_map, vec4(texco.xy, selected_dlight, texco.z));
+    }
 
     // Sky
     vec3 sky_color = vec3(0);
@@ -286,7 +315,7 @@ void main() {
             normal_m,
             to_sun_dir_w,
             roughness,
-            sun_trans * 10,
+            sun_trans * 10 * lit,
             sky_color,
             albedo
         );
