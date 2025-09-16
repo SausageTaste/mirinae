@@ -286,6 +286,151 @@ namespace mirinae {
     };
 
 
+    class ImgMemBarrierCombined {
+
+    public:
+        class SrcView {
+
+        public:
+            SrcView(VkImageMemoryBarrier& info) : info_(&info) {}
+
+            SrcView& set_accs(VkAccessFlags flags) {
+                info_->srcAccessMask = flags;
+                return *this;
+            }
+
+            SrcView& add_accs(VkAccessFlags flags) {
+                info_->srcAccessMask |= flags;
+                return *this;
+            }
+
+            SrcView& set_lay(VkImageLayout layout) {
+                info_->oldLayout = layout;
+                return *this;
+            }
+
+            SrcView& set_stage(VkPipelineStageFlags stage) {
+                stage_ = stage;
+                return *this;
+            }
+
+            SrcView& add_stage(VkPipelineStageFlags stage) {
+                stage_ |= stage;
+                return *this;
+            }
+
+            VkPipelineStageFlags stage() const { return stage_; }
+
+        private:
+            VkImageMemoryBarrier* info_;
+            VkPipelineStageFlags stage_ = 0;
+        };
+
+        class DstView {
+
+        public:
+            DstView(VkImageMemoryBarrier& info) : info_(&info) {}
+
+            DstView& set_accs(VkAccessFlags flags) {
+                info_->dstAccessMask = flags;
+                return *this;
+            }
+
+            DstView& add_accs(VkAccessFlags flags) {
+                info_->dstAccessMask |= flags;
+                return *this;
+            }
+
+            DstView& set_lay(VkImageLayout layout) {
+                info_->newLayout = layout;
+                return *this;
+            }
+
+            DstView& set_stage(VkPipelineStageFlags stage) {
+                stage_ = stage;
+                return *this;
+            }
+
+            DstView& add_stage(VkPipelineStageFlags stage) {
+                stage_ |= stage;
+                return *this;
+            }
+
+            VkPipelineStageFlags stage() const { return stage_; }
+
+        private:
+            VkImageMemoryBarrier* info_;
+            VkPipelineStageFlags stage_ = 0;
+        };
+
+        ImgMemBarrierCombined& clear() {
+            info_ = {};
+            info_.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            info_.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            info_.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            return *this;
+        }
+
+        ImgMemBarrierCombined& set_image(VkImage img) {
+            info_.image = img;
+            return *this;
+        }
+
+        ImgMemBarrierCombined& set_aspect_mask(VkImageAspectFlags flags) {
+            info_.subresourceRange.aspectMask = flags;
+            return *this;
+        }
+
+        ImgMemBarrierCombined& add_aspect_mask(VkImageAspectFlags flags) {
+            info_.subresourceRange.aspectMask |= flags;
+            return *this;
+        }
+
+        ImgMemBarrierCombined& set_mip_base(uint32_t level) {
+            info_.subresourceRange.baseMipLevel = level;
+            return *this;
+        }
+
+        ImgMemBarrierCombined& set_mip_count(uint32_t count) {
+            info_.subresourceRange.levelCount = count;
+            return *this;
+        }
+
+        ImgMemBarrierCombined& set_layer_base(uint32_t layer) {
+            info_.subresourceRange.baseArrayLayer = layer;
+            return *this;
+        }
+
+        ImgMemBarrierCombined& set_layer_count(uint32_t count) {
+            info_.subresourceRange.layerCount = count;
+            return *this;
+        }
+
+        void record(VkCommandBuffer cmdbuf) const {
+            vkCmdPipelineBarrier(
+                cmdbuf,
+                src_.stage(),
+                dst_.stage(),
+                0,
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &info_
+            );
+        }
+
+        SrcView& src() { return src_; }
+        DstView& dst() { return dst_; }
+
+    private:
+        VkImageMemoryBarrier info_;
+        SrcView src_{ info_ };
+        DstView dst_{ info_ };
+    };
+
+
     class ImageBlit {
 
     public:

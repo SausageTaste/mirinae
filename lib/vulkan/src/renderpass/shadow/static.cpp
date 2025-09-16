@@ -185,14 +185,21 @@ namespace { namespace task {
             const entt::registry& reg,
             const mirinae::DlightShadowMapBundle& dlights
         ) {
-            mirinae::ImageMemoryBarrier mem_barrier{};
-            mem_barrier.set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                .old_lay(VK_IMAGE_LAYOUT_UNDEFINED)
-                .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                .set_src_acc(0)
-                .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
-                .add_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-                .set_signle_mip_layer();
+            mirinae::ImgMemBarrierCombined img_barrier;
+            img_barrier.clear()
+                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .set_mip_count(1)
+                .set_layer_count(1);
+            img_barrier.src()
+                .set_lay(VK_IMAGE_LAYOUT_UNDEFINED)
+                .set_accs(0)
+                .set_stage(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+            img_barrier.dst()
+                .set_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .set_accs(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+                .add_accs(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+                .set_stage(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
+                .add_stage(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
 
             for (uint32_t i = 0; i < dlights.count(); ++i) {
                 auto& shadow = dlights.at(i);
@@ -200,7 +207,7 @@ namespace { namespace task {
                 if (!dlight)
                     continue;
 
-                mem_barrier.image(shadow.img(ctxt.f_index_));
+                img_barrier.set_image(shadow.img(ctxt.f_index_));
 
                 const auto fbuf_size = shadow.extent2d();
                 const mirinae::Viewport viewport{ fbuf_size };
@@ -218,12 +225,7 @@ namespace { namespace task {
                 for (size_t layer = 0; layer < layer_count; ++layer) {
                     auto& cascade = dlight->cascades_.cascades_.at(layer);
 
-                    mem_barrier.layer_base(layer).record_single(
-                        cmdbuf,
-                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-                    );
+                    img_barrier.set_layer_base(layer).record(cmdbuf);
 
                     rp_info.fbuf(shadow.fbuf(ctxt.f_index_, layer))
                         .record_begin(cmdbuf);
