@@ -101,14 +101,11 @@ float4 frag_main(VSOutput input) {
         const float metallic = material_texel.z;
         const float3 F0 = lerp(float3(0.04), albedo, metallic);
         const float3 view_dir_v = normalize(frag_pos_v);
-
         const float3 transmittance = get_transmittance(frag_pos_w);
-        const uint selected_dlight = select_cascade(depth_texel, ubuf_sh.cascade_depths);
 
-        float lit = 1;
+        const uint selected_dlight = select_cascade(depth_texel, ubuf_sh.cascade_depths);
         const float3 texco = make_shadow_texco(frag_pos_v, ubuf_sh.light_mats[selected_dlight]);
-        if (check_shadow_texco_range(texco))
-            lit = u_shadow_map.SampleCmp(float3(texco.xy, selected_dlight), texco.z);
+        const float lit = u_shadow_map.SampleCmp(float3(texco.xy, selected_dlight), texco.z);
 
         output.xyz += lit * transmittance *
                       calc_pbr_illumination(

@@ -1102,10 +1102,10 @@ namespace {
             {
                 ::SamplerBuilder sampler_builder;
                 sampler_builder
-                    .address_mode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
-                    .border_color(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
+                    .address_mode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
+                    .border_color(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK)
                     .compare_enable(true)
-                    .compare_op(VK_COMPARE_OP_GREATER)
+                    .compare_op(VK_COMPARE_OP_GREATER_OR_EQUAL)
                     .mipmap_mode(VK_SAMPLER_MIPMAP_MODE_NEAREST)
                     .max_lod(0)
                     .min_lod(0);

@@ -141,12 +141,10 @@ float4 frag_main(VSOutput input, float4 screen_pos: SV_Position) : SV_Target {
         let transmittance = get_transmittance(
             frag_pos_w, dlight_dir_w, SamplerTransLut(u_trans_lut), atmos_params
         );
+
         let selected_dlight = select_cascade(depth, u_main.dlight_cascade_depths);
         let texco = make_shadow_texco(frag_pos_v, u_main.dlight_mats[selected_dlight]);
-
-        float lit = 1;
-        if (is_shadow_texco_in_range(texco))
-            lit = u_dlight_shadow_maps[0].SampleCmp(float3(texco.xy, selected_dlight), texco.z);
+        let lit = u_dlight_shadow_maps[0].SampleCmp(float3(texco.xy, selected_dlight), texco.z);
 
         output.xyz += lit * transmittance *
                       calc_pbr_illumination(

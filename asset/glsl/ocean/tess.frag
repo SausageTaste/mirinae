@@ -215,7 +215,7 @@ vec3 make_shadow_texco(vec3 frag_pos_v, mat4 light_mat) {
     vec4 frag_pos_in_dlight = light_mat * vec4(frag_pos_v, 1);
     vec3 proj_coords = frag_pos_in_dlight.xyz / frag_pos_in_dlight.w;
     vec2 sample_coord = proj_coords.xy * 0.5 + 0.5;
-    return vec3(sample_coord, proj_coords.z);
+    return vec3(sample_coord, max(proj_coords.z, 0));
 }
 
 
