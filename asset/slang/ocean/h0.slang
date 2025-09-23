@@ -1,4 +1,3 @@
-
 import "../module/konst";
 
 
@@ -28,18 +27,11 @@ static const float SHORT_WAVES_FADE = 0.01;
 
 float4 gauseRnd(uint3 dispatch_id) {
     let noise_texel = u_noise.Load(int3(dispatch_id.xy, 0));
-
-    const float noise0 = clamp(noise_texel.x, 0.001, 1.0);
-    const float noise1 = clamp(noise_texel.y, 0.001, 1.0);
-    const float noise2 = clamp(noise_texel.z, 0.001, 1.0);
-    const float noise3 = clamp(noise_texel.w, 0.001, 1.0);
-
-    const float u0 = 2.0 * PI * noise0;
-    const float v0 = sqrt(-2.0 * log(noise1));
-    const float u1 = 2.0 * PI * noise2;
-    const float v1 = sqrt(-2.0 * log(noise3));
-
-    return float4(v0 * cos(u0), v0 * sin(u0), v1 * cos(u1), v1 * sin(u1));
+    const float u0 = frac(noise_texel.x), v0 = max(noise_texel.y, 1e-6);
+    const float u1 = frac(noise_texel.z), v1 = max(noise_texel.w, 1e-6);
+    const float a0 = TAU * u0, r0 = sqrt(-2.0 * log(v0));
+    const float a1 = TAU * u1, r1 = sqrt(-2.0 * log(v1));
+    return float4(r0 * cos(a0), r0 * sin(a0), r1 * cos(a1), r1 * sin(a1));
 }
 
 
@@ -96,9 +88,10 @@ float Frequency(float k) {
 
 
 float FrequencyDerivative(float k) {
-    let th = tanh(min(k * u_pc.depth, 20));
-    let ch = cosh(k * u_pc.depth);
-    return GRAVITY_EARTH * (u_pc.depth * k / ch / ch + th) / Frequency(k) / 2;
+    const float kh = min(k * u_pc.depth, 20);
+    const float th = tanh(kh);
+    const float ch = cosh(kh);
+    return GRAVITY_EARTH * (u_pc.depth * k / (ch * ch) + th) / (2 * Frequency(k));
 }
 
 
