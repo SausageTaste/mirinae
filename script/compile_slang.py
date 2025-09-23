@@ -10,6 +10,7 @@ import utils
 START_TIME = time.time()
 ROOT_DIR = utils.find_root_dir()
 SLANG_DIR = os.path.join(ROOT_DIR, "asset", "slang")
+RELEASE_MODE = True
 
 ENTRY_POINTS = {
     "vert_main",
@@ -85,7 +86,7 @@ def __gen_one_slang_cmds(file_path):
         "-profile", "glsl_450",
     ]
 
-    if False:
+    if RELEASE_MODE:
         basic_cmd.append("-O3")
     else:
         basic_cmd.append("-O0")
