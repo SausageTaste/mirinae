@@ -9,6 +9,7 @@
 
 #include <daltools/common/util.h>
 #include <fmt/ranges.h>
+#include <imgui_impl_vulkan.h>
 #include <sung/basic/stringtool.hpp>
 
 #include "mirinae/lightweight/konsts.hpp"

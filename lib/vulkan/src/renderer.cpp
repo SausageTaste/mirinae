@@ -4,6 +4,7 @@
 
 #include <SDL3/SDL_scancode.h>
 #include <daltools/common/util.h>
+#include <imgui_impl_vulkan.h>
 #include <entt/entity/registry.hpp>
 #include <sung/basic/time.hpp>
 

@@ -3,11 +3,12 @@
 #include <memory>
 #include <optional>
 
-#include <imgui_impl_vulkan.h>
-
 #include "mirinae/lightweight/create_info.hpp"
 #include "mirinae/lightweight/lightweights.hpp"
 #include "mirinae/render/mem_alloc.hpp"
+
+
+struct ImGui_ImplVulkan_InitInfo;
 
 
 namespace mirinae {
