@@ -137,13 +137,20 @@ float SpreadPower(float omega, float peak_omega) {
 }
 
 
-float DirectionSpectrum(float theta, float omega, float peak_omega) {
+float DirectionSpectrum(float theta, float spread_power) {
     let wind_angle = atan2(u_pc.wind_dir.y, u_pc.wind_dir.x);
+    return lerp(
+        2 / PI * cos(theta) * cos(theta),
+        Cosine2s(theta - wind_angle, spread_power),
+        u_pc.spread_blend
+    );
+}
+
+
+float DirectionSpectrum(float theta, float omega, float peak_omega) {
     let s = SpreadPower(omega, peak_omega) +
             16.0 * tanh(min(omega / peak_omega, 20.0)) * u_pc.swell * u_pc.swell;
-    return lerp(
-        2 / PI * cos(theta) * cos(theta), Cosine2s(theta - wind_angle, s), u_pc.spread_blend
-    );
+    return DirectionSpectrum(theta, s);
 }
 
 
@@ -186,6 +193,42 @@ float ShortWavesFade(float k) {
 }
 
 
+struct JonswapCalculator {
+    [mutating]
+    internal bool init(const float wave_vector_length) {
+        const float k_len = max(wave_vector_length, 0.000001);
+
+        if (k_len < u_pc.cutoff_low || k_len > u_pc.cutoff_high)
+            return false;
+
+        const float delta_k = TAU / float(u_pc.L);
+        const float domega_dk = FrequencyDerivative(k_len);
+        const float omega = Frequency(k_len);
+
+        const float gg = GRAVITY_EARTH * GRAVITY_EARTH;
+        const float peak_omega = 22 * pow(gg / (u_pc.wind_speed * u_pc.fetch), 0.33);
+
+        const float jonswap = JONSWAP(omega, peak_omega);
+        const float short_wave_fade = ShortWavesFade(k_len);
+
+        spectrum_ = 2.0 * abs(domega_dk) / k_len * delta_k * delta_k * jonswap * short_wave_fade;
+
+        spread_power_ = SpreadPower(omega, peak_omega) +
+                        16.0 * tanh(min(omega / peak_omega, 20.0)) * u_pc.swell * u_pc.swell;
+
+        return true;
+    }
+
+    internal float calc(float2 wave_vector) {
+        const float k_angle = atan2(wave_vector.y, wave_vector.x);
+        return sqrt(DirectionSpectrum(k_angle, spread_power_) * spectrum_);
+    }
+
+    private float spectrum_;
+    private float spread_power_;
+}
+
+
 float jonswap_spectrum(float2 wave_vector) {
     const float deltaK = TAU / float(u_pc.L);
     const float k_len = max(length(wave_vector), 0.000001);
@@ -212,10 +255,14 @@ float jonswap_spectrum(float2 wave_vector) {
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let x = float2(dispatch_id.xy) - float(u_pc.N) * 0.5;
     let k = x * (TAU / float(u_pc.L));
+    JonswapCalculator jonswap;
 
-    let gause_random = gauseRnd(dispatch_id);
-
-    out_images[u_pc.cascade][dispatch_id.xy] = float4(
-        gause_random.xy * jonswap_spectrum(k), gause_random.zw * jonswap_spectrum(-k)
-    );
+    if (jonswap.init(length(k))) {
+        let gause_random = gauseRnd(dispatch_id);
+        out_images[u_pc.cascade][dispatch_id.xy] = float4(
+            gause_random.xy * jonswap.calc(k), gause_random.zw * jonswap.calc(-k)
+        );
+    } else {
+        out_images[u_pc.cascade][dispatch_id.xy] = float4(0);
+    }
 }
