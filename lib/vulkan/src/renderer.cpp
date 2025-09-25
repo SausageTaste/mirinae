@@ -47,9 +47,10 @@ namespace {
 
     template <typename T>
     std::pair<uint32_t, uint32_t> calc_scaled_dimensions(T w, T h) {
+        constexpr double SCALE_FACTOR = 1.25;
         return std::make_pair(
-            static_cast<uint32_t>(static_cast<double>(w) * 1.25),
-            static_cast<uint32_t>(static_cast<double>(h) * 1.25)
+            static_cast<uint32_t>(SCALE_FACTOR * w),
+            static_cast<uint32_t>(SCALE_FACTOR * h)
         );
     }
 
