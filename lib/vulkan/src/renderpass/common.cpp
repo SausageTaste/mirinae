@@ -176,6 +176,27 @@ namespace {
             view_.reset(iv_builder, device);
         }
 
+        template <typename... T>
+        void set_anno(
+            mirinae::VulkanDevice& device,
+            fmt::format_string<T...> fmt,
+            T&&... args
+        ) {
+            mirinae::DebugAnnoName info{};
+
+            const auto img_name = fmt::format(fmt, std::forward<T>(args)...);
+            info.set_type(VK_OBJECT_TYPE_IMAGE)
+                .set_handle(img_.image())
+                .set_name(img_name.c_str())
+                .apply(device.logi_device());
+
+            const auto view_name = fmt::format("{} view", img_name).c_str();
+            info.set_type(VK_OBJECT_TYPE_IMAGE_VIEW)
+                .set_handle(view_.get())
+                .set_name(view_name)
+                .apply(device.logi_device());
+        }
+
         void destroy(mirinae::VulkanDevice& device) {
             view_.destroy(device);
             img_.destroy(device.mem_alloc());
@@ -263,6 +284,17 @@ namespace mirinae {
                 fd.compo_.create_img(img_info, device);
                 fd.compo_.create_view(VK_IMAGE_ASPECT_COLOR_BIT, device);
             }
+        }
+
+        mirinae::DebugAnnoName dbg_name;
+        for (size_t i = 0; i < frame_data_.size(); ++i) {
+            auto& fd = frame_data_[i];
+
+            fd.albedo_.set_anno(device, "gbuf_albedo_f{}", i);
+            fd.normal_.set_anno(device, "gbuf_normal_f{}", i);
+            fd.material_.set_anno(device, "gbuf_material_f{}", i);
+            fd.depth_.set_anno(device, "gbuf_depth_f{}", i);
+            fd.compo_.set_anno(device, "gbuf_compo_f{}", i);
         }
     }
 
