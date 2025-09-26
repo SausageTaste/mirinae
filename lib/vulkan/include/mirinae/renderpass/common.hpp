@@ -82,44 +82,44 @@ namespace mirinae {
     class FbufImageBundle {
 
     public:
+        FbufImageBundle();
+        ~FbufImageBundle();
+
+        FbufImageBundle(const FbufImageBundle&) = delete;
+        FbufImageBundle(FbufImageBundle&&) = delete;
+        FbufImageBundle& operator=(const FbufImageBundle&) = delete;
+        FbufImageBundle& operator=(FbufImageBundle&&) = delete;
+
         void init(
             uint32_t max_frames_in_flight,
             uint32_t width,
             uint32_t height,
-            mirinae::ITextureManager& tex_man,
-            mirinae::VulkanDevice& device
+            ITextureManager& tex_man,
+            VulkanDevice& device
         );
 
-        void destroy();
+        void destroy(VulkanDevice& device);
 
         uint32_t width() const;
         uint32_t height() const;
         VkExtent2D extent() const;
 
-        VkFormat depth_format() const { return depth_.front()->format(); }
-        VkFormat albedo_format() const { return albedo_.front()->format(); }
-        VkFormat normal_format() const { return normal_.front()->format(); }
-        VkFormat material_format() const { return material_.front()->format(); }
-        VkFormat compo_format() const { return compo_.front()->format(); }
+        VkFormat depth_format() const;
+        VkFormat albedo_format() const;
+        VkFormat normal_format() const;
+        VkFormat material_format() const;
+        VkFormat compo_format() const;
 
-        mirinae::ITexture& depth(uint32_t f_index);
-        mirinae::ITexture& albedo(uint32_t f_index);
-        mirinae::ITexture& normal(uint32_t f_index);
-        mirinae::ITexture& material(uint32_t f_index);
-        mirinae::ITexture& compo(uint32_t f_index);
-
-        const mirinae::ITexture& depth(uint32_t f_index) const;
-        const mirinae::ITexture& albedo(uint32_t f_index) const;
-        const mirinae::ITexture& normal(uint32_t f_index) const;
-        const mirinae::ITexture& material(uint32_t f_index) const;
-        const mirinae::ITexture& compo(uint32_t f_index) const;
+        const ITexture& depth(uint32_t f_index) const;
+        const ITexture& albedo(uint32_t f_index) const;
+        const ITexture& normal(uint32_t f_index) const;
+        const ITexture& material(uint32_t f_index) const;
+        const ITexture& compo(uint32_t f_index) const;
 
     private:
-        std::vector<std::unique_ptr<mirinae::ITexture>> depth_;
-        std::vector<std::unique_ptr<mirinae::ITexture>> albedo_;
-        std::vector<std::unique_ptr<mirinae::ITexture>> normal_;
-        std::vector<std::unique_ptr<mirinae::ITexture>> material_;
-        std::vector<std::unique_ptr<mirinae::ITexture>> compo_;
+        struct FrameData;
+
+        std::vector<FrameData> frame_data_;
     };
 
 

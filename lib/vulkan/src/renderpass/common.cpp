@@ -5,6 +5,7 @@
 #include <set>
 
 #include "mirinae/lightweight/task.hpp"
+#include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/render/vkdebug.hpp"
 
 
@@ -152,110 +153,176 @@ namespace mirinae {
 
 
 // FbufImageBundle
+namespace {
+
+    class GbufTex : public mirinae::ITexture {
+
+    public:
+        void create_img(
+            const mirinae::ImageCreateInfo& img_info,
+            mirinae::VulkanDevice& device
+        ) {
+            img_.init(img_info.get(), device.mem_alloc());
+        }
+
+        void create_view(
+            VkImageAspectFlags aspect, mirinae::VulkanDevice& device
+        ) {
+            mirinae::ImageViewBuilder iv_builder;
+            iv_builder.format(img_.format())
+                .aspect_mask(aspect)
+                .image(img_.image());
+
+            view_.reset(iv_builder, device);
+        }
+
+        void destroy(mirinae::VulkanDevice& device) {
+            view_.destroy(device);
+            img_.destroy(device.mem_alloc());
+        }
+
+        VkFormat format() const override { return img_.format(); }
+        VkImage image() const override { return img_.image(); }
+        VkImageView image_view() const override { return view_.get(); }
+
+        uint32_t width() const override { return img_.width(); }
+        uint32_t height() const override { return img_.height(); }
+
+    private:
+        mirinae::Image img_;
+        mirinae::ImageView view_;
+    };
+
+}  // namespace
 namespace mirinae {
+
+    struct FbufImageBundle::FrameData {
+        void destroy(VulkanDevice& device) {
+            depth_.destroy(device);
+            albedo_.destroy(device);
+            normal_.destroy(device);
+            material_.destroy(device);
+            compo_.destroy(device);
+        }
+
+        ::GbufTex depth_;
+        ::GbufTex albedo_;
+        ::GbufTex normal_;
+        ::GbufTex material_;
+        ::GbufTex compo_;
+    };
+
+
+    FbufImageBundle::FbufImageBundle() {}
+    FbufImageBundle::~FbufImageBundle() {}
 
     void FbufImageBundle::init(
         uint32_t max_frames_in_flight,
         uint32_t width,
         uint32_t height,
-        mirinae::ITextureManager& tex_man,
-        mirinae::VulkanDevice& device
+        ITextureManager& tex_man,
+        VulkanDevice& device
     ) {
-        this->destroy();
+        this->destroy(device);
+        frame_data_.resize(max_frames_in_flight);
 
-        for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
-            depth_.push_back(create_tex_depth(width, height, device));
-            albedo_.push_back(create_tex_attach(
-                width,
-                height,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                mirinae::FbufUsage::color_attachment,
-                "albedo",
-                device
-            ));
-            normal_.push_back(create_tex_attach(
-                width,
-                height,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                mirinae::FbufUsage::color_attachment,
-                "normal",
-                device
-            ));
-            material_.push_back(create_tex_attach(
-                width,
-                height,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                mirinae::FbufUsage::color_attachment,
-                "material",
-                device
-            ));
-            compo_.push_back(create_tex_attach(
-                width,
-                height,
-                device.img_formats().rgb_hdr(),
-                mirinae::FbufUsage::color_attachment,
-                "compo",
-                device
-            ));
+        {
+            ImageCreateInfo img_info;
+            img_info.set_dimensions(width, height)
+                .set_format(device.img_formats().depth_map())
+                .add_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+                .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT);
+
+            for (auto& fd : frame_data_) {
+                fd.depth_.create_img(img_info, device);
+                fd.depth_.create_view(VK_IMAGE_ASPECT_DEPTH_BIT, device);
+            }
+        }
+
+        {
+            ImageCreateInfo img_info;
+            img_info.set_dimensions(width, height)
+                .set_format(VK_FORMAT_R8G8B8A8_UNORM)
+                .add_usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                .add_usage(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
+                .add_usage(VK_IMAGE_USAGE_SAMPLED_BIT);
+
+            for (auto& fd : frame_data_) {
+                img_info.set_format(VK_FORMAT_R8G8B8A8_UNORM);
+                fd.albedo_.create_img(img_info, device);
+                fd.albedo_.create_view(VK_IMAGE_ASPECT_COLOR_BIT, device);
+
+                fd.normal_.create_img(img_info, device);
+                fd.normal_.create_view(VK_IMAGE_ASPECT_COLOR_BIT, device);
+
+                img_info.set_format(VK_FORMAT_R8G8B8A8_UNORM);
+                fd.material_.create_img(img_info, device);
+                fd.material_.create_view(VK_IMAGE_ASPECT_COLOR_BIT, device);
+
+                img_info.set_format(device.img_formats().rgb_hdr());
+                fd.compo_.create_img(img_info, device);
+                fd.compo_.create_view(VK_IMAGE_ASPECT_COLOR_BIT, device);
+            }
         }
     }
 
-    void FbufImageBundle::destroy() {
-        depth_.clear();
-        albedo_.clear();
-        normal_.clear();
-        material_.clear();
-        compo_.clear();
+    void FbufImageBundle::destroy(VulkanDevice& device) {
+        for (auto& fd : frame_data_) {
+            fd.destroy(device);
+        }
+        frame_data_.clear();
     }
 
-    uint32_t FbufImageBundle::width() const { return depth_.front()->width(); }
+    uint32_t FbufImageBundle::width() const {
+        return frame_data_.front().depth_.width();
+    }
 
     uint32_t FbufImageBundle::height() const {
-        return depth_.front()->height();
+        return frame_data_.front().depth_.height();
     }
 
     VkExtent2D FbufImageBundle::extent() const {
         return { this->width(), this->height() };
     }
 
-    mirinae::ITexture& FbufImageBundle::depth(uint32_t f_index) {
-        return *depth_.at(f_index);
+    VkFormat FbufImageBundle::depth_format() const {
+        return frame_data_.front().depth_.format();
     }
 
-    mirinae::ITexture& FbufImageBundle::albedo(uint32_t f_index) {
-        return *albedo_.at(f_index);
+    VkFormat FbufImageBundle::albedo_format() const {
+        return frame_data_.front().albedo_.format();
     }
 
-    mirinae::ITexture& FbufImageBundle::normal(uint32_t f_index) {
-        return *normal_.at(f_index);
+    VkFormat FbufImageBundle::normal_format() const {
+        return frame_data_.front().normal_.format();
     }
 
-    mirinae::ITexture& FbufImageBundle::material(uint32_t f_index) {
-        return *material_.at(f_index);
+    VkFormat FbufImageBundle::material_format() const {
+        return frame_data_.front().material_.format();
     }
 
-    mirinae::ITexture& FbufImageBundle::compo(uint32_t f_index) {
-        return *compo_.at(f_index);
+    VkFormat FbufImageBundle::compo_format() const {
+        return frame_data_.front().compo_.format();
     }
 
-    const mirinae::ITexture& FbufImageBundle::depth(uint32_t f_index) const {
-        return *depth_.at(f_index);
+    const ITexture& FbufImageBundle::depth(uint32_t f_index) const {
+        return frame_data_.at(f_index).depth_;
     }
 
-    const mirinae::ITexture& FbufImageBundle::albedo(uint32_t f_index) const {
-        return *albedo_.at(f_index);
+    const ITexture& FbufImageBundle::albedo(uint32_t f_index) const {
+        return frame_data_.at(f_index).albedo_;
     }
 
-    const mirinae::ITexture& FbufImageBundle::normal(uint32_t f_index) const {
-        return *normal_.at(f_index);
+    const ITexture& FbufImageBundle::normal(uint32_t f_index) const {
+        return frame_data_.at(f_index).normal_;
     }
 
-    const mirinae::ITexture& FbufImageBundle::material(uint32_t f_index) const {
-        return *material_.at(f_index);
+    const ITexture& FbufImageBundle::material(uint32_t f_index) const {
+        return frame_data_.at(f_index).material_;
     }
 
-    const mirinae::ITexture& FbufImageBundle::compo(uint32_t f_index) const {
-        return *compo_.at(f_index);
+    const ITexture& FbufImageBundle::compo(uint32_t f_index) const {
+        return frame_data_.at(f_index).compo_;
     }
 
 }  // namespace mirinae
@@ -624,7 +691,10 @@ namespace mirinae {
         cmd_pool_.init(device);
     }
 
-    RpResources::~RpResources() { cmd_pool_.destroy(device_); }
+    RpResources::~RpResources() {
+        cmd_pool_.destroy(device_);
+        gbuf_.destroy(device_);
+    }
 
 }  // namespace mirinae
 
