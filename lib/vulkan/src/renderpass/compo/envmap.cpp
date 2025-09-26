@@ -380,30 +380,32 @@ namespace {
 
             mirinae::DescWriter writer;
             for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
+                const mirinae::FrameIndex f_idx(i);
+
                 auto& fd = fdata[i];
                 fd.desc_set_main_ = desc_sets[i];
 
                 // Depth
                 writer.add_img_info()
-                    .set_img_view(gbufs.depth(i).image_view())
+                    .set_img_view(gbufs.depth(f_idx).image_view())
                     .set_sampler(device.samplers().get_linear())
                     .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                 writer.add_sampled_img_write(fd.desc_set_main_, 0);
                 // Albedo
                 writer.add_img_info()
-                    .set_img_view(gbufs.albedo(i).image_view())
+                    .set_img_view(gbufs.albedo(f_idx).image_view())
                     .set_sampler(device.samplers().get_linear())
                     .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                 writer.add_sampled_img_write(fd.desc_set_main_, 1);
                 // Normal
                 writer.add_img_info()
-                    .set_img_view(gbufs.normal(i).image_view())
+                    .set_img_view(gbufs.normal(f_idx).image_view())
                     .set_sampler(device.samplers().get_linear())
                     .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                 writer.add_sampled_img_write(fd.desc_set_main_, 2);
                 // Material
                 writer.add_img_info()
-                    .set_img_view(gbufs.material(i).image_view())
+                    .set_img_view(gbufs.material(f_idx).image_view())
                     .set_sampler(device.samplers().get_linear())
                     .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                 writer.add_sampled_img_write(fd.desc_set_main_, 3);
@@ -450,11 +452,16 @@ namespace {
         void recreate_fbufs(
             ::FrameDataArr& fdata, mirinae::VulkanDevice& device
         ) const {
+            auto& gbuf = rp_res_.gbuf_;
+
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                const mirinae::FrameIndex f_idx(i);
+
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_)
-                    .set_dim(rp_res_.gbuf_.extent())
-                    .add_attach(rp_res_.gbuf_.compo(i).image_view());
+                    .set_dim(gbuf.extent())
+                    .add_attach(gbuf.compo(f_idx).image_view());
+
                 fdata.at(i).fbuf_.reset(
                     fbuf_cinfo.build(device), device.logi_device()
                 );

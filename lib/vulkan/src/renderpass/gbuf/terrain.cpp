@@ -188,7 +188,7 @@ namespace {
             const mirinae::RpCtxt& ctxt
         ) {
             mirinae::ImageMemoryBarrier{}
-                .image(gbufs.depth(ctxt.f_index_.get()).image())
+                .image(gbufs.depth(ctxt.f_index_).image())
                 .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                 .old_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .new_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
@@ -209,21 +209,21 @@ namespace {
                 .set_dst_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
                 .set_signle_mip_layer();
 
-            color_barrier.image(gbufs.albedo(ctxt.f_index_.get()).image())
+            color_barrier.image(gbufs.albedo(ctxt.f_index_).image())
                 .record_single(
                     cmdbuf,
                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
                 );
 
-            color_barrier.image(gbufs.normal(ctxt.f_index_.get()).image())
+            color_barrier.image(gbufs.normal(ctxt.f_index_).image())
                 .record_single(
                     cmdbuf,
                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
                 );
 
-            color_barrier.image(gbufs.material(ctxt.f_index_.get()).image())
+            color_barrier.image(gbufs.material(ctxt.f_index_).image())
                 .record_single(
                     cmdbuf,
                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -497,19 +497,22 @@ namespace {
 
     private:
         void recreate_fbuf(::FrameDataArr& fdata) const {
+            const auto& gbufs = rp_res_.gbuf_;
+
             for (int i = 0; i < fdata.size(); ++i) {
-                auto& fd = fdata.at(i);
+                const mirinae::FrameIndex f_idx(i);
 
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_)
-                    .add_attach(rp_res_.gbuf_.depth(i).image_view())
-                    .add_attach(rp_res_.gbuf_.albedo(i).image_view())
-                    .add_attach(rp_res_.gbuf_.normal(i).image_view())
-                    .add_attach(rp_res_.gbuf_.material(i).image_view())
-                    .set_dim(rp_res_.gbuf_.extent());
+                    .add_attach(gbufs.depth(f_idx).image_view())
+                    .add_attach(gbufs.albedo(f_idx).image_view())
+                    .add_attach(gbufs.normal(f_idx).image_view())
+                    .add_attach(gbufs.material(f_idx).image_view())
+                    .set_dim(gbufs.extent());
 
+                auto& fd = fdata.at(i);
                 fd.fbuf_.init(fbuf_cinfo.get(), device_.logi_device());
-                fd.fbuf_size_ = rp_res_.gbuf_.extent();
+                fd.fbuf_size_ = gbufs.extent();
             }
         }
 

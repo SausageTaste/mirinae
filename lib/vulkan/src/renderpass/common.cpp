@@ -305,24 +305,24 @@ namespace mirinae {
         return frame_data_.front().compo_.format();
     }
 
-    const ITexture& FbufImageBundle::depth(uint32_t f_index) const {
-        return frame_data_.at(f_index).depth_;
+    const ITexture& FbufImageBundle::depth(FrameIndex f_index) const {
+        return frame_data_.at(f_index.get()).depth_;
     }
 
-    const ITexture& FbufImageBundle::albedo(uint32_t f_index) const {
-        return frame_data_.at(f_index).albedo_;
+    const ITexture& FbufImageBundle::albedo(FrameIndex f_index) const {
+        return frame_data_.at(f_index.get()).albedo_;
     }
 
-    const ITexture& FbufImageBundle::normal(uint32_t f_index) const {
-        return frame_data_.at(f_index).normal_;
+    const ITexture& FbufImageBundle::normal(FrameIndex f_index) const {
+        return frame_data_.at(f_index.get()).normal_;
     }
 
-    const ITexture& FbufImageBundle::material(uint32_t f_index) const {
-        return frame_data_.at(f_index).material_;
+    const ITexture& FbufImageBundle::material(FrameIndex f_index) const {
+        return frame_data_.at(f_index.get()).material_;
     }
 
-    const ITexture& FbufImageBundle::compo(uint32_t f_index) const {
-        return frame_data_.at(f_index).compo_;
+    const ITexture& FbufImageBundle::compo(FrameIndex f_index) const {
+        return frame_data_.at(f_index.get()).compo_;
     }
 
 }  // namespace mirinae

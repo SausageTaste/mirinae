@@ -309,19 +309,22 @@ namespace {
 
     private:
         void recreate_fbuf(::FrameDataArr& fdata) const {
+            const auto& gbuf = rp_res_.gbuf_;
+
             for (int i = 0; i < fdata.size(); ++i) {
-                auto& fd = fdata.at(i);
+                const mirinae::FrameIndex f_idx(i);
 
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_)
-                    .add_attach(rp_res_.gbuf_.depth(i).image_view())
-                    .add_attach(rp_res_.gbuf_.albedo(i).image_view())
-                    .add_attach(rp_res_.gbuf_.normal(i).image_view())
-                    .add_attach(rp_res_.gbuf_.material(i).image_view())
-                    .set_dim(rp_res_.gbuf_.extent());
+                    .add_attach(gbuf.depth(f_idx).image_view())
+                    .add_attach(gbuf.albedo(f_idx).image_view())
+                    .add_attach(gbuf.normal(f_idx).image_view())
+                    .add_attach(gbuf.material(f_idx).image_view())
+                    .set_dim(gbuf.extent());
 
+                auto& fd = fdata.at(i);
                 fd.fbuf_.init(fbuf_cinfo.get(), device_.logi_device());
-                fd.fbuf_size_ = rp_res_.gbuf_.extent();
+                fd.fbuf_size_ = gbuf.extent();
             }
         }
 

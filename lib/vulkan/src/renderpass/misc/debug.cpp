@@ -160,7 +160,7 @@ namespace {
             const mirinae::RpCtxt& ctxt
         ) {
             mirinae::ImageMemoryBarrier{}
-                .image(gbufs.depth(ctxt.f_index_.get()).image())
+                .image(gbufs.depth(ctxt.f_index_).image())
                 .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                 .old_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .new_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
@@ -174,7 +174,7 @@ namespace {
                 );
 
             mirinae::ImageMemoryBarrier{}
-                .image(gbufs.compo(ctxt.f_index_.get()).image())
+                .image(gbufs.compo(ctxt.f_index_).image())
                 .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .new_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -358,7 +358,7 @@ namespace {
         std::string_view name() const override { return "debug mesh"; }
 
         void on_resize(uint32_t width, uint32_t height) override {
-            auto& gbufs = rp_res_.gbuf_;
+            const auto& gbufs = rp_res_.gbuf_;
 
             // Render pass
             {
@@ -416,15 +416,17 @@ namespace {
 
             // Framebuffers
             for (size_t i = 0; i < fdata_.size(); i++) {
-                auto& fd = fdata_.at(i);
+                const mirinae::FrameIndex f_idx(i);
 
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_.get())
                     .set_dim(gbufs.extent())
-                    .add_attach(gbufs.depth(i).image_view())
-                    .add_attach(gbufs.compo(i).image_view());
+                    .add_attach(gbufs.depth(f_idx).image_view())
+                    .add_attach(gbufs.compo(f_idx).image_view());
 
-                fd.fbuf_.init(fbuf_cinfo.get(), device_.logi_device());
+                fdata_.at(i).fbuf_.init(
+                    fbuf_cinfo.get(), device_.logi_device()
+                );
             }
         }
 

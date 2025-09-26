@@ -110,7 +110,7 @@ namespace { namespace task {
             const mirinae::RpCtxt& ctxt
         ) {
             mirinae::ImageMemoryBarrier{}
-                .image(gbufs.depth(ctxt.f_index_.get()).image())
+                .image(gbufs.depth(ctxt.f_index_).image())
                 .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                 .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
@@ -419,12 +419,17 @@ namespace {
         void recreate_fbufs(
             ::FrameDataArr& fdata, mirinae::VulkanDevice& device
         ) const {
+            const auto& gbufs = rp_res_.gbuf_;
+
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                const mirinae::FrameIndex f_idx(i);
+
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_)
-                    .set_dim(rp_res_.gbuf_.extent())
-                    .add_attach(rp_res_.gbuf_.depth(i).image_view())
-                    .add_attach(rp_res_.gbuf_.compo(i).image_view());
+                    .set_dim(gbufs.extent())
+                    .add_attach(gbufs.depth(f_idx).image_view())
+                    .add_attach(gbufs.compo(f_idx).image_view());
+
                 fdata.at(i).fbuf_.reset(
                     fbuf_cinfo.build(device), device.logi_device()
                 );

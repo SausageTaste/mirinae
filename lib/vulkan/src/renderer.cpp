@@ -203,7 +203,7 @@ namespace {
             for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                 builder.set_descset(desc_sets_.at(i))
                     .add_img_sampler(
-                        fbufs.compo(i).image_view(),
+                        fbufs.compo(mirinae::FrameIndex(i)).image_view(),
                         device.samplers().get_linear()
                     );
             }
@@ -227,7 +227,7 @@ namespace {
             DEBUG_LABEL.record_begin(cmdbuf);
 
             mirinae::ImageMemoryBarrier{}
-                .image(gbufs.compo(f_index.get()).image())
+                .image(gbufs.compo(f_index).image())
                 .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .old_lay(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .new_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)

@@ -274,7 +274,7 @@ namespace {
             const mirinae::RpCtxt& ctxt
         ) {
             mirinae::ImageMemoryBarrier{}
-                .image(gbufs.depth(ctxt.f_index_.get()).image())
+                .image(gbufs.depth(ctxt.f_index_).image())
                 .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
                 .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
@@ -581,7 +581,7 @@ namespace {
         std::string_view name() const override { return "transp static"; }
 
         void on_resize(uint32_t width, uint32_t height) override {
-            auto& gbufs = rp_res_.gbuf_;
+            const auto& gbufs = rp_res_.gbuf_;
 
             // Render pass
             {
@@ -639,12 +639,15 @@ namespace {
                     .set_layers(1);
 
                 for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
-                    auto& fd = frame_data_[i];
+                    const mirinae::FrameIndex f_idx(i);
 
                     cinfo.clear_attach()
-                        .add_attach(gbufs.depth(i).image_view())
-                        .add_attach(gbufs.compo(i).image_view());
-                    fd.fbuf_.init(cinfo.get(), device_.logi_device());
+                        .add_attach(gbufs.depth(f_idx).image_view())
+                        .add_attach(gbufs.compo(f_idx).image_view());
+
+                    frame_data_.at(i).fbuf_.init(
+                        cinfo.get(), device_.logi_device()
+                    );
                 }
             }
         }

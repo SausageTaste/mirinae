@@ -342,13 +342,14 @@ namespace {
             auto& gbuf = rp_res_.gbuf_;
 
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                const mirinae::FrameIndex f_idx(i);
                 auto& fd = frame_data_.at(i);
                 fd.extent_ = gbuf.extent();
 
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_)
                     .set_dim(fd.extent_)
-                    .add_attach(gbuf.compo(i).image_view());
+                    .add_attach(gbuf.compo(f_idx).image_view());
                 fd.fbuf_.reset(
                     fbuf_cinfo.build(device_), device_.logi_device()
                 );

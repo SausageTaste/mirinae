@@ -457,13 +457,14 @@ namespace {
                 auto& fd = frame_data_[i];
 
                 for (size_t j = 0; j < fd.stages_down_.size(); j++) {
+                    const mirinae::FrameIndex f_idx(i);
                     auto& stage = fd.stages_down_[j];
                     stage.desc_set_ = desc_sets.back();
                     desc_sets.pop_back();
 
-                    const auto view = (j >= 1)
-                                          ? fd.stages_down_[j - 1].view_.get()
-                                          : rp_res_.gbuf_.compo(i).image_view();
+                    const auto view =
+                        (j >= 1) ? fd.stages_down_[j - 1].view_.get()
+                                 : rp_res_.gbuf_.compo(f_idx).image_view();
 
                     writer.add_img_info()
                         .set_img_view(view)

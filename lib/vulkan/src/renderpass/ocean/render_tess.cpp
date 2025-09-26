@@ -1156,12 +1156,17 @@ namespace {
         void recreate_fbufs(
             ::FrameDataArr& fdata, mirinae::VulkanDevice& device
         ) const {
+            const auto& gbuf = rp_res_.gbuf_;
+
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
+                const mirinae::FrameIndex f_idx(i);
+
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_)
                     .set_dim(rp_res_.gbuf_.width(), rp_res_.gbuf_.height())
-                    .add_attach(rp_res_.gbuf_.compo(i).image_view())
-                    .add_attach(rp_res_.gbuf_.depth(i).image_view());
+                    .add_attach(gbuf.compo(f_idx).image_view())
+                    .add_attach(gbuf.depth(f_idx).image_view());
+
                 fdata.at(i).fbuf_.reset(
                     fbuf_cinfo.build(device), device.logi_device()
                 );

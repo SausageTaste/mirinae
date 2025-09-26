@@ -110,11 +110,11 @@ namespace mirinae {
         VkFormat material_format() const;
         VkFormat compo_format() const;
 
-        const ITexture& depth(uint32_t f_index) const;
-        const ITexture& albedo(uint32_t f_index) const;
-        const ITexture& normal(uint32_t f_index) const;
-        const ITexture& material(uint32_t f_index) const;
-        const ITexture& compo(uint32_t f_index) const;
+        const ITexture& depth(FrameIndex f_index) const;
+        const ITexture& albedo(FrameIndex f_index) const;
+        const ITexture& normal(FrameIndex f_index) const;
+        const ITexture& material(FrameIndex f_index) const;
+        const ITexture& compo(FrameIndex f_index) const;
 
     private:
         struct FrameData;
