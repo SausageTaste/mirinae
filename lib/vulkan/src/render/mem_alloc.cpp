@@ -153,6 +153,20 @@ namespace mirinae {
 }  // namespace mirinae
 
 
+// BufferSpan
+namespace mirinae {
+
+    bool BufferSpan::operator==(const BufferSpan& rhs) const {
+        return buf_ == rhs.buf_ && offset_ == rhs.offset_ && size_ == rhs.size_;
+    }
+
+    bool BufferSpan::operator!=(const BufferSpan& rhs) const {
+        return !(*this == rhs);
+    }
+
+}  // namespace mirinae
+
+
 // Image
 namespace mirinae {
 

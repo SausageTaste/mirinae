@@ -71,6 +71,9 @@ namespace mirinae {
 
 
     struct BufferSpan {
+        bool operator==(const BufferSpan& rhs) const;
+        bool operator!=(const BufferSpan& rhs) const;
+
         VkBuffer buf_ = VK_NULL_HANDLE;
         VkDeviceSize offset_ = 0;
         VkDeviceSize size_ = 0;
