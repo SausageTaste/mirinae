@@ -12,6 +12,11 @@ namespace mirinae {
             return dynamic_cast<U*>(ren_unit_.get());
         }
 
+        template <typename U>
+        const U* ren_unit() const {
+            return dynamic_cast<const U*>(ren_unit_.get());
+        }
+
         std::unique_ptr<T> ren_unit_;
     };
 
