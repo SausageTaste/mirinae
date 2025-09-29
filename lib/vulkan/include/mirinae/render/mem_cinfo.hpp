@@ -29,6 +29,13 @@ namespace mirinae {
         BufferCreateInfo& preset_ubuf(VkDeviceSize size);
         BufferCreateInfo& preset_vertices(VkDeviceSize size);
         BufferCreateInfo& preset_indices(VkDeviceSize size);
+
+        template <typename T>
+        BufferCreateInfo& preset_ubuf() {
+            static_assert(std::is_standard_layout<T>::value, "");
+            static_assert(std::is_trivially_copyable<T>::value, "");
+            return this->preset_ubuf(sizeof(T));
+        }
     };
 
 

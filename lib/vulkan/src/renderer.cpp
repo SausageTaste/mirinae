@@ -21,6 +21,7 @@
 #include "mirinae/render/platform_func.hpp"
 #include "mirinae/render/render_graph.hpp"
 #include "mirinae/render/renderpass.hpp"
+#include "mirinae/renderee/atmos.hpp"
 #include "mirinae/renderpass/atmos/sky.hpp"
 #include "mirinae/renderpass/bloom.hpp"
 #include "mirinae/renderpass/builder.hpp"
@@ -1017,8 +1018,12 @@ namespace { namespace task {
             init_static_.succeed(&update_ren_ctxt_);
             init_skinned_.succeed(&update_ren_ctxt_);
             update_dlight_.succeed(&update_ren_ctxt_);
+            update_atmos_epic_.succeed(&update_ren_ctxt_);
             render_passes_.succeed(
-                &init_static_, &init_skinned_, &update_dlight_
+                &init_static_,
+                &init_skinned_,
+                &update_dlight_,
+                &update_atmos_epic_
             );
             fence_.succeed(&render_passes_);
         }
@@ -1031,6 +1036,7 @@ namespace { namespace task {
             init_static_.prepare();
             init_skinned_.prepare();
             update_dlight_.prepare();
+            update_atmos_epic_.prepare();
             render_passes_.prepare();
         }
 
@@ -1039,6 +1045,7 @@ namespace { namespace task {
         InitStaticModel init_static_;
         InitSkinnedModel init_skinned_;
         UpdateDlight update_dlight_;
+        mirinae::TaskAtmosEpic update_atmos_epic_;
         RenderPasses render_passes_;
 
     private:
@@ -1293,6 +1300,10 @@ namespace {
             );
 
             stage->update_dlight_.init(*cosmos_, swapchain_);
+
+            stage->update_atmos_epic_.init(
+                mirinae::MAX_FRAMES_IN_FLIGHT, cosmos_->reg(), ren_ctxt, device_
+            );
 
             stage->render_passes_.init(
                 flag_ship_,

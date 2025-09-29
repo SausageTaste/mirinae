@@ -18,6 +18,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkdebug.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkdevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkmajorplayers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/atmos.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/ren_actor_skinned.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer.cpp
