@@ -7,6 +7,7 @@
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
+#include "mirinae/renderee/atmos.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/common.hpp"
 
@@ -33,7 +34,16 @@ namespace {
 
 
     struct FrameData {
+        void update_descset(mirinae::VulkanDevice& device) {
+            mirinae::DescWriter writer;
+            writer.add_buf_span_info(ubuf_span_).add_buf_write(desc_set_, 0);
+            writer.add_storage_img_info(trans_lut_->view_.get())
+                .add_storage_img_write(desc_set_, 1);
+            writer.apply_all(device.logi_device());
+        }
+
         mirinae::HRpImage trans_lut_;
+        mirinae::BufferSpan ubuf_span_;
         VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
@@ -53,7 +63,7 @@ namespace {
         void init(
             const entt::registry& reg,
             const mirinae::IPipelinePair& rp,
-            const ::FrameDataArr& frame_data,
+            ::FrameDataArr& frame_data,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
@@ -80,19 +90,48 @@ namespace {
             if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
+            auto& fd = frame_data_->at(ctxt_->f_index_.get());
+
+            if (!this->update_descset(*reg_, *ctxt_, fd, *device_)) {
+                cmdbuf_ = VK_NULL_HANDLE;
+                return;
+            }
+
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
-            this->record(cmdbuf_, *frame_data_, *rp_, *ctxt_);
+            this->record(cmdbuf_, fd, *rp_, *ctxt_);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
+        }
+
+        static bool update_descset(
+            const entt::registry& reg,
+            const mirinae::RpCtxt& ctxt,
+            ::FrameData& fd,
+            mirinae::VulkanDevice& device
+        ) {
+            auto* atmos_cpnt = find_cpnt(reg);
+            if (!atmos_cpnt)
+                return false;
+
+            auto ren_unit = atmos_cpnt->ren_unit<mirinae::RenUnitAtmosEpic>();
+            if (!ren_unit)
+                return false;
+
+            auto& ubuf = ren_unit->ubuf_at(ctxt.f_index_);
+
+            if (fd.ubuf_span_ != ubuf) {
+                fd.ubuf_span_ = ubuf;
+                fd.update_descset(device);
+            }
+
+            return true;
         }
 
         static bool record(
             const VkCommandBuffer cmdbuf,
-            const ::FrameDataArr& frame_data,
+            const ::FrameData& fd,
             const mirinae::IPipelinePair& rp,
             const mirinae::RpCtxt& ctxt
         ) {
-            auto& fd = frame_data.at(ctxt.f_index_.get());
-
             mirinae::ImageMemoryBarrier{}
                 .image(fd.trans_lut_->img_.image())
                 .set_src_access(VK_ACCESS_SHADER_READ_BIT)
@@ -144,6 +183,16 @@ namespace {
             return true;
         }
 
+        static const mirinae::cpnt::AtmosphereEpic* find_cpnt(
+            const entt::registry& reg
+        ) {
+            auto view = reg.view<mirinae::cpnt::AtmosphereEpic>();
+            for (auto e : view) {
+                return &view.get<mirinae::cpnt::AtmosphereEpic>(e);
+            }
+            return nullptr;
+        }
+
         const mirinae::DebugLabel DEBUG_LABEL{
             "Atmos Trans LUT", 0.9, 0.45, 0.45
         };
@@ -151,7 +200,7 @@ namespace {
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
-        const ::FrameDataArr* frame_data_ = nullptr;
+        ::FrameDataArr* frame_data_ = nullptr;
         const entt::registry* reg_ = nullptr;
         const mirinae::IPipelinePair* rp_ = nullptr;
         const mirinae::RpCtxt* ctxt_ = nullptr;
@@ -168,7 +217,7 @@ namespace {
         void init(
             const entt::registry& reg,
             const mirinae::IPipelinePair& rp,
-            const ::FrameDataArr& frame_data,
+            ::FrameDataArr& frame_data,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
@@ -268,6 +317,11 @@ namespace {
             {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
                 builder.new_binding()
+                    .set_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .set_count(1)
+                    .finish_binding();
+                builder.new_binding()
                     .set_type(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .set_stage(VK_SHADER_STAGE_COMPUTE_BIT)
                     .set_count(1)
@@ -291,15 +345,10 @@ namespace {
                     device.logi_device()
                 );
 
-                mirinae::DescWriter writer;
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
                     fd.desc_set_ = desc_sets[i];
-
-                    writer.add_storage_img_info(fd.trans_lut_->view_.get())
-                        .add_storage_img_write(fd.desc_set_, 0);
                 }
-                writer.apply_all(device.logi_device());
             }
 
             // Pipeline

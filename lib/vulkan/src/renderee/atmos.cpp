@@ -28,6 +28,10 @@ namespace mirinae {
 
     RenUnitAtmosEpic::~RenUnitAtmosEpic() {}
 
+    const BufferSpan& RenUnitAtmosEpic::ubuf_at(const FrameIndex f_idx) const {
+        return ubuf_span_.at(f_idx.get());
+    }
+
     void RenUnitAtmosEpic::update_ubuf(
         const FrameIndex f_index, const AtmosphereParameters& params
     ) {

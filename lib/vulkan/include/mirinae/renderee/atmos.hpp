@@ -16,6 +16,7 @@ namespace mirinae {
         RenUnitAtmosEpic(uint32_t max_flight_count, VulkanDevice& device);
         ~RenUnitAtmosEpic() override;
 
+        const BufferSpan& ubuf_at(const FrameIndex f_idx) const;
         void update_ubuf(
             const FrameIndex f_index, const AtmosphereParameters& params
         );
