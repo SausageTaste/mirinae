@@ -3,8 +3,8 @@
 #include <memory>
 #include <optional>
 
+#include "mirinae/context/base.hpp"
 #include "mirinae/lightweight/create_info.hpp"
-#include "mirinae/lightweight/lightweights.hpp"
 #include "mirinae/render/mem_alloc.hpp"
 
 
@@ -12,11 +12,6 @@ struct ImGui_ImplVulkan_InitInfo;
 
 
 namespace mirinae {
-
-    constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
-
-    using FrameIndex = mirinae::StrongType<int, struct FrameIndexStrongTypeTag>;
-
 
     size_t align_up(size_t original_size, size_t min_alignment);
 
@@ -72,11 +67,6 @@ namespace mirinae {
         class Pimpl;
         std::unique_ptr<Pimpl> pimpl_;
     };
-
-
-    // It stands for Swapchain Image Index
-    using ShainImageIndex =
-        mirinae::StrongType<uint32_t, struct SwapchainImageIndexStrongTypeTag>;
 
 
     class Swapchain {
