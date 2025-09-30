@@ -2,8 +2,9 @@ import "../module/atmos";
 import "../module/konst";
 
 
-layout(set = 0, binding = 0, rgba16f) RWTexture2D<float4> out_image;
-layout(set = 0, binding = 1) Sampler2D u_trans_lut;
+layout(set = 0, binding = 0) ConstantBuffer<AtmosphereParameters> u_atmos;
+layout(set = 0, binding = 1, rgba16f) RWTexture2D<float4> out_image;
+layout(set = 0, binding = 2) Sampler2D u_trans_lut;
 
 [push_constant]
 cbuffer U_AtmosMultiScatPushConst {
@@ -23,7 +24,6 @@ groupshared float3 g_L[64];
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: SV_GroupThreadID) {
     let idx = int(local_dispatch_id.z);
     let pixPos = float2(dispatch_id.xy) + 0.5;
-    let Atmosphere = GetAtmosphereParameters();
 
     float2 uv = pixPos / u_pc.output_res_;
     uv = float2(fromSubUvsToUnit(uv.x, u_pc.output_res_), fromSubUvsToUnit(uv.y, u_pc.output_res_));
@@ -33,10 +33,9 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
         float3(0, cosSunZenithAngle, sqrt(saturate(1 - cosSunZenithAngle * cosSunZenithAngle)))
     );
     // We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
-    let viewHeight = Atmosphere.radius_bottom +
+    let viewHeight = u_atmos.radius_bottom +
                      saturate(uv.y + PLANET_RADIUS_OFFSET) *
-                         (Atmosphere.radius_top - Atmosphere.radius_bottom -
-                          PLANET_RADIUS_OFFSET);
+                         (u_atmos.radius_top - u_atmos.radius_bottom - PLANET_RADIUS_OFFSET);
 
     ScatLumiIntParams params;
     params.pix_pos_ = pixPos;
@@ -70,7 +69,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID, uint3 local_dispatch_id: 
         params.world_dir_.z = sinTheta * sinPhi;
 
         let result = IntegrateScatteredLuminance(
-            SamplerTransLut(u_trans_lut), NullMulScatLut(), Atmosphere, params
+            SamplerTransLut(u_trans_lut), NullMulScatLut(), u_atmos, params
         );
 
         g_multi_scat_as_1[idx] = result.MultiScatAs1 * SphereSolidAngle / (sqrtSample * sqrtSample);
