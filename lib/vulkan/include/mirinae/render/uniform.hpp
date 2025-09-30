@@ -42,6 +42,7 @@ namespace mirinae {
     struct U_EnvSkyPushConst {
         glm::mat4 proj_view_;
         glm::vec4 sun_dir_w_;
+        float atmos_radius_bottom_;
     };
 
 

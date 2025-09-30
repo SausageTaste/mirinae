@@ -14,6 +14,8 @@ cbuffer U_CompoSkyAtmosMain {
     float4x4 view_inv;
     float4 view_pos_w;
     float4 sun_direction_w;
+    float atmos_radius_bottom_;
+    float atmos_radius_top_;
 }
 u_pc;
 
@@ -42,14 +44,17 @@ float3 get_sun_luminance(const float3 cam_pos_e, float3 cam_dir_w, const float p
 }
 
 
-float3 get_transmittance(float3 pos_e, AtmosphereParameters atmos_params) {
-    const float planet_radius = atmos_params.radius_bottom * 1000;
+float3 get_transmittance(float3 pos_e) {
+    const float planet_radius = u_pc.atmos_radius_bottom_ * 1000;
     const float frag_height_e = length(pos_e);
     const float3 frag_up_dir_e = normalize(pos_e);
     const float3 dlight_dir_w = normalize(u_pc.sun_direction_w.xyz);
     const float view_zenith_cos_angle = dot(dlight_dir_w, frag_up_dir_e);
     const float2 lut_trans_uv = LutTransmittanceParamsToUv(
-        atmos_params, frag_height_e * M_TO_KM, view_zenith_cos_angle
+        u_pc.atmos_radius_bottom_,
+        u_pc.atmos_radius_top_,
+        frag_height_e * M_TO_KM,
+        view_zenith_cos_angle
     );
     return u_trans_lut.SampleLevel(lut_trans_uv, 0).xyz;
 }
@@ -66,14 +71,12 @@ VSOutput vert_main(int vtx_id: SV_VertexID) {
 
 [shader("fragment")]
 float4 frag_main(VSOutput input) {
-    let atmos_params = GetAtmosphereParameters();
-
     const float4 clip_pos = float4(input.texco_ * 2 - 1, 1, 1);
     const float3 frag_pos_v = pers_divide(mul(u_pc.proj_inv, clip_pos));
     const float3 cam_dir_v = normalize(frag_pos_v);
     const float3 cam_dir_w = normalize(mul(float3x3(u_pc.view_inv), cam_dir_v));
 
-    const float planet_radius = atmos_params.radius_bottom * 1000;
+    const float planet_radius = u_pc.atmos_radius_bottom_ * 1000;
     const float3 cam_pos_e = u_pc.view_pos_w.xyz + float3(0, planet_radius, 0);
     const float cam_height_e = length(cam_pos_e);
 
@@ -95,8 +98,8 @@ float4 frag_main(VSOutput input) {
                                   ) >= 0;
 
     const float2 uv = SkyViewLutParamsToUv<true>(
-        atmos_params,
         intersect_ground,
+        u_pc.atmos_radius_bottom_,
         view_zenith_cos_angle,
         light_view_cos_angle,
         cam_height_e * M_TO_KM
@@ -105,6 +108,6 @@ float4 frag_main(VSOutput input) {
     const float4 sky_view_texel = u_sky_view_lut.SampleLevel(uv, 0);
     const float3 color = sky_view_texel.rgb +
                          get_sun_luminance(cam_pos_e, cam_dir_w, planet_radius) *
-                             get_transmittance(cam_pos_e, atmos_params);
+                             get_transmittance(cam_pos_e);
     return float4(color, 1);
 }

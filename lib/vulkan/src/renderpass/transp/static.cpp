@@ -5,6 +5,7 @@
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/atmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
@@ -112,6 +113,16 @@ namespace {
             return *this;
         }
 
+        U_TranspFrame& set_atmos_radius_bottom(float v) {
+            atmos_radius_bottom_ = v;
+            return *this;
+        }
+
+        U_TranspFrame& set_atmos_radius_top(float v) {
+            atmos_radius_top_ = v;
+            return *this;
+        }
+
     private:
         glm::mat4 view_;
         glm::mat4 view_inv_;
@@ -131,6 +142,8 @@ namespace {
         glm::vec4 slight_color_n_max_dist_;
 
         float mie_anisotropy_;
+        float atmos_radius_bottom_;
+        float atmos_radius_top_;
     };
 
 
@@ -216,10 +229,15 @@ namespace {
             U_TranspFrame ubuf;
             ubuf.set_proj(ctxt.main_cam_.proj())
                 .set_view(ctxt.main_cam_.view());
-
             for (auto e : reg.view<cpnt::AtmosphereSimple>()) {
                 auto& atmos = reg.get<cpnt::AtmosphereSimple>(e);
                 ubuf.set_mie_anisotropy(atmos.mie_anisotropy_);
+                break;
+            }
+            for (auto e : reg.view<cpnt::AtmosphereEpic>()) {
+                auto& atmos = reg.get<cpnt::AtmosphereEpic>(e);
+                ubuf.set_atmos_radius_bottom(atmos.radius_bottom())
+                    .set_atmos_radius_top(atmos.radius_top());
                 break;
             }
 

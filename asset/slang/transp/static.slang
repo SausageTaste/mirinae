@@ -48,6 +48,8 @@ struct U_TranspFrame {
     float4 slight_color_n_max_dist;
 
     float mie_anisotropy;
+    float atmos_radius_bottom_;
+    float atmos_radius_top_;
 };
 
 
@@ -95,7 +97,6 @@ float4 frag_main(VSOutput input, float4 screen_pos: SV_Position) : SV_Target {
     if (dot(normal_v, normalize(-frag_pos_v)) < 0)
         normal_v = -normal_v;
 
-    let atmos_params = GetAtmosphereParameters();
     const float3x3 view_inv3 = float3x3(u_main.view_inv);
     const float3 frag_pos_w = mul(view_inv3, frag_pos_v);
     const float3 normal_w = mul(view_inv3, normal_v);
@@ -139,7 +140,11 @@ float4 frag_main(VSOutput input, float4 screen_pos: SV_Position) : SV_Target {
     // Directional light
     {
         let transmittance = get_transmittance(
-            frag_pos_w, dlight_dir_w, SamplerTransLut(u_trans_lut), atmos_params
+            frag_pos_w,
+            dlight_dir_w,
+            SamplerTransLut(u_trans_lut),
+            u_main.atmos_radius_bottom_,
+            u_main.atmos_radius_top_
         );
 
         let selected_dlight = select_cascade(depth, u_main.dlight_cascade_depths);

@@ -4,6 +4,7 @@
 
 #include <entt/entity/registry.hpp>
 
+#include "mirinae/cpnt/atmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
@@ -124,7 +125,11 @@ namespace {
             rp_info.wh(base_cube.width(), base_cube.height());
 
             mirinae::U_EnvSkyPushConst pc;
-
+            for (auto e : reg.view<mirinae::cpnt::AtmosphereEpic>()) {
+                auto& atmos = reg.get<mirinae::cpnt::AtmosphereEpic>(e);
+                pc.atmos_radius_bottom_ = atmos.radius_bottom();
+                break;
+            }
             for (auto e : reg.view<mirinae::cpnt::DLight>()) {
                 auto& light = reg.get<mirinae::cpnt::DLight>(e);
                 auto& tform = reg.get<mirinae::cpnt::Transform>(e);

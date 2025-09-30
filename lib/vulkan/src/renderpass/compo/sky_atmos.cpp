@@ -5,6 +5,7 @@
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/atmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
@@ -41,11 +42,23 @@ namespace {
             return *this;
         }
 
+        U_CompoSkyAtmosMain& set_atmos_radius_bottom(float r) {
+            atmos_radius_bottom_ = r;
+            return *this;
+        }
+
+        U_CompoSkyAtmosMain& set_atmos_radius_top(float r) {
+            atmos_radius_top_ = r;
+            return *this;
+        }
+
     private:
         glm::mat4 proj_inv_;
         glm::mat4 view_inv_;
         glm::vec4 view_pos_w_;
         glm::vec4 sun_direction_w_;
+        float atmos_radius_bottom_;
+        float atmos_radius_top_;
     };
 
 
@@ -166,8 +179,10 @@ namespace { namespace task {
             pc.set_proj_inv(ctxt.main_cam_.proj_inv())
                 .set_view_inv(ctxt.main_cam_.view_inv())
                 .set_view_pos_w(ctxt.main_cam_.view_pos());
-            for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
-                auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
+            for (auto e : reg.view<mirinae::cpnt::AtmosphereEpic>()) {
+                auto& atmos = reg.get<mirinae::cpnt::AtmosphereEpic>(e);
+                pc.set_atmos_radius_bottom(atmos.radius_bottom())
+                    .set_atmos_radius_top(atmos.radius_top());
                 break;
             }
             for (auto e : reg.view<mirinae::cpnt::DLight>()) {
@@ -175,6 +190,7 @@ namespace { namespace task {
                 auto& tform = reg.get<mirinae::cpnt::Transform>(e);
                 const auto dir = light.calc_to_light_dir(glm::dmat4(1), tform);
                 pc.set_sun_dir_w(dir);
+                break;
             }
 
             mirinae::PushConstInfo{}

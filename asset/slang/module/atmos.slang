@@ -149,13 +149,6 @@ public struct AtmosphereParameters {
 };
 
 
-public AtmosphereParameters GetAtmosphereParameters() {
-    AtmosphereParameters Parameters;
-    Parameters.set_default_values();
-    return Parameters;
-}
-
-
 float getAlbedo(float scattering, float extinction) {
     return scattering / max(0.001, extinction);
 }
@@ -210,24 +203,22 @@ public void UvToLutTransmittanceParams(
 
 
 public float2 LutTransmittanceParamsToUv(
-    AtmosphereParameters Atmosphere, float viewHeight, float viewZenithCosAngle
+    float atmos_radius_bottom, float atmos_radius_top, float viewHeight, float viewZenithCosAngle
 ) {
     float H = sqrt(
-        max(0.0f,
-            Atmosphere.radius_top * Atmosphere.radius_top -
-                Atmosphere.radius_bottom * Atmosphere.radius_bottom)
+        max(0.0f, atmos_radius_top * atmos_radius_top - atmos_radius_bottom * atmos_radius_bottom)
     );
     float rho = sqrt(
-        max(0.0f, viewHeight * viewHeight - Atmosphere.radius_bottom * Atmosphere.radius_bottom)
+        max(0.0f, viewHeight * viewHeight - atmos_radius_bottom * atmos_radius_bottom)
     );
 
     float discriminant = viewHeight * viewHeight * (viewZenithCosAngle * viewZenithCosAngle - 1.0) +
-                         Atmosphere.radius_top * Atmosphere.radius_top;
+                         atmos_radius_top * atmos_radius_top;
     float d = max(
         0.0, (-viewHeight * viewZenithCosAngle + sqrt(discriminant))
     );  // Distance to atmosphere boundary
 
-    float d_min = Atmosphere.radius_top - viewHeight;
+    float d_min = atmos_radius_top - viewHeight;
     float d_max = rho + H;
     float x_mu = (d - d_min) / (d_max - d_min);
     float x_r = rho / H;
@@ -239,17 +230,15 @@ public float2 LutTransmittanceParamsToUv(
 
 
 public float2 SkyViewLutParamsToUv<let TNonLinearSkyViewLut : bool>(
-    AtmosphereParameters Atmosphere,
     bool IntersectGround,
+    float atmos_radius_bottom,
     float viewZenithCosAngle,
     float lightViewCosAngle,
     float viewHeight
 ) {
     float2 uv;
 
-    let Vhorizon = sqrt(
-        viewHeight * viewHeight - Atmosphere.radius_bottom * Atmosphere.radius_bottom
-    );
+    let Vhorizon = sqrt(viewHeight * viewHeight - atmos_radius_bottom * atmos_radius_bottom);
     let CosBeta = Vhorizon / viewHeight;  // GroundToHorizonCos
     let Beta = acos(CosBeta);
     let ZenithHorizonAngle = PI - Beta;
@@ -440,12 +429,12 @@ MediumSampleRGB sampleMediumRGB(float3 WorldPos, AtmosphereParameters Atmosphere
 
 
 public interface ITransLut {
-    float3 sample(AtmosphereParameters atmos_params, float height, float cos_angle);
+    float3 sample(float atmos_bottom, float atmos_top, float height, float cos_angle);
 }
 
 
 public struct NullTransLut : ITransLut {
-    public float3 sample(AtmosphereParameters atmos_params, float height, float cos_angle) {
+    public float3 sample(float atmos_bottom, float atmos_top, float height, float cos_angle) {
         return float3(1);  // No transmittance
     }
 };
@@ -456,8 +445,8 @@ public struct SamplerTransLut : ITransLut {
         this.tex_ = tex;
     }
 
-    public float3 sample(AtmosphereParameters atmos_params, float height, float cos_angle) {
-        let uv = LutTransmittanceParamsToUv(atmos_params, height, cos_angle);
+    public float3 sample(float atmos_bottom, float atmos_top, float height, float cos_angle) {
+        let uv = LutTransmittanceParamsToUv(atmos_bottom, atmos_top, height, cos_angle);
         return tex_.SampleLevel(uv, 0).xyz;
     }
 
@@ -521,14 +510,17 @@ public float3 get_transmittance(
     const float3 frag_pos_w,
     const float3 sun_dir_w,
     const ITransLut trans_lut,
-    const AtmosphereParameters atmos_params
+    const float atmos_radius_bottom,
+    const float atmos_radius_top
 ) {
-    const float planet_radius = atmos_params.radius_bottom * 1000;
+    const float planet_radius = atmos_radius_bottom * 1000;
     const float3 frag_pos_e = frag_pos_w + float3(0, planet_radius, 0);
     const float frag_height_e = length(frag_pos_e);
     const float3 frag_up_dir_e = normalize(frag_pos_e);
     const float view_zenith_cos_angle = dot(sun_dir_w, frag_up_dir_e);
-    return trans_lut.sample(atmos_params, frag_height_e * M_TO_KM, view_zenith_cos_angle);
+    return trans_lut.sample(
+        atmos_radius_bottom, atmos_radius_top, frag_height_e * M_TO_KM, view_zenith_cos_angle
+    );
 }
 
 
@@ -721,7 +713,9 @@ public SingleScatteringResult IntegrateScatteredLuminance(
         const float pHeight = length(P);
         const float3 UpVector = P / pHeight;
         const float SunZenithCosAngle = dot(params.sun_dir_, UpVector);
-        const float3 TransmittanceToSun = trans_lut.sample(Atmosphere, pHeight, SunZenithCosAngle);
+        const float3 TransmittanceToSun = trans_lut.sample(
+            Atmosphere.radius_bottom, Atmosphere.radius_top, pHeight, SunZenithCosAngle
+        );
         const float3 PhaseTimesScattering = params.mie_ray_phase_
                                                 ? (medium.scatteringMie * MiePhaseValue +
                                                    medium.scatteringRay * RayleighPhaseValue)
@@ -782,7 +776,9 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
         const float3 UpVector = P / pHeight;
         const float SunZenithCosAngle = dot(params.sun_dir_, UpVector);
-        const float3 TransmittanceToSun = trans_lut.sample(Atmosphere, pHeight, SunZenithCosAngle);
+        const float3 TransmittanceToSun = trans_lut.sample(
+            Atmosphere.radius_bottom, Atmosphere.radius_top, pHeight, SunZenithCosAngle
+        );
 
         const float NdotL = saturate(dot(normalize(UpVector), normalize(params.sun_dir_)));
         L += params.sun_illuminance_ * TransmittanceToSun * throughput * NdotL *

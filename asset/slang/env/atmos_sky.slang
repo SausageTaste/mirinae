@@ -14,6 +14,7 @@ layout(set = 0, binding = 0) Sampler2D u_sky_view_lut;
 cbuffer U_EnvSkyPushConst {
     float4x4 proj_view_;
     float4 sun_dir_w_;
+    float atmos_radius_bottom_;
 }
 u_pc;
 
@@ -35,9 +36,8 @@ VSOutput vert_main(int vtx_id: SV_VertexID) {
 [shader("fragment")]
 float4 frag_main(VSOutput input) : SV_Target {
     const float3 cam_dir_w = normalize(input.local_pos_);
-    let atmos_params = GetAtmosphereParameters();
 
-    const float planet_radius = atmos_params.radius_bottom * 1000;
+    const float planet_radius = u_pc.atmos_radius_bottom_ * 1000;
     const float3 cam_pos_e = float3(0, planet_radius + 1, 0);
     const float cam_height_e = length(cam_pos_e);
 
@@ -59,7 +59,11 @@ float4 frag_main(VSOutput input) : SV_Target {
                                   ) >= 0.0;
 
     const float2 uv = SkyViewLutParamsToUv<true>(
-        atmos_params, intersect_ground, view_zenith_cos_angle, light_view_cos_angle, cam_height_e
+        intersect_ground,
+        u_pc.atmos_radius_bottom_,
+        view_zenith_cos_angle,
+        light_view_cos_angle,
+        cam_height_e
     );
 
     const float4 sky_view_texel = u_sky_view_lut.SampleLevel(uv, 0);

@@ -18,6 +18,8 @@ struct U_CompoAtmosSurfMain {
     float4 view_pos_w;
     float4 fog_color_density;
     float mie_anisotropy;
+    float atmos_radius_bottom_;
+    float atmos_radius_top_;
 };
 
 struct U_CompoDlightShadowMap {
@@ -43,15 +45,17 @@ layout(set = 1, binding = 1) ConstantBuffer<U_CompoDlightShadowMap> ubuf_sh;
 
 
 float3 get_transmittance(float3 frag_pos_w) {
-    const AtmosphereParameters atmos_params = GetAtmosphereParameters();
-    const float planet_radius = atmos_params.radius_bottom * 1000;
+    const float planet_radius = u_main.atmos_radius_bottom_ * 1000;
     const float3 frag_pos_e = frag_pos_w + float3(0, planet_radius, 0);
     const float frag_height_e = length(frag_pos_e);
     const float3 frag_up_dir_e = normalize(frag_pos_e);
     const float3 dlight_dir_w = normalize(mul(float3x3(u_main.view_inv), ubuf_sh.dlight_dir.xyz));
     const float view_zenith_cos_angle = dot(dlight_dir_w, frag_up_dir_e);
     const float2 lut_trans_uv = LutTransmittanceParamsToUv(
-        atmos_params, frag_height_e * M_TO_KM, view_zenith_cos_angle
+        u_main.atmos_radius_bottom_,
+        u_main.atmos_radius_top_,
+        frag_height_e * M_TO_KM,
+        view_zenith_cos_angle
     );
     return u_trans_lut.SampleLevel(lut_trans_uv, 0).xyz;
 }

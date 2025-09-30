@@ -8,6 +8,7 @@ layout(location = 0) out vec3 v_local_pos;
 layout(push_constant) uniform U_EnvSkyPushConst {
     mat4 proj_view;
     vec4 sun_dir_w;
+    float atmos_radius_bottom_;
 } u_push_const;
 
 

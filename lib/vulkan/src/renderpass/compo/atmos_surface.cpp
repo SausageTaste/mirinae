@@ -5,6 +5,7 @@
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
+#include "mirinae/cpnt/atmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
@@ -59,6 +60,16 @@ namespace {
             return *this;
         }
 
+        U_CompoAtmosSurfMain& set_atmos_radius_bottom(float r) {
+            atmos_radius_bottom_ = r;
+            return *this;
+        }
+
+        U_CompoAtmosSurfMain& set_atmos_radius_top(float r) {
+            atmos_radius_top_ = r;
+            return *this;
+        }
+
     private:
         glm::mat4 proj_;
         glm::mat4 proj_inv_;
@@ -67,6 +78,8 @@ namespace {
         glm::vec4 view_pos_w_;
         glm::vec4 fog_color_density_;
         float mie_anisotropy_ = 0.5f;
+        float atmos_radius_bottom_;
+        float atmos_radius_top_;
     };
 
 
@@ -201,6 +214,12 @@ namespace { namespace task {
                 ubuf.set_fog_color(atmos.fog_color_)
                     .set_fog_density(atmos.fog_density_)
                     .set_mie_anisotropy(atmos.mie_anisotropy_);
+                break;
+            }
+            for (auto e : reg.view<mirinae::cpnt::AtmosphereEpic>()) {
+                auto& atmos = reg.get<mirinae::cpnt::AtmosphereEpic>(e);
+                ubuf.set_atmos_radius_bottom(atmos.radius_bottom())
+                    .set_atmos_radius_top(atmos.radius_top());
                 break;
             }
             fd.ubuf_.set_data(ubuf);

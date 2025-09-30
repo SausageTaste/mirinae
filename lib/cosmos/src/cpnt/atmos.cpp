@@ -151,6 +151,10 @@ namespace mirinae {
 
     float& CLS::radius_top() { return rayleigh_scattering_.w; }
 
+    float CLS::radius_bottom() const { return ground_albedo_.w; }
+
+    float CLS::radius_top() const { return rayleigh_scattering_.w; }
+
     float& CLS::rayleigh_density_exp_scale() { return mie_scattering_.w; }
 
     float3& CLS::rayleigh_scattering() {

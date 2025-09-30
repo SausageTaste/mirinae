@@ -22,6 +22,9 @@ namespace mirinae {
         float& radius_bottom();
         float& radius_top();
 
+        float radius_bottom() const;
+        float radius_top() const;
+
         float& rayleigh_density_exp_scale();
         float3& rayleigh_scattering();
 
@@ -74,6 +77,9 @@ namespace mirinae::cpnt {
     public:
         AtmosphereEpic();
         void render_imgui();
+
+        float radius_bottom() const { return atmos_params_.radius_bottom(); }
+        float radius_top() const { return atmos_params_.radius_top(); }
 
     public:
         AtmosphereParameters atmos_params_;
