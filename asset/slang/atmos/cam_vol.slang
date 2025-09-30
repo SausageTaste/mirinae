@@ -1,8 +1,9 @@
 import "../module/atmos";
 
-layout(set = 0, binding = 0, rgba16f) RWTexture3D<float4> out_image;
-layout(set = 0, binding = 1) Sampler2D u_trans_lut;
-layout(set = 0, binding = 2) Sampler2D u_multi_scat;
+layout(set = 0, binding = 0) ConstantBuffer<AtmosphereParameters> u_atmos;
+layout(set = 0, binding = 1, rgba16f) RWTexture3D<float4> out_image;
+layout(set = 0, binding = 2) Sampler2D u_trans_lut;
+layout(set = 0, binding = 3) Sampler2D u_multi_scat;
 
 [push_constant]
 cbuffer U_AtmosCamVolPushConst {
@@ -20,7 +21,6 @@ static const float OUT_TEX_RES = 32;
 float4 gen_texel(uint3 dispatch_id) {
     let slice_id = float(dispatch_id.z);
     let pix_pos = float2(dispatch_id.xy) + 0.5;
-    let Atmosphere = GetAtmosphereParameters();
 
     let view_inv3 = float3x3(u_pc.view_inv);
     let clip_space = float3(pix_pos / (OUT_TEX_RES) * 2 - 1, 0.5);
@@ -32,7 +32,7 @@ float4 gen_texel(uint3 dispatch_id) {
     slice *= slice;  // squared distribution
     slice *= AP_SLICE_COUNT;
 
-    let cam_pos = u_pc.view_pos.xyz * M_TO_KM + float3(0, Atmosphere.radius_bottom, 0);
+    let cam_pos = u_pc.view_pos.xyz * M_TO_KM + float3(0, u_atmos.radius_bottom, 0);
     var world_pos = cam_pos;
 
     // Compute position from froxel information
@@ -41,11 +41,11 @@ float4 gen_texel(uint3 dispatch_id) {
 
     // If the voxel is under the ground, make sure to offset it out on the ground.
     float view_height = length(new_world_pos);
-    if (view_height <= (Atmosphere.radius_bottom + PLANET_RADIUS_OFFSET)) {
+    if (view_height <= (u_atmos.radius_bottom + PLANET_RADIUS_OFFSET)) {
         // Apply a position offset to make sure no artefact are visible close to the earth
         // boundaries for large voxel.
         new_world_pos = normalize(new_world_pos) *
-                        (Atmosphere.radius_bottom + PLANET_RADIUS_OFFSET + 0.001);
+                        (u_atmos.radius_bottom + PLANET_RADIUS_OFFSET + 0.001);
         world_dir = normalize(new_world_pos - cam_pos);
         tMax = length(new_world_pos - cam_pos);
     }
@@ -53,9 +53,9 @@ float4 gen_texel(uint3 dispatch_id) {
 
     // Move ray marching start up to top atmosphere.
     view_height = length(world_pos);
-    if (view_height >= Atmosphere.radius_top) {
+    if (view_height >= u_atmos.radius_top) {
         const float3 prev_world_pos = world_pos;
-        if (!MoveToTopAtmosphere(world_pos, world_dir, Atmosphere.radius_top)) {
+        if (!MoveToTopAtmosphere(world_pos, world_dir, u_atmos.radius_top)) {
             // Ray is not intersecting the atmosphere
             return float4(0, 0, 0, 1);
         }
@@ -82,7 +82,7 @@ float4 gen_texel(uint3 dispatch_id) {
     params.t_max_max_ = tMaxMax;
 
     let ss = IntegrateScatteredLuminance(
-        SamplerTransLut(u_trans_lut), SamplerMulScatLut(u_multi_scat), Atmosphere, params
+        SamplerTransLut(u_trans_lut), SamplerMulScatLut(u_multi_scat), u_atmos, params
     );
 
     const float transmittance = dot(ss.transmittance_, float3(1.0 / 3.0));
