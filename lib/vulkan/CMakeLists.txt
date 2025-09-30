@@ -23,6 +23,7 @@ add_library(mirinae_vulkan STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/terrain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/cam_volumes.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/multi_scat_cs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/sky_view_lut.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/trans_lut.cpp

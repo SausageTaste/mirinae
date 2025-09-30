@@ -7,7 +7,7 @@
 #include "mirinae/render/cmdbuf.hpp"
 #include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
-#include "mirinae/renderee/atmos.hpp"
+#include "mirinae/renderpass/atmos/common.hpp"
 #include "mirinae/renderpass/builder.hpp"
 #include "mirinae/renderpass/common.hpp"
 
@@ -33,8 +33,8 @@ namespace {
     };
 
 
-    struct FrameData {
-        void update_descset(mirinae::VulkanDevice& device) {
+    struct FrameData : public mirinae::IAtmosFrameData {
+        void update_descset(mirinae::VulkanDevice& device) override {
             mirinae::DescWriter writer;
             writer.add_buf_span_info(ubuf_span_).add_buf_write(desc_set_, 0);
             writer.add_storage_img_info(trans_lut_->view_.get())
@@ -43,7 +43,6 @@ namespace {
         }
 
         mirinae::HRpImage trans_lut_;
-        mirinae::BufferSpan ubuf_span_;
         VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
@@ -91,8 +90,7 @@ namespace {
                 return;
 
             auto& fd = frame_data_->at(ctxt_->f_index_.get());
-
-            if (!this->update_descset(*reg_, *ctxt_, fd, *device_)) {
+            if (!fd.try_update(*reg_, *ctxt_, *device_)) {
                 cmdbuf_ = VK_NULL_HANDLE;
                 return;
             }
@@ -100,30 +98,6 @@ namespace {
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record(cmdbuf_, fd, *rp_, *ctxt_);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
-        }
-
-        static bool update_descset(
-            const entt::registry& reg,
-            const mirinae::RpCtxt& ctxt,
-            ::FrameData& fd,
-            mirinae::VulkanDevice& device
-        ) {
-            auto* atmos_cpnt = find_cpnt(reg);
-            if (!atmos_cpnt)
-                return false;
-
-            auto ren_unit = atmos_cpnt->ren_unit<mirinae::RenUnitAtmosEpic>();
-            if (!ren_unit)
-                return false;
-
-            auto& ubuf = ren_unit->ubuf_at(ctxt.f_index_);
-
-            if (fd.ubuf_span_ != ubuf) {
-                fd.ubuf_span_ = ubuf;
-                fd.update_descset(device);
-            }
-
-            return true;
         }
 
         static bool record(
@@ -181,16 +155,6 @@ namespace {
                 );
 
             return true;
-        }
-
-        static const mirinae::cpnt::AtmosphereEpic* find_cpnt(
-            const entt::registry& reg
-        ) {
-            auto view = reg.view<mirinae::cpnt::AtmosphereEpic>();
-            for (auto e : view) {
-                return &view.get<mirinae::cpnt::AtmosphereEpic>(e);
-            }
-            return nullptr;
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
