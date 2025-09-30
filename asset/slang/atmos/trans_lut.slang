@@ -22,7 +22,9 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
 
     float viewHeight;
     float cos_angle;
-    UvToLutTransmittanceParams(u_atmos, viewHeight, cos_angle, uv);
+    UvToLutTransmittanceParams(
+        u_atmos.radius_bottom, u_atmos.radius_top, viewHeight, cos_angle, uv
+    );
 
     ScatLumiIntParams params;
     params.pix_pos_ = pixPos;

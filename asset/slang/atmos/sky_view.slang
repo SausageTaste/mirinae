@@ -48,7 +48,9 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
 
     float viewZenithCosAngle;
     float lightViewCosAngle;
-    UvToSkyViewLutParams<true>(u_atmos, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
+    UvToSkyViewLutParams<true>(
+        u_atmos.radius_bottom, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv
+    );
 
     let viewZenithSinAngle = sqrt(1 - viewZenithCosAngle * viewZenithCosAngle);
     params.world_dir_.x = viewZenithSinAngle * lightViewCosAngle;

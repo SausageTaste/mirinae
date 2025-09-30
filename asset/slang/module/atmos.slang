@@ -177,7 +177,8 @@ float hgPhase(float g, float cosTheta) {
 
 
 public void UvToLutTransmittanceParams(
-    AtmosphereParameters Atmosphere,
+    const float atmos_radius_bottom,
+    const float atmos_radius_top,
     out float viewHeight,
     out float viewZenithCosAngle,
     in float2 uv
@@ -187,14 +188,11 @@ public void UvToLutTransmittanceParams(
     float x_mu = uv.x;
     float x_r = uv.y;
 
-    float H = sqrt(
-        Atmosphere.radius_top * Atmosphere.radius_top -
-        Atmosphere.radius_bottom * Atmosphere.radius_bottom
-    );
+    float H = sqrt(atmos_radius_top * atmos_radius_top - atmos_radius_bottom * atmos_radius_bottom);
     float rho = H * x_r;
-    viewHeight = sqrt(rho * rho + Atmosphere.radius_bottom * Atmosphere.radius_bottom);
+    viewHeight = sqrt(rho * rho + atmos_radius_bottom * atmos_radius_bottom);
 
-    float d_min = Atmosphere.radius_top - viewHeight;
+    float d_min = atmos_radius_top - viewHeight;
     float d_max = rho + H;
     float d = d_min + x_mu * (d_max - d_min);
     viewZenithCosAngle = d == 0.0 ? 1.0f : (H * H - rho * rho - d * d) / (2.0 * viewHeight * d);
@@ -271,7 +269,7 @@ public float2 SkyViewLutParamsToUv<let TNonLinearSkyViewLut : bool>(
 
 
 public void UvToSkyViewLutParams<let TNonLinearSkyViewLut : bool>(
-    AtmosphereParameters Atmosphere,
+    const float atmos_radius_bottom,
     out float viewZenithCosAngle,
     out float lightViewCosAngle,
     in float viewHeight,
@@ -281,9 +279,7 @@ public void UvToSkyViewLutParams<let TNonLinearSkyViewLut : bool>(
     // visible)
     uv = float2(fromSubUvsToUnit(uv.x, 192.0f), fromSubUvsToUnit(uv.y, 108.0f));
 
-    float Vhorizon = sqrt(
-        viewHeight * viewHeight - Atmosphere.radius_bottom * Atmosphere.radius_bottom
-    );
+    float Vhorizon = sqrt(viewHeight * viewHeight - atmos_radius_bottom * atmos_radius_bottom);
     float CosBeta = Vhorizon / viewHeight;  // GroundToHorizonCos
     float Beta = acos(CosBeta);
     float ZenithHorizonAngle = PI - Beta;
@@ -456,10 +452,11 @@ public struct SamplerTransLut : ITransLut {
 
 public interface IMulScatLut {
     float3 sample(
-        AtmosphereParameters Atmosphere,
         float3 scattering,
         float3 extinction,
         float3 worlPos,
+        float atmos_radius_bottom,
+        float atmos_radius_top,
         float viewZenithCosAngle
     );
 }
@@ -467,10 +464,11 @@ public interface IMulScatLut {
 
 public struct NullMulScatLut : IMulScatLut {
     public float3 sample(
-        AtmosphereParameters Atmosphere,
         float3 scattering,
         float3 extinction,
         float3 worlPos,
+        float atmos_radius_bottom,
+        float atmos_radius_top,
         float viewZenithCosAngle
     ) {
         return float3(0);  // No multi scattering
@@ -484,16 +482,16 @@ public struct SamplerMulScatLut : IMulScatLut {
     }
 
     public float3 sample(
-        AtmosphereParameters Atmosphere,
         float3 scattering,
         float3 extinction,
         float3 worlPos,
+        float atmos_radius_bottom,
+        float atmos_radius_top,
         float viewZenithCosAngle
     ) {
         float2 uv = saturate(float2(
             viewZenithCosAngle * 0.5f + 0.5f,
-            (length(worlPos) - Atmosphere.radius_bottom) /
-                (Atmosphere.radius_top - Atmosphere.radius_bottom)
+            (length(worlPos) - atmos_radius_bottom) / (atmos_radius_top - atmos_radius_bottom)
         ));
         uv = float2(
             fromUnitToSubUvs(uv.x, MULTI_SCAT_LUT_RES), fromUnitToSubUvs(uv.y, MULTI_SCAT_LUT_RES)
@@ -729,7 +727,12 @@ public SingleScatteringResult IntegrateScatteredLuminance(
 
         // Dual scattering for multi scattering
         const float3 multiScatteredLuminance = multi_scat.sample(
-            Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle
+            medium.scattering,
+            medium.extinction,
+            P,
+            Atmosphere.radius_bottom,
+            Atmosphere.radius_top,
+            SunZenithCosAngle
         );
 
         const float shadow = 1;
