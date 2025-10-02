@@ -95,13 +95,6 @@ namespace mirinae {
             }
         }
 
-        ImGui::PushID(&this->mie_density_exp_scale());
-        ImGui::Text("Rayleigh density exp scale");
-        ImGui::DragFloat(
-            "", &this->mie_density_exp_scale(), 0.01f, -10.0f, 0.0f
-        );
-        ImGui::PopID();
-
         // Mie scattering
         ImGui::Separator();
 
@@ -132,17 +125,27 @@ namespace mirinae {
             }
         }
 
-        ImGui::PushID(&this->mie_density_exp_scale());
-        ImGui::Text("Mie density exp scale");
-        ImGui::DragFloat(
-            "", &this->mie_density_exp_scale(), 0.01f, -10.0f, 0.0f
-        );
-        ImGui::PopID();
+        ImGui::Separator();
 
-        ImGui::PushID(&this->mie_phase_g());
-        ImGui::Text("Mie phase G");
-        ImGui::DragFloat("", &this->mie_phase_g(), 0.01f, -10.0f, 0.0f);
-        ImGui::PopID();
+        ImGui::DragFloat(
+            "Rayleigh density exp scale",
+            &this->rayleigh_density_exp_scale(),
+            0.001f,
+            -10.f,
+            10.f
+        );
+        ImGui::DragFloat(
+            "Mie density exp scale",
+            &this->mie_density_exp_scale(),
+            0.001f,
+            -10.f,
+            10.f
+        );
+        ImGui::SliderFloat("Mie phase G", &this->mie_phase_g(), 0.01f, 1.f);
+
+        if (ImGui::Button("Reset")) {
+            this->set_default_values();
+        }
     }
 
     float3& CLS::ground_albedo() { return ::get_xyz(ground_albedo_); }
