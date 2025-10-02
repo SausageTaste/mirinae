@@ -49,9 +49,7 @@ namespace {
 // AtmosphereParameters
 namespace mirinae {
 
-#define CLS AtmosphereParameters
-
-    void CLS::set_default_values() {
+    void AtmosphereParameters::set_default_values() {
         this->absorption_extinction() = float3(0.00065, 0.00188, 0.00008);
 
         this->mie_density_exp_scale() = -0.83333;
@@ -74,7 +72,7 @@ namespace mirinae {
         this->radius_top() = 6460;
     }
 
-    void CLS::render_imgui() {
+    void AtmosphereParameters::render_imgui() {
         ImGui::ColorEdit3("Ground Albedo", &this->ground_albedo()[0]);
         ImGui::DragFloat(
             "Radius Bottom", &this->radius_bottom(), 0.1f, 0.0f, 10000.0f
@@ -148,57 +146,71 @@ namespace mirinae {
         }
     }
 
-    float3& CLS::ground_albedo() { return ::get_xyz(ground_albedo_); }
+    float3& AtmosphereParameters::ground_albedo() {
+        return ::get_xyz(ground_albedo_);
+    }
 
-    float& CLS::radius_bottom() { return ground_albedo_.w; }
+    float& AtmosphereParameters::radius_bottom() { return ground_albedo_.w; }
 
-    float& CLS::radius_top() { return rayleigh_scattering_.w; }
+    float& AtmosphereParameters::radius_top() { return rayleigh_scattering_.w; }
 
-    float CLS::radius_bottom() const { return ground_albedo_.w; }
+    float AtmosphereParameters::radius_bottom() const {
+        return ground_albedo_.w;
+    }
 
-    float CLS::radius_top() const { return rayleigh_scattering_.w; }
+    float AtmosphereParameters::radius_top() const {
+        return rayleigh_scattering_.w;
+    }
 
-    float& CLS::rayleigh_density_exp_scale() { return mie_scattering_.w; }
+    float& AtmosphereParameters::rayleigh_density_exp_scale() {
+        return mie_scattering_.w;
+    }
 
-    float3& CLS::rayleigh_scattering() {
+    float3& AtmosphereParameters::rayleigh_scattering() {
         return ::get_xyz(rayleigh_scattering_);
     }
 
-    float& CLS::mie_density_exp_scale() { return mie_absorption_.w; }
+    float& AtmosphereParameters::mie_density_exp_scale() {
+        return mie_absorption_.w;
+    }
 
-    float3& CLS::mie_scattering() { return ::get_xyz(mie_scattering_); }
+    float3& AtmosphereParameters::mie_scattering() {
+        return ::get_xyz(mie_scattering_);
+    }
 
-    float3& CLS::mie_extinction() { return ::get_xyz(mie_extinction_); }
+    float3& AtmosphereParameters::mie_extinction() {
+        return ::get_xyz(mie_extinction_);
+    }
 
-    float3& CLS::mie_absorption() { return ::get_xyz(mie_absorption_); }
+    float3& AtmosphereParameters::mie_absorption() {
+        return ::get_xyz(mie_absorption_);
+    }
 
-    float& CLS::mie_phase_g() { return mie_extinction_.w; }
+    float& AtmosphereParameters::mie_phase_g() { return mie_extinction_.w; }
 
-    float& CLS::absorption_density_0_layer_width() {
+    float& AtmosphereParameters::absorption_density_0_layer_width() {
         return absorption_extinction_.w;
     }
 
-    float& CLS::absorption_density_0_constant() {
+    float& AtmosphereParameters::absorption_density_0_constant() {
         return absorption_density_params_.x;
     }
 
-    float& CLS::absorption_density_0_linear() {
+    float& AtmosphereParameters::absorption_density_0_linear() {
         return absorption_density_params_.y;
     }
 
-    float& CLS::absorption_density_1_constant() {
+    float& AtmosphereParameters::absorption_density_1_constant() {
         return absorption_density_params_.z;
     }
 
-    float& CLS::absorption_density_1_linear() {
+    float& AtmosphereParameters::absorption_density_1_linear() {
         return absorption_density_params_.w;
     }
 
-    float3& CLS::absorption_extinction() {
+    float3& AtmosphereParameters::absorption_extinction() {
         return ::get_xyz(absorption_extinction_);
     }
-
-#undef CLS
 
 }  // namespace mirinae
 
