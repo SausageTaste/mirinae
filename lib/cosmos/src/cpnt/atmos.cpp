@@ -2,28 +2,8 @@
 
 #include <imgui.h>
 
-#include "mirinae/math/color.hpp"
-
 
 namespace {
-
-    using float3 = mirinae::AtmosphereParameters::float3;
-    using float4 = mirinae::AtmosphereParameters::float4;
-
-
-    float3& get_xyz(float4& v) {
-        static_assert(sizeof(float4) == sizeof(float) * 4);
-        static_assert(sizeof(float4) * 3 == sizeof(float3) * 4);
-        static_assert(offsetof(float4, x) == 0);
-        static_assert(offsetof(float4, y) == sizeof(float));
-        static_assert(offsetof(float4, z) == sizeof(float) * 2);
-        static_assert(offsetof(float4, w) == sizeof(float) * 3);
-        static_assert(offsetof(float3, x) == 0);
-        static_assert(offsetof(float3, y) == sizeof(float));
-        static_assert(offsetof(float3, z) == sizeof(float) * 2);
-
-        return reinterpret_cast<float3&>(v);
-    }
 
     bool render_color_intensity(mirinae::ColorIntensity& ci, void* id) {
         bool output = false;
@@ -46,170 +26,81 @@ namespace {
 }  // namespace
 
 
-// AtmosphereParameters
+// AtmosParams
 namespace mirinae {
 
-    void AtmosphereParameters::set_default_values() {
-        this->absorption_extinction() = float3(0.00065, 0.00188, 0.00008);
+    void AtmosParams::set_default_values() {
+        absorption_extinction_.set_scaled_color(0.00065, 0.00188, 0.00008);
 
-        this->mie_density_exp_scale() = -0.83333;
-        this->absorption_density_0_layer_width() = 25;
-        this->absorption_density_0_constant() = -0.66667;
-        this->absorption_density_0_linear() = 0.06667;
-        this->absorption_density_1_constant() = 2.66667;
-        this->absorption_density_1_linear() = -0.06667;
+        mie_density_exp_scale_ = -0.83333;
+        absorption_density_0_layer_width_ = 25;
+        absorption_density_0_constant_ = -0.66667;
+        absorption_density_0_linear_ = 0.06667;
+        absorption_density_1_constant_ = 2.66667;
+        absorption_density_1_linear_ = -0.06667;
 
-        this->rayleigh_density_exp_scale() = -0.125;
+        rayleigh_density_exp_scale_ = -0.125;
 
-        this->mie_phase_g() = 0.8;
-        this->rayleigh_scattering() = float3(0.0058, 0.01356, 0.0331);
-        this->mie_scattering() = float3(0.004);
-        this->mie_absorption() = float3(0.00044);
-        this->mie_extinction() = float3(0.00444);
+        mie_phase_g_ = 0.8;
+        rayleigh_scattering_.set_scaled_color(0.0058, 0.01356, 0.0331);
+        mie_scattering_.set_scaled_color(0.004);
+        mie_absorption_.set_scaled_color(0.00044);
+        mie_extinction_.set_scaled_color(0.00444);
 
-        this->ground_albedo() = float3(0);
-        this->radius_bottom() = 6360;
-        this->radius_top() = 6460;
+        ground_albedo_.set_scaled_color(0);
+        radius_bottom_ = 6360;
+        radius_top_ = 6460;
     }
 
-    void AtmosphereParameters::render_imgui() {
-        ImGui::ColorEdit3("Ground Albedo", &this->ground_albedo()[0]);
-        ImGui::DragFloat(
-            "Radius Bottom", &this->radius_bottom(), 0.1f, 0.0f, 10000.0f
-        );
-        ImGui::DragFloat(
-            "Radius Top", &this->radius_top(), 0.1f, 0.0f, 10000.0f
-        );
-
-        // Rayleigh scattering
-        ImGui::Separator();
-
+    void AtmosParams::render_imgui() {
         {
-            ImGui::Text("Rayleigh scattering coefficients");
-            ColorIntensity ci;
-            ci.set_scaled_color(this->rayleigh_scattering());
-            if (render_color_intensity(ci, &this->rayleigh_scattering())) {
-                this->rayleigh_scattering() = ci.scaled_color();
-            }
+            ImGui::Text("Ground albedo");
+            ::render_color_intensity(ground_albedo_, "Ground albedo");
+
+            ImGui::DragFloat(
+                "Radius bottom", &radius_bottom_, 0.1f, 0.0f, 10000.0f
+            );
+            ImGui::DragFloat("Radius top", &radius_top_, 0.1f, 0.0f, 10000.0f);
         }
-
-        // Mie scattering
         ImGui::Separator();
-
+        {
+            ImGui::Text("Rayleigh scattering");
+            ::render_color_intensity(
+                rayleigh_scattering_, "Rayleigh scattering"
+            );
+        }
+        ImGui::Separator();
         {
             ImGui::Text("Mie scattering");
-            ColorIntensity ci;
-            ci.set_scaled_color(this->mie_scattering());
-            if (render_color_intensity(ci, &this->mie_scattering())) {
-                this->mie_scattering() = ci.scaled_color();
-            }
-        }
-
-        {
+            ::render_color_intensity(mie_scattering_, "Mie scattering");
             ImGui::Text("Mie extinction");
-            ColorIntensity ci;
-            ci.set_scaled_color(this->mie_extinction());
-            if (render_color_intensity(ci, &this->mie_extinction())) {
-                this->mie_extinction() = ci.scaled_color();
-            }
-        }
-
-        {
+            ::render_color_intensity(mie_extinction_, "Mie extinction");
             ImGui::Text("Mie absorption");
-            ColorIntensity ci;
-            ci.set_scaled_color(this->mie_absorption());
-            if (render_color_intensity(ci, &this->mie_absorption())) {
-                this->mie_absorption() = ci.scaled_color();
-            }
+            ::render_color_intensity(mie_absorption_, "Mie absorption");
         }
-
         ImGui::Separator();
-
-        ImGui::DragFloat(
-            "Rayleigh density exp scale",
-            &this->rayleigh_density_exp_scale(),
-            0.001f,
-            -10.f,
-            10.f
-        );
-        ImGui::DragFloat(
-            "Mie density exp scale",
-            &this->mie_density_exp_scale(),
-            0.001f,
-            -10.f,
-            10.f
-        );
-        ImGui::SliderFloat("Mie phase G", &this->mie_phase_g(), 0.01f, 1.f);
+        {
+            ImGui::DragFloat(
+                "Rayleigh density exp scale",
+                &rayleigh_density_exp_scale_,
+                0.001f,
+                -10.f,
+                10.f
+            );
+            ImGui::DragFloat(
+                "Mie density exp scale",
+                &mie_density_exp_scale_,
+                0.001f,
+                -10.f,
+                10.f
+            );
+            ImGui::SliderFloat("Mie phase G", &mie_phase_g_, 0.01f, 1.f);
+        }
+        ImGui::Separator();
 
         if (ImGui::Button("Reset")) {
             this->set_default_values();
         }
-    }
-
-    float3& AtmosphereParameters::ground_albedo() {
-        return ::get_xyz(ground_albedo_);
-    }
-
-    float& AtmosphereParameters::radius_bottom() { return ground_albedo_.w; }
-
-    float& AtmosphereParameters::radius_top() { return rayleigh_scattering_.w; }
-
-    float AtmosphereParameters::radius_bottom() const {
-        return ground_albedo_.w;
-    }
-
-    float AtmosphereParameters::radius_top() const {
-        return rayleigh_scattering_.w;
-    }
-
-    float& AtmosphereParameters::rayleigh_density_exp_scale() {
-        return mie_scattering_.w;
-    }
-
-    float3& AtmosphereParameters::rayleigh_scattering() {
-        return ::get_xyz(rayleigh_scattering_);
-    }
-
-    float& AtmosphereParameters::mie_density_exp_scale() {
-        return mie_absorption_.w;
-    }
-
-    float3& AtmosphereParameters::mie_scattering() {
-        return ::get_xyz(mie_scattering_);
-    }
-
-    float3& AtmosphereParameters::mie_extinction() {
-        return ::get_xyz(mie_extinction_);
-    }
-
-    float3& AtmosphereParameters::mie_absorption() {
-        return ::get_xyz(mie_absorption_);
-    }
-
-    float& AtmosphereParameters::mie_phase_g() { return mie_extinction_.w; }
-
-    float& AtmosphereParameters::absorption_density_0_layer_width() {
-        return absorption_extinction_.w;
-    }
-
-    float& AtmosphereParameters::absorption_density_0_constant() {
-        return absorption_density_params_.x;
-    }
-
-    float& AtmosphereParameters::absorption_density_0_linear() {
-        return absorption_density_params_.y;
-    }
-
-    float& AtmosphereParameters::absorption_density_1_constant() {
-        return absorption_density_params_.z;
-    }
-
-    float& AtmosphereParameters::absorption_density_1_linear() {
-        return absorption_density_params_.w;
-    }
-
-    float3& AtmosphereParameters::absorption_extinction() {
-        return ::get_xyz(absorption_extinction_);
     }
 
 }  // namespace mirinae
@@ -218,8 +109,14 @@ namespace mirinae {
 // AtmosphereEpic
 namespace mirinae::cpnt {
 
-    AtmosphereEpic::AtmosphereEpic() { atmos_params_.set_default_values(); }
+    AtmosphereEpic::AtmosphereEpic() { params_.set_default_values(); }
 
-    void AtmosphereEpic::render_imgui() { atmos_params_.render_imgui(); }
+    void AtmosphereEpic::render_imgui() { params_.render_imgui(); }
+
+    float AtmosphereEpic::radius_bottom() const {
+        return params_.radius_bottom_;
+    }
+
+    float AtmosphereEpic::radius_top() const { return params_.radius_top_; }
 
 }  // namespace mirinae::cpnt

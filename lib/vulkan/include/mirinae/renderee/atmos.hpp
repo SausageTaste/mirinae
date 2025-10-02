@@ -18,7 +18,7 @@ namespace mirinae {
 
         const BufferSpan& ubuf_at(const FrameIndex f_idx) const;
         void update_ubuf(
-            const FrameIndex f_index, const AtmosphereParameters& params
+            const FrameIndex f_index, const void* data, size_t size
         );
 
     private:
