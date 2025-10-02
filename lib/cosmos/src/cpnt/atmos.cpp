@@ -54,13 +54,15 @@ namespace mirinae {
 
     void AtmosParams::render_imgui() {
         {
+            float radius = radius_bottom_;
+            float thickness = std::abs(radius_top_ - radius_bottom_);
+            ImGui::DragFloat("Radius (km)", &radius, 10);
+            ImGui::SliderFloat("Thickness (km)", &thickness, 0, 1000);
+            radius_bottom_ = radius;
+            radius_top_ = radius + std::abs(thickness);
+
             ImGui::Text("Ground albedo");
             ::render_color_intensity(ground_albedo_, "Ground albedo");
-
-            ImGui::DragFloat(
-                "Radius bottom", &radius_bottom_, 0.1f, 0.0f, 10000.0f
-            );
-            ImGui::DragFloat("Radius top", &radius_top_, 0.1f, 0.0f, 10000.0f);
         }
         ImGui::Separator();
         {
@@ -95,6 +97,31 @@ namespace mirinae {
                 10.f
             );
             ImGui::SliderFloat("Mie phase G", &mie_phase_g_, 0.01f, 1.f);
+        }
+        ImGui::Separator();
+        {
+            ImGui::DragFloat(
+                "Absorption 0 layer with",
+                &absorption_density_0_layer_width_,
+                0.01f
+            );
+            ImGui::DragFloat(
+                "Absorption 0 const", &absorption_density_0_constant_, 0.01f
+            );
+            ImGui::DragFloat(
+                "Absorption 0 linear", &absorption_density_0_linear_, 0.01f
+            );
+            ImGui::DragFloat(
+                "Absorption 1 const", &absorption_density_1_constant_, 0.01f
+            );
+            ImGui::DragFloat(
+                "Absorption 1 linear", &absorption_density_1_linear_, 0.01f
+            );
+
+            ImGui::Text("Absorption extinction");
+            ::render_color_intensity(
+                absorption_extinction_, "Absorption extinction"
+            );
         }
         ImGui::Separator();
 
