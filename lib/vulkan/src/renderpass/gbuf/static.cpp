@@ -237,7 +237,7 @@ namespace {
 
         builder.vertex_input_state().set_static();
 
-        builder.rasterization_state().cull_mode_back();
+        builder.rasterization_state();
 
         builder.depth_stencil_state()
             .depth_test_enable(true)

@@ -12,6 +12,7 @@ struct VSOutput {
     float3x3 tbn_;
     float4 pos_ : SV_POSITION;
     float2 texco_;
+    float3 frag_pos_v_;
 };
 
 struct FSOutput {
@@ -41,10 +42,13 @@ layout(set = 1, binding = 0) ConstantBuffer<U_GbufActor> u_gbuf_model;
 
 [shader("vertex")]
 VSOutput vert_main(VSInput input) {
+    let pos_m = float4(input.pos_, 1);
+
     VSOutput output;
     output.tbn_ = make_tbn_mat(input.normal_, input.tangent_, float3x3(u_gbuf_model.view_model_));
-    output.pos_ = mul(u_gbuf_model.pvm_, float4(input.pos_, 1));
+    output.pos_ = mul(u_gbuf_model.pvm_, pos_m);
     output.texco_ = input.texco_;
+    output.frag_pos_v_ = mul(u_gbuf_model.view_model_, pos_m).xyz;
     return output;
 }
 
@@ -57,8 +61,8 @@ FSOutput frag_main(VSOutput input) {
 
     var normal = normal_texel.xyz * 2 - 1;
     normal = mul(input.tbn_, normal);
-    // if (dot(input.pos_v_.xyz, normal) > 0)
-    //     normal = -normal;
+    if (dot(normalize(input.frag_pos_v_), normal) > 0)
+        normal = -normal;
     normal = normalize(normal) * 0.5 + 0.5;
 
     FSOutput output;
