@@ -1103,11 +1103,11 @@ namespace {
                 i.set_name("City");
 
                 auto& mdl = reg.emplace<mirinae::cpnt::MdlActorStatic>(entt);
-                mdl.model_path_ = "Sung/city.dun/city.dmd";
+                mdl.model_path_ = "Sung/bus_game_map.dun/bus_game_map.dmd";
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 510, 1874, -23 };
-                tform.set_scale(0.65);
+                tform.pos_ = { 510, 1550, 2000 };
+                tform.set_scale(0.1);
 
                 cosmos_->phys_world().give_body_triangles(entt, reg);
             }
