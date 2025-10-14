@@ -14,8 +14,8 @@ namespace mirinae {
 
     std::vector<glm::mat4> make_skinning_matrix(
         double tick_point,
-        const dal::parser::Skeleton& skeleton,
-        const dal::parser::Animation& anim
+        const dal::Skeleton& skeleton,
+        const dal::Animation& anim
     );
 
 
@@ -27,8 +27,8 @@ namespace mirinae {
         size_t joint_count() const { return skel_.joints_.size(); }
 
     public:
-        dal::parser::Skeleton skel_;
-        std::vector<dal::parser::Animation> anims_;
+        dal::Skeleton skel_;
+        std::vector<dal::Animation> anims_;
     };
 
     using HSkelAnim = std::shared_ptr<SkelAnimPair>;

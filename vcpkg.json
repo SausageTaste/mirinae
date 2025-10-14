@@ -13,7 +13,6 @@
         "stb",
         "uni-algo",
         "vulkan-memory-allocator",
-        "yaml-cpp",
         "zlib",
         {
             "name": "imgui",

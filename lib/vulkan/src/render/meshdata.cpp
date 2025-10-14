@@ -34,11 +34,11 @@ namespace mirinae {
     std::optional<VerticesStaticPair> parse_dmd_static(
         const uint8_t* const file_content, const size_t content_size
     ) {
-        dal::parser::Model parsed_model;
-        const auto parse_result = dal::parser::parse_dmd(
+        dal::Model parsed_model;
+        const auto parse_result = dal::parse_dmd(
             parsed_model, file_content, content_size
         );
-        if (dal::parser::ModelParseResult::success != parse_result) {
+        if (dal::ModelParseResult::success != parse_result) {
             SPDLOG_ERROR(
                 "Failed to parse dmd file: {}", static_cast<int>(parse_result)
             );

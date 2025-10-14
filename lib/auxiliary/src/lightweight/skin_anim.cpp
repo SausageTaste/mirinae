@@ -80,7 +80,7 @@ namespace {
 
 
     glm::vec3 make_joint_translation(
-        double tick, const dal::parser::AnimJoint& anim_joint
+        double tick, const dal::AnimJoint& anim_joint
     ) {
         if (anim_joint.translations_.empty())
             return glm::vec3{ 0 };
@@ -89,7 +89,7 @@ namespace {
     }
 
     glm::quat make_joint_rotation(
-        double tick, const dal::parser::AnimJoint& anim_joint
+        double tick, const dal::AnimJoint& anim_joint
     ) {
         if (anim_joint.rotations_.empty())
             return glm::quat{ 1, 0, 0, 0 };
@@ -97,9 +97,7 @@ namespace {
             return ::make_interp_value(tick, anim_joint.rotations_);
     }
 
-    float make_joint_scale(
-        double tick, const dal::parser::AnimJoint& anim_joint
-    ) {
+    float make_joint_scale(double tick, const dal::AnimJoint& anim_joint) {
         if (anim_joint.scales_.empty())
             return 1;
         else
@@ -107,7 +105,7 @@ namespace {
     }
 
     glm::mat4 make_joint_transform(
-        double tick, const dal::parser::AnimJoint& anim_joint
+        double tick, const dal::AnimJoint& anim_joint
     ) {
         const auto translate = ::make_joint_translation(tick, anim_joint);
         const auto rotate = ::make_joint_rotation(tick, anim_joint);
@@ -136,8 +134,8 @@ namespace mirinae {
 
     std::vector<glm::mat4> make_skinning_matrix(
         double tick_point,
-        const dal::parser::Skeleton& skeleton,
-        const dal::parser::Animation& anim
+        const dal::Skeleton& skeleton,
+        const dal::Animation& anim
     ) {
         std::unordered_map<std::string, glm::mat4> joint_transforms;
         joint_transforms.reserve(anim.joints_.size());
@@ -161,7 +159,7 @@ namespace mirinae {
 
         std::vector<glm::mat4> trans_array(skeleton.joints_.size());
         for (size_t i = 0; i < skeleton.joints_.size(); i++) {
-            dal::parser::jointID_t cur_jid = i;
+            dal::jointID_t cur_jid = i;
             trans_array[i] = glm::inverse(skeleton.joints_[i].offset_mat_);
 
             while (-1 < cur_jid) {

@@ -70,7 +70,7 @@ namespace {
     public:
         static void forward_request(
             const dal::path& res_id,
-            const dal::parser::Material& src_material,
+            const dal::Material& src_material,
             mirinae::ITextureManager& tex_man
         ) {
             request_texture(res_id, src_material.albedo_map_, true, tex_man);
@@ -84,7 +84,7 @@ namespace {
 
         void fetch(
             const dal::path& res_id,
-            const dal::parser::Material& src_material,
+            const dal::Material& src_material,
             mirinae::ITextureManager& tex_man
         ) {
             albedo_map_ = this->block_for_tex(
@@ -487,19 +487,19 @@ namespace {
             if (raw_data_.empty())
                 return this->fail("Failed to read file");
 
-            const auto result = dal::parser::parse_dmd(
+            const auto result = dal::parse_dmd(
                 dmd_,
                 reinterpret_cast<const uint8_t*>(raw_data_.data()),
                 raw_data_.size()
             );
             switch (result) {
-                case dal::parser::ModelParseResult::success:
+                case dal::ModelParseResult::success:
                     break;
-                case dal::parser::ModelParseResult::magic_numbers_dont_match:
+                case dal::ModelParseResult::magic_numbers_dont_match:
                     return this->fail("Cannot read file");
-                case dal::parser::ModelParseResult::decompression_failed:
+                case dal::ModelParseResult::decompression_failed:
                     return this->fail("Not supported file");
-                case dal::parser::ModelParseResult::corrupted_content:
+                case dal::ModelParseResult::corrupted_content:
                     return this->fail("Corrupted content");
                 default:
                     return this->fail("Unknown error");
@@ -599,7 +599,7 @@ namespace {
             return this->success();
         }
 
-        const dal::parser::Model* try_get_dmd() const {
+        const dal::Model* try_get_dmd() const {
             if (!this->has_succeeded())
                 return nullptr;
             return &dmd_;
@@ -643,7 +643,7 @@ namespace {
         dal::Filesystem& filesys_;
         dal::path path_;
         std::vector<std::byte> raw_data_;
-        dal::parser::Model dmd_;
+        dal::Model dmd_;
         std::set<std::string> tex_ids;
         std::set<std::string> tex_ids_srgb;
         std::vector<mirinae::VerticesStaticPair> units_indexed_;
