@@ -11,15 +11,10 @@ project(mirinae
 
 set(MIRINAE_ENABLE_TEST OFF CACHE BOOL "Enable testing")
 set(MIRINAE_BUILD_APP ON CACHE BOOL "Build projects in app folder")
-set(MIRINAE_USE_DALBARAGI_SUBMODULE ON CACHE BOOL "Path to dalbaragi submodule")
 set(DAL_USE_SUNGTOOLS_SUBMODULE ON CACHE BOOL "Use sungtools as a submodule")
 
 
-if (MIRINAE_USE_DALBARAGI_SUBMODULE)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/extern/dalbaragi)
-else()
-    find_package(dalbaragi CONFIG REQUIRED)
-endif()
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/extern/dalbaragi)
 
 find_package(EnTT CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
