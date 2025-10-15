@@ -1,7 +1,6 @@
 {
     "dependencies": [
         "aklomp-base64",
-        "argparse",
         "brotli",
         "enkits",
         "entt",
