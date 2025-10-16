@@ -5,10 +5,10 @@
 
 namespace {
 
-    bool render_color_intensity(mirinae::ColorIntensity& ci, void* id) {
+    bool render_color_intensity(mirinae::ColorIntensity& ci) {
         bool output = false;
 
-        ImGui::PushID(id);
+        ImGui::PushID(reinterpret_cast<const void*>(&ci));
         output |= ImGui::ColorEdit3("Color", &ci.color()[0]);
         output |= ImGui::SliderFloat(
             "Intensity",
@@ -62,23 +62,21 @@ namespace mirinae {
             radius_top_ = radius + std::abs(thickness);
 
             ImGui::Text("Ground albedo");
-            ::render_color_intensity(ground_albedo_, "Ground albedo");
+            ::render_color_intensity(ground_albedo_);
         }
         ImGui::Separator();
         {
             ImGui::Text("Rayleigh scattering");
-            ::render_color_intensity(
-                rayleigh_scattering_, "Rayleigh scattering"
-            );
+            ::render_color_intensity(rayleigh_scattering_);
         }
         ImGui::Separator();
         {
             ImGui::Text("Mie scattering");
-            ::render_color_intensity(mie_scattering_, "Mie scattering");
+            ::render_color_intensity(mie_scattering_);
             ImGui::Text("Mie extinction");
-            ::render_color_intensity(mie_extinction_, "Mie extinction");
+            ::render_color_intensity(mie_extinction_);
             ImGui::Text("Mie absorption");
-            ::render_color_intensity(mie_absorption_, "Mie absorption");
+            ::render_color_intensity(mie_absorption_);
         }
         ImGui::Separator();
         {
@@ -119,9 +117,7 @@ namespace mirinae {
             );
 
             ImGui::Text("Absorption extinction");
-            ::render_color_intensity(
-                absorption_extinction_, "Absorption extinction"
-            );
+            ::render_color_intensity(absorption_extinction_);
         }
         ImGui::Separator();
 
