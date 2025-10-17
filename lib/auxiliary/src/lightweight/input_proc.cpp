@@ -21,6 +21,7 @@ namespace mirinae {
         key_map_.emplace(SDL_SCANCODE_RIGHT, ActionType::look_right);
 
         key_map_.emplace(SDL_SCANCODE_LSHIFT, ActionType::sprint);
+        key_map_.emplace(SDL_SCANCODE_LCTRL, ActionType::walk);
     }
 
     bool InputActionMapper::on_key_event(const key::Event& e) {

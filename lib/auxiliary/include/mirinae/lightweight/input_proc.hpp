@@ -111,6 +111,7 @@ namespace mirinae {
             translate_up,    // Jump, or ascend
             translate_down,  // Descend
             sprint,
+            walk,
         };
 
         InputActionMapper();

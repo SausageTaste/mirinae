@@ -94,8 +94,7 @@ namespace {
             }
 
             const auto sprint = action_map.get_value(ActionType::sprint) > 0.1;
-            const auto walk = action_map.get_value(ActionType::translate_down) >
-                              0.1;
+            const auto walk = action_map.get_value(ActionType::walk) > 0.1;
             auto move_speed = move_speed_;
             if (sprint) {
                 move_speed *= 100;
