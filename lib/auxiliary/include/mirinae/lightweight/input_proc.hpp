@@ -132,12 +132,9 @@ namespace mirinae {
         // Left, up
         glm::dvec2 get_value_mouse_look() const;
 
-        int get_mwheel_zoom() {
-            int zoom = mwheel_up_ - mwheel_down_;
-            mwheel_up_ = 0;
-            mwheel_down_ = 0;
-            return zoom;
-        }
+        int get_mwheel_zoom() const;
+
+        void finish_frame();
 
     private:
         class PointerState {

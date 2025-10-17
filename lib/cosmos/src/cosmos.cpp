@@ -39,7 +39,7 @@ namespace {
         using Tform = mirinae::TransformQuat<double>;
 
         void pre_sync(
-            mirinae::Scene& scene, mirinae::InputActionMapper& action_map
+            mirinae::Scene& scene, const mirinae::InputActionMapper& action_map
         ) {
             namespace cpnt = mirinae::cpnt;
             using Angle = mirinae::cpnt::Transform::Angle;
@@ -316,6 +316,7 @@ namespace {
 
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
             ctrl_->post_sync(cosmos_.scene(), action_map_);
+            action_map_.finish_frame();
         }
 
         enki::ITaskSet* get_fence() override { return &fence_; }

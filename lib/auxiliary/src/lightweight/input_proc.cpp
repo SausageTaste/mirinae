@@ -168,4 +168,13 @@ namespace mirinae {
         return out;
     }
 
+    int InputActionMapper::get_mwheel_zoom() const {
+        return mwheel_up_ - mwheel_down_;
+    }
+
+    void InputActionMapper::finish_frame() {
+        mwheel_up_ = 0;
+        mwheel_down_ = 0;
+    }
+
 }  // namespace mirinae
