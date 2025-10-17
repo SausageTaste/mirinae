@@ -53,7 +53,6 @@ namespace {
                 camera_ = entt::null;
                 return;
             }
-            auto& anim_state = modl->anim_state_;
 
             auto cam_tform = reg.try_get<cpnt::Transform>(camera_);
             if (!cam_tform) {
@@ -141,24 +140,22 @@ namespace {
                     );
 
                     if (sprint) {
-                        if (anim_state.get_cur_anim_name() != anim_sprint_)
-                            anim_state.select_anim_name(
-                                anim_sprint_, scene.clock()
-                            );
+                        this->try_update_anim(
+                            modl->anim_state_, anim_sprint_, scene.clock()
+                        );
                     } else if (walk) {
-                        if (anim_state.get_cur_anim_name() != anim_walk_)
-                            anim_state.select_anim_name(
-                                anim_walk_, scene.clock()
-                            );
+                        this->try_update_anim(
+                            modl->anim_state_, anim_walk_, scene.clock()
+                        );
                     } else {
-                        if (anim_state.get_cur_anim_name() != anim_run_)
-                            anim_state.select_anim_name(
-                                anim_run_, scene.clock()
-                            );
+                        this->try_update_anim(
+                            modl->anim_state_, anim_run_, scene.clock()
+                        );
                     }
                 } else {
-                    if (anim_state.get_cur_anim_name() != anim_idle_)
-                        anim_state.select_anim_name(anim_idle_, scene.clock());
+                    this->try_update_anim(
+                        modl->anim_state_, anim_idle_, scene.clock()
+                    );
                 }
             }
 
@@ -217,9 +214,22 @@ namespace {
         }
 
     private:
+        void try_update_anim(
+            mirinae::SkinAnimState& anim_state,
+            const std::string& anim_name,
+            const sung::SimClock& clock
+        ) {
+            if (last_anim_ == anim_name)
+                return;
+
+            last_anim_ = anim_name;
+            anim_state.select_anim_name(anim_name, clock);
+        }
+
         entt::entity target_ = entt::null;
         entt::entity camera_ = entt::null;
         ::ValueInterpolator tgt_heading_;
+        std::string last_anim_;
 
     public:
         double move_speed_ = 10;       // World space
