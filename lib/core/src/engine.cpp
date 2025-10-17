@@ -1069,7 +1069,7 @@ namespace {
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
                 tform.pos_ = { 438, 1875, -66 };
 
-#if true
+#if false
                 cosmos_->cam_ctrl().anim_idle_ = "idle_normal_1";
                 cosmos_->cam_ctrl().anim_walk_ = "evt1_walk_normal_1";
                 cosmos_->cam_ctrl().anim_run_ = "run_normal_1";
@@ -1085,9 +1085,10 @@ namespace {
                 cosmos_->cam_ctrl().anim_run_ = "run";
                 cosmos_->cam_ctrl().anim_sprint_ = "run";
                 cosmos_->cam_ctrl().player_model_heading_.set_deg(90);
-                mdl.model_path_ = "Sung/adobe_bald_guy.dun/adobe_bald_guy.dmd";
+                mdl.model_path_ =
+                    "Sung/Character Running.dun/Character Running.dmd";
                 mdl.anim_state_.select_anim_index(0, cosmos_->scene().clock());
-                tform.set_scale(0.007);
+                tform.set_scale(0.12);
 #endif
 
                 auto& phys = reg.emplace<mirinae::cpnt::CharacterPhys>(entt);
