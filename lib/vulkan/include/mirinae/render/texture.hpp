@@ -54,15 +54,6 @@ namespace mirinae {
         uint32_t width, uint32_t height, VulkanDevice& device
     );
 
-    std::unique_ptr<ITexture> create_tex_attach(
-        uint32_t width,
-        uint32_t height,
-        VkFormat,
-        FbufUsage,
-        const char* name,
-        VulkanDevice& device
-    );
-
 
     struct ITextureManager {
         virtual ~ITextureManager() = default;

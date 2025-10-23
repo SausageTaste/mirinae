@@ -829,19 +829,6 @@ namespace mirinae {
         return output;
     }
 
-    std::unique_ptr<ITexture> create_tex_attach(
-        uint32_t width,
-        uint32_t height,
-        VkFormat format,
-        FbufUsage usage,
-        const char* name,
-        VulkanDevice& device
-    ) {
-        auto output = std::make_unique<TextureData>(device);
-        output->init_attachment(width, height, format, usage, name);
-        return output;
-    }
-
 
     std::shared_ptr<ITextureManager> create_tex_mgr(
         sung::HTaskSche task_sche, VulkanDevice& device
