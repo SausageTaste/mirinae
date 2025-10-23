@@ -115,12 +115,11 @@ namespace {
         }
 
     private:
-        std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT>
-            img_available_semaphores_;
-        std::array<mirinae::Semaphore, mirinae::MAX_FRAMES_IN_FLIGHT>
-            render_finished_semaphores_;
-        std::array<mirinae::Fence, mirinae::MAX_FRAMES_IN_FLIGHT>
-            in_flight_fences_;
+        constexpr static size_t S = mirinae::MAX_FRAMES_IN_FLIGHT;
+
+        std::array<mirinae::Semaphore, S> img_available_semaphores_;
+        std::array<mirinae::Semaphore, S> render_finished_semaphores_;
+        std::array<mirinae::Fence, S> in_flight_fences_;
         mirinae::FrameIndex cur_frame_{ 0 };
     };
 
