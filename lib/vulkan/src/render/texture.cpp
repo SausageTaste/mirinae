@@ -13,8 +13,41 @@
 #include "mirinae/render/mem_cinfo.hpp"
 #include "mirinae/render/vkmajorplayers.hpp"
 
+#define SWITCH_STR(x) \
+    case x:           \
+        return #x;
+
 
 namespace {
+
+    const char* to_str(ktx_error_code_e code) {
+        switch (code) {
+            SWITCH_STR(KTX_SUCCESS)
+            SWITCH_STR(KTX_FILE_DATA_ERROR)
+            SWITCH_STR(KTX_FILE_ISPIPE)
+            SWITCH_STR(KTX_FILE_OPEN_FAILED)
+            SWITCH_STR(KTX_FILE_OVERFLOW)
+            SWITCH_STR(KTX_FILE_READ_ERROR)
+            SWITCH_STR(KTX_FILE_SEEK_ERROR)
+            SWITCH_STR(KTX_FILE_UNEXPECTED_EOF)
+            SWITCH_STR(KTX_FILE_WRITE_ERROR)
+            SWITCH_STR(KTX_GL_ERROR)
+            SWITCH_STR(KTX_INVALID_OPERATION)
+            SWITCH_STR(KTX_INVALID_VALUE)
+            SWITCH_STR(KTX_NOT_FOUND)
+            SWITCH_STR(KTX_OUT_OF_MEMORY)
+            SWITCH_STR(KTX_TRANSCODE_FAILED)
+            SWITCH_STR(KTX_UNKNOWN_FILE_FORMAT)
+            SWITCH_STR(KTX_UNSUPPORTED_TEXTURE_TYPE)
+            SWITCH_STR(KTX_UNSUPPORTED_FEATURE)
+            SWITCH_STR(KTX_LIBRARY_NOT_LINKED)
+            SWITCH_STR(KTX_DECOMPRESS_LENGTH_ERROR)
+            SWITCH_STR(KTX_DECOMPRESS_CHECKSUM_ERROR)
+            default:
+                return "unknown";
+        }
+    }
+
 
     auto interpret_fbuf_usage(const mirinae::FbufUsage usage) {
         VkImageAspectFlags aspect_mask = 0;
@@ -174,6 +207,59 @@ namespace {
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
         );
     }
+
+
+    class KtxDeviceInfo {
+
+    public:
+        KtxDeviceInfo() = default;
+        ~KtxDeviceInfo() { this->destroy(); }
+
+        bool init(VkCommandPool cmd_pool, mirinae::VulkanDevice& device) {
+            const auto res = ktxVulkanDeviceInfo_Construct(
+                &ktx_device_,
+                device.phys_device(),
+                device.logi_device(),
+                device.graphics_queue(),
+                cmd_pool,
+                nullptr
+            );
+            if (res == KTX_SUCCESS) {
+                initialized_ = true;
+                return true;
+            }
+            return false;
+        }
+
+        void destroy() {
+            if (initialized_) {
+                ktxVulkanDeviceInfo_Destruct(&ktx_device_);
+                initialized_ = false;
+            }
+        }
+
+        std::optional<ktx_error_code_e> upload_tex(
+            ktxTexture& This,
+            ktxVulkanTexture& vkTexture,
+            VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
+            VkImageUsageFlags usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
+            VkImageLayout finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        ) {
+            const auto result = ktxTexture_VkUploadEx(
+                &This, &ktx_device_, &vkTexture, tiling, usageFlags, finalLayout
+            );
+
+            if (KTX_SUCCESS == result) {
+                return std::nullopt;
+            } else {
+                return result;
+            }
+        }
+
+    private:
+        ktxVulkanDeviceInfo ktx_device_;
+        bool initialized_ = false;
+    };
 
 }  // namespace
 
@@ -388,7 +474,7 @@ namespace {
         KtxTextureData(mirinae::VulkanDevice& device) : device_(device) {}
 
         bool init(
-            const std::string& id, dal::KtxImage& src, ktxVulkanDeviceInfo& vdi
+            const std::string& id, dal::KtxImage& src, KtxDeviceInfo& vdi
         ) {
             this->destroy();
 
@@ -400,18 +486,8 @@ namespace {
             }
 
             data_ = ktxVulkanTexture{};
-            const auto res = ktxTexture_VkUploadEx(
-                &src.ktx(),
-                &vdi,
-                &data_.value(),
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-            );
-            if (KTX_SUCCESS != res) {
-                SPDLOG_CRITICAL(
-                    "Failed to upload KTX ({}): {}", static_cast<int>(res), id
-                );
+            if (const auto res = vdi.upload_tex(src.ktx(), data_.value())) {
+                SPDLOG_ERROR("Failed to upload KTX ({}): {}", to_str(*res), id);
                 return false;
             }
 
@@ -634,16 +710,7 @@ namespace {
                 device_.logi_device()
             );
 
-            const auto res = ktxVulkanDeviceInfo_Construct(
-                &ktx_device_,
-                device.phys_device(),
-                device.logi_device(),
-                device.graphics_queue(),
-                cmd_pool_.get(),
-                nullptr
-            );
-            if (KTX_SUCCESS != res) {
-                SPDLOG_CRITICAL("Failed to construct KTX device info");
+            if (!ktx_device_.init(cmd_pool_.get(), device)) {
                 MIRINAE_ABORT("Failed to construct KTX device info");
             }
 
@@ -676,7 +743,7 @@ namespace {
 
         ~TextureManager() {
             this->destroy_all();
-            ktxVulkanDeviceInfo_Destruct(&ktx_device_);
+            ktx_device_.destroy();
             cmd_pool_.destroy(device_.logi_device());
         }
 
@@ -778,9 +845,9 @@ namespace {
 
         // std::shared_ptr<dal::IResourceManager> res_mgr_;
         mirinae::VulkanDevice& device_;
-        LoadTaskManager loader_mgr_;
         mirinae::CommandPool cmd_pool_;
-        ktxVulkanDeviceInfo ktx_device_;
+        LoadTaskManager loader_mgr_;
+        KtxDeviceInfo ktx_device_;
         std::vector<std::shared_ptr<ITextureData>> textures_;
         std::shared_ptr<mirinae::ITexture> missing_tex_;
     };
