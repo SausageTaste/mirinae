@@ -2,14 +2,22 @@
 
 #include "mirinae/render/mem_alloc.hpp"
 
+#include <array>
 #include <cmath>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
+
+#define VMA_LEAK_LOG_FORMAT(format, ...)             \
+    do {                                             \
+        std::array<char, 512> buffer{};              \
+        sprintf(buffer.data(), format, __VA_ARGS__); \
+        SPDLOG_WARN("{}", buffer.data());            \
+    } while (0)
 
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include <vk_mem_alloc.h>
-
-#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 // VulkanMemoryAllocator_T
