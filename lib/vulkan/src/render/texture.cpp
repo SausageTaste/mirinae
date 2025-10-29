@@ -748,6 +748,9 @@ namespace {
         }
 
         dal::ReqResult request(const dal::path& res_id, bool srgb) override {
+            if (res_id.empty())
+                return dal::ReqResult::cannot_read_file;
+
             if (auto index = this->find_index(res_id))
                 return dal::ReqResult::ready;
 

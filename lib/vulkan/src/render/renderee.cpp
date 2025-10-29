@@ -68,51 +68,41 @@ namespace {
     class MaterialResources {
 
     public:
-        static void forward_request(
+        bool fetch(
             const dal::path& res_id,
-            const dal::Material& src_material,
+            const dal::Material& src_mat,
             mirinae::ITextureManager& tex_man
         ) {
-            request_texture(res_id, src_material.albedo_map_, true, tex_man);
-
-            request_texture(res_id, src_material.normal_map_, false, tex_man);
-
-            request_texture(
-                res_id, src_material.roughness_map_, false, tex_man
-            );
-        }
-
-        void fetch(
-            const dal::path& res_id,
-            const dal::Material& src_material,
-            mirinae::ITextureManager& tex_man
-        ) {
-            albedo_map_ = this->block_for_tex(
-                res_id,
-                src_material.albedo_map_,
+            albedo_map_ = this->request_tex(
+                replace_filename(res_id, src_mat.albedo_map_).value_or(""),
                 ":asset/textures/missing_texture.ktx",
                 true,
                 tex_man
             );
+            if (!albedo_map_)
+                return false;
 
-            normal_map_ = this->block_for_tex(
-                res_id,
-                src_material.normal_map_,
+            normal_map_ = this->request_tex(
+                replace_filename(res_id, src_mat.normal_map_).value_or(""),
                 ":asset/textures/null_normal_map.ktx",
                 false,
                 tex_man
             );
+            if (!normal_map_)
+                return false;
 
-            orm_map_ = this->block_for_tex(
-                res_id,
-                src_material.roughness_map_,
+            orm_map_ = this->request_tex(
+                replace_filename(res_id, src_mat.roughness_map_).value_or(""),
                 ":asset/textures/white.ktx",
                 false,
                 tex_man
             );
+            if (!orm_map_)
+                return false;
 
-            model_ubuf_.roughness = src_material.roughness_;
-            model_ubuf_.metallic = src_material.metallic_;
+            model_ubuf_.roughness = src_mat.roughness_;
+            model_ubuf_.metallic = src_mat.metallic_;
+            return true;
         }
 
         mirinae::U_GbufModel model_ubuf_;
@@ -121,38 +111,47 @@ namespace {
         std::shared_ptr<mirinae::ITexture> orm_map_;
 
     private:
-        static void request_texture(
-            dal::path res_id,
-            const std::string& file_name,
+        static std::shared_ptr<mirinae::ITexture> request_tex(
+            const dal::path& tex_path,
+            const dal::path& fallback_path,
             const bool srgb,
             mirinae::ITextureManager& tex_man
         ) {
-            if (file_name.empty())
-                return;
+            if (!tex_path.empty()) {
+                const auto res = tex_man.request(tex_path, srgb);
+                if (res == dal::ReqResult::ready) {
+                    return tex_man.get(tex_path);
+                } else if (res == dal::ReqResult::loading) {
+                    return nullptr;
+                }
+            }
 
-            res_id.replace_filename(file_name);
-            tex_man.request(res_id, srgb);
+            if (!fallback_path.empty()) {
+                const auto res = tex_man.request(fallback_path, srgb);
+                if (res == dal::ReqResult::ready) {
+                    return tex_man.get(fallback_path);
+                } else if (res == dal::ReqResult::loading) {
+                    return nullptr;
+                }
+            }
+
+            MIRINAE_ABORT(
+                "Failed to load both texture and fallback: {} , {}",
+                tex_path.u8string(),
+                fallback_path.u8string()
+            );
         }
 
-        static std::shared_ptr<mirinae::ITexture> block_for_tex(
-            dal::path res_id,
-            const std::string& file_name,
-            const std::string& fallback_path,
-            const bool srgb,
-            mirinae::ITextureManager& tex_man
+        static std::optional<dal::path> replace_filename(
+            dal::path base, const std::string& new_filename
         ) {
-            if (file_name.empty())
-                return tex_man.block_for_tex(fallback_path, srgb);
+            if (new_filename.empty())
+                return std::nullopt;
 
-            res_id.replace_filename(file_name);
-            auto output = tex_man.block_for_tex(res_id, srgb);
-            if (!output)
-                return tex_man.block_for_tex(fallback_path, srgb);
-
-            return output;
+            base.replace_filename(new_filename);
+            return base;
         }
     };
-
 
 }  // namespace
 
@@ -691,6 +690,15 @@ namespace {
     };
 
 
+    struct StaticModelBuilder {
+        std::shared_ptr<mirinae::RenderModel> ren_model_;
+        std::shared_ptr<::ModelLoadTask> load_task_;
+        const dal::Model* dmd_ = nullptr;
+        size_t unit_idx_ = 0;
+        bool done_ = false;
+    };
+
+
     class ModelManager : public mirinae::IModelManager {
 
     public:
@@ -717,16 +725,24 @@ namespace {
         ~ModelManager() override { cmd_pool_.destroy(device_.logi_device()); }
 
         dal::ReqResult request_static(const dal::path& res_id) override {
-            auto found = models_.find(res_id);
-            if (models_.end() != found)
-                return dal::ReqResult::ready;
-
-            auto task = load_tasks_.try_get_task(res_id);
-            if (!task) {
-                if (!load_tasks_.add_task(res_id))
-                    return dal::ReqResult::unknown_error;
+            auto found = static_.find(res_id);
+            if (static_.end() == found) {
+                static_[res_id] = StaticModelBuilder{};
                 return dal::ReqResult::loading;
             }
+
+            auto& entry = found->second;
+            if (entry.done_)
+                return dal::ReqResult::ready;
+
+            if (!entry.load_task_) {
+                if (!load_tasks_.add_task(res_id))
+                    return dal::ReqResult::unknown_error;
+                entry.load_task_ = load_tasks_.try_get_task(res_id);
+                return dal::ReqResult::loading;
+            }
+
+            auto& task = entry.load_task_;
             if (!task->is_done())
                 return dal::ReqResult::loading;
             if (task->has_failed()) {
@@ -738,33 +754,32 @@ namespace {
                 return dal::ReqResult::cannot_read_file;
             }
 
-            const auto dmd = task->try_get_dmd();
-            if (!dmd)
-                return dal::ReqResult::cannot_read_file;
-
-            bool loading = false;
-            for (const auto& tex_id : task->get_tex_ids()) {
-                const auto tex_path = res_id.parent_path() / tex_id;
-                const auto res_result = tex_man_->request(tex_path, false);
-                loading |= (dal::ReqResult::loading == res_result);
+            if (!entry.dmd_) {
+                entry.dmd_ = task->try_get_dmd();
+                if (!entry.dmd_)
+                    return dal::ReqResult::cannot_read_file;
             }
-            for (const auto& tex_id : task->get_tex_ids_srgb()) {
-                const auto tex_path = res_id.parent_path() / tex_id;
-                const auto res_result = tex_man_->request(tex_path, true);
-                loading |= (dal::ReqResult::loading == res_result);
+
+            if (!entry.ren_model_) {
+                entry.ren_model_ = std::make_shared<mirinae::RenderModel>(
+                    device_
+                );
+                entry.unit_idx_ = 0;
             }
-            if (loading)
-                return dal::ReqResult::loading;
 
-            auto output = std::make_shared<mirinae::RenderModel>(device_);
+            auto& output = entry.ren_model_;
+            auto dmd = entry.dmd_;
 
-            for (size_t i = 0; i < dmd->units_indexed_.size(); ++i) {
-                const auto& src_unit = dmd->units_indexed_.at(i);
-                const auto& dst_vertices = task->units_indexed().at(i);
+            for (; entry.unit_idx_ < dmd->units_indexed_.size();) {
+                const auto& src_unit = dmd->units_indexed_.at(entry.unit_idx_);
 
                 ::MaterialResources mat_res;
-                mat_res.fetch(res_id, src_unit.material_, *tex_man_);
+                if (!mat_res.fetch(res_id, src_unit.material_, *tex_man_))
+                    return dal::ReqResult::loading;
 
+                const auto& src_vertices = task->units_indexed().at(
+                    entry.unit_idx_
+                );
                 auto& dst_unit =
                     ((src_unit.material_.transparency_)
                          ? output->render_units_alpha_.emplace_back()
@@ -772,7 +787,7 @@ namespace {
                 dst_unit.init(
                     src_unit.name_,
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    dst_vertices,
+                    src_vertices,
                     mat_res.model_ubuf_,
                     mat_res.albedo_map_->image_view(),
                     mat_res.normal_map_->image_view(),
@@ -781,9 +796,11 @@ namespace {
                     desclayouts_,
                     device_
                 );
+
+                ++entry.unit_idx_;
+                return dal::ReqResult::loading;
             }
 
-            models_[res_id] = output;
             return dal::ReqResult::ready;
         }
 
@@ -828,7 +845,10 @@ namespace {
                 const auto& dst_vertices = task->units_indexed_joint().at(i);
 
                 ::MaterialResources mat_res;
-                mat_res.fetch(res_id, src_unit.material_, *tex_man_);
+                while (true) {
+                    if (mat_res.fetch(res_id, src_unit.material_, *tex_man_))
+                        break;
+                }
 
                 auto& dst_unit = src_unit.material_.transparency_
                                      ? output->runits_alpha_.emplace_back()
@@ -855,9 +875,9 @@ namespace {
         }
 
         HRenMdlStatic get_static(const dal::path& res_id) override {
-            auto found = models_.find(res_id);
-            if (models_.end() != found)
-                return found->second;
+            auto found = static_.find(res_id);
+            if (static_.end() != found)
+                return found->second.ren_model_;
 
             return nullptr;
         }
@@ -878,7 +898,7 @@ namespace {
         mirinae::HTexMgr tex_man_;
         mirinae::CommandPool cmd_pool_;
 
-        std::map<dal::path, mirinae::HRenMdlStatic> models_;
+        std::map<dal::path, StaticModelBuilder> static_;
         std::map<dal::path, mirinae::HRenMdlSkinned> skin_models_;
     };
 
