@@ -3,7 +3,6 @@
 #include "mirinae/render/texture.hpp"
 
 #include <ktxvulkan.h>
-#include <daltools/common/task_sys.hpp>
 #include <daltools/img/backend/ktx.hpp>
 #include <daltools/img/backend/stb.hpp>
 #include <sung/basic/stringtool.hpp>
@@ -698,208 +697,6 @@ namespace {
 }  // namespace
 
 
-namespace {
-
-    class FinishResultMut {
-
-    public:
-        FinishResultMut() = default;
-
-        FinishResultMut(const FinishResultMut&) = delete;
-        FinishResultMut& operator=(const FinishResultMut&) = delete;
-
-        FinishResultMut(FinishResultMut&& rhs) {
-            std::lock_guard lock(rhs.mut_);
-            done_ = rhs.done_;
-            err_msg_ = std::move(rhs.err_msg_);
-        }
-
-        FinishResultMut& operator=(FinishResultMut&& rhs) {
-            if (this != &rhs) {
-                std::lock_guard lock1(mut_, std::adopt_lock);
-                std::lock_guard lock2(rhs.mut_, std::adopt_lock);
-                done_ = rhs.done_;
-                err_msg_ = std::move(rhs.err_msg_);
-            }
-            return *this;
-        }
-
-        bool is_done() {
-            std::lock_guard lock(mut_);
-            return done_;
-        }
-
-        bool has_succeeded() {
-            std::lock_guard lock(mut_);
-            return done_ && err_msg_.empty();
-        }
-
-        bool has_failed() {
-            std::lock_guard lock(mut_);
-            return done_ && !err_msg_.empty();
-        }
-
-        std::string get_err_msg() {
-            std::lock_guard lock(mut_);
-            return err_msg_;
-        }
-
-        void succeed() {
-            std::lock_guard lock(mut_);
-            done_ = true;
-            err_msg_.clear();
-        }
-
-        void fail(const std::string& err_msg) {
-            std::lock_guard lock(mut_);
-            done_ = true;
-            err_msg_ = err_msg;
-        }
-
-        void reset() {
-            std::lock_guard lock(mut_);
-            done_ = false;
-            err_msg_.clear();
-        }
-
-    private:
-        std::mutex mut_;
-        std::string err_msg_;
-        bool done_ = false;
-    };
-
-
-    class ImageFactory {
-
-    public:
-        ImageFactory(
-            const VkPhysicalDeviceFeatures& df, dal::Filesystem& filesys
-        )
-            : device_features_(df), filesys_(filesys) {}
-
-        ImageFactory(const ImageFactory&) = delete;
-        ImageFactory(ImageFactory&&) = delete;
-        ImageFactory& operator=(const ImageFactory&) = delete;
-        ImageFactory& operator=(ImageFactory&&) = delete;
-
-        void tick() {
-            for (auto& item : items_) {
-                item.update();
-            }
-        }
-
-        void request_loading(const fs::path& path) {
-            auto& item = items_.emplace_back();
-            item.init(path, device_features_, filesys_);
-        }
-
-    private:
-        class LoadTask
-            : public enki::ITaskSet
-            , public FinishResultMut {
-
-        public:
-            void init(
-                const fs::path& path,
-                const VkPhysicalDeviceFeatures& df,
-                dal::Filesystem& filesys
-            ) {
-                image_path_ = path;
-                df_ = &df;
-                filesys_ = &filesys;
-            }
-
-            void start() {
-                if (image_path_.empty())
-                    return this->fail("Path is empty");
-                if (!filesys_)
-                    return this->fail("Filesystem is not set");
-
-                filesys_->read_file(image_path_, raw_data_);
-                if (raw_data_.empty())
-                    return this->fail("Failed to read file");
-
-                dal::ImageParseInfo pinfo;
-                pinfo.file_path_ = image_path_.u8string();
-                pinfo.data_ = reinterpret_cast<uint8_t*>(raw_data_.data());
-                pinfo.size_ = raw_data_.size();
-                pinfo.force_rgba_ = true;
-
-                img_ = dal::parse_img(pinfo);
-                if (!img_)
-                    return this->fail("Failed to parse image");
-
-                if (auto ktx = img_->as<dal::KtxImage>()) {
-                    if (ktx->need_transcoding()) {
-                        auto tf = ::determine_transcode_format(*ktx, *df_);
-                        if (!tf)
-                            return this->fail("Failed to find transcode");
-                        if (!ktx->transcode(tf.value()))
-                            return this->fail("Failed to transcode KTX");
-                    }
-                }
-
-                return this->succeed();
-            }
-
-            const fs::path& img_path() const { return image_path_; }
-
-        private:
-            void ExecuteRange(enki::TaskSetPartition, uint32_t) override {
-                this->start();
-            }
-
-            // Input
-            fs::path image_path_;
-            const VkPhysicalDeviceFeatures* df_ = nullptr;
-            dal::Filesystem* filesys_ = nullptr;
-            // Output
-            std::vector<std::byte> raw_data_;
-            std::shared_ptr<dal::IImage> img_;
-        };
-
-        class Item : public FinishResultMut {
-
-        public:
-            Item() = default;
-            Item(const Item&) = delete;
-            Item& operator=(const Item&) = delete;
-
-            void init(
-                const fs::path& path,
-                const VkPhysicalDeviceFeatures& df,
-                dal::Filesystem& filesys
-            ) {
-                load_task_.init(path, df, filesys);
-
-                dal::tasker().AddTaskSetToPipe(&load_task_);
-            }
-
-            void update() {
-                if (!load_task_.is_done()) {
-                    return;
-                }
-                if (load_task_.has_failed()) {
-                    return this->fail(load_task_.get_err_msg());
-                }
-
-                SPDLOG_INFO(
-                    "Image loaded: {}", load_task_.img_path().u8string()
-                );
-            }
-
-        private:
-            LoadTask load_task_;
-        };
-
-        dal::Filesystem& filesys_;
-        std::list<Item> items_;
-        VkPhysicalDeviceFeatures device_features_;
-    };
-
-}  // namespace
-
-
 // TextureManager
 namespace {
 
@@ -907,9 +704,7 @@ namespace {
 
     public:
         TextureManager(sung::HTaskSche task_sche, mirinae::VulkanDevice& device)
-            : device_(device)
-            , img_factory_(device.features(), device.filesys())
-            , loader_mgr_(task_sche, device) {
+            : device_(device), loader_mgr_(task_sche, device) {
             cmd_pool_.init(
                 device_.graphics_queue_family_index().value(),
                 device_.logi_device()
@@ -953,14 +748,11 @@ namespace {
         }
 
         dal::ReqResult request(const dal::path& res_id, bool srgb) override {
-            img_factory_.tick();
-
             if (auto index = this->find_index(res_id))
                 return dal::ReqResult::ready;
 
             auto task = loader_mgr_.try_get_task(res_id);
             if (!task) {
-                img_factory_.request_loading(res_id);
                 loader_mgr_.add_task(res_id);
                 return dal::ReqResult::loading;
             }
@@ -1054,7 +846,6 @@ namespace {
         // std::shared_ptr<dal::IResourceManager> res_mgr_;
         mirinae::VulkanDevice& device_;
         mirinae::CommandPool cmd_pool_;
-        ImageFactory img_factory_;
         LoadTaskManager loader_mgr_;
         KtxDeviceInfo ktx_device_;
         std::vector<std::shared_ptr<ITextureData>> textures_;
