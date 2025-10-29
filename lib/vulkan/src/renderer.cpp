@@ -1263,6 +1263,10 @@ namespace {
                 auto& c = reg.get<mirinae::cpnt::Terrain>(e);
                 c.ren_unit_.reset();
             }
+            for (auto& e : reg.view<mirinae::cpnt::AtmosphereEpic>()) {
+                auto& c = reg.get<mirinae::cpnt::AtmosphereEpic>(e);
+                c.ren_unit_.reset();
+            }
 
             // Destroy swapchain's relatives
             {
