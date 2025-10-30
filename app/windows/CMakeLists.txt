@@ -3,3 +3,6 @@ add_library(mirinapp::windows ALIAS mirinapp_windows)
 target_include_directories(mirinapp_windows PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(mirinapp_windows sungtools::sungtools_basic)
 target_link_libraries(mirinapp_windows dbghelp.lib)
+set_target_properties(mirinapp_windows PROPERTIES
+    FOLDER "mirinae/app"
+)

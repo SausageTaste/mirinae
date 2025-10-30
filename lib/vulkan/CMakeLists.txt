@@ -1,72 +1,78 @@
-add_library(mirinae_vulkan STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/context/camera.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/iwidget.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/overlay.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/text.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/cmdbuf.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/draw_set.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/enum_str.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/mem_alloc.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/mem_cinfo.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/meshdata.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/render_graph.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderee.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/renderpass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/texture.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/uniform.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkcomposition.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkdebug.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkdevice.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/render/vkmajorplayers.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/atmos.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/ren_actor_skinned.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderee/terrain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/cam_volumes.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/common.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/multi_scat_cs.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/sky_view_lut.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/atmos/trans_lut.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/bloom/blend.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/bloom/downsample.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/bloom/upsample.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/builder.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/common.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/atmos_surface.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/dlight.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/envmap.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/sky_atmos.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/sky.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/slight.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/compo/vplight.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/cubemap.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/diffuse.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/envmap.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/mip_chain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_base.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_brdf_lut.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_diffuse.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_sky.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/rp_specular.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/sky_atmos.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/envmap/specular.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/gbuf.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/static.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/gbuf/terrain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/misc/debug.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/misc/skin_anim.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/common.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/h0.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/hkt.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/ift.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/post_ift.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/ocean/render_tess.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/bundles.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/static_trs.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/static.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/shadow/terrain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderpass/transp/static.cpp
+set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+set(src_files
+    ${src_dir}/context/camera.cpp
+    ${src_dir}/overlay/iwidget.cpp
+    ${src_dir}/overlay/overlay.cpp
+    ${src_dir}/overlay/text.cpp
+    ${src_dir}/render/cmdbuf.cpp
+    ${src_dir}/render/draw_set.cpp
+    ${src_dir}/render/enum_str.cpp
+    ${src_dir}/render/mem_alloc.cpp
+    ${src_dir}/render/mem_cinfo.cpp
+    ${src_dir}/render/meshdata.cpp
+    ${src_dir}/render/render_graph.cpp
+    ${src_dir}/render/renderee.cpp
+    ${src_dir}/render/renderpass.cpp
+    ${src_dir}/render/texture.cpp
+    ${src_dir}/render/uniform.cpp
+    ${src_dir}/render/vkcomposition.cpp
+    ${src_dir}/render/vkdebug.cpp
+    ${src_dir}/render/vkdevice.cpp
+    ${src_dir}/render/vkmajorplayers.cpp
+    ${src_dir}/renderee/atmos.cpp
+    ${src_dir}/renderee/ren_actor_skinned.cpp
+    ${src_dir}/renderee/terrain.cpp
+    ${src_dir}/renderer.cpp
+    ${src_dir}/renderpass/atmos/cam_volumes.cpp
+    ${src_dir}/renderpass/atmos/common.cpp
+    ${src_dir}/renderpass/atmos/multi_scat_cs.cpp
+    ${src_dir}/renderpass/atmos/sky_view_lut.cpp
+    ${src_dir}/renderpass/atmos/trans_lut.cpp
+    ${src_dir}/renderpass/bloom/blend.cpp
+    ${src_dir}/renderpass/bloom/downsample.cpp
+    ${src_dir}/renderpass/bloom/upsample.cpp
+    ${src_dir}/renderpass/builder.cpp
+    ${src_dir}/renderpass/common.cpp
+    ${src_dir}/renderpass/compo/atmos_surface.cpp
+    ${src_dir}/renderpass/compo/dlight.cpp
+    ${src_dir}/renderpass/compo/envmap.cpp
+    ${src_dir}/renderpass/compo/sky_atmos.cpp
+    ${src_dir}/renderpass/compo/sky.cpp
+    ${src_dir}/renderpass/compo/slight.cpp
+    ${src_dir}/renderpass/compo/vplight.cpp
+    ${src_dir}/renderpass/envmap/cubemap.cpp
+    ${src_dir}/renderpass/envmap/diffuse.cpp
+    ${src_dir}/renderpass/envmap/envmap.cpp
+    ${src_dir}/renderpass/envmap/mip_chain.cpp
+    ${src_dir}/renderpass/envmap/rp_base.cpp
+    ${src_dir}/renderpass/envmap/rp_brdf_lut.cpp
+    ${src_dir}/renderpass/envmap/rp_diffuse.cpp
+    ${src_dir}/renderpass/envmap/rp_sky.cpp
+    ${src_dir}/renderpass/envmap/rp_specular.cpp
+    ${src_dir}/renderpass/envmap/sky_atmos.cpp
+    ${src_dir}/renderpass/envmap/specular.cpp
+    ${src_dir}/renderpass/gbuf/gbuf.cpp
+    ${src_dir}/renderpass/gbuf/static.cpp
+    ${src_dir}/renderpass/gbuf/terrain.cpp
+    ${src_dir}/renderpass/misc/debug.cpp
+    ${src_dir}/renderpass/misc/skin_anim.cpp
+    ${src_dir}/renderpass/ocean/common.cpp
+    ${src_dir}/renderpass/ocean/h0.cpp
+    ${src_dir}/renderpass/ocean/hkt.cpp
+    ${src_dir}/renderpass/ocean/ift.cpp
+    ${src_dir}/renderpass/ocean/post_ift.cpp
+    ${src_dir}/renderpass/ocean/render_tess.cpp
+    ${src_dir}/renderpass/shadow/bundles.cpp
+    ${src_dir}/renderpass/shadow/static_trs.cpp
+    ${src_dir}/renderpass/shadow/static.cpp
+    ${src_dir}/renderpass/shadow/terrain.cpp
+    ${src_dir}/renderpass/transp/static.cpp
 )
+
+
+add_library(mirinae_vulkan STATIC ${src_files})
+add_library(mirinae::vulkan ALIAS mirinae_vulkan)
 target_include_directories(mirinae_vulkan PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
@@ -79,7 +85,9 @@ target_link_libraries(mirinae_vulkan PUBLIC
     Vulkan::Vulkan
 )
 target_compile_features(mirinae_vulkan PUBLIC cxx_std_17)
-add_library(mirinae::vulkan ALIAS mirinae_vulkan)
+set_target_properties(mirinae_vulkan PROPERTIES
+    FOLDER "mirinae"
+)
 
 if (WIN32)
     target_compile_definitions(mirinae_vulkan PRIVATE VK_USE_PLATFORM_WIN32_KHR)

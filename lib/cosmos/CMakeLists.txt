@@ -1,18 +1,23 @@
-add_library(mirinae_cosmos STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cosmos.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/atmos.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/camera.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/envmap.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/identifier.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/light.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/ocean.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/ren_model.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/terrain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpnt/transform.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/jolt_job_sys.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/phys_world.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene.cpp
+set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+set(src_files
+    ${src_dir}/cosmos.cpp
+    ${src_dir}/cpnt/atmos.cpp
+    ${src_dir}/cpnt/camera.cpp
+    ${src_dir}/cpnt/envmap.cpp
+    ${src_dir}/cpnt/identifier.cpp
+    ${src_dir}/cpnt/light.cpp
+    ${src_dir}/cpnt/ocean.cpp
+    ${src_dir}/cpnt/ren_model.cpp
+    ${src_dir}/cpnt/terrain.cpp
+    ${src_dir}/cpnt/transform.cpp
+    ${src_dir}/scene/jolt_job_sys.cpp
+    ${src_dir}/scene/phys_world.cpp
+    ${src_dir}/scene/scene.cpp
 )
+
+
+add_library(mirinae_cosmos STATIC ${src_files})
 add_library(mirinae::cosmos ALIAS mirinae_cosmos)
 target_include_directories(mirinae_cosmos PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(mirinae_cosmos PUBLIC cxx_std_17)
@@ -22,8 +27,11 @@ target_link_libraries(mirinae_cosmos PUBLIC
     Jolt::Jolt
     mirinae::aux
 )
+set_target_properties(mirinae_cosmos PROPERTIES
+    FOLDER "mirinae"
+)
 
 set_source_files_properties(
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/jolt_job_sys.cpp
+    ${src_dir}/scene/jolt_job_sys.cpp
     PROPERTIES COMPILE_FLAGS "-fno-rtti"
 )
