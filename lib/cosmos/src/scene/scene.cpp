@@ -412,8 +412,6 @@ namespace { namespace scene {
         const auto enttid = reg.create();
 
         {
-            scene.entt_without_model_.push_back(enttid);
-
             auto& mactor = reg.emplace<cpnt::MdlActorStatic>(enttid);
             mactor.model_path_.assign(model_path);
 
@@ -434,8 +432,6 @@ namespace { namespace scene {
         const auto enttid = reg.create();
 
         {
-            scene.entt_without_model_.push_back(enttid);
-
             auto& mactor = reg.emplace<cpnt::MdlActorSkinned>(enttid);
             mactor.model_path_.assign(model_path);
 

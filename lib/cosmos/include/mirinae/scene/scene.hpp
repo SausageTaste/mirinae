@@ -33,7 +33,6 @@ namespace mirinae {
 
     public:
         std::shared_ptr<entt::registry> reg_;
-        std::vector<entt::entity> entt_without_model_;
         entt::entity main_camera_;
         const uint64_t magic_num_;
 
