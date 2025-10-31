@@ -593,6 +593,12 @@ namespace {
             cvars_.render();
         }
 
+        void toggle_show() {
+            show_ = !show_;
+            if (show_)
+                console_.scroll_to_bottom();
+        }
+
     private:
         class DevConsole {
 
@@ -1199,7 +1205,7 @@ namespace {
                 return true;
             } else if (e.scancode_ == SDL_SCANCODE_GRAVE) {
                 if (e.action_type == mirinae::key::ActionType::up)
-                    imgui_main_->show_ = !imgui_main_->show_;
+                    imgui_main_->toggle_show();
                 return true;
             }
 
