@@ -118,7 +118,8 @@ float4 frag_main(VSOutput input, float4 screen_pos: SV_Position) : SV_Target {
             slice = 0.5;
         }
         const float w = sqrt(slice * AP_SLICE_COUNT_RCP);  // squared distribution
-        const float4 cam_scat_texel = u_cam_scat_vol.SampleLevel(float3(input.texco_, w), 0);
+        const float2 norm_screen_pos = input.pos_.xy / input.pos_.w * 0.5 + 0.5;
+        const float4 cam_scat_texel = u_cam_scat_vol.SampleLevel(float3(norm_screen_pos, w), 0);
         output = weight * cam_scat_texel;
     }
 

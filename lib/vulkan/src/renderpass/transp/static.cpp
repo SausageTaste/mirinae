@@ -561,7 +561,7 @@ namespace {
                     w.add_img_info()
                         .set_img_view(fd.cam_scat_vol_->view_.get())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .set_sampler(device.samplers().get_linear());
+                        .set_sampler(device.samplers().get_cubemap());
                     w.add_sampled_img_write(fd.desc_, 7);
                 }
                 w.apply_all(device.logi_device());
