@@ -766,6 +766,22 @@ namespace {
             }
             cosmos_->phys_world().optimize();
 
+            // Saturn
+            {
+                const auto entt = reg.create();
+
+                auto& id = reg.emplace<mirinae::cpnt::Id>(entt);
+                id.set_name("saturn");
+
+                auto& mdl = reg.emplace<mirinae::cpnt::MdlActorStatic>(entt);
+                mdl.model_path_ = "Sung/saturn.dun/saturn.dmd";
+
+                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
+                tform.pos_ = glm::dvec3{ 0, 100000000, 1000000000 };
+                tform.set_rotation(0.952791, -0.277713, -0.016126, -0.121671);
+                tform.set_scale(70000000);
+            }
+
             // DLight
             {
                 constexpr auto d45 = mirinae::cpnt::Transform::Angle::from_deg(
@@ -861,7 +877,7 @@ namespace {
 
                 auto& cam = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
                 cam.proj_.near_ = 0.1;
-                cam.proj_.far_ = 100000.000;
+                cam.proj_.far_ = 100000000000;
                 cam.exposure_ = 1;
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
