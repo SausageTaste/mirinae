@@ -53,9 +53,18 @@ namespace mirinae::cpnt {
                 "Scale", ImGuiDataType_Double, &scale_[0], 3, SCALE_SPEED
             );
 
+            const double min_scale = 0;
+            const double max_scale = 10000000000;
+
             double scale = (scale_.x + scale_.y + scale_.z) / 3.0;
-            const auto uni_scale_udpate = ImGui::DragScalar(
-                "Uniform scale", ImGuiDataType_Double, &scale, SCALE_SPEED
+            const auto uni_scale_udpate = ImGui::SliderScalar(
+                "Uniform scale",
+                ImGuiDataType_Double,
+                &scale,
+                &min_scale,
+                &max_scale,
+                0,
+                ImGuiSliderFlags_Logarithmic
             );
             if (uni_scale_udpate)
                 scale_ = glm::dvec3(scale);
