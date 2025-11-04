@@ -14,6 +14,21 @@ namespace mirinae {
     class ImageFbufPair {
 
     public:
+        ImageFbufPair() = default;
+
+        ImageFbufPair(ImageFbufPair&& rhs) {
+            std::swap(layers_, rhs.layers_);
+            std::swap(img_, rhs.img_);
+            std::swap(view_, rhs.view_);
+        }
+
+        ImageFbufPair& operator=(ImageFbufPair&& rhs) {
+            std::swap(layers_, rhs.layers_);
+            std::swap(img_, rhs.img_);
+            std::swap(view_, rhs.view_);
+            return *this;
+        }
+
         void init_img(uint32_t w, uint32_t h, VulkanDevice& device) {
             this->destroy(device);
 
@@ -95,6 +110,19 @@ namespace mirinae {
 namespace mirinae {
 
     DlightShadowMap::DlightShadowMap() : entt_(entt::null) {}
+
+    DlightShadowMap::~DlightShadowMap() {}
+
+    DlightShadowMap::DlightShadowMap(DlightShadowMap&& rhs) {
+        std::swap(images_, rhs.images_);
+        std::swap(entt_, rhs.entt_);
+    }
+
+    DlightShadowMap& DlightShadowMap::operator=(DlightShadowMap&& rhs) {
+        std::swap(images_, rhs.images_);
+        std::swap(entt_, rhs.entt_);
+        return *this;
+    }
 
     void DlightShadowMap::init_images(
         const uint32_t w,

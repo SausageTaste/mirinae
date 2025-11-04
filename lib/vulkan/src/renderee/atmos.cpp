@@ -189,13 +189,12 @@ namespace mirinae {
         cinfo.preset_ubuf<AtmosphereParameters>().prefer_host();
 
         mirinae::DebugAnnoName anno;
-        const auto anno_fmt = "atmosphere_epic_ubuf_f{}";
 
         for (uint32_t i = 0; i < max_flight_count; ++i) {
             auto& buffer = ubuf_.emplace_back();
             buffer.init(cinfo, device_.mem_alloc());
 
-            const auto name = fmt::format(anno_fmt, i);
+            const auto name = fmt::format("atmosphere_epic_ubuf_f{}", i);
             anno.set_handle(buffer.get())
                 .set_type(VK_OBJECT_TYPE_BUFFER)
                 .set_name(name.c_str())

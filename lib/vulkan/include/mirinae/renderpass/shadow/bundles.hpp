@@ -17,6 +17,10 @@ namespace mirinae {
 
     public:
         DlightShadowMap();
+        ~DlightShadowMap();
+
+        DlightShadowMap(DlightShadowMap&& rhs);
+        DlightShadowMap& operator=(DlightShadowMap&& rhs);
 
         void init_images(
             const uint32_t w,
