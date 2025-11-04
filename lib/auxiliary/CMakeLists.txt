@@ -23,7 +23,6 @@ target_link_libraries(mirinae_aux PUBLIC
     dalbaragi::dalbaragi_parser
     uni-algo::uni-algo
 )
-target_compile_features(mirinae_aux PUBLIC cxx_std_17)
 set_target_properties(mirinae_aux PROPERTIES
     FOLDER "mirinae"
 )

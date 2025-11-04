@@ -1,6 +1,7 @@
 #include "mirinae/cpnt/ren_model.hpp"
 
 #include <imgui.h>
+#include <daltools/filesys/path.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 
@@ -8,7 +9,7 @@
 namespace mirinae::cpnt {
 
     void MdlActorStatic::render_imgui() {
-        ImGui::Text("Model path: %s", model_path_.u8string().c_str());
+        ImGui::Text("Model path: %s", dal::tostr(model_path_).c_str());
 
         if (!model_) {
             ImGui::Text("Model not loaded.");
@@ -41,7 +42,7 @@ namespace mirinae::cpnt {
     }
 
     void MdlActorSkinned::render_imgui(const sung::SimClock& clock) {
-        ImGui::Text("Model path: %s", model_path_.u8string().c_str());
+        ImGui::Text("Model path: %s", dal::tostr(model_path_).c_str());
 
         if (!model_) {
             ImGui::Text("Model not loaded.");

@@ -84,7 +84,6 @@ target_link_libraries(mirinae_vulkan PUBLIC
     mirinae::cosmos
     Vulkan::Vulkan
 )
-target_compile_features(mirinae_vulkan PUBLIC cxx_std_17)
 set_target_properties(mirinae_vulkan PROPERTIES
     FOLDER "mirinae"
 )

@@ -1,5 +1,6 @@
 #include "mirinae/scene/scene.hpp"
 
+#include <daltools/filesys/path.hpp>
 #include <entt/entity/registry.hpp>
 #include <sung/basic/aabb.hpp>
 
@@ -301,10 +302,10 @@ namespace { namespace scene {
             auto& self = check_udata(L, 1);
 
             if (auto c = reg.try_get<cpnt::MdlActorStatic>(self)) {
-                lua_pushstring(L, c->model_path_.u8string().c_str());
+                lua_pushstring(L, dal::tostr(c->model_path_).c_str());
                 return 1;
             } else if (auto c = reg.try_get<cpnt::MdlActorSkinned>(self)) {
-                lua_pushstring(L, c->model_path_.u8string().c_str());
+                lua_pushstring(L, dal::tostr(c->model_path_).c_str());
                 return 1;
             } else {
                 return 0;
@@ -416,7 +417,7 @@ namespace { namespace scene {
             mactor.model_path_.assign(model_path);
 
             auto& id = reg.emplace<cpnt::Id>(enttid);
-            id.set_name(mactor.model_path_.filename().u8string().c_str());
+            id.set_name(dal::tostr(mactor.model_path_.filename()).c_str());
 
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
         }
@@ -436,7 +437,7 @@ namespace { namespace scene {
             mactor.model_path_.assign(model_path);
 
             auto& id = reg.emplace<cpnt::Id>(enttid);
-            id.set_name(mactor.model_path_.filename().u8string().c_str());
+            id.set_name(dal::tostr(mactor.model_path_.filename()).c_str());
 
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
         }

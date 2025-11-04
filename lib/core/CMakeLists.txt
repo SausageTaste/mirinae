@@ -11,7 +11,6 @@ target_include_directories(mirinae_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inclu
 target_link_libraries(mirinae_core PUBLIC
     mirinae::vulkan
 )
-target_compile_features(mirinae_core PUBLIC cxx_std_17)
 set_target_properties(mirinae_core PROPERTIES
     FOLDER "mirinae"
 )

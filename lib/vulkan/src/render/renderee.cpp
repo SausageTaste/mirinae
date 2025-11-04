@@ -137,8 +137,8 @@ namespace {
 
             MIRINAE_ABORT(
                 "Failed to load both texture and fallback: {} , {}",
-                tex_path.u8string(),
-                fallback_path.u8string()
+                dal::tostr(tex_path),
+                dal::tostr(fallback_path)
             );
         }
 
@@ -664,20 +664,20 @@ namespace {
 
             auto task = std::make_shared<ModelLoadTask>(path, *filesys_);
             task_sche_->add_task(task);
-            tasks_.emplace(path.u8string(), task);
+            tasks_.emplace(dal::tostr(path), task);
             return true;
         }
 
         bool has_task(const dal::path& path) {
-            return tasks_.find(path.u8string()) != tasks_.end();
+            return tasks_.find(dal::tostr(path)) != tasks_.end();
         }
 
         void remove_task(const dal::path& path) {
-            tasks_.erase(path.u8string());
+            tasks_.erase(dal::tostr(path));
         }
 
         std::shared_ptr<ModelLoadTask> try_get_task(const dal::path& path) {
-            const auto it = tasks_.find(path.u8string());
+            const auto it = tasks_.find(dal::tostr(path));
             if (it == tasks_.end())
                 return nullptr;
             return it->second;
@@ -748,7 +748,7 @@ namespace {
             if (task->has_failed()) {
                 SPDLOG_ERROR(
                     "Failed to load model '{}': {}",
-                    res_id.u8string(),
+                    dal::tostr(res_id),
                     task->err_msg()
                 );
                 return dal::ReqResult::cannot_read_file;

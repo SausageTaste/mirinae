@@ -173,7 +173,7 @@ namespace mirinae {
         this->add_stage(stage, modules_.back());
 
         mirinae::DebugAnnoName{}
-            .set_name(spv_path.filename().u8string().c_str())
+            .set_name(dal::tostr(spv_path.filename()).c_str())
             .set_type(VK_OBJECT_TYPE_SHADER_MODULE)
             .set_handle(modules_.back())
             .apply(device_.logi_device());
@@ -222,7 +222,7 @@ namespace mirinae {
         const auto spv = device.filesys().read_file(spv_path);
         if (!spv) {
             MIRINAE_ABORT(
-                "Failed to read a shader file: {}", spv_path.u8string()
+                "Failed to read a shader file: {}", dal::tostr(spv_path)
             );
         }
 
@@ -230,7 +230,7 @@ namespace mirinae {
         if (!sha) {
             MIRINAE_ABORT(
                 "Failed to create shader module with given data: {}",
-                spv_path.u8string()
+                dal::tostr(spv_path)
             );
         }
 

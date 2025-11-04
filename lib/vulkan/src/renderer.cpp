@@ -5,6 +5,7 @@
 #include <SDL3/SDL_scancode.h>
 #include <daltools/common/util.h>
 #include <imgui_impl_vulkan.h>
+#include <daltools/filesys/path.hpp>
 #include <entt/entity/registry.hpp>
 #include <sung/basic/time.hpp>
 
@@ -633,11 +634,12 @@ namespace { namespace task {
             std::lock_guard<std::mutex> lock(g_model_mtx);
 
             const auto& mdl_path = mactor.model_path_;
+            const auto path_str = dal::tostr(mdl_path);
+
             const auto res = model_mgr.request_static(mdl_path);
             if (dal::ReqResult::loading == res) {
                 return false;
             } else if (dal::ReqResult::ready != res) {
-                const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
                 mactor.model_path_ =
                     "Sung/missing_static_mdl.dun/missing_static_mdl.dmd";
@@ -646,7 +648,6 @@ namespace { namespace task {
 
             mactor.model_ = model_mgr.get_static(mdl_path);
             if (!mactor.model_) {
-                const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
                 return false;
             }
@@ -766,11 +767,12 @@ namespace { namespace task {
             std::lock_guard<std::mutex> lock(g_model_mtx);
 
             const auto& mdl_path = mactor.model_path_;
+            const auto path_str = dal::tostr(mdl_path);
+
             const auto res = model_mgr.request_skinned(mdl_path);
             if (dal::ReqResult::loading == res) {
                 return nullptr;
             } else if (dal::ReqResult::ready != res) {
-                const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
                 mactor.model_path_ =
                     "Sung/missing_static_mdl.dun/missing_static_mdl.dmd";
@@ -779,7 +781,6 @@ namespace { namespace task {
 
             auto model = model_mgr.get_skinned(mdl_path);
             if (!model) {
-                const auto path_str = mdl_path.u8string();
                 SPDLOG_WARN("Failed to get model: {}", path_str);
                 return nullptr;
             }

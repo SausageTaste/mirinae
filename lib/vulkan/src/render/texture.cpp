@@ -609,7 +609,7 @@ namespace {
                 return this->fail("Failed to read file");
 
             dal::ImageParseInfo pinfo;
-            pinfo.file_path_ = path_.u8string();
+            pinfo.file_path_ = dal::tostr(path_);
             pinfo.data_ = reinterpret_cast<uint8_t*>(raw_data_.data());
             pinfo.size_ = raw_data_.size();
             pinfo.force_rgba_ = true;
@@ -668,20 +668,20 @@ namespace {
                 path, *filesys_, device_features_
             );
             task_sche_->add_task(task);
-            tasks_.emplace(path.u8string(), task);
+            tasks_.emplace(dal::tostr(path), task);
             return true;
         }
 
         bool has_task(const fs::path& path) {
-            return tasks_.find(path.u8string()) != tasks_.end();
+            return tasks_.find(dal::tostr(path)) != tasks_.end();
         }
 
         void remove_task(const fs::path& path) {
-            tasks_.erase(path.u8string());
+            tasks_.erase(dal::tostr(path));
         }
 
         std::shared_ptr<ImageLoadTask> try_get_task(const fs::path& path) {
-            const auto it = tasks_.find(path.u8string());
+            const auto it = tasks_.find(dal::tostr(path));
             if (it == tasks_.end())
                 return nullptr;
             return it->second;
@@ -762,7 +762,7 @@ namespace {
             if (!task->is_done())
                 return dal::ReqResult::loading;
 
-            const auto id = res_id.u8string();
+            const auto id = dal::tostr(res_id);
             auto img = task->try_get_img();
             if (!img) {
                 SPDLOG_ERROR(
@@ -825,8 +825,9 @@ namespace {
 
     private:
         std::optional<size_t> find_index(const dal::path& id) {
+            const auto id_str = dal::tostr(id);
             for (size_t i = 0; i < textures_.size(); ++i) {
-                if (textures_.at(i)->id() == id.u8string())
+                if (textures_.at(i)->id() == id_str)
                     return i;
             }
             return std::nullopt;
