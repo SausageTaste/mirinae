@@ -50,6 +50,7 @@ namespace mirinae::cpnt {
         , tile_size_(20)
         , trub_time_factor_(0.5f)
         , wind_speed_(40)
+        , tess_factor_(1)
         , cascade_imgui_idx_(0)
         , tile_count_x_(10)
         , tile_count_y_(10)
@@ -89,6 +90,7 @@ namespace mirinae::cpnt {
         );
 
         ImGui::DragScalar("Height", ImGuiDataType_Double, &height_, 0.1f);
+        ImGui::SliderFloat("Tess factor", &tess_factor_, 0.f, 10.f, 0, flog);
 
         ImGui::SliderFloat("Roughness", &roughness_, 0, 1, 0, flog);
         ImGui::SliderFloat("Wind speed", &wind_speed_, 0.001f, 1000, 0, flog);

@@ -35,11 +35,12 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     float roughness;
     float sss_base;
     float sss_scale;
+    float tess_factor;
 } u_params;
 
 
 void main() {
-    const float MAX_TESS_LEVEL = 64;
+    const float MAX_TESS_LEVEL = 128;
 
     if (gl_InvocationID == 0) {
         vec4 p00 = u_pc.pvm * gl_in[0].gl_Position;
@@ -62,7 +63,7 @@ void main() {
         float edge2 = distance(p11.xy, p10.xy);
         float edge3 = distance(p10.xy, p00.xy);
 
-        const float factor = 1.0 / 10.0;
+        const float factor = u_params.tess_factor;
         float tess_level0 = min(edge3 * factor, MAX_TESS_LEVEL);
         float tess_level1 = min(edge0 * factor, MAX_TESS_LEVEL);
         float tess_level2 = min(edge1 * factor, MAX_TESS_LEVEL);

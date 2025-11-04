@@ -58,6 +58,7 @@ namespace mirinae::cpnt {
         float tile_size_;
         float trub_time_factor_;
         float wind_speed_;
+        float tess_factor_;
         int cascade_imgui_idx_;
         int tile_count_x_;
         int tile_count_y_;

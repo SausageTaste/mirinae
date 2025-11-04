@@ -261,6 +261,12 @@ namespace {
             return *this;
         }
 
+        template <typename T>
+        U_OceanTessParams& tess_factor(T x) {
+            tess_factor_ = static_cast<float>(x);
+            return *this;
+        }
+
     private:
         glm::mat4 light_mats_[4];
         glm::vec4 texco_offset_rot_[mirinae::CASCADE_COUNT];
@@ -277,6 +283,7 @@ namespace {
         float roughness_;
         float sss_base_;
         float sss_scale_;
+        float tess_factor_;
     };
 
 
@@ -584,7 +591,8 @@ namespace { namespace task {
                 .ocean_color(ocean_entt.ocean_color_)
                 .roughness(ocean_entt.roughness_)
                 .sss_base(cv_foam_sss_base.get())
-                .sss_scale(cv_foam_sss_scale.get());
+                .sss_scale(cv_foam_sss_scale.get())
+                .tess_factor(ocean_entt.tess_factor_);
             for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);

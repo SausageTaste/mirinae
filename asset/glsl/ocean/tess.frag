@@ -38,6 +38,7 @@ layout (set = 0, binding = 0) uniform U_OceanTessParams {
     float roughness;
     float sss_base;
     float sss_scale;
+    float tess_factor;
 } u_params;
 
 layout (set = 0, binding = 1) uniform sampler2D u_disp_map[3];
