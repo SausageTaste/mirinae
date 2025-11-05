@@ -360,6 +360,7 @@ namespace {
             const glm::dmat4& pv,
             const glm::dvec2& fbuf_size
         ) {
+            draw_info_list_.clear();
             this->traverse(
                 draw_info_list_,
                 0,
@@ -392,6 +393,8 @@ namespace {
         class DrawInfoList {
 
         public:
+            void clear() { list_.clear(); }
+
             DrawInfo& create() {
                 list_.emplace_back();
                 return list_.back();
@@ -622,7 +625,7 @@ namespace { namespace task {
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->update_ubuf(*reg_, atmos, *ocean, *ctxt_, fd, *device_);
             this->record_barriers(cmdbuf_, fd, *gbufs_, *ctxt_);
-            this->record(cmdbuf_, fd, *ocean, *rp_, *ctxt_, gbuf_ext);
+            this->record(cmdbuf_, fd, *ocean, *rp_, *ctxt_, gbuf_ext, qtree_);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
@@ -727,7 +730,8 @@ namespace { namespace task {
             const mirinae::cpnt::Ocean& ocean_entt,
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt,
-            const VkExtent2D& fbuf_ext
+            const VkExtent2D& fbuf_ext,
+            ::OceanQuadTree& qtree
         ) {
             const auto& proj_mat = ctxt.main_cam_.proj();
             const auto& view_mat = ctxt.main_cam_.view();
@@ -774,7 +778,6 @@ namespace { namespace task {
             const auto cam_x = std::round(view_pos.x * 0.1) * 10;
             const auto cam_z = std::round(view_pos.z * 0.1) * 10;
 
-            ::OceanQuadTree qtree;
             qtree.build_draw_list(
                 cam_x - scale,
                 cam_x + scale,
@@ -794,6 +797,7 @@ namespace { namespace task {
         const mirinae::DebugLabel DEBUG_LABEL{ "Ocean Tess", 0.31, 0.76, 0.97 };
 
         mirinae::FenceTask fence_;
+        ::OceanQuadTree qtree_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
         const entt::registry* reg_ = nullptr;
