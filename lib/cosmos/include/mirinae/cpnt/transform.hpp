@@ -10,6 +10,7 @@ namespace mirinae::cpnt {
     class Transform : public TransformQuat<double> {
 
     public:
+        Transform();
         void render_imgui();
     };
 

@@ -6,6 +6,12 @@
 // Transform
 namespace mirinae::cpnt {
 
+    Transform::Transform() {
+        static_assert(std::is_standard_layout_v<Transform>);
+        static_assert(std::is_trivially_copyable_v<Transform>);
+        static_assert(sizeof(Transform) == sizeof(double) * (3 + 4 + 3));
+    }
+
     void Transform::render_imgui() {
         const float POS_SPEED = 0.1f;
         const float ROT_SPEED = 0.1f;
