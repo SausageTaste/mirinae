@@ -346,163 +346,225 @@ namespace {
     }
 
 
-    template <typename T>
-    void traverse_quad_tree(
-        const VkCommandBuffer cmdbuf,
-        const int depth,
-        const T x_min,
-        const T x_max,
-        const T y_min,
-        const T y_max,
-        const T height,
-        const mirinae::RpCtxt& ctxt,
-        U_OceanTessPushConst& pc,
-        const mirinae::PushConstInfo& pc_info,
-        const glm::tmat4x4<T>& pv,
-        const glm::tvec2<T>& fbuf_size
-    ) {
-        using Vec2 = glm::tvec2<T>;
-        using Vec3 = glm::tvec3<T>;
-        using Vec4 = glm::tvec4<T>;
+    class OceanQuadTree {
 
-        constexpr T HALF = 0.5;
-        constexpr T MARGIN = 1;
+    public:
+        void build_draw_list(
+            const double x_min,
+            const double x_max,
+            const double y_min,
+            const double y_max,
+            const double height,
+            U_OceanTessPushConst& pc,
+            const mirinae::RpCtxt& ctxt,
+            const glm::dmat4& pv,
+            const glm::dvec2& fbuf_size
+        ) {
+            this->traverse(
+                draw_info_list_,
+                0,
+                x_min,
+                x_max,
+                y_min,
+                y_max,
+                height,
+                pc,
+                ctxt,
+                pv,
+                fbuf_size
+            );
+        }
 
-        const auto x_margin = MARGIN;
-        const auto y_margin = MARGIN;
-        const std::array<Vec3, 4> points{
-            Vec3(x_min - x_margin, height, y_min - y_margin),
-            Vec3(x_min - x_margin, height, y_max + y_margin),
-            Vec3(x_max + x_margin, height, y_max + y_margin),
-            Vec3(x_max + x_margin, height, y_min - y_margin),
+        void record(
+            const VkCommandBuffer cmdbuf, const mirinae::PushConstInfo& pc_info
+        ) const {
+            for (auto& draw : draw_info_list_) {
+                pc_info.record(cmdbuf, draw.pc_);
+                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+            }
+        }
+
+    private:
+        struct DrawInfo {
+            U_OceanTessPushConst pc_;
         };
 
-        // Check frustum
-        if (::has_separating_axis<T>(ctxt.main_cam_.view_frustum(), points)) {
-            /*
-            auto& dbg = ctxt.debug_ren_;
-            dbg.add_tri(
-                pv * Vec4(points[0], 1),
-                pv * Vec4(points[1], 1),
-                pv * Vec4(points[2], 1),
-                glm::vec4(1, 0, 0, 0.1)
-            );
-            dbg.add_tri(
-                pv * Vec4(points[0], 1),
-                pv * Vec4(points[2], 1),
-                pv * Vec4(points[3], 1),
-                glm::vec4(1, 0, 0, 0.1)
-            );
-            */
-            return;
-        }
+        class DrawInfoList {
 
-        std::array<Vec3, 4> ndc_points;
-        for (size_t i = 0; i < 4; ++i) {
-            auto ndc4 = pv * Vec4(points[i], 1);
-            ndc4 /= ndc4.w;
-            ndc_points[i] = Vec3(ndc4);
-        }
+        public:
+            DrawInfo& create() {
+                list_.emplace_back();
+                return list_.back();
+            }
 
-        if (depth > 8) {
-            pc.patch_offset(x_min - x_margin, y_min - y_margin)
-                .patch_scale(
+            std::vector<DrawInfo>::const_iterator begin() const {
+                return list_.begin();
+            }
+            std::vector<DrawInfo>::const_iterator end() const {
+                return list_.end();
+            }
+
+        private:
+            std::vector<DrawInfo> list_;
+        };
+
+        static void traverse(
+            DrawInfoList& output,
+            const int depth,
+            const double x_min,
+            const double x_max,
+            const double y_min,
+            const double y_max,
+            const double height,
+            const U_OceanTessPushConst& pc,
+            const mirinae::RpCtxt& ctxt,
+            const glm::dmat4& pv,
+            const glm::dvec2& fbuf_size
+        ) {
+            using T = double;
+            using Vec2 = glm::tvec2<T>;
+            using Vec3 = glm::tvec3<T>;
+            using Vec4 = glm::tvec4<T>;
+
+            constexpr T HALF = 0.5;
+            constexpr T MARGIN = 1;
+
+            const auto x_margin = MARGIN;
+            const auto y_margin = MARGIN;
+            const std::array<Vec3, 4> points{
+                Vec3(x_min - x_margin, height, y_min - y_margin),
+                Vec3(x_min - x_margin, height, y_max + y_margin),
+                Vec3(x_max + x_margin, height, y_max + y_margin),
+                Vec3(x_max + x_margin, height, y_min - y_margin),
+            };
+
+            // Check frustum
+            if (::has_separating_axis<T>(
+                    ctxt.main_cam_.view_frustum(), points
+                )) {
+                /*
+                auto& dbg = ctxt.debug_ren_;
+                dbg.add_tri(
+                    pv * Vec4(points[0], 1),
+                    pv * Vec4(points[1], 1),
+                    pv * Vec4(points[2], 1),
+                    glm::vec4(1, 0, 0, 0.1)
+                );
+                dbg.add_tri(
+                    pv * Vec4(points[0], 1),
+                    pv * Vec4(points[2], 1),
+                    pv * Vec4(points[3], 1),
+                    glm::vec4(1, 0, 0, 0.1)
+                );
+                */
+                return;
+            }
+
+            std::array<Vec3, 4> ndc_points;
+            for (size_t i = 0; i < 4; ++i) {
+                auto ndc4 = pv * Vec4(points[i], 1);
+                ndc4 /= ndc4.w;
+                ndc_points[i] = Vec3(ndc4);
+            }
+
+            if (depth > 8) {
+                auto& draw = output.create();
+                draw.pc_ = pc;
+                draw.pc_.patch_offset(x_min - x_margin, y_min - y_margin);
+                draw.pc_.patch_scale(
                     x_max - x_min + x_margin + x_margin,
                     y_max - y_min + y_margin + y_margin
                 );
-            pc_info.record(cmdbuf, pc);
-            vkCmdDraw(cmdbuf, 4, 1, 0, 0);
-            return;
-        }
+                return;
+            }
 
-        T longest_edge = 0;
-        for (size_t i = 0; i < 4; ++i) {
-            const auto next_idx = (i + 1) % ndc_points.size();
-            const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
-            const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
-            const auto edge = (p1 - p0) * fbuf_size;
-            const auto len = glm::length(edge);
-            longest_edge = (std::max<T>)(longest_edge, len);
-        }
-        for (size_t i = 0; i < 2; ++i) {
-            const auto next_idx = (i + 2) % ndc_points.size();
-            const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
-            const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
-            const auto edge = (p1 - p0) * fbuf_size;
-            const auto len = glm::length(edge);
-            longest_edge = (std::max<T>)(longest_edge, len);
-        }
+            T longest_edge = 0;
+            for (size_t i = 0; i < 4; ++i) {
+                const auto next_idx = (i + 1) % ndc_points.size();
+                const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
+                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
+                const auto edge = (p1 - p0) * fbuf_size;
+                const auto len = glm::length(edge);
+                longest_edge = (std::max<T>)(longest_edge, len);
+            }
+            for (size_t i = 0; i < 2; ++i) {
+                const auto next_idx = (i + 2) % ndc_points.size();
+                const auto& p0 = Vec2(ndc_points[i]) * HALF + HALF;
+                const auto& p1 = Vec2(ndc_points[next_idx]) * HALF + HALF;
+                const auto edge = (p1 - p0) * fbuf_size;
+                const auto len = glm::length(edge);
+                longest_edge = (std::max<T>)(longest_edge, len);
+            }
 
-        if (glm::length(longest_edge) > 1000) {
-            const auto x_mid = (x_min + x_max) * 0.5;
-            const auto y_mid = (y_min + y_max) * 0.5;
-            ::traverse_quad_tree<T>(
-                cmdbuf,
-                depth + 1,
-                x_min,
-                x_mid,
-                y_min,
-                y_mid,
-                height,
-                ctxt,
-                pc,
-                pc_info,
-                pv,
-                fbuf_size
-            );
-            ::traverse_quad_tree<T>(
-                cmdbuf,
-                depth + 1,
-                x_min,
-                x_mid,
-                y_mid,
-                y_max,
-                height,
-                ctxt,
-                pc,
-                pc_info,
-                pv,
-                fbuf_size
-            );
-            ::traverse_quad_tree<T>(
-                cmdbuf,
-                depth + 1,
-                x_mid,
-                x_max,
-                y_mid,
-                y_max,
-                height,
-                ctxt,
-                pc,
-                pc_info,
-                pv,
-                fbuf_size
-            );
-            ::traverse_quad_tree<T>(
-                cmdbuf,
-                depth + 1,
-                x_mid,
-                x_max,
-                y_min,
-                y_mid,
-                height,
-                ctxt,
-                pc,
-                pc_info,
-                pv,
-                fbuf_size
-            );
-        } else {
-            pc.patch_offset(x_min - x_margin, y_min - y_margin)
-                .patch_scale(
+            if (glm::length(longest_edge) > 1000) {
+                const auto x_mid = (x_min + x_max) * 0.5;
+                const auto y_mid = (y_min + y_max) * 0.5;
+                traverse(
+                    output,
+                    depth + 1,
+                    x_min,
+                    x_mid,
+                    y_min,
+                    y_mid,
+                    height,
+                    pc,
+                    ctxt,
+                    pv,
+                    fbuf_size
+                );
+                traverse(
+                    output,
+                    depth + 1,
+                    x_min,
+                    x_mid,
+                    y_mid,
+                    y_max,
+                    height,
+                    pc,
+                    ctxt,
+                    pv,
+                    fbuf_size
+                );
+                traverse(
+                    output,
+                    depth + 1,
+                    x_mid,
+                    x_max,
+                    y_mid,
+                    y_max,
+                    height,
+                    pc,
+                    ctxt,
+                    pv,
+                    fbuf_size
+                );
+                traverse(
+                    output,
+                    depth + 1,
+                    x_mid,
+                    x_max,
+                    y_min,
+                    y_mid,
+                    height,
+                    pc,
+                    ctxt,
+                    pv,
+                    fbuf_size
+                );
+            } else {
+                auto& draw = output.create();
+                draw.pc_ = pc;
+                draw.pc_.patch_offset(x_min - x_margin, y_min - y_margin);
+                draw.pc_.patch_scale(
                     x_max - x_min + x_margin + x_margin,
                     y_max - y_min + y_margin + y_margin
                 );
-            pc_info.record(cmdbuf, pc);
-            vkCmdDraw(cmdbuf, 4, 1, 0, 0);
-            return;
+                return;
+            }
         }
-    }
+
+        DrawInfoList draw_info_list_;
+    };
 
 }  // namespace
 
@@ -712,20 +774,19 @@ namespace { namespace task {
             const auto cam_x = std::round(view_pos.x * 0.1) * 10;
             const auto cam_z = std::round(view_pos.z * 0.1) * 10;
 
-            ::traverse_quad_tree<double>(
-                cmdbuf,
-                0,
+            ::OceanQuadTree qtree;
+            qtree.build_draw_list(
                 cam_x - scale,
                 cam_x + scale,
                 cam_z - scale,
                 cam_z + scale,
                 ocean_entt.height_,
-                ctxt,
                 pc,
-                pc_info,
+                ctxt,
                 pv,
                 glm::dvec2(fbuf_ext.width, fbuf_ext.height)
             );
+            qtree.record(cmdbuf, pc_info);
 
             vkCmdEndRenderPass(cmdbuf);
         }
