@@ -307,38 +307,63 @@ namespace {
 namespace {
 
     template <typename T>
+    bool is_axis_separating(
+        const glm::tvec3<T>& axis,
+        const std::array<glm::tvec3<T>, 4>& points,
+        const std::array<glm::tvec3<T>, 8>& frustum_points
+    ) {
+        sung::Aabb1DLazyInit<T> frustum_aabb;
+        for (auto& p : frustum_points)
+            frustum_aabb.set_or_expand(glm::dot(p, axis));
+
+        sung::Aabb1DLazyInit<T> points_aabb;
+        for (auto& p : points) points_aabb.set_or_expand(glm::dot(p, axis));
+
+        return !frustum_aabb.is_intersecting_cl(points_aabb);
+    }
+
+    std::array<glm::vec3, 8> make_frustum_points(
+        const mirinae::ViewFrustum& view_frustum, const glm::dmat4& to_patch
+    ) {
+        std::array<glm::vec3, 8> frustum_points;
+        MIRINAE_ASSERT(view_frustum.vtx_.size() == 8);
+
+        for (size_t i = 0; i < 8; ++i) {
+            const auto& p = glm::dvec4(view_frustum.vtx_[i], 1);
+            frustum_points[i] = glm::vec3(to_patch * p);
+        }
+
+        return frustum_points;
+    }
+
+    template <typename TTo, typename TFrom, size_t N>
+    std::array<TTo, N> convert_array(const std::array<TFrom, N>& input) {
+        std::array<TTo, N> output;
+        for (size_t i = 0; i < N; ++i) {
+            output[i] = static_cast<TTo>(input[i]);
+        }
+        return output;
+    }
+
     bool has_separating_axis(
         const mirinae::ViewFrustum& view_frustum,
-        const std::array<glm::tvec3<T>, 4>& points
+        const std::array<glm::dvec3, 4>& points
     ) {
-        const auto to_patch = glm::tmat4x4<T>(view_frustum.view_inv_);
-        const auto to_patch3 = glm::tmat3x3<T>(to_patch);
+        const auto& to_patch = view_frustum.view_inv_;
+        const auto frustum_points = make_frustum_points(view_frustum, to_patch);
+        const auto points_f = convert_array<glm::vec3>(points);
 
-        MIRINAE_ASSERT(view_frustum.vtx_.size() == 8);
-        std::array<glm::tvec3<T>, 8> frustum_points;
-        for (size_t i = 0; i < 8; ++i) {
-            const auto& p = glm::tvec4<T>(view_frustum.vtx_[i], 1);
-            frustum_points[i] = glm::tvec3<T>(to_patch * p);
-        }
+        if (is_axis_separating({ 1, 0, 0 }, points_f, frustum_points))
+            return true;
+        if (is_axis_separating({ 0, 1, 0 }, points_f, frustum_points))
+            return true;
+        if (is_axis_separating({ 0, 0, 1 }, points_f, frustum_points))
+            return true;
 
-        std::vector<glm::tvec3<T>> axes;
-        axes.reserve(view_frustum.axes_.size() + 3);
+        const auto to_patch_3f = glm::mat3(to_patch);
         for (auto& v : view_frustum.axes_) {
-            axes.push_back(to_patch3 * v);
-        }
-        axes.push_back(glm::tvec3<T>(1, 0, 0));
-        axes.push_back(glm::tvec3<T>(0, 1, 0));
-        axes.push_back(glm::tvec3<T>(0, 0, 1));
-
-        for (auto& axis : axes) {
-            sung::Aabb1DLazyInit<T> frustum_aabb;
-            for (auto& p : frustum_points)
-                frustum_aabb.set_or_expand(glm::dot(p, axis));
-
-            sung::Aabb1DLazyInit<T> points_aabb;
-            for (auto& p : points) points_aabb.set_or_expand(glm::dot(p, axis));
-
-            if (!frustum_aabb.is_intersecting_cl(points_aabb))
+            const auto axis = to_patch_3f * v;
+            if (is_axis_separating(axis, points_f, frustum_points))
                 return true;
         }
 
@@ -479,9 +504,7 @@ namespace {
             const auto points = varying.make_points(height, x_margin, y_margin);
 
             // Check frustum
-            if (::has_separating_axis<T>(
-                    ctxt.main_cam_.view_frustum(), points
-                )) {
+            if (::has_separating_axis(ctxt.main_cam_.view_frustum(), points)) {
                 /*
                 auto& dbg = ctxt.debug_ren_;
                 dbg.add_tri(
