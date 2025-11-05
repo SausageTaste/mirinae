@@ -355,24 +355,16 @@ namespace {
             const double y_min,
             const double y_max,
             const double height,
-            U_OceanTessPushConst& pc,
+            const U_OceanTessPushConst& pc,
             const mirinae::RpCtxt& ctxt,
             const glm::dmat4& pv,
             const glm::dvec2& fbuf_size
         ) {
+            const VaryingParams varying{ x_min, x_max, y_min, y_max, 0 };
+
             draw_info_list_.clear();
             this->traverse(
-                draw_info_list_,
-                0,
-                x_min,
-                x_max,
-                y_min,
-                y_max,
-                height,
-                pc,
-                ctxt,
-                pv,
-                fbuf_size
+                draw_info_list_, varying, height, pc, ctxt, pv, fbuf_size
             );
         }
 
@@ -380,13 +372,67 @@ namespace {
             const VkCommandBuffer cmdbuf, const mirinae::PushConstInfo& pc_info
         ) const {
             for (auto& draw : draw_info_list_) {
-                pc_info.record(cmdbuf, draw.pc_);
+                pc_info.record(cmdbuf, draw.get_pc());
                 vkCmdDraw(cmdbuf, 4, 1, 0, 0);
             }
         }
 
     private:
-        struct DrawInfo {
+        struct VaryingParams {
+            std::array<VaryingParams, 4> make_children() const {
+                const auto x_midd = (x_min_ + x_max_) * 0.5;
+                const auto y_midd = (y_min_ + y_max_) * 0.5;
+
+                return std::array<VaryingParams, 4>{
+                    VaryingParams{ x_min_, x_midd, y_min_, y_midd, depth_ + 1 },
+                    VaryingParams{ x_min_, x_midd, y_midd, y_max_, depth_ + 1 },
+                    VaryingParams{ x_midd, x_max_, y_midd, y_max_, depth_ + 1 },
+                    VaryingParams{ x_midd, x_max_, y_min_, y_midd, depth_ + 1 },
+                };
+            }
+
+            std::array<glm::dvec3, 4> make_points(
+                const double height,
+                const double x_margin,
+                const double y_margin
+            ) const {
+                return std::array<glm::dvec3, 4>{
+                    glm::dvec3(x_min_ - x_margin, height, y_min_ - y_margin),
+                    glm::dvec3(x_min_ - x_margin, height, y_max_ + y_margin),
+                    glm::dvec3(x_max_ + x_margin, height, y_max_ + y_margin),
+                    glm::dvec3(x_max_ + x_margin, height, y_min_ - y_margin),
+                };
+            }
+
+            double x_min_;
+            double x_max_;
+            double y_min_;
+            double y_max_;
+            int depth_;
+        };
+
+        class DrawInfo {
+
+        public:
+            void set(
+                const U_OceanTessPushConst& pc,
+                const VaryingParams& varying,
+                const double x_margin,
+                const double y_margin
+            ) {
+                pc_ = pc;
+                pc_.patch_offset(
+                    varying.x_min_ - x_margin, varying.y_min_ - y_margin
+                );
+                pc_.patch_scale(
+                    varying.x_max_ - varying.x_min_ + x_margin + x_margin,
+                    varying.y_max_ - varying.y_min_ + y_margin + y_margin
+                );
+            }
+
+            const U_OceanTessPushConst& get_pc() const { return pc_; }
+
+        private:
             U_OceanTessPushConst pc_;
         };
 
@@ -413,11 +459,7 @@ namespace {
 
         static void traverse(
             DrawInfoList& output,
-            const int depth,
-            const double x_min,
-            const double x_max,
-            const double y_min,
-            const double y_max,
+            const VaryingParams& varying,
             const double height,
             const U_OceanTessPushConst& pc,
             const mirinae::RpCtxt& ctxt,
@@ -434,12 +476,7 @@ namespace {
 
             const auto x_margin = MARGIN;
             const auto y_margin = MARGIN;
-            const std::array<Vec3, 4> points{
-                Vec3(x_min - x_margin, height, y_min - y_margin),
-                Vec3(x_min - x_margin, height, y_max + y_margin),
-                Vec3(x_max + x_margin, height, y_max + y_margin),
-                Vec3(x_max + x_margin, height, y_min - y_margin),
-            };
+            const auto points = varying.make_points(height, x_margin, y_margin);
 
             // Check frustum
             if (::has_separating_axis<T>(
@@ -470,14 +507,9 @@ namespace {
                 ndc_points[i] = Vec3(ndc4);
             }
 
-            if (depth > 8) {
+            if (varying.depth_ > 8) {
                 auto& draw = output.create();
-                draw.pc_ = pc;
-                draw.pc_.patch_offset(x_min - x_margin, y_min - y_margin);
-                draw.pc_.patch_scale(
-                    x_max - x_min + x_margin + x_margin,
-                    y_max - y_min + y_margin + y_margin
-                );
+                draw.set(pc, varying, x_margin, y_margin);
                 return;
             }
 
@@ -500,68 +532,13 @@ namespace {
             }
 
             if (glm::length(longest_edge) > 1000) {
-                const auto x_mid = (x_min + x_max) * 0.5;
-                const auto y_mid = (y_min + y_max) * 0.5;
-                traverse(
-                    output,
-                    depth + 1,
-                    x_min,
-                    x_mid,
-                    y_min,
-                    y_mid,
-                    height,
-                    pc,
-                    ctxt,
-                    pv,
-                    fbuf_size
-                );
-                traverse(
-                    output,
-                    depth + 1,
-                    x_min,
-                    x_mid,
-                    y_mid,
-                    y_max,
-                    height,
-                    pc,
-                    ctxt,
-                    pv,
-                    fbuf_size
-                );
-                traverse(
-                    output,
-                    depth + 1,
-                    x_mid,
-                    x_max,
-                    y_mid,
-                    y_max,
-                    height,
-                    pc,
-                    ctxt,
-                    pv,
-                    fbuf_size
-                );
-                traverse(
-                    output,
-                    depth + 1,
-                    x_mid,
-                    x_max,
-                    y_min,
-                    y_mid,
-                    height,
-                    pc,
-                    ctxt,
-                    pv,
-                    fbuf_size
-                );
+                const auto children = varying.make_children();
+                for (const auto& vp : children) {
+                    traverse(output, vp, height, pc, ctxt, pv, fbuf_size);
+                }
             } else {
                 auto& draw = output.create();
-                draw.pc_ = pc;
-                draw.pc_.patch_offset(x_min - x_margin, y_min - y_margin);
-                draw.pc_.patch_scale(
-                    x_max - x_min + x_margin + x_margin,
-                    y_max - y_min + y_margin + y_margin
-                );
+                draw.set(pc, varying, x_margin, y_margin);
                 return;
             }
         }
