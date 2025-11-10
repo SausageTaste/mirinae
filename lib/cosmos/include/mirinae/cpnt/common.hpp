@@ -3,6 +3,9 @@
 #include <memory>
 
 
+struct lua_State;
+
+
 namespace mirinae {
 
     template <typename T>

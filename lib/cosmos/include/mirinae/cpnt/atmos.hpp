@@ -53,6 +53,8 @@ namespace mirinae::cpnt {
         AtmosphereEpic();
         void render_imgui();
 
+        static int lua_module(lua_State* L);
+
         float radius_bottom() const;
         float radius_top() const;
 

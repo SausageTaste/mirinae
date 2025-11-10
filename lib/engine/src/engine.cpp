@@ -728,6 +728,10 @@ namespace {
             script_ = std::make_shared<mirinae::ScriptEngine>();
             cosmos_ = std::make_shared<mirinae::CosmosSimulator>(*script_);
 
+            cosmos_->scene().register_lua_module(
+                "atmos_epic", mirinae::cpnt::AtmosphereEpic::lua_module
+            );
+
             spdlog::default_logger()->sinks().push_back(
                 std::make_shared<MySink>()
             );

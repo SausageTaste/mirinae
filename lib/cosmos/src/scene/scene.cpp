@@ -604,6 +604,7 @@ namespace mirinae {
         clock_.sync_rt(global_clock);
 
         script_.register_global_ptr(SCENE_PTR_NAME, this);
+        script_.register_global_ptr("__mirinae_entt_reg", reg_.get());
         script_.register_module("scene", scene::luaopen_scene);
     }
 
@@ -611,6 +612,10 @@ namespace mirinae {
 
     void Scene::register_tasks(TaskGraph& tasks) {
         tasks.emplace_back<::TaskEnttUpdate>(*this);
+    }
+
+    void Scene::register_lua_module(const char* name, lua_CFunction funcs) {
+        script_.register_module(name, funcs);
     }
 
     entt::entity Scene::find_entt(const std::string& name) const {
