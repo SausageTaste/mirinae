@@ -3,7 +3,7 @@
 #include <imgui.h>
 #include <entt/entity/registry.hpp>
 
-#include "mirinae/lightweight/script.hpp"
+#include "mirinae/lua/tools.hpp"
 
 
 #define GET_ENTT_PTR()                                                       \

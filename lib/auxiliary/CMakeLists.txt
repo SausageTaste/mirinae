@@ -3,10 +3,11 @@ set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(src_files
     ${src_dir}/lightweight/input_proc.cpp
     ${src_dir}/lightweight/network.cpp
-    ${src_dir}/lightweight/script.cpp
     ${src_dir}/lightweight/skin_anim.cpp
     ${src_dir}/lightweight/task.cpp
     ${src_dir}/lightweight/text_data.cpp
+    ${src_dir}/lua/script.cpp
+    ${src_dir}/lua/tools.cpp
     ${src_dir}/math/color.cpp
     ${src_dir}/math/mamath.cpp
 )

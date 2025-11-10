@@ -7,7 +7,7 @@
 #include <sung/basic/geometry3d.hpp>
 #include <sung/basic/time.hpp>
 
-#include "mirinae/lightweight/script.hpp"
+#include "mirinae/lua/script.hpp"
 
 
 namespace mirinae {
@@ -25,7 +25,7 @@ namespace mirinae {
         void do_frame();
 
         void register_tasks(TaskGraph& tasks);
-        void register_lua_module(const char *name, lua_CFunction funcs);
+        void register_lua_module(const char* name, void* funcs);
 
         entt::entity find_entt(const std::string& name) const;
 

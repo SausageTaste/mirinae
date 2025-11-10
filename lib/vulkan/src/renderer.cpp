@@ -13,7 +13,6 @@
 #include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
-#include "mirinae/lightweight/script.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/math/mamath.hpp"
 #include "mirinae/overlay/overlay.hpp"

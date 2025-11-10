@@ -11,6 +11,7 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
+#include "mirinae/lua/tools.hpp"
 
 
 #define GET_SCENE_PTR()                                  \
@@ -614,7 +615,7 @@ namespace mirinae {
         tasks.emplace_back<::TaskEnttUpdate>(*this);
     }
 
-    void Scene::register_lua_module(const char* name, lua_CFunction funcs) {
+    void Scene::register_lua_module(const char* name, void* funcs) {
         script_.register_module(name, funcs);
     }
 

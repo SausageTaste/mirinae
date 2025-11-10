@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mirinae/lightweight/script.hpp"
+#include "mirinae/lua/script.hpp"
 #include "mirinae/overlay/iwidget.hpp"
 #include "mirinae/overlay/text.hpp"
 
