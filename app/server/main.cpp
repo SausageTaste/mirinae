@@ -2,6 +2,7 @@
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/network.hpp"
+#include "mirinae/lua/script.hpp"
 
 #ifdef SUNG_OS_WINDOWS
     #include "dump.hpp"

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "mirinae/lightweight/text_data.hpp"
+#include "mirinae/lua/fwd.hpp"
 
 
 namespace mirinae {

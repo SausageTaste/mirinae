@@ -24,6 +24,7 @@
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/network.hpp"
 #include "mirinae/lightweight/task.hpp"
+#include "mirinae/lua/script.hpp"
 #include "mirinae/renderer.hpp"
 
 

@@ -7,7 +7,7 @@
 #include <sung/basic/geometry3d.hpp>
 #include <sung/basic/time.hpp>
 
-#include "mirinae/lua/script.hpp"
+#include "mirinae/lua/fwd.hpp"
 
 
 namespace mirinae {

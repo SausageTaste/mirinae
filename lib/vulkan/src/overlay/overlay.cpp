@@ -5,6 +5,7 @@
 #include <SDL3/SDL_scancode.h>
 #include <string_view>
 
+#include "mirinae/lua/script.hpp"
 #include "mirinae/overlay/text.hpp"
 #include "mirinae/render/cmdbuf.hpp"
 
