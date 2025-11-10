@@ -258,7 +258,8 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     JonswapCalculator jonswap;
 
     if (jonswap.init(length(k))) {
-        let gause_random = gauseRnd(dispatch_id);
+        var gause_random = gauseRnd(dispatch_id);
+        gause_random.w *= -1;  // Make z,w conjugate
         out_images[u_pc.cascade][dispatch_id.xy] = float4(
             gause_random.xy * jonswap.calc(k), gause_random.zw * jonswap.calc(-k)
         );
