@@ -1,5 +1,6 @@
 import "../module/complex";
 import "../module/konst";
+import "../module/ocean";
 
 
 layout(binding = 0, rgba32f) RWTexture2D<float4> out_hkt_1[3];
@@ -36,18 +37,14 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     const int2 global_idx = int2(dispatch_id.xy);
     const int cascade = int(dispatch_id.z);
 
-    const float2 x = float2(dispatch_id.xy) - float(u_pc.N) / 2.0;
-    const float2 k = x * 2.0 * PI / float(u_pc.L[cascade]);
-    float mag = length(k);
-    float mag_rcp = 1.0 / mag;
-    if (mag < 0.00001) {
-        mag = 0.00001;
-        mag_rcp = 1.0 / mag;
-    }
+    const float2 x = make_spatial_pos(dispatch_id.xy, u_pc.N);
+    const float2 k = make_wave_vector(x, u_pc.L[cascade]);
+    const float mag = max(length(k), 0.00001);
+    const float mag_rcp = 1.0 / mag;
 
+    const float4 h0k_texel = in_hk[cascade][global_idx];
     const float w = dispersion(mag);
     const Complex exp_iwt = Complex::from_exp(w * u_pc.time);
-    const float4 h0k_texel = in_hk[cascade][global_idx];
     const Complex h = Complex(h0k_texel.xy) * exp_iwt + Complex(h0k_texel.zw) * exp_iwt.conj();
     const Complex ih = h.mul_i();
     const Complex minus_h = -h;

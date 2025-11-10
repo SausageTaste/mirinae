@@ -1,4 +1,5 @@
 import "../module/konst";
+import "../module/ocean";
 
 
 layout(set = 0, binding = 0, rgba32f) RWTexture2D<float4> out_images[3];
@@ -253,8 +254,8 @@ float jonswap_spectrum(float2 wave_vector) {
 [shader("compute")]
 [numthreads(16, 16, 1)]
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
-    let x = float2(dispatch_id.xy) - float(u_pc.N) * 0.5;
-    let k = x * (TAU / float(u_pc.L));
+    let x = make_spatial_pos(dispatch_id.xy, u_pc.N);
+    let k = make_wave_vector(x, u_pc.L);
     JonswapCalculator jonswap;
 
     if (jonswap.init(length(k))) {
