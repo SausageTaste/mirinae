@@ -877,7 +877,7 @@ namespace {
 
                 auto& cam = reg.emplace<mirinae::cpnt::StandardCamera>(entt);
                 cam.proj_.near_ = 0.1;
-                cam.proj_.far_ = 100000000000;
+                cam.proj_.far_ = 300;
                 cam.exposure_ = 1;
 
                 auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
@@ -917,7 +917,7 @@ namespace {
                 i.set_name("Ocean");
 
                 auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
-                ocean.height_ = 1500;
+                ocean.height_ = 1870;
                 ocean.wind_speed_ = 1;
                 ocean.fetch_ = 1000000;
                 ocean.spread_blend_ = 0.4;
@@ -978,106 +978,6 @@ namespace {
             // https://manticorp.github.io/unrealheightmap/#latitude/36.271/longitude/-112.357/zoom/14/outputzoom/14/width/4096/height/4096
             // https://manticorp.github.io/unrealheightmap/#latitude/46.453/longitude/10.635/zoom/12/outputzoom/12/width/8129/height/8129
 
-            // Terrain
-            {
-                const auto entt = reg.create();
-
-                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
-                i.set_name("Terrain");
-
-                auto& terrain = reg.emplace<mirinae::cpnt::Terrain>(entt);
-                terrain.height_map_path_ =
-                    "Sung/36_271_-112_357_14_4096_4096.png";
-                terrain.albedo_map_path_ =
-                    "Sung/36_271_-112_357_14_4096_4096_albedo_imagery.png";
-                terrain.terrain_width_ = 31500;
-                terrain.terrain_height_ = 31500;
-                terrain.height_scale_ = 2761.32 - 585.625;
-                terrain.tile_count_x_ = 20;
-                terrain.tile_count_y_ = 20;
-                terrain.tess_factor_ = 0.5;
-
-                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 0, 585.625, 0 };
-
-                cosmos_->phys_world().give_body_height_field(entt, reg);
-            }
-
-            // Terrain
-            {
-                const auto entt = reg.create();
-
-                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
-                i.set_name("Terrain");
-
-                auto& terrain = reg.emplace<mirinae::cpnt::Terrain>(entt);
-                terrain.height_map_path_ =
-                    "Sung/35_987_-112_356_14_4096_4096.png";
-                terrain.albedo_map_path_ =
-                    "Sung/35_987_-112_356_14_4096_4096_albedo_imagery.png";
-                terrain.terrain_width_ = 31500;
-                terrain.terrain_height_ = 31500;
-                terrain.height_scale_ = 2090.598 - 702.766;
-                terrain.tile_count_x_ = 20;
-                terrain.tile_count_y_ = 20;
-                terrain.tess_factor_ = 0.5;
-
-                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 0, 702.766, 31500 };
-
-                cosmos_->phys_world().give_body_height_field(entt, reg);
-            }
-
-            // Terrain
-            {
-                const auto entt = reg.create();
-
-                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
-                i.set_name("Terrain");
-
-                auto& terrain = reg.emplace<mirinae::cpnt::Terrain>(entt);
-                terrain.height_map_path_ =
-                    "Sung/35_987_-112_005_14_4096_4096.png";
-                terrain.albedo_map_path_ =
-                    "Sung/35_987_-112_005_14_4096_4096_albedo_imagery.png";
-                terrain.terrain_width_ = 31500;
-                terrain.terrain_height_ = 31500;
-                terrain.height_scale_ = 2433.875 - 706.953;
-                terrain.tile_count_x_ = 20;
-                terrain.tile_count_y_ = 20;
-                terrain.tess_factor_ = 0.5;
-
-                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 31500, 706.953, 31500 };
-
-                cosmos_->phys_world().give_body_height_field(entt, reg);
-            }
-
-            // Terrain
-            {
-                const auto entt = reg.create();
-
-                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
-                i.set_name("Terrain");
-
-                auto& terrain = reg.emplace<mirinae::cpnt::Terrain>(entt);
-                terrain.height_map_path_ =
-                    "Sung/36_272_-112_005_14_4096_4096.png";
-                terrain.albedo_map_path_ =
-                    "Sung/36_272_-112_005_14_4096_4096_albedo_imagery.png";
-                terrain.terrain_width_ = 31500;
-                terrain.terrain_height_ = 31500;
-                terrain.height_scale_ = 2806.492 - 829.977;
-                terrain.tile_count_x_ = 20;
-                terrain.tile_count_y_ = 20;
-                terrain.tess_factor_ = 0.5;
-
-                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 31500, 829.977, 0 };
-
-                cosmos_->phys_world().give_body_height_field(entt, reg);
-            }
-
             // Player model
             {
                 const auto entt = reg.create();
@@ -1116,23 +1016,6 @@ namespace {
                 auto& phys = reg.emplace<mirinae::cpnt::CharacterPhys>(entt);
                 phys.height_ = 1;
                 phys.radius_ = 0.15;
-            }
-
-            // City
-            {
-                const auto entt = reg.create();
-
-                auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
-                i.set_name("City");
-
-                auto& mdl = reg.emplace<mirinae::cpnt::MdlActorStatic>(entt);
-                mdl.model_path_ = "Sung/bus_game_map.dun/bus_game_map.dmd";
-
-                auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
-                tform.pos_ = { 510, 1550, 2000 };
-                tform.set_scale(0.1);
-
-                cosmos_->phys_world().give_body_triangles(entt, reg);
             }
 
             // Script

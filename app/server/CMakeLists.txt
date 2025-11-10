@@ -1,7 +1,7 @@
 add_executable(mirinaebongsa
     main.cpp
 )
-target_link_libraries(mirinaebongsa mirinae::core)
+target_link_libraries(mirinaebongsa mirinae::engine)
 set_target_properties(mirinaebongsa PROPERTIES
     FOLDER "mirinae/app"
 )
