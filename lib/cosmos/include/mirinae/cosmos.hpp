@@ -4,19 +4,13 @@
 
 #include "mirinae/scene/phys_world.hpp"
 #include "mirinae/scene/scene.hpp"
+#include "mirinae/system/imgui.hpp"
 
 
 namespace mirinae {
 
     class InputActionMapper;
     class TaskGraph;
-
-
-    struct ImGuiRenderUnit {
-        virtual ~ImGuiRenderUnit() = default;
-        virtual void do_frame(const sung::SimClock& clock) {}
-        virtual void render() {}
-    };
 
 
     struct ICamController {
@@ -50,7 +44,7 @@ namespace mirinae {
         auto& clock() const { return clock_; }
         auto& cam_ctrl() { return *cam_ctrl_; }
 
-        std::vector<std::shared_ptr<ImGuiRenderUnit>> imgui_;
+        std::vector<std::shared_ptr<imgui::Widget>> imgui_;
 
     private:
         Scene scene_;

@@ -2,6 +2,8 @@ set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 set(src_files
     ${src_dir}/engine.cpp
+    ${src_dir}/imgui_widget.cpp
+    ${src_dir}/spawn_entt.cpp
 )
 
 
