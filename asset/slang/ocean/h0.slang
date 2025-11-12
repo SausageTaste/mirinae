@@ -64,6 +64,7 @@ float2 box_muller(float2 uv) {
 }
 
 
+/*
 float2 phillips_spectrum(float2 wave_vector) {
     const float damping = 0.001;
 
@@ -84,6 +85,7 @@ float2 phillips_spectrum(float2 wave_vector) {
 
     return float2(h0k, h0minusk) / sqrt(2.0);
 }
+*/
 
 
 float Frequency(float k) {
@@ -230,6 +232,7 @@ struct JonswapCalculator {
 }
 
 
+/*
 float jonswap_spectrum(float2 wave_vector) {
     const float deltaK = TAU / float(u_pc.L);
     const float k_len = max(length(wave_vector), 0.000001);
@@ -249,6 +252,7 @@ float jonswap_spectrum(float2 wave_vector) {
 
     return sqrt(2 * spectrum * abs(domega_dk) / k_len * deltaK * deltaK);
 }
+*/
 
 
 float4 make_texel(Complex a, Complex b) {
