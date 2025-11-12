@@ -277,11 +277,9 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
         return;
     }
 
-    let mirror_texco = mirror(dispatch_id.xy, u_pc.N);
     let noise_texel = u_noise.Load(int3(dispatch_id.xy, 0));
-    let noise_texel_mirror = u_noise.Load(int3(mirror_texco, 0));
-    var gause0 = Complex(box_muller(noise_texel.xy));
-    var gause1 = Complex(box_muller(noise_texel_mirror.xy));
+    let gause0 = Complex(box_muller(noise_texel.xy));
+    let gause1 = Complex(box_muller(noise_texel.zw));
     let spectrum = JonswapCalculator(k_len);
 
     out_images[u_pc.cascade][dispatch_id.xy] = make_texel(

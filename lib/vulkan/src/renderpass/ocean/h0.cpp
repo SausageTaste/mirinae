@@ -215,11 +215,21 @@ namespace {
 
             // Noise textures
             {
-                std::vector<uint8_t> noise_data(
-                    mirinae::OCEAN_TEX_DIM * mirinae::OCEAN_TEX_DIM * 4
-                );
-                for (size_t i = 0; i < noise_data.size(); i++)
-                    noise_data[i] = static_cast<uint8_t>(rand_uniform() * 255);
+                const auto N = mirinae::OCEAN_TEX_DIM;
+                dal::TDataImage2D<uint8_t> noise;
+                noise.init(nullptr, N, N, 4);
+
+                for (size_t x = 0; x < N; x++) {
+                    for (size_t y = 0; y < N; y++) {
+                        auto texel = noise.texel_ptr(x, y);
+                        texel[0] = static_cast<uint8_t>(rand_uniform() * 255);
+                        texel[1] = static_cast<uint8_t>(rand_uniform() * 255);
+
+                        auto mirror = noise.texel_ptr((N - x) % N, (N - y) % N);
+                        mirror[2] = texel[0];
+                        mirror[3] = texel[1];
+                    }
+                }
 
                 mirinae::ImageCreateInfo img_info;
                 img_info.set_dimensions(mirinae::OCEAN_TEX_DIM)
@@ -234,11 +244,11 @@ namespace {
                     .mip_levels(img_info.mip_levels());
 
                 mirinae::BufferCreateInfo buf_cinfo;
-                buf_cinfo.preset_staging(noise_data.size());
+                buf_cinfo.preset_staging(noise.data_size());
 
                 mirinae::Buffer staging_buffer;
                 staging_buffer.init(buf_cinfo, device_.mem_alloc());
-                staging_buffer.set_data(noise_data.data(), noise_data.size());
+                staging_buffer.set_data(noise.data(), noise.data_size());
 
                 auto img = rp_res.ren_img_.new_img("ocean_noise", name_s());
                 MIRINAE_ASSERT(nullptr != img);
