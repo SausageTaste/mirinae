@@ -10,7 +10,9 @@ import utils
 START_TIME = time.time()
 ROOT_DIR = utils.find_root_dir()
 SLANG_DIR = os.path.join(ROOT_DIR, "asset", "slang")
+IMPORT_DIRECTIVE = "import"
 RELEASE_MODE = True
+SKIP_UP_TO_DATE = True
 
 ENTRY_POINTS = {
     "vert_main",
@@ -19,6 +21,11 @@ ENTRY_POINTS = {
     "tese_main",
     "comp_main",
 }
+
+OUTPUT_CONFIGS = (
+    ("spirv", ".spv"),
+    # ("glsl", ".glsl"),
+)
 
 
 def __find_slangc():
@@ -45,6 +52,29 @@ def __make_output_prefix(file_path: str, root_dir: str):
 
     output_filename_ext = rel_loc + file_name
     return os.path.join(ROOT_DIR, "asset", "spv", output_filename_ext)
+
+
+def __is_slang_up_to_date(slang_file_path, output_path):
+    if not os.path.isfile(output_path):
+        return False
+
+    out_mtime = os.path.getmtime(output_path)
+    if os.path.getmtime(slang_file_path) > out_mtime:
+        return False
+
+    with open(slang_file_path, "r") as f:
+        for line in f:
+            idx = line.find(IMPORT_DIRECTIVE)
+            if -1 != idx:
+                imported_path = line[idx + len(IMPORT_DIRECTIVE):].strip().strip(";").strip('"').strip("<>").strip()
+                imported_full_path = os.path.join(os.path.dirname(slang_file_path), imported_path) + ".slang"
+                imported_full_path = os.path.normpath(imported_full_path)
+                assert os.path.isfile(imported_full_path)
+
+                if os.path.getmtime(imported_full_path) > out_mtime:
+                    return False
+
+    return True
 
 
 def __gen_slang_files():
@@ -99,8 +129,11 @@ def __gen_one_slang_cmds(file_path):
             "-target",
         ]
 
-        # yield entry_cmd + ["glsl", "-o", f"{output_prefix}_{suffix}.glsl"]
-        yield entry_cmd + ["spirv", "-o", f"{output_prefix}_{suffix}.spv"]
+        for target, ext in OUTPUT_CONFIGS:
+            output_file_path = f"{output_prefix}_{suffix}{ext}"
+            if SKIP_UP_TO_DATE and __is_slang_up_to_date(file_path, output_file_path):
+                continue
+            yield entry_cmd + [target, "-o", output_file_path]
 
 
 def __gen_cmds():
