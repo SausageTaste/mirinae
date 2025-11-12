@@ -71,7 +71,7 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
         u_pc.spread_blend,
         u_pc.swell,
         u_pc.wind_speed,
-        u_pc.wind_dir
+        atan2(u_pc.wind_dir.y, u_pc.wind_dir.x)
     );
 
     out_images[u_pc.cascade][dispatch_id.xy] = make_texel(

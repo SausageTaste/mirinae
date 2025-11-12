@@ -19,6 +19,13 @@ float quad(float x) {
 }
 
 
+float pentic(float x) {
+    let xx = x * x;
+    let xxxx = xx * xx;
+    return xxxx * x;
+}
+
+
 float hexic(float x) {
     let xx = x * x;
     let xxxx = xx * xx;
@@ -83,21 +90,15 @@ float SpreadPower(float omega, float peak_omega) {
 }
 
 
-float DirectionSpectrum(float theta, float spread_power, float spread_blend, float2 wind_dir) {
-    let wind_angle = atan2(wind_dir.y, wind_dir.x);
-    return lerp(
-        2 / PI * cos(theta) * cos(theta), Cosine2s(theta - wind_angle, spread_power), spread_blend
-    );
-}
-
-
+/*
 float DirectionSpectrum(
-    float theta, float omega, float peak_omega, float spread_blend, float swell, float2 wind_dir
+    float theta, float omega, float peak_omega, float spread_blend, float swell, float wind_angle
 ) {
     let s = SpreadPower(omega, peak_omega) +
             16.0 * tanh(min(omega / peak_omega, 20.0)) * swell * swell;
-    return DirectionSpectrum(theta, s, spread_blend, wind_dir);
+    return DirectionSpectrum(theta, s, spread_blend, wind_angle);
 }
+*/
 
 
 float TMACorrection(float omega, float depth) {
@@ -110,29 +111,42 @@ float TMACorrection(float omega, float depth) {
 }
 
 
+// Second formula from
+// https://www.codecogs.com/library/engineering/fluid_mechanics/waves/spectra/jonswap.php
+float calc_alpha(float wind_speed, float fetch, float peak_omega) {
+    /*/
+    return 0.076 * pow(GRAVITY_EARTH * fetch / sqr(wind_speed), -0.22);
+    /*/
+    return 0.033 * pow(wind_speed * peak_omega / GRAVITY_EARTH, 2.0 / 3.0);
+    //*/
+}
+
+
+float calc_peak_omega(float wind_speed, float fetch) {
+    /*/
+    return 22 * pow(GRAVITY_EARTH * GRAVITY_EARTH / (wind_speed * fetch), 0.33);
+    /*/
+    return 2.84 * pow(GRAVITY_EARTH, 0.7) / (pow(fetch, 0.3) * pow(wind_speed, 0.4));
+    //*/
+}
+
+
 float JONSWAP(
     float omega, float peak_omega, float depth, float wind_speed, float fetch, float amplitude
 ) {
-    let g = GRAVITY_EARTH;
-    let u = wind_speed;
-    let alpha = 0.076 * pow(g * fetch / sqr(u), -0.22);
+    let sigma = (omega <= peak_omega) ? 0.07 : 0.09;
+    let alpha = calc_alpha(wind_speed, fetch, peak_omega);
 
-    float sigma;
-    if (omega <= peak_omega)
-        sigma = 0.07;
-    else
-        sigma = 0.09;
+    /*
     let r = exp(
         -(omega - peak_omega) * (omega - peak_omega) / 2.0 / sigma / sigma / peak_omega / peak_omega
     );
+    */
+    let r = exp(-0.5 * sqr((omega / peak_omega) - 1) / (sigma * sigma));
 
-    let oneOverOmega = 1.0 / omega;
-    let peakOmegaOverOmega = peak_omega / omega;
-    return amplitude * TMACorrection(omega, depth) * alpha * g * g * oneOverOmega * oneOverOmega *
-           oneOverOmega * oneOverOmega * oneOverOmega *
-           exp(-1.25 * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega *
-               peakOmegaOverOmega) *
-           pow(abs(GAMMA), r);
+    let omega_rcp = 1 / omega;
+    return amplitude * TMACorrection(omega, depth) * alpha * sqr(GRAVITY_EARTH) *
+           pentic(omega_rcp) * exp(-1.25 * quad(peak_omega * omega_rcp)) * pow(GAMMA, r);
 }
 
 
@@ -151,14 +165,12 @@ public struct JonswapCalculator {
         float spread_blend,
         float swell,
         float wind_speed,
-        float2 wind_dir
+        float wind_angle
     ) {
         const float delta_k = TAU / L;
         const float domega_dk = FrequencyDerivative(k_len, depth);
         const float omega = calc_angular_frequency(k_len, depth);
-
-        const float gg = GRAVITY_EARTH * GRAVITY_EARTH;
-        const float peak_omega = 22 * pow(gg / (wind_speed * fetch), 0.33);
+        const float peak_omega = calc_peak_omega(wind_speed, fetch);
 
         const float jonswap = JONSWAP(omega, peak_omega, depth, wind_speed, fetch, amplitude);
         const float short_wave_fade = ShortWavesFade(k_len);
@@ -168,21 +180,25 @@ public struct JonswapCalculator {
         spread_power_ = SpreadPower(omega, peak_omega) +
                         16.0 * tanh(min(omega / peak_omega, 20.0)) * swell * swell;
 
+        normalisation_factor_ = NormalisationFactor(spread_power_);
+
         spread_blend_ = spread_blend;
-        wind_dir_ = wind_dir;
+        wind_angle_ = wind_angle;
     }
 
     public float calc(float2 wave_vector) {
         const float k_angle = atan2(wave_vector.y, wave_vector.x);
-        return sqrt(
-            DirectionSpectrum(k_angle, spread_power_, spread_blend_, wind_dir_) * spectrum_
-        );
+        const float cos_2s = normalisation_factor_ *
+                             pow(abs(cos(0.5 * (k_angle - wind_angle_))), 2 * spread_power_);
+        const float direction_spectrum = lerp(2 / PI * sqr(cos(k_angle)), cos_2s, spread_blend_);
+        return sqrt(direction_spectrum * spectrum_);
     }
 
     // Input variables
-    private float2 wind_dir_;
+    private float wind_angle_;
     private float spread_blend_;
     // Precomputed variables
     private float spectrum_;
     private float spread_power_;
+    private float normalisation_factor_;
 }
