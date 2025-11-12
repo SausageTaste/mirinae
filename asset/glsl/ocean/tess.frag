@@ -323,7 +323,6 @@ void main() {
     }
 
     // Foam
-    /*
     {
         float jacobian =
               texture(u_turb_map[0], i_uv / u_params.len_lod_scales[0]).x * u_params.jacobian_scale[0]
@@ -347,7 +346,6 @@ void main() {
 
         light = mix(light, foam_light, jacobian);
     }
-    */
 
     // Aerial perspective
     {
