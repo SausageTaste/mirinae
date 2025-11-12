@@ -118,6 +118,7 @@ def __gen_one_slang_cmds(file_path):
 
     if RELEASE_MODE:
         basic_cmd.append("-O3")
+        basic_cmd.append("-obfuscate")
     else:
         basic_cmd.append("-O0")
         basic_cmd.append("-g3")
