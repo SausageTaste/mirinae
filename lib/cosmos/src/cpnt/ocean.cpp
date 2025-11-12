@@ -40,10 +40,10 @@ namespace mirinae::cpnt {
         , time_(0)
         , depth_(500)
         , fetch_(1000000)
-        , foam_bias_(2.5)
+        , foam_bias_(2.7)
         , foam_scale_(1)
         , lod_scale_(100)
-        , roughness_(0.02)
+        , roughness_(0.01)
         , spread_blend_(0.5)
         , swell_(0.5)
         , tile_size_(20)
@@ -61,7 +61,7 @@ namespace mirinae::cpnt {
     }
 
     void Ocean::render_imgui() {
-        constexpr auto flog = ImGuiSliderFlags_Logarithmic;
+        constexpr auto L = ImGuiSliderFlags_Logarithmic;
 
         if (ImGui::Button("Play"))
             play_ = !play_;
@@ -71,12 +71,12 @@ namespace mirinae::cpnt {
         );
 
         ImGui::DragScalar("Height", ImGuiDataType_Double, &height_, 0.1f);
-        ImGui::SliderFloat("Tess factor", &tess_factor_, 0.f, 10.f, 0, flog);
+        ImGui::SliderFloat("Tess factor", &tess_factor_, 0.f, 10.f, 0, L);
 
-        ImGui::SliderFloat("Roughness", &roughness_, 0, 1, 0, flog);
-        ImGui::SliderFloat("Wind speed", &wind_speed_, 0.001f, 1000, 0, flog);
-        ImGui::SliderFloat("Fetch", &fetch_, 0, 1000000, 0, flog);
-        ImGui::SliderFloat("Depth", &depth_, 0.0000001f, 5000, "%.6f", flog);
+        ImGui::SliderFloat("Roughness", &roughness_, 0, 1, 0, L);
+        ImGui::SliderFloat("Wind speed", &wind_speed_, 1e-6f, 100, "%.6f", L);
+        ImGui::SliderFloat("Fetch", &fetch_, 0, 1000000, 0, L);
+        ImGui::SliderFloat("Depth", &depth_, 1e-6f, 5000, "%.6f", L);
         ImGui::SliderFloat("Swell", &swell_, 0, 1);
         ImGui::SliderFloat("Spread blend", &spread_blend_, 0, 1);
 
@@ -86,11 +86,11 @@ namespace mirinae::cpnt {
                                std::sin(sung::to_radians(wind_dir)) };
 
         ImGui::SliderFloat(
-            "Turb Time Factor", &trub_time_factor_, 0.01f, 100, 0, flog
+            "Turb Time Factor", &trub_time_factor_, 0.01f, 100, 0, L
         );
         ImGui::SliderFloat("Foam Bias", &foam_bias_, -10, 10);
         ImGui::SliderFloat("Foam Scale", &foam_scale_, 0, 10);
-        ImGui::SliderFloat("LOD Scale", &lod_scale_, 0, 10000, 0, flog);
+        ImGui::SliderFloat("LOD Scale", &lod_scale_, 0, 10000, 0, L);
         ImGui::ColorEdit3("Ocean color", &ocean_color_.x);
 
         if (ImGui::CollapsingHeader("Cascade###Header")) {
@@ -105,9 +105,9 @@ namespace mirinae::cpnt {
             auto& c = cascades_[cascade_imgui_idx_];
 
             ImGui::Checkbox("Active", &c.active_);
-            ImGui::SliderFloat("Amplitude", &c.amplitude_, 0.01f, 10, 0, flog);
+            ImGui::SliderFloat("Amplitude", &c.amplitude_, 0.01f, 10, 0, L);
             ImGui::SliderFloat(
-                "Jacobian scale", &c.jacobian_scale_, 0, 10, 0, flog
+                "Jacobian scale", &c.jacobian_scale_, 0, 10, 0, L
             );
             ImGui::DragFloat("LOD scale", &c.lod_scale_);
             ImGui::DragFloat("L", &c.L_);
