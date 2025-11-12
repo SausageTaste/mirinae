@@ -1,3 +1,4 @@
+import "../module/complex";
 import "../module/konst";
 import "../module/ocean";
 
@@ -26,16 +27,6 @@ static const float GAMMA = 3.3;
 static const float SHORT_WAVES_FADE = 0.01;
 
 
-float4 gauseRnd(uint3 dispatch_id) {
-    let noise_texel = u_noise.Load(int3(dispatch_id.xy, 0));
-    const float u0 = frac(noise_texel.x), v0 = max(noise_texel.y, 1e-6);
-    const float u1 = frac(noise_texel.z), v1 = max(noise_texel.w, 1e-6);
-    const float a0 = TAU * u0, r0 = sqrt(-2.0 * log(v0));
-    const float a1 = TAU * u1, r1 = sqrt(-2.0 * log(v1));
-    return float4(r0 * cos(a0), r0 * sin(a0), r1 * cos(a1), r1 * sin(a1));
-}
-
-
 float sqr(float x) {
     return x * x;
 }
@@ -58,6 +49,18 @@ float octic(float x) {
     let xx = x * x;
     let xxxx = xx * xx;
     return xxxx * xxxx;
+}
+
+
+float2 box_muller(float u, float v) {
+    const float a = TAU * u;
+    const float r = sqrt(-2.0 * log(max(v, 1e-6)));
+    return float2(r * cos(a), r * sin(a));
+}
+
+
+float2 box_muller(float2 uv) {
+    return box_muller(uv.x, uv.y);
 }
 
 
@@ -194,14 +197,13 @@ float ShortWavesFade(float k) {
 }
 
 
+bool should_be_cut_off(const float k_len) {
+    return (k_len < u_pc.cutoff_low || k_len > u_pc.cutoff_high);
+}
+
+
 struct JonswapCalculator {
-    [mutating]
-    internal bool init(const float wave_vector_length) {
-        const float k_len = max(wave_vector_length, 0.000001);
-
-        if (k_len < u_pc.cutoff_low || k_len > u_pc.cutoff_high)
-            return false;
-
+    internal __init(const float k_len) {
         const float delta_k = TAU / float(u_pc.L);
         const float domega_dk = FrequencyDerivative(k_len);
         const float omega = Frequency(k_len);
@@ -216,8 +218,6 @@ struct JonswapCalculator {
 
         spread_power_ = SpreadPower(omega, peak_omega) +
                         16.0 * tanh(min(omega / peak_omega, 20.0)) * u_pc.swell * u_pc.swell;
-
-        return true;
     }
 
     internal float calc(float2 wave_vector) {
@@ -251,20 +251,29 @@ float jonswap_spectrum(float2 wave_vector) {
 }
 
 
+float4 make_texel(Complex a, Complex b) {
+    return float4(a.to_float2(), b.to_float2());
+}
+
+
 [shader("compute")]
 [numthreads(16, 16, 1)]
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
     let x = make_spatial_pos(dispatch_id.xy, u_pc.N);
     let k = make_wave_vector(x, u_pc.L);
-    JonswapCalculator jonswap;
+    let k_len = max(length(k), 0.000001);
 
-    if (jonswap.init(length(k))) {
-        var gause_random = gauseRnd(dispatch_id);
-        gause_random.w *= -1;  // Make z,w conjugate
-        out_images[u_pc.cascade][dispatch_id.xy] = float4(
-            gause_random.xy * jonswap.calc(k), gause_random.zw * jonswap.calc(-k)
-        );
-    } else {
+    if (should_be_cut_off(k_len)) {
         out_images[u_pc.cascade][dispatch_id.xy] = float4(0);
+        return;
     }
+
+    let noise_texel = u_noise.Load(int3(dispatch_id.xy, 0));
+    var gause0 = Complex(box_muller(noise_texel.xy));
+    var gause1 = Complex(box_muller(noise_texel.zw));
+    let spectrum = JonswapCalculator(k_len);
+
+    out_images[u_pc.cascade][dispatch_id.xy] = make_texel(
+        gause0 * (spectrum.calc(k) / sqrt(2)), gause0.conj() * (spectrum.calc(-k) / sqrt(2))
+    );
 }
