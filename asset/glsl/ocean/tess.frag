@@ -341,7 +341,7 @@ void main() {
             F0,
             -cam_dir_v,
             to_sun_dir_v,
-            u_params.dlight_color.xyz
+            sun_trans * 10 * lit
         );
 
         light = mix(light, foam_light, jacobian);
