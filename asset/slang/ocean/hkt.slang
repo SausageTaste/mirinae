@@ -20,7 +20,7 @@ u_pc;
 
 float dispersion(float mag) {
     const float w_0 = TAU / u_pc.repeat_time;
-    const float w_k = sqrt(GRAVITY_EARTH * mag * tanh(mag * u_pc.depth));
+    const float w_k = calc_angular_frequency(mag, u_pc.depth);
     const float a = w_k / w_0;
     return floor(a) * w_0;
 }
