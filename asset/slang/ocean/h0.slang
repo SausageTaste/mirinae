@@ -260,6 +260,11 @@ float4 make_texel(Complex a, Complex b) {
 }
 
 
+uint2 mirror(uint2 ij, int N) {
+    return uint2((N - ij.x) % N, (N - ij.y) % N);
+}
+
+
 [shader("compute")]
 [numthreads(16, 16, 1)]
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
@@ -272,12 +277,14 @@ void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
         return;
     }
 
+    let mirror_texco = mirror(dispatch_id.xy, u_pc.N);
     let noise_texel = u_noise.Load(int3(dispatch_id.xy, 0));
+    let noise_texel_mirror = u_noise.Load(int3(mirror_texco, 0));
     var gause0 = Complex(box_muller(noise_texel.xy));
-    var gause1 = Complex(box_muller(noise_texel.zw));
+    var gause1 = Complex(box_muller(noise_texel_mirror.xy));
     let spectrum = JonswapCalculator(k_len);
 
     out_images[u_pc.cascade][dispatch_id.xy] = make_texel(
-        gause0 * (spectrum.calc(k) / sqrt(2)), gause0.conj() * (spectrum.calc(-k) / sqrt(2))
+        gause0 * (spectrum.calc(k) / sqrt(2)), gause1.conj() * (spectrum.calc(-k) / sqrt(2))
     );
 }
