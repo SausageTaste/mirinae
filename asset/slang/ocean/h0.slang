@@ -50,10 +50,14 @@ float4 make_texel(Complex a, Complex b) {
 [shader("compute")]
 [numthreads(16, 16, 1)]
 void comp_main(uint3 dispatch_id: SV_DispatchThreadID) {
-    let x = make_spatial_pos(dispatch_id.xy, u_pc.N);
-    let k = make_wave_vector(x, u_pc.L);
-    let k_len = max(length(k), 0.000001);
+    let k = make_wave_vector(dispatch_id.xy, u_pc.N, u_pc.L);
+    let k_len_sqr = dot(k, k);
+    if (0 == k_len_sqr) {
+        out_images[u_pc.cascade][dispatch_id.xy] = 0;
+        return;
+    }
 
+    let k_len = sqrt(k_len_sqr);
     if (should_be_cut_off(k_len)) {
         out_images[u_pc.cascade][dispatch_id.xy] = float4(0);
         return;
