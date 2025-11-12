@@ -2,7 +2,9 @@
 
 #include <deque>
 
+#define MINIAUDIO_IMPLEMENTATION
 #include <SDL3/SDL_scancode.h>
+#include <miniaudio.h>
 #include <spdlog/sinks/base_sink.h>
 #include <daltools/common/glm_tool.hpp>
 #include <daltools/common/task_sys.hpp>
@@ -271,6 +273,47 @@ namespace {
         std::array<float, TSize> data_;
     };
 
+
+    class AudioSystem {
+
+    public:
+        AudioSystem() {
+            ma_engine_config config;
+            config = ma_engine_config_init();
+
+            if (MA_SUCCESS != ma_engine_init(&config, &engine_)) {
+                throw std::runtime_error("Failed to initialize audio engine");
+            }
+
+            const auto path = "C:/Users/woos8/Downloads/VIBE_20251112/song.mp3";
+            const auto result = ma_sound_init_from_file(
+                &engine_, path, MA_SOUND_FLAG_DECODE, nullptr, nullptr, &sound_
+            );
+            if (result != MA_SUCCESS) {
+                throw std::runtime_error("Failed to load audio file");
+            }
+
+            ma_sound_set_positioning(&sound_, ma_positioning_relative);
+            ma_sound_start(&sound_);
+        }
+
+        ~AudioSystem() { ma_engine_uninit(&engine_); }
+
+        AudioSystem(const AudioSystem&) = delete;
+        AudioSystem(AudioSystem&&) = delete;
+        AudioSystem& operator=(const AudioSystem&) = delete;
+        AudioSystem& operator=(AudioSystem&&) = delete;
+
+        void tick() {
+            const auto t = sung::get_time_unix();
+            ma_sound_set_position(&sound_, 3 * cos(t), 0, 3 * sin(t));
+        }
+
+    private:
+        ma_engine engine_;
+        ma_sound sound_;
+    };
+
 }  // namespace
 
 
@@ -384,6 +427,7 @@ namespace {
         ~Engine() override {}
 
         void do_frame() override {
+            audio_.tick();
             tasks_.start();
 
             /*
@@ -523,6 +567,7 @@ namespace {
         std::shared_ptr<mirinae::imgui::IMainWin> imgui_main_;
         std::unique_ptr<mirinae::IRenderer> renderer_;
 
+        ::AudioSystem audio_;
         mirinae::TaskGraph tasks_;
         sung::MonotonicRealtimeTimer sec5_;
         mirinae::InputActionMapper action_mapper_;

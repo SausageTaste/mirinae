@@ -16,6 +16,8 @@ set(DAL_USE_SUNGTOOLS_SUBMODULE ON CACHE BOOL "Use sungtools as a submodule")
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/extern/dalbaragi)
 
+find_path(MINIAUDIO_INCLUDE_DIRS "miniaudio.h")
+
 find_package(EnTT CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(Jolt CONFIG REQUIRED)

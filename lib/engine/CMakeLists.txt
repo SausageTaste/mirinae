@@ -9,7 +9,10 @@ set(src_files
 
 add_library(mirinae_engine STATIC ${src_files})
 add_library(mirinae::engine ALIAS mirinae_engine)
-target_include_directories(mirinae_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(mirinae_engine PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${MINIAUDIO_INCLUDE_DIRS}
+)
 target_link_libraries(mirinae_engine PUBLIC
     mirinae::vulkan
 )
