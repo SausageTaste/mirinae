@@ -275,6 +275,45 @@ namespace {
     };
 
 
+    class AudioObject {
+
+    public:
+        AudioObject() = default;
+
+        ~AudioObject() { ma_sound_uninit(&sound_); }
+
+        static std::unique_ptr<AudioObject> from_file(
+            ma_engine& engine, const char* path
+        ) {
+            auto output = std::make_unique<AudioObject>();
+
+            const auto result = ma_sound_init_from_file(
+                &engine,
+                path,
+                MA_SOUND_FLAG_DECODE,
+                nullptr,
+                nullptr,
+                &output->sound_
+            );
+            if (MA_SUCCESS != result) {
+                return nullptr;
+            }
+
+            return output;
+        }
+
+        void play() { ma_sound_start(&sound_); }
+        void stop() { ma_sound_stop(&sound_); }
+
+        void set_rel_positioning() {
+            ma_sound_set_positioning(&sound_, ma_positioning_relative);
+        }
+
+    private:
+        ma_sound sound_;
+    };
+
+
     class AudioSystem {
 
     public:
@@ -287,15 +326,10 @@ namespace {
             }
 
             const auto path = "C:/Users/woos8/Downloads/VIBE_20251112/song.mp3";
-            const auto result = ma_sound_init_from_file(
-                &engine_, path, MA_SOUND_FLAG_DECODE, nullptr, nullptr, &sound_
-            );
-            if (result != MA_SUCCESS) {
-                throw std::runtime_error("Failed to load audio file");
+            if (auto sound = this->create_sound_from_file(path)) {
+                sound->set_rel_positioning();
+                sound->play();
             }
-
-            ma_sound_set_positioning(&sound_, ma_positioning_relative);
-            ma_sound_start(&sound_);
         }
 
         ~AudioSystem() { ma_engine_uninit(&engine_); }
@@ -305,14 +339,20 @@ namespace {
         AudioSystem& operator=(const AudioSystem&) = delete;
         AudioSystem& operator=(AudioSystem&&) = delete;
 
-        void tick() {
-            const auto t = sung::get_time_unix();
-            ma_sound_set_position(&sound_, 3 * cos(t), 0, 3 * sin(t));
+        void tick() {}
+
+        AudioObject* create_sound_from_file(const char* path) {
+            auto output = AudioObject::from_file(engine_, path);
+            if (output) {
+                sounds_.push_back(std::move(output));
+                return sounds_.back().get();
+            }
+            return nullptr;
         }
 
     private:
         ma_engine engine_;
-        ma_sound sound_;
+        std::vector<std::unique_ptr<AudioObject>> sounds_;
     };
 
 }  // namespace
