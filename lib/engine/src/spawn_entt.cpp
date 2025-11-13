@@ -1,4 +1,4 @@
-#include "mirinae/spawn_entt.hpp"
+#include "spawn_entt.hpp"
 
 #include <entt/entity/registry.hpp>
 
