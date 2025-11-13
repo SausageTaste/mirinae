@@ -15,8 +15,8 @@
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/lua/script.hpp"
 #include "mirinae/math/mamath.hpp"
-#include "mirinae/renderer.hpp"
 #include "mirinae/spawn_entt.hpp"
+#include "mirinae/vulkan/renderer.hpp"
 
 
 namespace {

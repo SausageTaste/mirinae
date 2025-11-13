@@ -1,9 +1,9 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/builder.hpp"
+#include "renderpass/builder.hpp"
 
-#include "mirinae/render/meshdata.hpp"
-#include "mirinae/render/vkdebug.hpp"
+#include "render/meshdata.hpp"
+#include "render/vkdebug.hpp"
 
 
 // AttachDescView

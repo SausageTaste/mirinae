@@ -1,7 +1,7 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/renderee/ren_actor_skinned.hpp"
+#include "render/mem_cinfo.hpp"
+#include "renderee/ren_actor_skinned.hpp"
 
 
 namespace {

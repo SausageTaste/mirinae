@@ -1,4 +1,4 @@
-#include "mirinae/context/camera.hpp"
+#include "context/camera.hpp"
 
 
 namespace {

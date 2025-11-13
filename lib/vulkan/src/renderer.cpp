@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderer.hpp"
+#include "mirinae/vulkan/renderer.hpp"
 
 #include <SDL3/SDL_scancode.h>
 #include <daltools/common/util.h>
@@ -15,24 +15,25 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/math/mamath.hpp"
-#include "mirinae/overlay/overlay.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/draw_set.hpp"
-#include "mirinae/render/platform_func.hpp"
-#include "mirinae/render/render_graph.hpp"
-#include "mirinae/render/renderpass.hpp"
-#include "mirinae/renderee/atmos.hpp"
-#include "mirinae/renderpass/atmos/sky.hpp"
-#include "mirinae/renderpass/bloom.hpp"
-#include "mirinae/renderpass/builder.hpp"
-#include "mirinae/renderpass/compo.hpp"
-#include "mirinae/renderpass/envmap/envmap.hpp"
-#include "mirinae/renderpass/gbuf/gbuf.hpp"
-#include "mirinae/renderpass/misc/misc.hpp"
-#include "mirinae/renderpass/misc/skin_anim.hpp"
-#include "mirinae/renderpass/ocean/ocean.hpp"
-#include "mirinae/renderpass/shadow/shadow.hpp"
-#include "mirinae/renderpass/transp/transp.hpp"
+
+#include "mirinae/vulkan/platform_func.hpp"
+#include "overlay/overlay.hpp"
+#include "render/cmdbuf.hpp"
+#include "render/draw_set.hpp"
+#include "render/render_graph.hpp"
+#include "render/renderpass.hpp"
+#include "renderee/atmos.hpp"
+#include "renderpass/atmos/sky.hpp"
+#include "renderpass/bloom/bloom.hpp"
+#include "renderpass/builder.hpp"
+#include "renderpass/compo.hpp"
+#include "renderpass/envmap/envmap.hpp"
+#include "renderpass/gbuf/gbuf.hpp"
+#include "renderpass/misc/misc.hpp"
+#include "renderpass/misc/skin_anim.hpp"
+#include "renderpass/ocean/ocean.hpp"
+#include "renderpass/shadow/shadow.hpp"
+#include "renderpass/transp/transp.hpp"
 
 
 namespace {

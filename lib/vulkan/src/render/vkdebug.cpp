@@ -1,4 +1,4 @@
-#include "mirinae/render/vkdebug.hpp"
+#include "render/vkdebug.hpp"
 
 #define LOAD_VK_FUNC(func_name, device) \
     reinterpret_cast<PFN_##func_name>(vkGetDeviceProcAddr(device, #func_name))

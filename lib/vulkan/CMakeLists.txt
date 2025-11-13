@@ -73,11 +73,14 @@ set(src_files
 
 add_library(mirinae_vulkan STATIC ${src_files})
 add_library(mirinae::vulkan ALIAS mirinae_vulkan)
-target_include_directories(mirinae_vulkan PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+target_include_directories(mirinae_vulkan
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 target_precompile_headers(mirinae_vulkan PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/mirinae/vulkan_pch.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan_pch.h
 )
 target_link_libraries(mirinae_vulkan PUBLIC
     GPUOpen::VulkanMemoryAllocator

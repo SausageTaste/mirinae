@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/vkmajorplayers.hpp"
+#include "render/vkmajorplayers.hpp"
 
 #include <array>
 

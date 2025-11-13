@@ -1,15 +1,16 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/ocean/ocean.hpp"
+#include "renderpass/ocean/ocean.hpp"
 
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/renderpass/builder.hpp"
-#include "mirinae/renderpass/ocean/common.hpp"
+
+#include "render/cmdbuf.hpp"
+#include "render/mem_cinfo.hpp"
+#include "renderpass/builder.hpp"
+#include "renderpass/ocean/common.hpp"
 
 
 namespace {

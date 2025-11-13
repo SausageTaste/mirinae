@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/shadow/shadow.hpp"
+#include "renderpass/shadow/shadow.hpp"
 
 #include <entt/entity/registry.hpp>
 
@@ -8,10 +8,11 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/draw_set.hpp"
-#include "mirinae/renderpass/builder.hpp"
-#include "mirinae/renderpass/shadow/bundles.hpp"
+
+#include "render/cmdbuf.hpp"
+#include "render/draw_set.hpp"
+#include "renderpass/builder.hpp"
+#include "renderpass/shadow/bundles.hpp"
 
 
 // Tasks

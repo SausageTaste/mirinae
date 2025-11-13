@@ -1,8 +1,8 @@
-#include "mirinae/renderpass/atmos/common.hpp"
+#include "renderpass/atmos/common.hpp"
 
 #include <entt/entity/registry.hpp>
 
-#include "mirinae/renderee/atmos.hpp"
+#include "renderee/atmos.hpp"
 
 
 namespace {

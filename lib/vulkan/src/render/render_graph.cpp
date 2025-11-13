@@ -1,10 +1,10 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/render_graph.hpp"
+#include "render/render_graph.hpp"
 
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/renderpass/builder.hpp"
+#include "render/cmdbuf.hpp"
+#include "render/mem_cinfo.hpp"
+#include "renderpass/builder.hpp"
 
 
 #define MIRINAE_GET_IMPL()                                        \

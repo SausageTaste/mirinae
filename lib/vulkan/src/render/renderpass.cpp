@@ -1,12 +1,12 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/renderpass.hpp"
+#include "render/renderpass.hpp"
 
 #include <stdexcept>
 
-#include "mirinae/render/vkmajorplayers.hpp"
-#include "mirinae/renderpass/builder.hpp"
-#include "mirinae/renderpass/common.hpp"
+#include "render/vkmajorplayers.hpp"
+#include "renderpass/builder.hpp"
+#include "renderpass/common.hpp"
 
 
 // fillscreen

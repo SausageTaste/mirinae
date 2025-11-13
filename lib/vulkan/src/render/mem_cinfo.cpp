@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/mem_cinfo.hpp"
+#include "render/mem_cinfo.hpp"
 
 
 // BufferCreateInfo

@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/renderee.hpp"
+#include "render/renderee.hpp"
 
 #include <numeric>
 #include <set>
@@ -8,8 +8,8 @@
 #include <daltools/dmd/parser.h>
 #include <sung/basic/stringtool.hpp>
 
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
+#include "render/cmdbuf.hpp"
+#include "render/mem_cinfo.hpp"
 
 
 namespace {

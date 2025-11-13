@@ -1,13 +1,14 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/overlay/overlay.hpp"
+#include "overlay/overlay.hpp"
 
 #include <SDL3/SDL_scancode.h>
 #include <string_view>
 
 #include "mirinae/lua/script.hpp"
-#include "mirinae/overlay/text.hpp"
-#include "mirinae/render/cmdbuf.hpp"
+
+#include "overlay/text.hpp"
+#include "render/cmdbuf.hpp"
 
 
 namespace {

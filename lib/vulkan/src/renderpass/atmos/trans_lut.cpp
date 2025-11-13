@@ -1,15 +1,16 @@
-#include "mirinae/renderpass/atmos/sky.hpp"
+#include "renderpass/atmos/sky.hpp"
 
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/render/vkmajorplayers.hpp"
-#include "mirinae/renderpass/atmos/common.hpp"
-#include "mirinae/renderpass/builder.hpp"
-#include "mirinae/renderpass/common.hpp"
+
+#include "render/cmdbuf.hpp"
+#include "render/mem_cinfo.hpp"
+#include "render/vkmajorplayers.hpp"
+#include "renderpass/atmos/common.hpp"
+#include "renderpass/builder.hpp"
+#include "renderpass/common.hpp"
 
 
 namespace {

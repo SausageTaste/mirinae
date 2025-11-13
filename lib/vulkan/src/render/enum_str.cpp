@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/enum_str.hpp"
+#include "render/enum_str.hpp"
 
 
 #define CASE_ENUM_STR(e) \

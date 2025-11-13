@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/draw_set.hpp"
+#include "render/draw_set.hpp"
 
 #include <entt/entity/registry.hpp>
 

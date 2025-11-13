@@ -1,17 +1,18 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/misc/misc.hpp"
+#include "renderpass/misc/misc.hpp"
 
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/render/renderee.hpp"
-#include "mirinae/renderee/ren_actor_skinned.hpp"
-#include "mirinae/renderpass/builder.hpp"
+
+#include "render/cmdbuf.hpp"
+#include "render/mem_cinfo.hpp"
+#include "render/renderee.hpp"
+#include "renderee/ren_actor_skinned.hpp"
+#include "renderpass/builder.hpp"
 
 
 namespace {

@@ -1,10 +1,10 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/ocean/common.hpp"
+#include "renderpass/ocean/common.hpp"
 
 #include <entt/entity/registry.hpp>
 
-#include "mirinae/renderpass/builder.hpp"
+#include "renderpass/builder.hpp"
 
 
 namespace mirinae {

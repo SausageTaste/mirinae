@@ -1,8 +1,8 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/render/vkcomposition.hpp"
+#include "render/cmdbuf.hpp"
+#include "render/mem_cinfo.hpp"
+#include "render/vkcomposition.hpp"
 
 
 namespace {

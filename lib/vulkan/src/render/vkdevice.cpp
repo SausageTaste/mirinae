@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/vkdevice.hpp"
+#include "render/vkdevice.hpp"
 
 #include <algorithm>
 #include <array>
@@ -13,10 +13,11 @@
 #include <sung/basic/stringtool.hpp>
 
 #include "mirinae/lightweight/konsts.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/enum_str.hpp"
-#include "mirinae/render/platform_func.hpp"
-#include "mirinae/render/vkmajorplayers.hpp"
+
+#include "mirinae/vulkan/platform_func.hpp"
+#include "render/cmdbuf.hpp"
+#include "render/enum_str.hpp"
+#include "render/vkmajorplayers.hpp"
 
 
 namespace {

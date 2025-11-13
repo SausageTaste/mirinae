@@ -1,11 +1,11 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/shadow/bundles.hpp"
+#include "renderpass/shadow/bundles.hpp"
 
 #include <entt/entity/entity.hpp>
 
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/render/texture.hpp"
+#include "render/mem_cinfo.hpp"
+#include "render/texture.hpp"
 
 
 // ImageFbufPair

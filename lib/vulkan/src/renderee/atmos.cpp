@@ -1,10 +1,11 @@
-#include "mirinae/renderee/atmos.hpp"
+#include "renderee/atmos.hpp"
 
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/render/vkdebug.hpp"
+
+#include "render/mem_cinfo.hpp"
+#include "render/vkdebug.hpp"
 
 
 namespace {

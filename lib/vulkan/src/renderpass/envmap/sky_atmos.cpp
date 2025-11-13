@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/envmap/envmap.hpp"
+#include "renderpass/envmap/envmap.hpp"
 
 #include <entt/entity/registry.hpp>
 
@@ -8,9 +8,10 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/renderpass/builder.hpp"
-#include "mirinae/renderpass/envmap/cubemap.hpp"
+
+#include "render/cmdbuf.hpp"
+#include "renderpass/builder.hpp"
+#include "renderpass/envmap/cubemap.hpp"
 
 
 namespace {

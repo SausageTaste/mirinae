@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/uniform.hpp"
+#include "render/uniform.hpp"
 
 #include <stdexcept>
 #include <vector>

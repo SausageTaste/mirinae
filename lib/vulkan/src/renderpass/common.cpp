@@ -1,12 +1,13 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/common.hpp"
+#include "renderpass/common.hpp"
 
 #include <set>
 
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/render/vkdebug.hpp"
+
+#include "render/mem_cinfo.hpp"
+#include "render/vkdebug.hpp"
 
 
 // RenderPass

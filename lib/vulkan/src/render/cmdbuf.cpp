@@ -1,10 +1,10 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/cmdbuf.hpp"
+#include "render/cmdbuf.hpp"
 
-#include "mirinae/render/enum_str.hpp"
-#include "mirinae/render/mem_alloc.hpp"
-#include "mirinae/render/vkdevice.hpp"
+#include "render/enum_str.hpp"
+#include "render/mem_alloc.hpp"
+#include "render/vkdevice.hpp"
 
 
 // Viewport

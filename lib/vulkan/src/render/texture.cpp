@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/texture.hpp"
+#include "render/texture.hpp"
 
 #include <ktxvulkan.h>
 #include <daltools/img/backend/ktx.hpp>
@@ -8,10 +8,10 @@
 #include <sung/basic/stringtool.hpp>
 #include <sung/basic/time.hpp>
 
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/enum_str.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/render/vkmajorplayers.hpp"
+#include "render/cmdbuf.hpp"
+#include "render/enum_str.hpp"
+#include "render/mem_cinfo.hpp"
+#include "render/vkmajorplayers.hpp"
 
 #define SWITCH_STR(x) \
     case x:           \

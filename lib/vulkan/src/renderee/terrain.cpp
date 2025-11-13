@@ -1,10 +1,10 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
 #include <sung/basic/mesh_builder.hpp>
 
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
-#include "mirinae/renderee/terrain.hpp"
+#include "render/cmdbuf.hpp"
+#include "render/mem_cinfo.hpp"
+#include "renderee/terrain.hpp"
 
 
 namespace {

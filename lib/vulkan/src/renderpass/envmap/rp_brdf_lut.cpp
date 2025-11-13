@@ -1,8 +1,8 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/envmap/rp.hpp"
+#include "renderpass/envmap/rp.hpp"
 
-#include "mirinae/renderpass/builder.hpp"
+#include "renderpass/builder.hpp"
 
 
 namespace {

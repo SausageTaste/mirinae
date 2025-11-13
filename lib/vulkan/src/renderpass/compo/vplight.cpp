@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/compo.hpp"
+#include "renderpass/compo.hpp"
 
 #include <entt/entity/registry.hpp>
 
@@ -8,9 +8,10 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/draw_set.hpp"
-#include "mirinae/renderpass/builder.hpp"
+
+#include "render/cmdbuf.hpp"
+#include "render/draw_set.hpp"
+#include "renderpass/builder.hpp"
 
 
 namespace {

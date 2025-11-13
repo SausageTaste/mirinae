@@ -1,8 +1,8 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/gbuf/gbuf.hpp"
+#include "renderpass/gbuf/gbuf.hpp"
 
-#include "mirinae/renderpass/builder.hpp"
+#include "renderpass/builder.hpp"
 
 
 // gbuf

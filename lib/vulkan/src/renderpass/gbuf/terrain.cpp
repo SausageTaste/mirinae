@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/gbuf/gbuf.hpp"
+#include "renderpass/gbuf/gbuf.hpp"
 
 #include <entt/entity/registry.hpp>
 
@@ -8,10 +8,11 @@
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/draw_set.hpp"
-#include "mirinae/renderee/terrain.hpp"
-#include "mirinae/renderpass/builder.hpp"
+
+#include "render/cmdbuf.hpp"
+#include "render/draw_set.hpp"
+#include "renderee/terrain.hpp"
+#include "renderpass/builder.hpp"
 
 
 namespace {

@@ -1,11 +1,11 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/envmap/cubemap.hpp"
+#include "renderpass/envmap/cubemap.hpp"
 
 #include <entt/entity/entity.hpp>
 
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/mem_cinfo.hpp"
+#include "render/cmdbuf.hpp"
+#include "render/mem_cinfo.hpp"
 
 
 // ColorCubeMap

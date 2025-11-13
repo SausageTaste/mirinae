@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/overlay/text.hpp"
+#include "overlay/text.hpp"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <SDL3/SDL_scancode.h>
@@ -8,7 +8,7 @@
 
 #include <sstream>
 
-#include "mirinae/render/cmdbuf.hpp"
+#include "render/cmdbuf.hpp"
 
 
 namespace {

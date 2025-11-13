@@ -1,12 +1,13 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/renderpass/gbuf/gbuf.hpp"
+#include "renderpass/gbuf/gbuf.hpp"
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/lightweight/task.hpp"
-#include "mirinae/render/cmdbuf.hpp"
-#include "mirinae/render/draw_set.hpp"
-#include "mirinae/renderpass/builder.hpp"
+
+#include "render/cmdbuf.hpp"
+#include "render/draw_set.hpp"
+#include "renderpass/builder.hpp"
 
 
 namespace {

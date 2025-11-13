@@ -1,6 +1,6 @@
-#include "mirinae/vulkan_pch.h"
+#include "vulkan_pch.h"
 
-#include "mirinae/render/meshdata.hpp"
+#include "render/meshdata.hpp"
 
 #include <daltools/dmd/parser.h>
 
