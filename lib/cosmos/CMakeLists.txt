@@ -2,7 +2,8 @@ set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 set(src_files
     ${src_dir}/cosmos.cpp
-    ${src_dir}/cpnt/atmos.cpp
+    ${src_dir}/cpnt/atmos_entt.cpp
+    ${src_dir}/cpnt/atmos_lua.cpp
     ${src_dir}/cpnt/camera.cpp
     ${src_dir}/cpnt/envmap.cpp
     ${src_dir}/cpnt/identifier.cpp
