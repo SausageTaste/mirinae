@@ -16,7 +16,8 @@
 
 
 #define GET_SCENE_PTR()                                  \
-    const auto scene_ptr = ::find_scene_ptr(L);          \
+    mirinae::LuaStateView ll{ L };                       \
+    const auto scene_ptr = ::find_scene_ptr(ll);         \
     if (!scene_ptr)                                      \
         return luaL_error(L, "Scene pointer not found"); \
     auto& scene = *scene_ptr;                            \
@@ -28,49 +29,14 @@ namespace {
     constexpr uint64_t MAGIC_NUM = 46461236464165;
     const char* const SCENE_PTR_NAME = "__mirinae_cosmos_scene_ptr";
 
-    mirinae::Scene* find_scene_ptr(lua_State* const L) {
-        const auto usrptr = mirinae::find_global_ptr(L, SCENE_PTR_NAME);
+    mirinae::Scene* find_scene_ptr(mirinae::LuaStateView ll) {
+        const auto usrptr = ll.find_global_ptr(SCENE_PTR_NAME);
         const auto scene = static_cast<mirinae::Scene*>(usrptr);
         if (!scene)
             return nullptr;
         if (scene->magic_num_ != MAGIC_NUM)
             return nullptr;
         return scene;
-    }
-
-
-    void set_lua_func_to_table(lua_State* L, const luaL_Reg* l, int nup) {
-        for (; l->name; l++) {
-            int i;
-            lua_pushstring(L, l->name);
-            for (i = 0; i < nup; i++) /* copy upvalues to the top */
-                lua_pushvalue(L, -(nup + 1));
-            lua_pushcclosure(L, l->func, nup);
-            lua_settable(L, -(nup + 3));
-        }
-        lua_pop(L, nup); /* remove upvalues */
-    }
-
-    void add_metatable_definition(
-        lua_State* const L,
-        const char* const name,
-        const luaL_Reg* const functions
-    ) {
-        luaL_newmetatable(L, name);
-        lua_pushstring(L, "__index");
-        lua_pushvalue(L, -2); /* pushes the metatable */
-        lua_settable(L, -3);  /* metatable.__index = metatable */
-        ::set_lua_func_to_table(L, functions, 0);
-    }
-
-    template <typename T>
-    auto& push_meta_obj(lua_State* const L, const char* const type_name) {
-        const auto ud = lua_newuserdata(L, sizeof(T));
-        luaL_getmetatable(L, type_name);
-        lua_setmetatable(L, -2);
-
-        const auto ud_ptr = static_cast<T*>(ud);
-        return *ud_ptr;
     }
 
 }  // namespace
@@ -319,9 +285,13 @@ namespace { namespace scene {
             auto& self = check_udata(L, 1);
 
             if (auto c = reg.try_get<tview::Transform>(self)) {
-                auto& o = ::push_meta_obj<tview::UdataType>(L, tview::UDATA_ID);
-                o = c;
-                return 1;
+                auto o = ll.push_meta_obj<tview::UdataType>(tview::UDATA_ID);
+                if (o) {
+                    *o = c;
+                    return 1;
+                } else {
+                    return luaL_error(L, "Failed to push Transform userdata.");
+                }
             } else {
                 return 0;
             }
@@ -335,9 +305,12 @@ namespace { namespace scene {
             if (!mactor)
                 return luaL_error(L, "This entity is not a skinned model.");
 
-            auto& o = ::push_meta_obj<animv::UdataType>(L, animv::UDATA_ID);
-            o = &mactor->anim_state_;
-            return 1;
+            if (auto o = ll.push_meta_obj<animv::UdataType>(animv::UDATA_ID)) {
+                *o = &mactor->anim_state_;
+                return 1;
+            } else {
+                return luaL_error(L, "Failed to push AnimState userdata.");
+            }
         }
 
     }  // namespace entity
@@ -349,9 +322,13 @@ namespace { namespace scene {
         const auto entity = static_cast<entt::entity>(id);
 
         if (reg.valid(entity)) {
-            auto& o = ::push_meta_obj<entity::UdataType>(L, entity::UDATA_ID);
-            o = entity;
-            return 1;
+            auto o = ll.push_meta_obj<entity::UdataType>(entity::UDATA_ID);
+            if (o) {
+                *o = entity;
+                return 1;
+            } else {
+                return luaL_error(L, "Failed to push Entity userdata.");
+            }
         } else {
             return 0;
         }
@@ -424,9 +401,12 @@ namespace { namespace scene {
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
         }
 
-        auto& o = ::push_meta_obj<entity::UdataType>(L, entity::UDATA_ID);
-        o = enttid;
-        return 1;
+        if (auto o = ll.push_meta_obj<entity::UdataType>(entity::UDATA_ID)) {
+            *o = enttid;
+            return 1;
+        } else {
+            return luaL_error(L, "Failed to push Entity userdata.");
+        }
     }
 
     int create_skinned_actor(lua_State* const L) {
@@ -444,13 +424,18 @@ namespace { namespace scene {
             auto& trans = reg.emplace<cpnt::Transform>(enttid);
         }
 
-        auto& o = ::push_meta_obj<entity::UdataType>(L, entity::UDATA_ID);
-        o = enttid;
-        return 1;
+        if (auto o = ll.push_meta_obj<entity::UdataType>(entity::UDATA_ID)) {
+            *o = enttid;
+            return 1;
+        } else {
+            return luaL_error(L, "Failed to push Entity userdata.");
+        }
     }
 
 
     int luaopen_scene(lua_State* const L) {
+        mirinae::LuaStateView ll{ L };
+
         // TransformView
         {
             mirinae::LuaFuncList methods;
@@ -461,8 +446,7 @@ namespace { namespace scene {
             methods.add("set_quat", tview::set_quat);
             methods.add("get_scale", tview::get_scale);
             methods.add("set_scale", tview::set_scale);
-
-            ::add_metatable_definition(L, tview::UDATA_ID, methods.data());
+            ll.define_metatable(tview::UDATA_ID, methods);
         }
 
         // AnimStateView
@@ -476,8 +460,7 @@ namespace { namespace scene {
             methods.add("set_anim_name", animv::set_anim_name);
             methods.add("set_anim_idx", animv::set_anim_idx);
             methods.add("set_anim_speed", animv::set_anim_speed);
-
-            ::add_metatable_definition(L, animv::UDATA_ID, methods.data());
+            ll.define_metatable(animv::UDATA_ID, methods);
         }
 
         // Entity
@@ -487,8 +470,7 @@ namespace { namespace scene {
             methods.add("get_respath", entity::get_respath);
             methods.add("get_transform", entity::get_transform);
             methods.add("get_anim_state", entity::get_anim_state);
-
-            ::add_metatable_definition(L, entity::UDATA_ID, methods.data());
+            ll.define_metatable(entity::UDATA_ID, methods);
         }
 
         // Module
@@ -500,7 +482,7 @@ namespace { namespace scene {
             funcs.add("get_cam_dir", get_cam_dir);
             funcs.add("create_static_actor", create_static_actor);
             funcs.add("create_skinned_actor", create_skinned_actor);
-            luaL_newlib(L, funcs.data());
+            ll.new_lib(funcs);
         }
 
         return 1;

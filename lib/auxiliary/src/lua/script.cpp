@@ -32,15 +32,15 @@ namespace {
     };
 
 
-    mirinae::ScriptEngine* find_script_engine(lua_State* const L) {
-        if (auto p = mirinae::find_global_ptr(L, "__mirinae_script_ptr")) {
+    mirinae::ScriptEngine* find_script_engine(mirinae::LuaStateView ll) {
+        if (auto p = ll.find_global_ptr("__mirinae_script_ptr")) {
             return static_cast<mirinae::ScriptEngine*>(p);
         }
         return nullptr;
     }
 
-    mirinae::ITextStream* find_output_buf(lua_State* const L) {
-        const auto script = find_script_engine(L);
+    mirinae::ITextStream* find_output_buf(mirinae::LuaStateView ll) {
+        const auto script = find_script_engine(ll);
         if (!script)
             return nullptr;
 
@@ -132,9 +132,8 @@ namespace mirinae {
     }
 
     void ScriptEngine::register_global_ptr(const char* name, void* ptr) {
-        auto L = pimpl_->L();
-        lua_pushlightuserdata(L, ptr);
-        lua_setglobal(L, name);
+        mirinae::LuaStateView ll{ pimpl_->L() };
+        ll.set_global_ptr(name, ptr);
 
         SPDLOG_DEBUG(
             "Registered global pointer: {} -> {}",
