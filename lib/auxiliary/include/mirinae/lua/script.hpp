@@ -16,7 +16,7 @@ namespace mirinae {
         ~ScriptEngine();
 
         void exec(const char* script);
-        void register_module(const char* name, void* funcs);
+        void register_module(const char* name, luaCFunc_t func);
         void register_global_ptr(const char* name, void* ptr);
 
         // Might be nullptr

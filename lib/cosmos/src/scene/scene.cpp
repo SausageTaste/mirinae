@@ -598,8 +598,8 @@ namespace mirinae {
         tasks.emplace_back<::TaskEnttUpdate>(*this);
     }
 
-    void Scene::register_lua_module(const char* name, void* funcs) {
-        script_.register_module(name, funcs);
+    void Scene::register_lua_module(const char* name, luaCFunc_t func) {
+        script_.register_module(name, func);
     }
 
     entt::entity Scene::find_entt(const std::string& name) const {

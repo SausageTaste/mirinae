@@ -127,8 +127,8 @@ namespace mirinae {
         }
     }
 
-    void ScriptEngine::register_module(const char* name, void* funcs) {
-        luaL_requiref(pimpl_->state_, name, (lua_CFunction)funcs, 0);
+    void ScriptEngine::register_module(const char* name, luaCFunc_t func) {
+        luaL_requiref(pimpl_->state_, name, func, 0);
     }
 
     void ScriptEngine::register_global_ptr(const char* name, void* ptr) {

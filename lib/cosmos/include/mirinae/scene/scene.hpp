@@ -25,7 +25,7 @@ namespace mirinae {
         void do_frame();
 
         void register_tasks(TaskGraph& tasks);
-        void register_lua_module(const char* name, void* funcs);
+        void register_lua_module(const char* name, luaCFunc_t func);
 
         entt::entity find_entt(const std::string& name) const;
 
