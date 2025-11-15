@@ -45,9 +45,21 @@ namespace {
 
     public:
         template <typename T>
+        U_OceanTessPushConst& patch_mat(const glm::tmat4x4<T>& m) {
+            patch_mat_ = m;
+            return *this;
+        }
+
+        template <typename T>
         U_OceanTessPushConst& patch_offset(T x, T y) {
             patch_offset_.x = static_cast<float>(x);
             patch_offset_.y = static_cast<float>(y);
+            return *this;
+        }
+
+        template <typename T>
+        U_OceanTessPushConst& patch_offset(const glm::tvec2<T>& v) {
+            patch_offset_ = v;
             return *this;
         }
 
@@ -58,9 +70,16 @@ namespace {
             return *this;
         }
 
+        template <typename T>
+        U_OceanTessPushConst& patch_scale(const glm::tvec2<T>& v) {
+            patch_scale_ = v;
+            return *this;
+        }
+
     private:
-        glm::vec2 patch_offset_;
-        glm::vec2 patch_scale_;
+        glm::mat4 patch_mat_{ 1 };
+        glm::vec2 patch_offset_{ 0 };
+        glm::vec2 patch_scale_{ 1 };
     };
 
     static_assert(sizeof(U_OceanTessPushConst) < 256, "");
