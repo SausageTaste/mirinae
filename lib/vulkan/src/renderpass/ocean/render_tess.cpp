@@ -26,11 +26,18 @@ namespace {
 
 
     template <typename T>
-    const T* find_first_cpnt(const entt::registry& reg) {
+    std::pair<entt::entity, const T*> find_first_entt_cpnt(
+        const entt::registry& reg
+    ) {
         for (auto e : reg.view<const T>()) {
-            return &reg.get<const T>(e);
+            return { e, &reg.get<const T>(e) };
         }
-        return nullptr;
+        return { entt::null, nullptr };
+    }
+
+    template <typename T>
+    const T* find_first_cpnt(const entt::registry& reg) {
+        return find_first_entt_cpnt<T>(reg).second;
     }
 
 
@@ -583,8 +590,10 @@ namespace { namespace task {
 
     private:
         void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
+            namespace cpnt = mirinae::cpnt;
+
             cmdbuf_ = VK_NULL_HANDLE;
-            auto ocean = ::find_first_cpnt<mirinae::cpnt::Ocean>(*reg_);
+            auto [e, ocean] = ::find_first_entt_cpnt<cpnt::Ocean>(*reg_);
             if (!ocean)
                 return;
 
@@ -594,21 +603,17 @@ namespace { namespace task {
 
             auto& fd = fdata_->at(ctxt_->f_index_.get());
             const auto gbuf_ext = gbufs_->extent();
-            const auto atmos =
-                ::find_first_cpnt<mirinae::cpnt::AtmosphereSimple>(*reg_);
 
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
-            this->update_ubuf(
-                *reg_, atmos, *ocean, *ctxt_, gbuf_ext, fd, *device_
-            );
+            this->update_ubuf(e, *reg_, *ocean, *ctxt_, gbuf_ext, fd, *device_);
             this->record_barriers(cmdbuf_, fd, *gbufs_, *ctxt_);
             this->record(cmdbuf_, fd, *ocean, *rp_, *ctxt_, gbuf_ext, qtree_);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
         static void update_ubuf(
+            const entt::entity ocean_entity,
             const entt::registry& reg,
-            const mirinae::cpnt::AtmosphereSimple* atmos,
             const mirinae::cpnt::Ocean& ocean_entt,
             const mirinae::RpCtxt& ctxt,
             const VkExtent2D& fbuf_ext,
@@ -621,8 +626,12 @@ namespace { namespace task {
             const auto& view_mat = ctxt.main_cam_.view();
             const auto& view_inv = ctxt.main_cam_.view_inv();
 
+            glm::dmat4 model_mat = glm::dmat4(1);
+            if (auto tform = reg.try_get<cpnt::Transform>(ocean_entity))
+                model_mat = tform->make_model_mat();
+
             U_OceanTessParams ubuf;
-            ubuf.pvm(ctxt.main_cam_.proj(), view_mat, identity)
+            ubuf.pvm(ctxt.main_cam_.proj(), view_mat, model_mat)
                 .foam_bias(ocean_entt.foam_bias_)
                 .foam_scale(ocean_entt.foam_scale_)
                 .foam_threshold(cv_foam_threshold.get())
@@ -640,12 +649,14 @@ namespace { namespace task {
                 .sss_scale(cv_foam_sss_scale.get())
                 .tess_factor(ocean_entt.tess_factor_)
                 .patch_height(ocean_entt.height_);
-            for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
+            for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++) {
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
-            if (atmos)
+            }
+            if (auto atmos = ::find_first_cpnt<cpnt::AtmosphereSimple>(reg)) {
                 ubuf.fog_color(atmos->fog_color_)
                     .fog_density(atmos->fog_density_);
+            }
 
             for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
                 auto& light = reg.get<cpnt::DLight>(e);

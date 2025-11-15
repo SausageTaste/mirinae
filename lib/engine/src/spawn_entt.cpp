@@ -204,6 +204,8 @@ namespace mirinae {
             auto& i = reg.emplace<mirinae::cpnt::Id>(entt);
             i.set_name("Ocean");
 
+            auto& tform = reg.emplace<mirinae::cpnt::Transform>(entt);
+
             auto& ocean = reg.emplace<mirinae::cpnt::Ocean>(entt);
             ocean.height_ = 1500;
 
