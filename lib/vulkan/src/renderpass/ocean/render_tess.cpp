@@ -580,7 +580,7 @@ namespace { namespace task {
         static void update_ubuf(
             const entt::entity ocean_entity,
             const entt::registry& reg,
-            const mirinae::cpnt::Ocean& ocean_entt,
+            const mirinae::cpnt::Ocean& ocean,
             const mirinae::RpCtxt& ctxt,
             const VkExtent2D& fbuf_ext,
             ::FrameData& fd,
@@ -598,23 +598,23 @@ namespace { namespace task {
 
             U_OceanTessParams ubuf;
             ubuf.pvm(ctxt.main_cam_.proj(), view_mat, model_mat)
-                .foam_bias(ocean_entt.foam_bias_)
-                .foam_scale(ocean_entt.foam_scale_)
+                .foam_bias(ocean.foam_bias_)
+                .foam_scale(ocean.foam_scale_)
                 .foam_threshold(cv_foam_threshold.get())
-                .jacobian_scale(0, ocean_entt.cascades_[0].jacobian_scale_)
-                .jacobian_scale(1, ocean_entt.cascades_[1].jacobian_scale_)
-                .jacobian_scale(2, ocean_entt.cascades_[2].jacobian_scale_)
-                .len_scale(0, ocean_entt.cascades_[0].lod_scale_)
-                .len_scale(1, ocean_entt.cascades_[1].lod_scale_)
-                .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
-                .lod_scale(ocean_entt.lod_scale_)
+                .jacobian_scale(0, ocean.cascades_[0].jacobian_scale_)
+                .jacobian_scale(1, ocean.cascades_[1].jacobian_scale_)
+                .jacobian_scale(2, ocean.cascades_[2].jacobian_scale_)
+                .len_scale(0, ocean.cascades_[0].lod_scale_)
+                .len_scale(1, ocean.cascades_[1].lod_scale_)
+                .len_scale(2, ocean.cascades_[2].lod_scale_)
+                .lod_scale(ocean.lod_scale_)
                 .fbuf_size(fbuf_ext)
-                .ocean_color(ocean_entt.ocean_color_)
-                .roughness(ocean_entt.roughness_)
+                .ocean_color(ocean.ocean_color_)
+                .roughness(ocean.roughness_)
                 .sss_base(cv_foam_sss_base.get())
                 .sss_scale(cv_foam_sss_scale.get())
-                .tess_factor(ocean_entt.tess_factor_)
-                .patch_height(ocean_entt.height_);
+                .tess_factor(ocean.tess_factor_)
+                .patch_height(ocean.height_);
 
             for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
                 auto& light = reg.get<cpnt::DLight>(e);
@@ -678,7 +678,7 @@ namespace { namespace task {
         static void record(
             const VkCommandBuffer cmdbuf,
             const ::FrameData& fd,
-            const mirinae::cpnt::Ocean& ocean_entt,
+            const mirinae::cpnt::Ocean& ocean,
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt,
             const VkExtent2D& fbuf_ext,
@@ -727,7 +727,7 @@ namespace { namespace task {
                 cam_x + scale,
                 cam_z - scale,
                 cam_z + scale,
-                ocean_entt.height_,
+                ocean.height_,
                 ctxt,
                 pv,
                 glm::dvec2(fbuf_ext.width, fbuf_ext.height)
