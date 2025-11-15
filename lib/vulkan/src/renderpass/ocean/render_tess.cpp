@@ -84,30 +84,10 @@ namespace {
             return *this;
         }
 
-        U_OceanTessParams& texco_offset(size_t idx, float x, float y) {
-            texco_offset_rot_[idx].x = x;
-            texco_offset_rot_[idx].y = y;
-            return *this;
-        }
-
-        U_OceanTessParams& texco_offset(size_t idx, const glm::vec2& v) {
-            return this->texco_offset(idx, v.x, v.y);
-        }
-
-        U_OceanTessParams& texco_scale(size_t idx, float x, float y) {
-            texco_offset_rot_[idx].z = x;
-            texco_offset_rot_[idx].w = y;
-            return *this;
-        }
-
         U_OceanTessParams& fbuf_size(const VkExtent2D& x) {
             fbuf_size_.x = static_cast<float>(x.width);
             fbuf_size_.y = static_cast<float>(x.height);
             return *this;
-        }
-
-        U_OceanTessParams& texco_scale(size_t idx, const glm::vec2& v) {
-            return this->texco_scale(idx, v.x, v.y);
         }
 
         U_OceanTessParams& set_light_mat(size_t idx, const glm::mat4& m) {
@@ -149,18 +129,6 @@ namespace {
             dlight_dir_.x = dir.x;
             dlight_dir_.y = dir.y;
             dlight_dir_.z = dir.z;
-            return *this;
-        }
-
-        U_OceanTessParams& fog_color(const glm::vec3& color) {
-            fog_color_density_.x = color.r;
-            fog_color_density_.y = color.g;
-            fog_color_density_.z = color.b;
-            return *this;
-        }
-
-        U_OceanTessParams& fog_density(float density) {
-            fog_color_density_.w = density;
             return *this;
         }
 
@@ -253,11 +221,9 @@ namespace {
         glm::mat4 view_;
         glm::mat4 view_inv_;
         glm::mat4 model_;
-        glm::vec4 texco_offset_rot_[mirinae::CASCADE_COUNT];
         glm::vec4 dlight_cascade_depths_;
         glm::vec4 dlight_color_;
         glm::vec4 dlight_dir_;
-        glm::vec4 fog_color_density_;
         glm::vec4 jacobian_scale_;
         glm::vec4 len_lod_scales_;
         glm::vec4 ocean_color_;
@@ -649,14 +615,6 @@ namespace { namespace task {
                 .sss_scale(cv_foam_sss_scale.get())
                 .tess_factor(ocean_entt.tess_factor_)
                 .patch_height(ocean_entt.height_);
-            for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++) {
-                ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
-                    .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
-            }
-            if (auto atmos = ::find_first_cpnt<cpnt::AtmosphereSimple>(reg)) {
-                ubuf.fog_color(atmos->fog_color_)
-                    .fog_density(atmos->fog_density_);
-            }
 
             for (auto e : reg.view<cpnt::DLight, cpnt::Transform>()) {
                 auto& light = reg.get<cpnt::DLight>(e);

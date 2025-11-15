@@ -31,11 +31,9 @@ struct U_OceanTessParams {
     float4x4 view_;
     float4x4 view_inv_;
     float4x4 model_;
-    float4 texco_offset_rot_[3];
     float4 dlight_cascade_depths_;
     float4 dlight_color_;
     float4 dlight_dir;
-    float4 fog_color_density_;
     float4 jacobian_scale_;
     float4 len_scales_lod_scale_;
     float4 ocean_color_;
