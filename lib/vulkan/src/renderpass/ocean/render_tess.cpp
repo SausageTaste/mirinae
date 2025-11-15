@@ -323,34 +323,64 @@ namespace {
     }
 
 
+    class PatchList {
+
+    public:
+        struct DrawInfo {
+            U_OceanTessPushConst pc_;
+        };
+
+    public:
+        bool empty() const { return list_.empty(); }
+        size_t size() const { return list_.size(); }
+
+        void clear() { list_.clear(); }
+
+        DrawInfo& create() {
+            list_.emplace_back();
+            return list_.back();
+        }
+
+        void record(
+            const VkCommandBuffer cmdbuf, const mirinae::PushConstInfo& pc_info
+        ) const {
+            for (auto& draw_info : list_) {
+                pc_info.record(cmdbuf, draw_info.pc_);
+                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
+            }
+        }
+
+    private:
+        std::vector<DrawInfo> list_;
+    };
+
+
     class OceanQuadTree {
 
     public:
-        void build_draw_list(
+        OceanQuadTree(
             const double x_min,
             const double x_max,
             const double y_min,
             const double y_max,
             const double height,
             const mirinae::RpCtxt& ctxt,
-            const glm::dmat4& pv,
             const glm::dvec2& fbuf_size
-        ) {
-            const VaryingParams varying{ x_min, x_max, y_min, y_max, 0 };
+        )
+            : ctxt_(ctxt)
+            , init_varying_(x_min, x_max, y_min, y_max, 0)
+            , fbuf_size_(fbuf_size)
+            , height_(height) {}
 
-            draw_info_list_.clear();
+        void start(::PatchList& patch_list) const {
             this->traverse(
-                draw_info_list_, varying, height, ctxt, pv, fbuf_size
+                patch_list,
+                init_varying_,
+                height_,
+                ctxt_,
+                ctxt_.main_cam_.proj() * ctxt_.main_cam_.view(),
+                fbuf_size_
             );
-        }
-
-        void record(
-            const VkCommandBuffer cmdbuf, const mirinae::PushConstInfo& pc_info
-        ) const {
-            for (auto& draw : draw_info_list_) {
-                pc_info.record(cmdbuf, draw.get_pc());
-                vkCmdDraw(cmdbuf, 4, 1, 0, 0);
-            }
         }
 
     private:
@@ -387,52 +417,23 @@ namespace {
             int depth_;
         };
 
-        class DrawInfo {
-
-        public:
-            void set(
-                const VaryingParams& varying,
-                const double x_margin,
-                const double y_margin
-            ) {
-                pc_.patch_offset(
-                    varying.x_min_ - x_margin, varying.y_min_ - y_margin
-                );
-                pc_.patch_scale(
-                    varying.x_max_ - varying.x_min_ + x_margin + x_margin,
-                    varying.y_max_ - varying.y_min_ + y_margin + y_margin
-                );
-            }
-
-            const U_OceanTessPushConst& get_pc() const { return pc_; }
-
-        private:
-            U_OceanTessPushConst pc_;
-        };
-
-        class DrawInfoList {
-
-        public:
-            void clear() { list_.clear(); }
-
-            DrawInfo& create() {
-                list_.emplace_back();
-                return list_.back();
-            }
-
-            std::vector<DrawInfo>::const_iterator begin() const {
-                return list_.begin();
-            }
-            std::vector<DrawInfo>::const_iterator end() const {
-                return list_.end();
-            }
-
-        private:
-            std::vector<DrawInfo> list_;
-        };
+        static void set_pc(
+            U_OceanTessPushConst& pc,
+            const VaryingParams& varying,
+            const double x_margin,
+            const double y_margin
+        ) {
+            pc.patch_offset(
+                varying.x_min_ - x_margin, varying.y_min_ - y_margin
+            );
+            pc.patch_scale(
+                varying.x_max_ - varying.x_min_ + x_margin + x_margin,
+                varying.y_max_ - varying.y_min_ + y_margin + y_margin
+            );
+        }
 
         static void traverse(
-            DrawInfoList& output,
+            PatchList& output,
             const VaryingParams& varying,
             const double height,
             const mirinae::RpCtxt& ctxt,
@@ -480,7 +481,7 @@ namespace {
 
             if (varying.depth_ > 8) {
                 auto& draw = output.create();
-                draw.set(varying, x_margin, y_margin);
+                set_pc(draw.pc_, varying, x_margin, y_margin);
                 return;
             }
 
@@ -509,12 +510,15 @@ namespace {
                 }
             } else {
                 auto& draw = output.create();
-                draw.set(varying, x_margin, y_margin);
+                set_pc(draw.pc_, varying, x_margin, y_margin);
                 return;
             }
         }
 
-        DrawInfoList draw_info_list_;
+        const mirinae::RpCtxt& ctxt_;
+        VaryingParams init_varying_;
+        glm::dvec2 fbuf_size_;
+        double height_;
     };
 
 }  // namespace
@@ -559,22 +563,59 @@ namespace { namespace task {
             namespace cpnt = mirinae::cpnt;
 
             cmdbuf_ = VK_NULL_HANDLE;
+
             auto [e, ocean] = ::find_first_entt_cpnt<cpnt::Ocean>(*reg_);
             if (!ocean)
-                return;
-
-            cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
-            if (cmdbuf_ == VK_NULL_HANDLE)
                 return;
 
             auto& fd = fdata_->at(ctxt_->f_index_.get());
             const auto gbuf_ext = gbufs_->extent();
 
-            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
+            if (!this->update_patches(*ocean, *ctxt_, gbuf_ext, patches_))
+                return;
             this->update_ubuf(e, *reg_, *ocean, *ctxt_, gbuf_ext, fd, *device_);
+
+            cmdbuf_ = cmd_pool_->get(ctxt_->f_index_, tid, *device_);
+            if (cmdbuf_ == VK_NULL_HANDLE)
+                return;
+
+            mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
             this->record_barriers(cmdbuf_, fd, *gbufs_, *ctxt_);
-            this->record(cmdbuf_, fd, *ocean, *rp_, *ctxt_, gbuf_ext, qtree_);
+            this->record(cmdbuf_, fd, *ocean, *rp_, *ctxt_, gbuf_ext, patches_);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
+        }
+
+        static bool update_patches(
+            const mirinae::cpnt::Ocean& ocean,
+            const mirinae::RpCtxt& ctxt,
+            const VkExtent2D& fbuf_ext,
+            ::PatchList& pathch_list
+        ) {
+            const auto& proj_mat = ctxt.main_cam_.proj();
+            const auto& view_mat = ctxt.main_cam_.view();
+            const auto& view_inv = ctxt.main_cam_.view_inv();
+            const auto& view_pos = ctxt.main_cam_.view_pos();
+
+            const auto z_far = proj_mat[3][2] / proj_mat[2][2];
+            const auto scale = z_far * 1.25;
+            const auto pv = proj_mat * view_mat;
+            const auto cam_x = std::round(view_pos.x * 0.1) * 10;
+            const auto cam_z = std::round(view_pos.z * 0.1) * 10;
+
+            const ::OceanQuadTree qtree{
+                cam_x - scale,
+                cam_x + scale,
+                cam_z - scale,
+                cam_z + scale,
+                ocean.height_,
+                ctxt,
+                glm::dvec2(fbuf_ext.width, fbuf_ext.height)
+            };
+
+            pathch_list.clear();
+            qtree.start(pathch_list);
+
+            return !pathch_list.empty();
         }
 
         static void update_ubuf(
@@ -682,13 +723,8 @@ namespace { namespace task {
             const mirinae::IRenPass& rp,
             const mirinae::RpCtxt& ctxt,
             const VkExtent2D& fbuf_ext,
-            ::OceanQuadTree& qtree
+            ::PatchList& pathch_list
         ) {
-            const auto& proj_mat = ctxt.main_cam_.proj();
-            const auto& view_mat = ctxt.main_cam_.view();
-            const auto& view_inv = ctxt.main_cam_.view_inv();
-            const auto& view_pos = ctxt.main_cam_.view_pos();
-
             mirinae::RenderPassBeginInfo{}
                 .rp(rp.render_pass())
                 .fbuf(fd.fbuf_.get())
@@ -716,31 +752,14 @@ namespace { namespace task {
                 .add_stage_tese()
                 .add_stage_frag();
 
-            const auto z_far = proj_mat[3][2] / proj_mat[2][2];
-            const auto scale = z_far * 1.25;
-            const auto pv = proj_mat * view_mat;
-            const auto cam_x = std::round(view_pos.x * 0.1) * 10;
-            const auto cam_z = std::round(view_pos.z * 0.1) * 10;
-
-            qtree.build_draw_list(
-                cam_x - scale,
-                cam_x + scale,
-                cam_z - scale,
-                cam_z + scale,
-                ocean.height_,
-                ctxt,
-                pv,
-                glm::dvec2(fbuf_ext.width, fbuf_ext.height)
-            );
-            qtree.record(cmdbuf, pc_info);
-
+            pathch_list.record(cmdbuf, pc_info);
             vkCmdEndRenderPass(cmdbuf);
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{ "Ocean Tess", 0.31, 0.76, 0.97 };
 
         mirinae::FenceTask fence_;
-        ::OceanQuadTree qtree_;
+        ::PatchList patches_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
 
         const entt::registry* reg_ = nullptr;
