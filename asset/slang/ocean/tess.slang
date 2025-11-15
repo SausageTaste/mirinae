@@ -150,6 +150,11 @@ TescFactors PatchConstantFunction(InputPatch<VSOutput, 4> patch) {
         persp_mul(u_pc.pvm_, patch[3].pos_).xyz,
     );
 
+    if (!are_in_screen(points)) {
+        output.set_zero();
+        return output;
+    }
+
     const float2 half_fbuf = u_pc.tile_dims_n_fbuf_size_.zw * 0.5;
     const float2 s00 = (points[0].xy * half_fbuf + half_fbuf);
     const float2 s01 = (points[1].xy * half_fbuf + half_fbuf);
