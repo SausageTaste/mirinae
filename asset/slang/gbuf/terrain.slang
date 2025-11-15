@@ -7,13 +7,13 @@ struct VSInput {
 };
 
 struct VSOutput {
-    float3 pos_ : SV_POSITION;
+    float3 pos_;
     float2 texco_;
 };
 
 struct HSOutput {
-    float3 pos_ : SV_POSITION;
-    float2 texco_ : TEXCOORD0;
+    float3 pos_;
+    float2 texco_;
 }
 
 struct DSOutput {
