@@ -26,7 +26,11 @@ struct DSOutput {
 
 struct U_OceanTessParams {
     float4x4 light_mats_[4];
+    float4x4 pvm_;
+    float4x4 vm_;
+    float4x4 view_;
     float4x4 view_inv_;
+    float4x4 model_;
     float4 texco_offset_rot_[3];
     float4 dlight_cascade_depths_;
     float4 dlight_color_;
@@ -35,6 +39,7 @@ struct U_OceanTessParams {
     float4 jacobian_scale_;
     float4 len_scales_lod_scale_;
     float4 ocean_color_;
+    float2 fbuf_size_;
     float foam_bias_;
     float foam_scale_;
     float foam_threshold_;
@@ -42,6 +47,7 @@ struct U_OceanTessParams {
     float sss_base_;
     float sss_scale_;
     float tess_factor_;
+    float patch_height_;
 }
 
 layout(set = 0, binding = 0) ConstantBuffer<U_OceanTessParams> u_params;
@@ -56,13 +62,8 @@ layout(set = 0, binding = 8) uniform Sampler2DArrayShadow u_shadow_map;
 
 [push_constant]
 cbuffer U_OceanTessPushConst {
-    float4x4 pvm_;
-    float4x4 view_;
-    float4x4 model_;
-    float4 patch_offset_scale_;
-    float4 tile_dims_n_fbuf_size_;
-    float4 tile_index_count_;
-    float patch_height_;
+    float2 patch_offset_;
+    float2 patch_scale_;
 }
 u_pc;
 
@@ -129,12 +130,10 @@ float3 oceanRadiance(
 
 [shader("vertex")]
 VSOutput vert_main(int vtx_id: SV_VertexID) {
-    let offset = u_pc.patch_offset_scale_.xy;
-    let scale = u_pc.patch_offset_scale_.zw;
-    let patch_pos = TEX_COORDS[vtx_id] * scale + offset;
+    let patch_pos = TEX_COORDS[vtx_id] * u_pc.patch_scale_ + u_pc.patch_offset_;
 
     VSOutput output;
-    output.pos_ = float3(patch_pos.x, u_pc.patch_height_, patch_pos.y);
+    output.pos_ = float3(patch_pos.x, u_params.patch_height_, patch_pos.y);
     output.texco_ = patch_pos;
     return output;
 }
@@ -144,10 +143,10 @@ TescFactors PatchConstantFunction(InputPatch<VSOutput, 4> patch) {
     TescFactors output;
 
     let points = float3[](
-        persp_mul(u_pc.pvm_, patch[0].pos_).xyz,
-        persp_mul(u_pc.pvm_, patch[1].pos_).xyz,
-        persp_mul(u_pc.pvm_, patch[2].pos_).xyz,
-        persp_mul(u_pc.pvm_, patch[3].pos_).xyz,
+        persp_mul(u_params.pvm_, patch[0].pos_).xyz,
+        persp_mul(u_params.pvm_, patch[1].pos_).xyz,
+        persp_mul(u_params.pvm_, patch[2].pos_).xyz,
+        persp_mul(u_params.pvm_, patch[3].pos_).xyz,
     );
 
     if (!are_in_screen(points)) {
@@ -155,7 +154,7 @@ TescFactors PatchConstantFunction(InputPatch<VSOutput, 4> patch) {
         return output;
     }
 
-    const float2 half_fbuf = u_pc.tile_dims_n_fbuf_size_.zw * 0.5;
+    const float2 half_fbuf = u_params.fbuf_size_ * 0.5;
     const float2 s00 = (points[0].xy * half_fbuf + half_fbuf);
     const float2 s01 = (points[1].xy * half_fbuf + half_fbuf);
     const float2 s11 = (points[2].xy * half_fbuf + half_fbuf);
@@ -219,9 +218,7 @@ DSOutput tese_main(
         let p1 = lerp(p10, p11, u);
         var p = lerp(p0, p1, v);
 
-        let vm = mul(u_pc.view_, u_pc.model_);
-
-        const float p_dist = length((mul(vm, float4(p, 1))).xyz);
+        const float p_dist = length((mul(u_params.vm_, float4(p, 1))).xyz);
         const float lod_c0 = min(
             u_params.len_scales_lod_scale_[3] * u_params.len_scales_lod_scale_[0] / p_dist, 1
         );
@@ -245,8 +242,8 @@ DSOutput tese_main(
             lod_c2,
             max(displacement.y - largeWavesBias * 0.8 - u_params.sss_base_, 0) / u_params.sss_scale_
         );
-        output.frag_pos_ = mul(vm, float4(p, 1)).xyz;
-        output.frag_pos_scrn_ = mul(u_pc.pvm_, float4(p, 1));
+        output.frag_pos_ = mul(u_params.vm_, float4(p, 1)).xyz;
+        output.frag_pos_scrn_ = mul(u_params.pvm_, float4(p, 1));
         output.pos_ = output.frag_pos_scrn_;
         output.uv_ = texco;
     }
@@ -276,8 +273,8 @@ float4 frag_main(DSOutput input) {
         derivatives.x / (1.0 + derivatives.z), derivatives.y / (1.0 + derivatives.w)
     );
     const float3 normal_m = normalize(float3(-slope.x, 1, -slope.y));
-    const float3 normal_w = normalize(mul(float3x3(u_pc.model_), normal_m));
-    const float3 normal_v = normalize(mul(float3x3(u_pc.view_), normal_w));
+    const float3 normal_w = normalize(mul(float3x3(u_params.model_), normal_m));
+    const float3 normal_v = normalize(mul(float3x3(u_params.view_), normal_w));
     const float3 frag_pos_w = (mul(view_inv, float4(input.frag_pos_, 1))).xyz;
     const float3 to_sun_dir_v = normalize(u_params.dlight_dir.xyz);
     const float3 to_sun_dir_w = normalize(mul(view_inv3, to_sun_dir_v));
@@ -302,10 +299,10 @@ float4 frag_main(DSOutput input) {
     float3 sky_color = float3(0);
     {
         float3 cam_dir_reflec_w = reflect(cam_dir_w, normal_w);
-        if (cam_dir_reflec_w.y < 0) {
-            cam_dir_reflec_w.y = 0;
-            cam_dir_reflec_w = normalize(cam_dir_reflec_w);
-        }
+        // if (cam_dir_reflec_w.y < 0) {
+        //     cam_dir_reflec_w.y = 0;
+        //     cam_dir_reflec_w = normalize(cam_dir_reflec_w);
+        // }
 
         const float planet_radius = PLANET_BOTTOM * 1000;
         const float3 cam_pos_e = cam_pos_w + float3(0, planet_radius, 0);

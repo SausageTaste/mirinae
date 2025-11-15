@@ -37,79 +37,23 @@ namespace {
     class U_OceanTessPushConst {
 
     public:
-        U_OceanTessPushConst& pvm(
-            const glm::dmat4& proj,
-            const glm::dmat4& view,
-            const glm::dmat4& model
-        ) {
-            pvm_ = proj * view * model;
-            view_ = view;
-            model_ = model;
-            return *this;
-        }
-
         template <typename T>
         U_OceanTessPushConst& patch_offset(T x, T y) {
-            patch_offset_scale_.x = static_cast<float>(x);
-            patch_offset_scale_.y = static_cast<float>(y);
+            patch_offset_.x = static_cast<float>(x);
+            patch_offset_.y = static_cast<float>(y);
             return *this;
         }
 
         template <typename T>
         U_OceanTessPushConst& patch_scale(T x, T y) {
-            patch_offset_scale_.z = static_cast<float>(x);
-            patch_offset_scale_.w = static_cast<float>(y);
-            return *this;
-        }
-
-        template <typename T>
-        U_OceanTessPushConst& tile_dimensions(T x, T y) {
-            tile_dims_n_fbuf_size_.x = static_cast<float>(x);
-            tile_dims_n_fbuf_size_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        template <typename T>
-        U_OceanTessPushConst& tile_dimensions(T x) {
-            tile_dims_n_fbuf_size_.x = static_cast<float>(x);
-            tile_dims_n_fbuf_size_.y = static_cast<float>(x);
-            return *this;
-        }
-
-        U_OceanTessPushConst& fbuf_size(const VkExtent2D& x) {
-            tile_dims_n_fbuf_size_.z = static_cast<float>(x.width);
-            tile_dims_n_fbuf_size_.w = static_cast<float>(x.height);
-            return *this;
-        }
-
-        template <typename T>
-        U_OceanTessPushConst& tile_index(T x, T y) {
-            tile_index_count_.x = static_cast<float>(x);
-            tile_index_count_.y = static_cast<float>(y);
-            return *this;
-        }
-
-        template <typename T>
-        U_OceanTessPushConst& tile_count(T x, T y) {
-            tile_index_count_.z = static_cast<float>(x);
-            tile_index_count_.w = static_cast<float>(y);
-            return *this;
-        }
-
-        template <typename T>
-        U_OceanTessPushConst& patch_height(T x) {
-            patch_height_ = static_cast<float>(x);
+            patch_scale_.x = static_cast<float>(x);
+            patch_scale_.y = static_cast<float>(y);
             return *this;
         }
 
     private:
-        glm::mat4 pvm_;
-        glm::mat4 view_;
-        glm::mat4 model_;
-        glm::vec4 patch_offset_scale_;
-        glm::vec4 tile_dims_n_fbuf_size_;
-        glm::vec4 tile_index_count_;
-        float patch_height_;
+        glm::vec2 patch_offset_;
+        glm::vec2 patch_scale_;
     };
 
     static_assert(sizeof(U_OceanTessPushConst) < 256, "");
@@ -118,8 +62,18 @@ namespace {
     struct U_OceanTessParams {
 
     public:
-        U_OceanTessParams& view_inv(const glm::dmat4& m) {
-            view_inv_ = glm::mat4(m);
+        U_OceanTessParams& pvm(
+            const glm::dmat4& proj,
+            const glm::dmat4& view,
+            const glm::dmat4& model
+        ) {
+            const auto vm = view * model;
+
+            pvm_ = proj * vm;
+            vm_ = vm;
+            view_ = view;
+            view_inv_ = glm::inverse(view);
+            model_ = model;
             return *this;
         }
 
@@ -136,6 +90,12 @@ namespace {
         U_OceanTessParams& texco_scale(size_t idx, float x, float y) {
             texco_offset_rot_[idx].z = x;
             texco_offset_rot_[idx].w = y;
+            return *this;
+        }
+
+        U_OceanTessParams& fbuf_size(const VkExtent2D& x) {
+            fbuf_size_.x = static_cast<float>(x.width);
+            fbuf_size_.y = static_cast<float>(x.height);
             return *this;
         }
 
@@ -273,9 +233,19 @@ namespace {
             return *this;
         }
 
+        template <typename T>
+        U_OceanTessParams& patch_height(T x) {
+            patch_height_ = static_cast<float>(x);
+            return *this;
+        }
+
     private:
         glm::mat4 light_mats_[4];
+        glm::mat4 pvm_;
+        glm::mat4 vm_;
+        glm::mat4 view_;
         glm::mat4 view_inv_;
+        glm::mat4 model_;
         glm::vec4 texco_offset_rot_[mirinae::CASCADE_COUNT];
         glm::vec4 dlight_cascade_depths_;
         glm::vec4 dlight_color_;
@@ -284,6 +254,7 @@ namespace {
         glm::vec4 jacobian_scale_;
         glm::vec4 len_lod_scales_;
         glm::vec4 ocean_color_;
+        glm::vec2 fbuf_size_;
         float foam_bias_;
         float foam_scale_;
         float foam_threshold_;
@@ -291,6 +262,7 @@ namespace {
         float sss_base_;
         float sss_scale_;
         float tess_factor_;
+        float patch_height_;
     };
 
 
@@ -387,7 +359,6 @@ namespace {
             const double y_min,
             const double y_max,
             const double height,
-            const U_OceanTessPushConst& pc,
             const mirinae::RpCtxt& ctxt,
             const glm::dmat4& pv,
             const glm::dvec2& fbuf_size
@@ -396,7 +367,7 @@ namespace {
 
             draw_info_list_.clear();
             this->traverse(
-                draw_info_list_, varying, height, pc, ctxt, pv, fbuf_size
+                draw_info_list_, varying, height, ctxt, pv, fbuf_size
             );
         }
 
@@ -447,12 +418,10 @@ namespace {
 
         public:
             void set(
-                const U_OceanTessPushConst& pc,
                 const VaryingParams& varying,
                 const double x_margin,
                 const double y_margin
             ) {
-                pc_ = pc;
                 pc_.patch_offset(
                     varying.x_min_ - x_margin, varying.y_min_ - y_margin
                 );
@@ -493,7 +462,6 @@ namespace {
             DrawInfoList& output,
             const VaryingParams& varying,
             const double height,
-            const U_OceanTessPushConst& pc,
             const mirinae::RpCtxt& ctxt,
             const glm::dmat4& pv,
             const glm::dvec2& fbuf_size
@@ -539,7 +507,7 @@ namespace {
 
             if (varying.depth_ > 8) {
                 auto& draw = output.create();
-                draw.set(pc, varying, x_margin, y_margin);
+                draw.set(varying, x_margin, y_margin);
                 return;
             }
 
@@ -564,11 +532,11 @@ namespace {
             if (glm::length(longest_edge) > 1000) {
                 const auto children = varying.make_children();
                 for (const auto& vp : children) {
-                    traverse(output, vp, height, pc, ctxt, pv, fbuf_size);
+                    traverse(output, vp, height, ctxt, pv, fbuf_size);
                 }
             } else {
                 auto& draw = output.create();
-                draw.set(pc, varying, x_margin, y_margin);
+                draw.set(varying, x_margin, y_margin);
                 return;
             }
         }
@@ -630,7 +598,9 @@ namespace { namespace task {
                 ::find_first_cpnt<mirinae::cpnt::AtmosphereSimple>(*reg_);
 
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
-            this->update_ubuf(*reg_, atmos, *ocean, *ctxt_, fd, *device_);
+            this->update_ubuf(
+                *reg_, atmos, *ocean, *ctxt_, gbuf_ext, fd, *device_
+            );
             this->record_barriers(cmdbuf_, fd, *gbufs_, *ctxt_);
             this->record(cmdbuf_, fd, *ocean, *rp_, *ctxt_, gbuf_ext, qtree_);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
@@ -641,16 +611,19 @@ namespace { namespace task {
             const mirinae::cpnt::AtmosphereSimple* atmos,
             const mirinae::cpnt::Ocean& ocean_entt,
             const mirinae::RpCtxt& ctxt,
+            const VkExtent2D& fbuf_ext,
             ::FrameData& fd,
             mirinae::VulkanDevice& device
         ) {
             namespace cpnt = mirinae::cpnt;
 
+            const auto identity = glm::dmat4(1);
             const auto& view_mat = ctxt.main_cam_.view();
             const auto& view_inv = ctxt.main_cam_.view_inv();
 
             U_OceanTessParams ubuf;
-            ubuf.foam_bias(ocean_entt.foam_bias_)
+            ubuf.pvm(ctxt.main_cam_.proj(), view_mat, identity)
+                .foam_bias(ocean_entt.foam_bias_)
                 .foam_scale(ocean_entt.foam_scale_)
                 .foam_threshold(cv_foam_threshold.get())
                 .jacobian_scale(0, ocean_entt.cascades_[0].jacobian_scale_)
@@ -660,12 +633,13 @@ namespace { namespace task {
                 .len_scale(1, ocean_entt.cascades_[1].lod_scale_)
                 .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
                 .lod_scale(ocean_entt.lod_scale_)
+                .fbuf_size(fbuf_ext)
                 .ocean_color(ocean_entt.ocean_color_)
-                .view_inv(view_inv)
                 .roughness(ocean_entt.roughness_)
                 .sss_base(cv_foam_sss_base.get())
                 .sss_scale(cv_foam_sss_scale.get())
-                .tess_factor(ocean_entt.tess_factor_);
+                .tess_factor(ocean_entt.tess_factor_)
+                .patch_height(ocean_entt.height_);
             for (size_t i = 0; i < mirinae::CASCADE_COUNT; i++)
                 ubuf.texco_offset(i, ocean_entt.cascades_[i].texco_offset_)
                     .texco_scale(i, ocean_entt.cascades_[i].texco_scale_);
@@ -773,13 +747,6 @@ namespace { namespace task {
                 .add_stage_tese()
                 .add_stage_frag();
 
-            U_OceanTessPushConst pc;
-            pc.fbuf_size(fbuf_ext)
-                .tile_count(ocean_entt.tile_count_x_, ocean_entt.tile_count_y_)
-                .tile_dimensions(ocean_entt.tile_size_)
-                .pvm(proj_mat, view_mat, glm::dmat4(1))
-                .patch_height(ocean_entt.height_);
-
             const auto z_far = proj_mat[3][2] / proj_mat[2][2];
             const auto scale = z_far * 1.25;
             const auto pv = proj_mat * view_mat;
@@ -792,7 +759,6 @@ namespace { namespace task {
                 cam_z - scale,
                 cam_z + scale,
                 ocean_entt.height_,
-                pc,
                 ctxt,
                 pv,
                 glm::dvec2(fbuf_ext.width, fbuf_ext.height)
