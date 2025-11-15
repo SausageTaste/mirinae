@@ -24,6 +24,7 @@ layout (push_constant) uniform U_OceanTessPushConst {
 
 layout (set = 0, binding = 0) uniform U_OceanTessParams {
     mat4 light_mats[4];
+    mat4 view_inv;
     vec4 texco_offset_rot_[3];
     vec4 dlight_cascade_depths;
     vec4 dlight_color;

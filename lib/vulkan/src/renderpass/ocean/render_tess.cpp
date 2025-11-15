@@ -118,6 +118,11 @@ namespace {
     struct U_OceanTessParams {
 
     public:
+        U_OceanTessParams& view_inv(const glm::dmat4& m) {
+            view_inv_ = glm::mat4(m);
+            return *this;
+        }
+
         U_OceanTessParams& texco_offset(size_t idx, float x, float y) {
             texco_offset_rot_[idx].x = x;
             texco_offset_rot_[idx].y = y;
@@ -270,6 +275,7 @@ namespace {
 
     private:
         glm::mat4 light_mats_[4];
+        glm::mat4 view_inv_;
         glm::vec4 texco_offset_rot_[mirinae::CASCADE_COUNT];
         glm::vec4 dlight_cascade_depths_;
         glm::vec4 dlight_color_;
@@ -640,8 +646,8 @@ namespace { namespace task {
         ) {
             namespace cpnt = mirinae::cpnt;
 
-            const auto view_mat = ctxt.main_cam_.view();
-            const auto view_inv = ctxt.main_cam_.view_inv();
+            const auto& view_mat = ctxt.main_cam_.view();
+            const auto& view_inv = ctxt.main_cam_.view_inv();
 
             U_OceanTessParams ubuf;
             ubuf.foam_bias(ocean_entt.foam_bias_)
@@ -655,6 +661,7 @@ namespace { namespace task {
                 .len_scale(2, ocean_entt.cascades_[2].lod_scale_)
                 .lod_scale(ocean_entt.lod_scale_)
                 .ocean_color(ocean_entt.ocean_color_)
+                .view_inv(view_inv)
                 .roughness(ocean_entt.roughness_)
                 .sss_base(cv_foam_sss_base.get())
                 .sss_scale(cv_foam_sss_scale.get())
