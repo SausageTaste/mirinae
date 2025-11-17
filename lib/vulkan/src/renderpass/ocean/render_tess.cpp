@@ -540,6 +540,164 @@ namespace {
         double height_;
     };
 
+
+    class OceanFrustumQuadTree {
+
+    public:
+        OceanFrustumQuadTree(
+            const mirinae::RpCtxt& ctxt,
+            const glm::dvec2& fbuf_size,
+            const double height
+        )
+            : ctxt_(ctxt), fbuf_size_(fbuf_size), height_(height) {}
+
+        void start(::PatchList& patch_list) const {
+            const auto view_pos = ctxt_.main_cam_.view_pos();
+            const glm::dvec3 patch_origin{ view_pos.x, height_, view_pos.z };
+            const auto cam_trans = glm::translate(
+                glm::dmat4(1), glm::dvec3{ view_pos.x, 0, view_pos.z }
+            );
+
+            const auto view_dir = this->calc_view_dir(ctxt_.main_cam_);
+            const auto view_dir_xz = this->calc_view_dir_2d(view_dir);
+            const auto rotation = glm::rotate(
+                glm::dmat4(1),
+                -std::atan2(view_dir_xz.y, view_dir_xz.x),
+                glm::dvec3(0, 1, 0)
+            );
+
+            const auto fov_y = ctxt_.main_cam_.fov().rad();
+            const auto fov_x = fov_y * fbuf_size_.x / fbuf_size_.y;
+            const auto fov = (std::max)(fov_x, fov_y);
+            const auto needed_size = std::max<double>(
+                std::tan(fov * 0.5) * std::abs(height_ - view_pos.y) * 2, 10
+            );
+            const auto half_needed_size = needed_size * 0.5;
+
+            const auto scale = glm::scale(
+                glm::dmat4(1), glm::dvec3(needed_size, 1, needed_size)
+            );
+
+            {
+                const auto patch_trans = glm::translate(
+                    glm::dmat4(1),
+                    glm::dvec3{ -half_needed_size, 0, -half_needed_size }
+                );
+
+                patch_list.create()
+                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
+                    .patch_offset(-0.5, -0.5)
+                    .patch_scale(1, 1);
+            }
+
+            {
+                const auto patch_trans = glm::translate(
+                    glm::dmat4(1),
+                    glm::dvec3{ half_needed_size, 0, -half_needed_size }
+                );
+
+                patch_list.create()
+                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
+                    .patch_offset(-0.5, -0.5)
+                    .patch_scale(1, 1);
+            }
+
+            {
+                const auto patch_trans = glm::translate(
+                    glm::dmat4(1),
+                    glm::dvec3{ -half_needed_size, 0, half_needed_size }
+                );
+
+                patch_list.create()
+                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
+                    .patch_offset(-0.5, -0.5)
+                    .patch_scale(1, 1);
+            }
+
+            {
+                const auto patch_trans = glm::translate(
+                    glm::dmat4(1),
+                    glm::dvec3{ half_needed_size, 0, half_needed_size }
+                );
+
+                patch_list.create()
+                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
+                    .patch_offset(-0.5, -0.5)
+                    .patch_scale(1, 1);
+            }
+
+            {
+                const auto scale = glm::scale(
+                    glm::dmat4(1),
+                    glm::dvec3(needed_size * 2, 1, needed_size * 2)
+                );
+
+                const auto patch_trans = glm::translate(
+                    glm::dmat4(1), glm::dvec3{ half_needed_size * 4, 0, 0 }
+                );
+
+                patch_list.create()
+                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
+                    .patch_offset(-0.5, -0.5)
+                    .patch_scale(1, 1);
+            }
+
+            {
+                const auto scale = glm::scale(
+                    glm::dmat4(1),
+                    glm::dvec3(needed_size * 2, 1, needed_size * 2)
+                );
+
+                const auto patch_trans = glm::translate(
+                    glm::dmat4(1),
+                    glm::dvec3{ half_needed_size * 4, 0, half_needed_size * -4 }
+                );
+
+                patch_list.create()
+                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
+                    .patch_offset(-0.5, -0.5)
+                    .patch_scale(1, 1);
+            }
+
+            {
+                const auto scale = glm::scale(
+                    glm::dmat4(1),
+                    glm::dvec3(needed_size * 2, 1, needed_size * 2)
+                );
+
+                const auto patch_trans = glm::translate(
+                    glm::dmat4(1),
+                    glm::dvec3{ half_needed_size * 4, 0, half_needed_size * 4 }
+                );
+
+                patch_list.create()
+                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
+                    .patch_offset(-0.5, -0.5)
+                    .patch_scale(1, 1);
+            }
+        }
+
+    private:
+        static glm::dvec3 calc_view_dir(const mirinae::CamCache& cam) {
+            const auto& view_mat = cam.view_inv();
+            const auto v = glm::dvec4(0, 0, -1, 0);
+            const auto view_dir4 = view_mat * v;
+            return glm::dvec3(view_dir4);
+        }
+
+        static glm::dvec2 calc_view_dir_2d(const glm::dvec3& view_dir) {
+            const auto v = glm::dvec2(view_dir.x, view_dir.z);
+            if (glm::dot(v, v) < 1e-8)
+                return glm::dvec2(1, 0);
+            else
+                return glm::normalize(v);
+        }
+
+        const mirinae::RpCtxt& ctxt_;
+        glm::dvec2 fbuf_size_;
+        double height_;
+    };
+
 }  // namespace
 
 
@@ -610,6 +768,8 @@ namespace { namespace task {
             const VkExtent2D& fbuf_ext,
             ::PatchList& pathch_list
         ) {
+            const glm::dvec2 fbuf_size{ fbuf_ext.width, fbuf_ext.height };
+
             const auto& proj_mat = ctxt.main_cam_.proj();
             const auto& view_mat = ctxt.main_cam_.view();
             const auto& view_inv = ctxt.main_cam_.view_inv();
@@ -621,18 +781,21 @@ namespace { namespace task {
             const auto cam_x = std::round(view_pos.x * 0.1) * 10;
             const auto cam_z = std::round(view_pos.z * 0.1) * 10;
 
-            const ::OceanQuadTree qtree{
-                cam_x - scale,
-                cam_x + scale,
-                cam_z - scale,
-                cam_z + scale,
-                ocean.height_,
-                ctxt,
-                glm::dvec2(fbuf_ext.width, fbuf_ext.height)
-            };
+#define OPTION 1
+
+#if OPTION == 0
+            const ::OceanQuadTree gen{ cam_x - scale, cam_x + scale,
+                                       cam_z - scale, cam_z + scale,
+                                       ocean.height_, ctxt,
+                                       fbuf_size };
+#elif OPTION == 1
+            const OceanFrustumQuadTree gen{ ctxt, fbuf_size, ocean.height_ };
+#else
+    #error "Unknown option"
+#endif
 
             pathch_list.clear();
-            qtree.start(pathch_list);
+            gen.start(pathch_list);
 
             return !pathch_list.empty();
         }
