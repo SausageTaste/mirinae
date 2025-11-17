@@ -32,24 +32,29 @@ Here, I'm only describing how to build on Windows.
 
 You need following softwares:
 
-* [Git](https://git-scm.com/)
-* [CMake](https://cmake.org/download/)
-* C++ built tool
-    * Preferably MSVC++, but GCC should work
-* [LunarG Vulkan SDK](https://vulkan.lunarg.com/)
-    * For Vulkan headers and `glslc`, `slangc` compilers
-* [vcpkg](https://github.com/microsoft/vcpkg)
-    * With an environment variable `VCPKG_ROOT` set
+* [Git](https://git-scm.com/install/windows)
+* [CMake](https://cmake.org/download/#latest)
+* C++ build tools
+    * On Windows you must use VC++ because of vcpkg, such as [Visual Studio 2026 Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026)
+* [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home)
+    * For Vulkan headers and `glslc`, `slangc` shader compilers
 * [Python](https://www.python.org/downloads/)
-    * There's a Python script to compile GLSL shader sources into SPR-V
+    * There are Python scripts that compile GLSL, Slang shader sources into SPR-V
+* [vcpkg](https://github.com/microsoft/vcpkg)
+    * With the environment variable `VCPKG_ROOT` set
+        ```bash
+        git clone https://github.com/microsoft/vcpkg.git
+        setx VCPKG_ROOT "%CD%\vcpkg"
+        ```
+    * Don't forget to run `bootstrap-vcpkg` as well
 
-Now that all these are ready, you can simply
+Now that all requirements are ready, you can simply
 
-```
-git clone --recurse-submodules -j8 https://github.com/SausageTaste/mirinae
+```bash
+git clone --recurse-submodules -j8 "https://github.com/SausageTaste/mirinae"
 cd mirinae
-cmake -S . -B ./build
-cmake --build ./build
+cmake -S "." -B "./build"
+cmake --build "./build"
 ```
 
 Make sure all submodules are properly cloned!
