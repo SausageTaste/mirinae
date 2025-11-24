@@ -5,8 +5,6 @@
 
 namespace mirinae::rp {
 
-    std::unique_ptr<mirinae::IRpBase> create_rp_skin_anim(
-        RpCreateBundle& bundle
-    );
+    std::unique_ptr<IRpBase> create_rp_skin_anim(RpCreateBundle&);
 
 }  // namespace mirinae::rp

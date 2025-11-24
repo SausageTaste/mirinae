@@ -5,12 +5,10 @@
 
 namespace mirinae::rp {
 
-    HShadowMaps create_shadow_maps_bundle(mirinae::VulkanDevice& device);
+    HShadowMaps create_shadow_maps_bundle(mirinae::VulkanDevice&);
 
-    std::unique_ptr<IRpBase> create_rp_shadow_static(RpCreateBundle& cbundle);
-
-    std::unique_ptr<IRpBase> create_rp_shadow_static_trs(RpCreateBundle& cbundle);
-
-    std::unique_ptr<IRpBase> create_rp_shadow_terrain(RpCreateBundle& cbundle);
+    std::unique_ptr<IRpBase> create_rp_shadow_static(RpCreateBundle&);
+    std::unique_ptr<IRpBase> create_rp_shadow_static_trs(RpCreateBundle&);
+    std::unique_ptr<IRpBase> create_rp_shadow_terrain(RpCreateBundle&);
 
 }  // namespace mirinae::rp

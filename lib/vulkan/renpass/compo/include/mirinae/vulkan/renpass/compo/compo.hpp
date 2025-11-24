@@ -5,12 +5,12 @@
 
 namespace mirinae::rp::compo {
 
-    std::unique_ptr<IRpBase> create_rps_dlight(RpCreateBundle& cbundle);
-    std::unique_ptr<IRpBase> create_rps_slight(RpCreateBundle& cbundle);
-    std::unique_ptr<IRpBase> create_rps_vplight(RpCreateBundle& cbundle);
-    std::unique_ptr<IRpBase> create_rps_envmap(RpCreateBundle& cbundle);
-    std::unique_ptr<IRpBase> create_rps_sky(RpCreateBundle& cbundle);
-    std::unique_ptr<IRpBase> create_rps_sky_atmos(RpCreateBundle& cbundle);
-    std::unique_ptr<IRpBase> create_rps_atmos_surface(RpCreateBundle& cbundle);
+    std::unique_ptr<IRpBase> create_rps_dlight(RpCreateBundle&);
+    std::unique_ptr<IRpBase> create_rps_slight(RpCreateBundle&);
+    std::unique_ptr<IRpBase> create_rps_vplight(RpCreateBundle&);
+    std::unique_ptr<IRpBase> create_rps_envmap(RpCreateBundle&);
+    std::unique_ptr<IRpBase> create_rps_sky(RpCreateBundle&);
+    std::unique_ptr<IRpBase> create_rps_sky_atmos(RpCreateBundle&);
+    std::unique_ptr<IRpBase> create_rps_atmos_surface(RpCreateBundle&);
 
 }  // namespace mirinae::rp::compo
