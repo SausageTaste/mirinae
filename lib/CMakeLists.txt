@@ -1,4 +1,6 @@
 add_subdirectory(auxiliary)
 add_subdirectory(cosmos)
-add_subdirectory(vulkan)
+add_subdirectory(vulkan/base)
+add_subdirectory(vulkan/renpass)
+add_subdirectory(vulkan/renderer)
 add_subdirectory(engine)
