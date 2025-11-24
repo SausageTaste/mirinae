@@ -1,2 +1,3 @@
 add_subdirectory(atmos)
 add_subdirectory(bloom)
+add_subdirectory(compo)

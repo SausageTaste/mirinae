@@ -1,4 +1,4 @@
-#include "renderpass/compo.hpp"
+#include "mirinae/vulkan/renpass/compo/compo.hpp"
 
 #include <entt/entity/registry.hpp>
 
@@ -8,9 +8,8 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
-
-#include "render/cmdbuf.hpp"
-#include "renderpass/builder.hpp"
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
 
 namespace {

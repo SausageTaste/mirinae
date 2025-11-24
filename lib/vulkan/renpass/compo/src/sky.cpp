@@ -1,53 +1,52 @@
-#include "renderpass/compo.hpp"
+#include "mirinae/vulkan/renpass/compo/compo.hpp"
 
 #include <entt/entity/registry.hpp>
 
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/light.hpp"
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
-
-#include "render/cmdbuf.hpp"
-#include "renderpass/builder.hpp"
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
 
 namespace {
 
-    class U_CompoEnvmapPushConst {
+    class U_CompoSkyMain {
 
     public:
-        U_CompoEnvmapPushConst& set_proj_inv(const glm::mat4& m) {
+        U_CompoSkyMain& set_proj_inv(const glm::mat4& m) {
             proj_inv_ = m;
             return *this;
         }
 
-        U_CompoEnvmapPushConst& set_view_inv(const glm::mat4& m) {
+        U_CompoSkyMain& set_view_inv(const glm::mat4& m) {
             view_inv_ = m;
             return *this;
         }
 
-        U_CompoEnvmapPushConst& set_fog_color(const glm::vec3& v) {
+        U_CompoSkyMain& set_fog_color(const glm::vec3& v) {
             fog_color_density_.x = v.r;
             fog_color_density_.y = v.g;
             fog_color_density_.z = v.b;
             return *this;
         }
 
-        U_CompoEnvmapPushConst& set_fog_density(float density) {
+        U_CompoSkyMain& set_fog_density(float density) {
             fog_color_density_.w = density;
             return *this;
         }
 
     private:
-        glm::mat4 view_inv_;
         glm::mat4 proj_inv_;
-        glm::vec4 fog_color_density_{ 0 };
+        glm::mat4 view_inv_;
+        glm::vec4 fog_color_density_;
     };
 
 
     struct FrameData {
         mirinae::Fbuf fbuf_;
-        VkDescriptorSet desc_set_env_ = VK_NULL_HANDLE;
-        VkDescriptorSet desc_set_main_ = VK_NULL_HANDLE;
+        VkDescriptorSet desc_set_ = VK_NULL_HANDLE;
     };
 
     using FrameDataArr = std::array<FrameData, mirinae::MAX_FRAMES_IN_FLIGHT>;
@@ -99,8 +98,29 @@ namespace { namespace task {
             const auto gbuf_ext = gbufs_->extent();
 
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
+            this->record_barriers(cmdbuf_, *gbufs_, *ctxt_);
             this->record(cmdbuf_, fd, *reg_, *rp_, *ctxt_, gbuf_ext);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
+        }
+
+        static void record_barriers(
+            const VkCommandBuffer cmdbuf,
+            const mirinae::FbufImageBundle& gbufs,
+            const mirinae::RpCtxt& ctxt
+        ) {
+            mirinae::ImageMemoryBarrier{}
+                .image(gbufs.depth(ctxt.f_index_).image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .new_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .set_src_acc(VK_ACCESS_SHADER_READ_BIT)
+                .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                );
         }
 
         static void record(
@@ -128,17 +148,10 @@ namespace { namespace task {
 
             mirinae::DescSetBindInfo{}
                 .layout(rp.pipe_layout())
-                .first_set(0)
-                .set(fd.desc_set_main_)
+                .set(fd.desc_set_)
                 .record(cmdbuf);
 
-            mirinae::DescSetBindInfo{}
-                .layout(rp.pipe_layout())
-                .first_set(1)
-                .set(fd.desc_set_env_)
-                .record(cmdbuf);
-
-            U_CompoEnvmapPushConst pc;
+            ::U_CompoSkyMain pc;
             pc.set_proj_inv(ctxt.main_cam_.proj_inv())
                 .set_view_inv(ctxt.main_cam_.view_inv());
             for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
@@ -157,7 +170,7 @@ namespace { namespace task {
             vkCmdEndRenderPass(cmdbuf);
         }
 
-        const mirinae::DebugLabel DEBUG_LABEL{ "Compo Envmap", 1, 0.96, 0.61 };
+        const mirinae::DebugLabel DEBUG_LABEL{ "Compo Sky", 1, 0.96, 0.61 };
 
         mirinae::FenceTask fence_;
         VkCommandBuffer cmdbuf_ = VK_NULL_HANDLE;
@@ -209,15 +222,15 @@ namespace { namespace task {
 }}  // namespace ::task
 
 
-// Compo Envmap
+// Compo Sky
 namespace {
 
-    class RpStatesCompoEnvmap
+    class RpStatesCompoSky
         : public mirinae::IRpBase
-        , public mirinae::RenPassBundle<1> {
+        , public mirinae::RenPassBundle<2> {
 
     public:
-        RpStatesCompoEnvmap(
+        RpStatesCompoSky(
             mirinae::CosmosSimulator& cosmos,
             mirinae::RpResources& rp_res,
             mirinae::VulkanDevice& device
@@ -227,41 +240,36 @@ namespace {
             auto& reg = cosmos.reg();
             auto& desclays = rp_res_.desclays_;
 
-            // Desc layout: main
+            // Sky texture
+            {
+                auto atmos = this->select_atmos_simple(cosmos.reg());
+                MIRINAE_ASSERT(nullptr != atmos);
+                auto& tex = *rp_res.tex_man_;
+                if (tex.request_blck(atmos->sky_tex_path_, false)) {
+                    sky_tex_ = tex.get(atmos->sky_tex_path_);
+                } else {
+                    sky_tex_ = tex.missing_tex();
+                }
+            }
+
+            // Descriptor layout
             {
                 mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
-                builder
-                    .add_img_frag(1)   // depth
-                    .add_img_frag(1)   // albedo
-                    .add_img_frag(1)   // normal
-                    .add_img_frag(1);  // material
+                builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
                 desclays.add(builder, device.logi_device());
             }
 
-            // Desc layout: envmaps
+            // Desciptor Sets
             {
-                mirinae::DescLayoutBuilder builder{ name_s() + ":envmaps" };
-                builder
-                    .add_img_frag(1)   // u_env_diffuse
-                    .add_img_frag(1)   // u_env_specular
-                    .add_img_frag(1);  // u_env_lut
-                desclays.add(builder, device.logi_device());
-            }
+                auto& desc_layout = desclays.get(name_s() + ":main");
 
-            // Desc sets: main
-            this->recreate_desc_sets(frame_data_, desc_pool_main_, device);
-
-            // Desc sets: envmaps
-            {
-                auto& desc_layout = desclays.get(name_s() + ":envmaps");
-
-                desc_pool_env_.init(
+                desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     desc_layout.size_info(),
                     device.logi_device()
                 );
 
-                auto desc_sets = desc_pool_env_.alloc(
+                auto desc_sets = desc_pool_.alloc(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
                     desc_layout.layout(),
                     device.logi_device()
@@ -270,39 +278,25 @@ namespace {
                 mirinae::DescWriter writer;
                 for (size_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
                     auto& fd = frame_data_[i];
-                    fd.desc_set_env_ = desc_sets[i];
+                    fd.desc_set_ = desc_sets[i];
 
-                    // Diffuse envmap
                     writer.add_img_info()
-                        .set_img_view(rp_res.envmaps_->diffuse_at(0))
+                        .set_img_view(sky_tex_->image_view())
                         .set_sampler(device.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_env_, 0);
-
-                    // Specular envmap
-                    writer.add_img_info()
-                        .set_img_view(rp_res.envmaps_->specular_at(0))
-                        .set_sampler(device.samplers().get_linear())
-                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_env_, 1);
-
-                    // LUT
-                    writer.add_img_info()
-                        .set_img_view(rp_res.envmaps_->brdf_lut())
-                        .set_sampler(device.samplers().get_linear())
-                        .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                    writer.add_sampled_img_write(fd.desc_set_env_, 2);
+                    writer.add_sampled_img_write(fd.desc_set_, 0);
                 }
                 writer.apply_all(device.logi_device());
             }
 
             // Pipeline layout
             {
+                auto& desc_layout = desclays.get(name_s() + ":main");
+
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(desclays.get(name_s() + ":main").layout())
-                    .desc(desclays.get(name_s() + ":envmaps").layout())
+                    .desc(desc_layout.layout())
                     .add_frag_flag()
-                    .pc<U_CompoEnvmapPushConst>()
+                    .pc<::U_CompoSkyMain>()
                     .build(pipe_layout_, device);
             }
 
@@ -317,26 +311,26 @@ namespace {
 
             // Misc
             {
-                clear_values_.at(0).color = { 0, 0, 0, 1 };
+                clear_values_.at(0).depthStencil = { 0, 0 };
+                clear_values_.at(1).color = { 0.0f, 0.0f, 0.0f, 1.0f };
             }
 
             return;
         }
 
-        ~RpStatesCompoEnvmap() override {
+        ~RpStatesCompoSky() override {
             for (auto& fd : frame_data_) {
                 fd.fbuf_.destroy(device_.logi_device());
             }
 
-            desc_pool_main_.destroy(device_.logi_device());
-            desc_pool_env_.destroy(device_.logi_device());
+            sky_tex_.reset();
+            desc_pool_.destroy(device_.logi_device());
             this->destroy_render_pass_elements(device_);
         }
 
-        std::string_view name() const override { return "compo_envmap"; }
+        std::string_view name() const override { return "compo_sky"; }
 
         void on_resize(uint32_t width, uint32_t height) override {
-            this->recreate_desc_sets(frame_data_, desc_pool_main_, device_);
             this->recreate_render_pass(render_pass_, device_);
             this->recreate_pipeline(pipeline_, device_);
             this->recreate_fbufs(frame_data_, device_);
@@ -356,60 +350,21 @@ namespace {
         }
 
     private:
-        void recreate_desc_sets(
-            ::FrameDataArr& fdata,
-            mirinae::DescPool& desc_pool,
-            mirinae::VulkanDevice& device
-        ) const {
-            auto& gbufs = rp_res_.gbuf_;
-            auto& desclays = rp_res_.desclays_;
-            auto& desc_layout = desclays.get(name_s() + ":main");
+        struct FrameData {
+            VkDescriptorSet desc_set_;
+            VkFramebuffer fbuf_;
+        };
 
-            desc_pool.init(
-                mirinae::MAX_FRAMES_IN_FLIGHT,
-                desc_layout.size_info(),
-                device.logi_device()
-            );
+        static const mirinae::cpnt::AtmosphereSimple* select_atmos_simple(
+            const entt::registry& reg
+        ) {
+            using Atmos = mirinae::cpnt::AtmosphereSimple;
 
-            auto desc_sets = desc_pool.alloc(
-                mirinae::MAX_FRAMES_IN_FLIGHT,
-                desc_layout.layout(),
-                device.logi_device()
-            );
-
-            mirinae::DescWriter writer;
-            for (uint32_t i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; i++) {
-                const mirinae::FrameIndex f_idx(i);
-
-                auto& fd = fdata[i];
-                fd.desc_set_main_ = desc_sets[i];
-
-                // Depth
-                writer.add_img_info()
-                    .set_img_view(gbufs.depth(f_idx).image_view())
-                    .set_sampler(device.samplers().get_linear())
-                    .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                writer.add_sampled_img_write(fd.desc_set_main_, 0);
-                // Albedo
-                writer.add_img_info()
-                    .set_img_view(gbufs.albedo(f_idx).image_view())
-                    .set_sampler(device.samplers().get_linear())
-                    .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                writer.add_sampled_img_write(fd.desc_set_main_, 1);
-                // Normal
-                writer.add_img_info()
-                    .set_img_view(gbufs.normal(f_idx).image_view())
-                    .set_sampler(device.samplers().get_linear())
-                    .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                writer.add_sampled_img_write(fd.desc_set_main_, 2);
-                // Material
-                writer.add_img_info()
-                    .set_img_view(gbufs.material(f_idx).image_view())
-                    .set_sampler(device.samplers().get_linear())
-                    .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                writer.add_sampled_img_write(fd.desc_set_main_, 3);
+            for (auto entity : reg.view<Atmos>()) {
+                return &reg.get<Atmos>(entity);
             }
-            writer.apply_all(device.logi_device());
+
+            return nullptr;
         }
 
         void recreate_render_pass(
@@ -418,12 +373,20 @@ namespace {
             mirinae::RenderPassBuilder builder;
 
             builder.attach_desc()
+                .add(rp_res_.gbuf_.depth_format())
+                .ini_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .fin_lay(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
+                .stor_op(VK_ATTACHMENT_STORE_OP_STORE);
+            builder.attach_desc()
                 .add(rp_res_.gbuf_.compo_format())
                 .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .op_pair_load_store();
 
-            builder.color_attach_ref().add_color_attach(0);
+            builder.color_attach_ref().add_color_attach(1);
+
+            builder.depth_attach_ref().set(0);
 
             builder.subpass_dep().add().preset_single();
 
@@ -436,14 +399,18 @@ namespace {
             mirinae::PipelineBuilder builder{ device };
 
             builder.shader_stages()
-                .add_vert(":asset/spv/compo_envmap_vert.spv")
-                .add_frag(":asset/spv/compo_envmap_frag.spv");
+                .add_vert(":asset/spv/compo_sky_vert.spv")
+                .add_frag(":asset/spv/compo_sky_frag.spv");
 
-            builder.rasterization_state().cull_mode_back();
+            builder.depth_stencil_state()
+                .depth_test_enable(true)
+                .depth_write_enable(false)
+                .depth_compare_op(VK_COMPARE_OP_GREATER_OR_EQUAL);
 
-            builder.color_blend_state().add().set_additive_blend();
+            builder.color_blend_state().add(false, 1);
 
             builder.dynamic_state().add_viewport().add_scissor();
+
 
             pipeline.reset(builder.build(render_pass_, pipe_layout_), device);
         }
@@ -451,15 +418,16 @@ namespace {
         void recreate_fbufs(
             ::FrameDataArr& fdata, mirinae::VulkanDevice& device
         ) const {
-            auto& gbuf = rp_res_.gbuf_;
+            const auto& gbufs = rp_res_.gbuf_;
 
             for (int i = 0; i < mirinae::MAX_FRAMES_IN_FLIGHT; ++i) {
                 const mirinae::FrameIndex f_idx(i);
 
                 mirinae::FbufCinfo fbuf_cinfo;
                 fbuf_cinfo.set_rp(render_pass_)
-                    .set_dim(gbuf.extent())
-                    .add_attach(gbuf.compo(f_idx).image_view());
+                    .set_dim(gbufs.extent())
+                    .add_attach(gbufs.depth(f_idx).image_view())
+                    .add_attach(gbufs.compo(f_idx).image_view());
 
                 fdata.at(i).fbuf_.reset(
                     fbuf_cinfo.build(device), device.logi_device()
@@ -472,7 +440,8 @@ namespace {
         mirinae::RpResources& rp_res_;
 
         FrameDataArr frame_data_;
-        mirinae::DescPool desc_pool_main_, desc_pool_env_;
+        std::shared_ptr<mirinae::ITexture> sky_tex_;
+        mirinae::DescPool desc_pool_;
     };
 
 }  // namespace
@@ -480,8 +449,8 @@ namespace {
 
 namespace mirinae::rp::compo {
 
-    std::unique_ptr<IRpBase> create_rps_envmap(RpCreateBundle& cbundle) {
-        return std::make_unique<RpStatesCompoEnvmap>(
+    std::unique_ptr<IRpBase> create_rps_sky(RpCreateBundle& cbundle) {
+        return std::make_unique<RpStatesCompoSky>(
             cbundle.cosmos_, cbundle.rp_res_, cbundle.device_
         );
     }
