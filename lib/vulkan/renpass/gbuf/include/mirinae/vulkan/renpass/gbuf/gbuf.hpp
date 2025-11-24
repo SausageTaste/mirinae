@@ -1,0 +1,26 @@
+#pragma once
+
+#include "mirinae/vulkan/base/render/render_graph.hpp"
+#include "mirinae/vulkan/base/renderpass/common.hpp"
+
+
+namespace mirinae::rp::gbuf {
+
+    void create_desc_layouts(
+        DesclayoutManager& desclayouts, VulkanDevice& device
+    );
+
+
+    std::unique_ptr<IRpBase> create_rp_gbuf_static(RpCreateBundle& cbundle);
+    std::unique_ptr<IRpBase> create_rp_gbuf_terrain(RpCreateBundle& cbundle);
+
+}  // namespace mirinae::rp::gbuf
+
+
+namespace mirinae::rp {
+
+    rg::URpImpl create_rpimpl_gbuf_static();
+
+    rg::URpImpl create_rpimpl_gbuf_terrain();
+
+}  // namespace mirinae::rp

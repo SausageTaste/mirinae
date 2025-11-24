@@ -13,6 +13,8 @@ set(MIRINAE_ENABLE_TEST OFF CACHE BOOL "Enable testing")
 set(MIRINAE_BUILD_APP ON CACHE BOOL "Build projects in app folder")
 set(DAL_USE_SUNGTOOLS_SUBMODULE ON CACHE BOOL "Use sungtools as a submodule")
 
+add_compile_definitions(NOMINMAX)
+
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/extern/dalbaragi)
 
