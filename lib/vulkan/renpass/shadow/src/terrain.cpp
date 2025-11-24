@@ -1,4 +1,4 @@
-#include "renderpass/shadow/shadow.hpp"
+#include "mirinae/vulkan/renpass/shadow/shadow.hpp"
 
 #include <entt/entity/registry.hpp>
 
@@ -8,11 +8,11 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
+#include "mirinae/vulkan/base/renderee/terrain.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
-#include "render/cmdbuf.hpp"
-#include "renderee/terrain.hpp"
-#include "renderpass/builder.hpp"
-#include "renderpass/shadow/bundles.hpp"
+#include "bundles.hpp"
 
 
 namespace {

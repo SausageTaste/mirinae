@@ -1,9 +1,9 @@
-#include "renderpass/shadow/bundles.hpp"
+#include "bundles.hpp"
 
 #include <entt/entity/entity.hpp>
 
-#include "render/mem_cinfo.hpp"
-#include "render/texture.hpp"
+#include "mirinae/vulkan/base/render/mem_cinfo.hpp"
+#include "mirinae/vulkan/base/render/texture.hpp"
 
 
 // ImageFbufPair
