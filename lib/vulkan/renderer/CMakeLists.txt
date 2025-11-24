@@ -36,8 +36,19 @@ target_include_directories(${target_name}
         "${src_dir}"
 )
 
-target_link_libraries(${target_name} PRIVATE
-    mirinae::vulkan_base
+target_link_libraries(${target_name}
+    PUBLIC
+        mirinae::vulkan_base
+    PRIVATE
+        mirinae::vulkan_renpass_atmos
+        mirinae::vulkan_renpass_bloom
+        mirinae::vulkan_renpass_compo
+        mirinae::vulkan_renpass_envmap
+        mirinae::vulkan_renpass_gbuf
+        mirinae::vulkan_renpass_misc
+        mirinae::vulkan_renpass_ocean
+        mirinae::vulkan_renpass_shadow
+        mirinae::vulkan_renpass_transp
 )
 
 if (WIN32)

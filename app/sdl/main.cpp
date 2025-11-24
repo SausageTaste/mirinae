@@ -11,7 +11,7 @@
 
 #include <mirinae/engine.hpp>
 #include <mirinae/lightweight/include_spdlog.hpp>
-#include <mirinae/vulkan/platform_func.hpp>
+#include <mirinae/vulkan/base/platform_func.hpp>
 #include <sung/basic/os_detect.hpp>
 
 
