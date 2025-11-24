@@ -1,8 +1,6 @@
 #pragma once
 
-#include "mirinae/lightweight/debug_ren.hpp"
-
-#include "renderpass/common.hpp"
+#include "mirinae/vulkan/base/renderpass/common.hpp"
 
 
 namespace mirinae::rp {
