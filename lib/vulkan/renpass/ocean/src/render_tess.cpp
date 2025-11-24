@@ -562,17 +562,23 @@ namespace {
                 std::tan(fov * 0.5) * std::abs(height_ - cam_pos.y) * 2, 10
             );
 
+            constexpr std::array<glm::dvec3, 4> base_patch_points = {
+                glm::dvec3(-0.5, 0, -0.5),
+                glm::dvec3(-0.5, 0, 0.5),
+                glm::dvec3(0.5, 0, 0.5),
+                glm::dvec3(0.5, 0, -0.5),
+            };
+
             double dist_depth = -init_size;
             for (int i = -1; i < 10; ++i) {
-                const double edge_size = init_size *
-                                         (2 << std::max(i, 0));
+                const double edge_size = init_size * (2 << std::max(i, 0));
                 const auto half_edge = edge_size * 0.5;
                 const glm::dvec3 edge_size_vec(
                     edge_size * 1.01, 1, edge_size * 1.01
                 );
                 const auto patch_scale = glm::scale(I, edge_size_vec);
 
-                for (int j = 0; j < 6; ++j) {
+                for (int j = 0; j < 4; ++j) {
                     const auto side_offset = j / 2 + 1;
                     const auto sign = (j % 2 == 0) ? -1 : 1;
                     const glm::dvec3 offset{
@@ -580,10 +586,26 @@ namespace {
                         0,
                         half_edge * side_offset * sign,
                     };
-                    const auto patch_trans = glm::translate(I, offset);
+                    const auto patch_mat = cam_tform *
+                                           glm::translate(I, offset) *
+                                           patch_scale;
+                    const auto pvmp = ctxt_.main_cam_.proj() *
+                                      ctxt_.main_cam_.view() * patch_mat;
+
+                    std::array<glm::dvec2, 4> ndc_points;
+                    for (size_t k = 0; k < 4; ++k) {
+                        auto ndc4 = pvmp * glm::dvec4(base_patch_points[k], 1);
+                        ndc4 /= ndc4.w;
+                        ndc_points[k] = glm::dvec2(ndc4);
+                    }
+
+                    if (this->is_axis_separating(glm::dvec2(1, 0), ndc_points))
+                        break;
+                    if (this->is_axis_separating(glm::dvec2(0, 1), ndc_points))
+                        break;
 
                     patch_list.create()
-                        .pc_.patch_mat(cam_tform * patch_trans * patch_scale)
+                        .pc_.patch_mat(patch_mat)
                         .patch_offset(-0.5, -0.5)
                         .patch_scale(1, 1);
                 }
@@ -635,6 +657,21 @@ namespace {
                 sung::to_radians(0.1),
                 sung::to_radians(160.0)
             );
+        }
+
+        static bool is_axis_separating(
+            const glm::dvec2& axis, const std::array<glm::dvec2, 4>& points
+        ) {
+            sung::Aabb1DLazyInit<double> screen_aabb;
+            screen_aabb.set_or_expand(glm::dot(axis, glm::dvec2(-1, -1)));
+            screen_aabb.set_or_expand(glm::dot(axis, glm::dvec2(-1, 1)));
+            screen_aabb.set_or_expand(glm::dot(axis, glm::dvec2(1, -1)));
+            screen_aabb.set_or_expand(glm::dot(axis, glm::dvec2(1, 1)));
+
+            sung::Aabb1DLazyInit<double> points_aabb;
+            for (auto& p : points) points_aabb.set_or_expand(glm::dot(p, axis));
+
+            return !screen_aabb.is_intersecting_op(points_aabb);
         }
 
         const mirinae::RpCtxt& ctxt_;
