@@ -130,7 +130,7 @@ float3 oceanRadiance(
 [shader("vertex")]
 VSOutput vert_main(int vtx_id: SV_VertexID) {
     let pos_2d = TEX_COORDS[vtx_id] * u_pc.patch_scale_ + u_pc.patch_offset_;
-    let pos_3d = float4(pos_2d.x, u_params.patch_height_, pos_2d.y, 1);
+    let pos_3d = float4(pos_2d.x, 0, pos_2d.y, 1);
     let pos_model = mul(u_pc.patch_mat_, pos_3d);
     let pos_world = mul(u_params.model_, pos_model);
 

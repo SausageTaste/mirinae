@@ -551,133 +551,49 @@ namespace {
             : ctxt_(ctxt), fbuf_size_(fbuf_size), height_(height) {}
 
         void start(::PatchList& patch_list) const {
-            const auto view_pos = ctxt_.main_cam_.view_pos();
-            const glm::dvec3 patch_origin{ view_pos.x, height_, view_pos.z };
-            const auto cam_trans = glm::translate(
-                glm::dmat4(1), glm::dvec3{ view_pos.x, 0, view_pos.z }
+            constexpr glm::dmat4 I(1);
+
+            const auto cam_pos = ctxt_.main_cam_.view_pos();
+            const auto cam_tform = this->make_cam_trans(cam_pos, height_) *
+                                   this->make_cam_rot(ctxt_.main_cam_);
+
+            const auto fov = this->determine_fov(ctxt_.main_cam_, fbuf_size_);
+            const auto init_size = std::max<double>(
+                std::tan(fov * 0.5) * std::abs(height_ - cam_pos.y) * 2, 10
             );
 
-            const auto view_dir = this->calc_view_dir(ctxt_.main_cam_);
-            const auto view_dir_xz = this->calc_view_dir_2d(view_dir);
-            const auto rotation = glm::rotate(
-                glm::dmat4(1),
-                -std::atan2(view_dir_xz.y, view_dir_xz.x),
-                glm::dvec3(0, 1, 0)
-            );
-
-            const auto fov_y = ctxt_.main_cam_.fov().rad();
-            const auto fov_x = fov_y * fbuf_size_.x / fbuf_size_.y;
-            const auto fov = (std::max)(fov_x, fov_y);
-            const auto needed_size = std::max<double>(
-                std::tan(fov * 0.5) * std::abs(height_ - view_pos.y) * 2, 10
-            );
-            const auto half_needed_size = needed_size * 0.5;
-
-            const auto scale = glm::scale(
-                glm::dmat4(1), glm::dvec3(needed_size, 1, needed_size)
-            );
-
-            {
-                const auto patch_trans = glm::translate(
-                    glm::dmat4(1),
-                    glm::dvec3{ -half_needed_size, 0, -half_needed_size }
+            double dist_depth = -init_size;
+            for (int i = -1; i < 10; ++i) {
+                const double edge_size = init_size *
+                                         (2 << std::max(i, 0));
+                const auto half_edge = edge_size * 0.5;
+                const glm::dvec3 edge_size_vec(
+                    edge_size * 1.01, 1, edge_size * 1.01
                 );
+                const auto patch_scale = glm::scale(I, edge_size_vec);
 
-                patch_list.create()
-                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
-                    .patch_offset(-0.5, -0.5)
-                    .patch_scale(1, 1);
-            }
+                for (int j = 0; j < 6; ++j) {
+                    const auto side_offset = j / 2 + 1;
+                    const auto sign = (j % 2 == 0) ? -1 : 1;
+                    const glm::dvec3 offset{
+                        dist_depth + half_edge,
+                        0,
+                        half_edge * side_offset * sign,
+                    };
+                    const auto patch_trans = glm::translate(I, offset);
 
-            {
-                const auto patch_trans = glm::translate(
-                    glm::dmat4(1),
-                    glm::dvec3{ half_needed_size, 0, -half_needed_size }
-                );
+                    patch_list.create()
+                        .pc_.patch_mat(cam_tform * patch_trans * patch_scale)
+                        .patch_offset(-0.5, -0.5)
+                        .patch_scale(1, 1);
+                }
 
-                patch_list.create()
-                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
-                    .patch_offset(-0.5, -0.5)
-                    .patch_scale(1, 1);
-            }
-
-            {
-                const auto patch_trans = glm::translate(
-                    glm::dmat4(1),
-                    glm::dvec3{ -half_needed_size, 0, half_needed_size }
-                );
-
-                patch_list.create()
-                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
-                    .patch_offset(-0.5, -0.5)
-                    .patch_scale(1, 1);
-            }
-
-            {
-                const auto patch_trans = glm::translate(
-                    glm::dmat4(1),
-                    glm::dvec3{ half_needed_size, 0, half_needed_size }
-                );
-
-                patch_list.create()
-                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
-                    .patch_offset(-0.5, -0.5)
-                    .patch_scale(1, 1);
-            }
-
-            {
-                const auto scale = glm::scale(
-                    glm::dmat4(1),
-                    glm::dvec3(needed_size * 2, 1, needed_size * 2)
-                );
-
-                const auto patch_trans = glm::translate(
-                    glm::dmat4(1), glm::dvec3{ half_needed_size * 4, 0, 0 }
-                );
-
-                patch_list.create()
-                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
-                    .patch_offset(-0.5, -0.5)
-                    .patch_scale(1, 1);
-            }
-
-            {
-                const auto scale = glm::scale(
-                    glm::dmat4(1),
-                    glm::dvec3(needed_size * 2, 1, needed_size * 2)
-                );
-
-                const auto patch_trans = glm::translate(
-                    glm::dmat4(1),
-                    glm::dvec3{ half_needed_size * 4, 0, half_needed_size * -4 }
-                );
-
-                patch_list.create()
-                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
-                    .patch_offset(-0.5, -0.5)
-                    .patch_scale(1, 1);
-            }
-
-            {
-                const auto scale = glm::scale(
-                    glm::dmat4(1),
-                    glm::dvec3(needed_size * 2, 1, needed_size * 2)
-                );
-
-                const auto patch_trans = glm::translate(
-                    glm::dmat4(1),
-                    glm::dvec3{ half_needed_size * 4, 0, half_needed_size * 4 }
-                );
-
-                patch_list.create()
-                    .pc_.patch_mat(cam_trans * rotation * patch_trans * scale)
-                    .patch_offset(-0.5, -0.5)
-                    .patch_scale(1, 1);
+                dist_depth += edge_size;
             }
         }
 
     private:
-        static glm::dvec3 calc_view_dir(const mirinae::CamCache& cam) {
+        static glm::dvec3 calc_view_dir(const mirinae::CamGeometry& cam) {
             const auto& view_mat = cam.view_inv();
             const auto v = glm::dvec4(0, 0, -1, 0);
             const auto view_dir4 = view_mat * v;
@@ -690,6 +606,35 @@ namespace {
                 return glm::dvec2(1, 0);
             else
                 return glm::normalize(v);
+        }
+
+        static glm::dmat4 make_cam_trans(
+            const glm::dvec3& view_pos, double height
+        ) {
+            const glm::dvec3 patch_origin{ view_pos.x, height, view_pos.z };
+            return glm::translate(glm::dmat4(1), patch_origin);
+        }
+
+        static glm::dmat4 make_cam_rot(const mirinae::CamGeometry& cam) {
+            const auto view_dir = calc_view_dir(cam);
+            const auto view_dir_xz = calc_view_dir_2d(view_dir);
+            return glm::rotate(
+                glm::dmat4(1),
+                -std::atan2(view_dir_xz.y, view_dir_xz.x),
+                glm::dvec3(0, 1, 0)
+            );
+        }
+
+        static double determine_fov(
+            const mirinae::CamGeometry& cam, const glm::dvec2& fbuf_size
+        ) {
+            const auto fov_y = cam.fov().rad();
+            const auto fov_x = fov_y * fbuf_size.x / fbuf_size.y;
+            return sung::clamp(
+                std::max(fov_x, fov_y),
+                sung::to_radians(0.1),
+                sung::to_radians(160.0)
+            );
         }
 
         const mirinae::RpCtxt& ctxt_;
