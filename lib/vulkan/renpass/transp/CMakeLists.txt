@@ -19,7 +19,7 @@ file(GLOB_RECURSE public_headers CONFIGURE_DEPENDS
 
 add_library(${target_name} STATIC)
 add_library(mirinae::vulkan_renpass_transp ALIAS ${target_name})
-set_target_properties(${target_name} PROPERTIES FOLDER "mirinae/vulkan/renpass")
+set_target_properties(${target_name} PROPERTIES FOLDER "mirinae/engine/vulkan/renpass")
 
 target_sources(${target_name}
     PUBLIC

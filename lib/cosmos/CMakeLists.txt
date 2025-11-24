@@ -28,7 +28,7 @@ target_link_libraries(mirinae_cosmos PUBLIC
     mirinae::aux
 )
 set_target_properties(mirinae_cosmos PROPERTIES
-    FOLDER "mirinae"
+    FOLDER "mirinae/engine"
 )
 
 set_source_files_properties(

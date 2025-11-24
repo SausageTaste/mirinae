@@ -25,7 +25,7 @@ target_link_libraries(mirinae_aux PUBLIC
     uni-algo::uni-algo
 )
 set_target_properties(mirinae_aux PROPERTIES
-    FOLDER "mirinae"
+    FOLDER "mirinae/engine"
 )
 
 if (WIN32)

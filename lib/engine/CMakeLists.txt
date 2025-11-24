@@ -20,7 +20,7 @@ target_link_libraries(mirinae_engine PUBLIC
     mirinae::vulkan_renderer
 )
 set_target_properties(mirinae_engine PROPERTIES
-    FOLDER "mirinae"
+    FOLDER "mirinae/engine"
 )
 
 if (WIN32)
