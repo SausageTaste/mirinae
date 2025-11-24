@@ -1,4 +1,4 @@
-#include "renderpass/gbuf/gbuf.hpp"
+#include "mirinae/vulkan/renpass/gbuf/gbuf.hpp"
 
 #include <entt/entity/registry.hpp>
 
@@ -6,11 +6,10 @@
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
-
-#include "render/cmdbuf.hpp"
-#include "render/draw_set.hpp"
-#include "renderee/terrain.hpp"
-#include "renderpass/builder.hpp"
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
+#include "mirinae/vulkan/base/render/draw_set.hpp"
+#include "mirinae/vulkan/base/renderee/terrain.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
 
 namespace {
