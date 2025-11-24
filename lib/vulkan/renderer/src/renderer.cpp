@@ -22,16 +22,8 @@
 #include "mirinae/vulkan/base/render/renderpass.hpp"
 #include "mirinae/vulkan/base/renderee/atmos.hpp"
 #include "mirinae/vulkan/base/renderpass/builder.hpp"
-#include "mirinae/vulkan/renpass/atmos/sky.hpp"
-#include "mirinae/vulkan/renpass/bloom/bloom.hpp"
-#include "mirinae/vulkan/renpass/compo/compo.hpp"
-#include "mirinae/vulkan/renpass/envmap/envmap.hpp"
-#include "mirinae/vulkan/renpass/gbuf/gbuf.hpp"
-#include "mirinae/vulkan/renpass/misc/misc.hpp"
-#include "mirinae/vulkan/renpass/misc/skin_anim.hpp"
-#include "mirinae/vulkan/renpass/ocean/ocean.hpp"
-#include "mirinae/vulkan/renpass/shadow/shadow.hpp"
-#include "mirinae/vulkan/renpass/transp/transp.hpp"
+
+#include "renderpasses.hpp"
 
 
 namespace {
@@ -1082,14 +1074,13 @@ namespace {
             , fbuf_height_(init_height) {
             framesync_.init(device_.logi_device());
 
-            rp_res_.shadow_maps_ = mirinae::rp::create_shadow_maps_bundle(
-                device_
-            );
+            rp_res_.shadow_maps_ = mirinae::create_shadow_maps_bundle(device_);
             model_man_ = mirinae::create_model_mgr(
                 task_sche, rp_res_.tex_man_, rp_res_.desclays_, device_
             );
 
             // Render graph
+            /*
             {
                 const auto depth_format = device_.img_formats().depth_map();
                 const auto compo_format = device_.img_formats().rgb_hdr();
@@ -1136,6 +1127,7 @@ namespace {
                     .add_inout_atta(rg.get_img("gbuf normal"))
                     .add_inout_atta(rg.get_img("gbuf material"));
             }
+            */
 
             // Create swapchain and its relatives
             {
@@ -1152,9 +1144,7 @@ namespace {
                     device_
                 );
 
-                mirinae::rp::gbuf::create_desc_layouts(
-                    rp_res_.desclays_, device_
-                );
+                mirinae::create_gbuf_desc_layouts(rp_res_.desclays_, device_);
 
                 mirinae::RpCreateBundle cbundle{
                     *cosmos_, rp_res_, ren_ctxt.debug_ren_, device_
@@ -1168,40 +1158,7 @@ namespace {
                 );
                 rp_states_imgui_.init(swapchain_);
 
-                const auto rp_factories = {
-                    mirinae::rp::create_rp_skin_anim,
-                    mirinae::rp::create_rp_atmos_trans_lut,
-                    mirinae::rp::create_rp_atmos_multi_scat,
-                    mirinae::rp::create_rp_sky_view_lut,
-                    mirinae::rp::create_rp_atmos_cam_vol,
-                    mirinae::rp::create_rp_ocean_h0,
-                    mirinae::rp::create_rp_ocean_hkt,
-                    mirinae::rp::create_rp_ocean_butterfly,
-                    mirinae::rp::create_rp_ocean_post_ift,
-                    mirinae::rp::create_rp_envmap,
-                    mirinae::rp::create_rp_env_sky_atmos,
-                    mirinae::rp::create_rp_env_mip_chain,
-                    mirinae::rp::create_rp_env_diffuse,
-                    mirinae::rp::create_rp_env_specular,
-                    mirinae::rp::create_rp_shadow_static,
-                    mirinae::rp::create_rp_shadow_static_trs,
-                    mirinae::rp::create_rp_shadow_terrain,
-                    mirinae::rp::gbuf::create_rp_gbuf_static,
-                    mirinae::rp::gbuf::create_rp_gbuf_terrain,
-                    // mirinae::rp::compo::create_rps_dlight,
-                    mirinae::rp::compo::create_rps_atmos_surface,
-                    mirinae::rp::compo::create_rps_slight,
-                    mirinae::rp::compo::create_rps_envmap,
-                    mirinae::rp::compo::create_rps_sky_atmos,
-                    mirinae::rp::create_rp_ocean_tess,
-                    mirinae::rp::compo::create_rps_vplight,
-                    mirinae::rp::create_rp_states_transp_static,
-                    mirinae::rp::create_bloom_downsample,
-                    mirinae::rp::create_bloom_upsample,
-                    mirinae::rp::create_bloom_blend,
-                    mirinae::rp::create_rp_debug,
-                };
-                for (auto func : rp_factories)
+                for (auto func : mirinae::get_rp_factories())
                     render_passes_.push_back(func(cbundle));
             }
 
@@ -1511,9 +1468,7 @@ namespace {
                     device_
                 );
 
-                mirinae::rp::gbuf::create_desc_layouts(
-                    rp_res_.desclays_, device_
-                );
+                mirinae::create_gbuf_desc_layouts(rp_res_.desclays_, device_);
                 rp_.init_render_passes(
                     rp_res_.gbuf_, rp_res_.desclays_, swapchain_, device_
                 );
