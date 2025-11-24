@@ -1,8 +1,8 @@
-#include "renderpass/ocean/common.hpp"
+#include "common.hpp"
 
 #include <entt/entity/registry.hpp>
 
-#include "renderpass/builder.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
 
 namespace mirinae {

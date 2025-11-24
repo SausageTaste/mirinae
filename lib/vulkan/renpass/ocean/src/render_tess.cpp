@@ -1,4 +1,4 @@
-#include "renderpass/ocean/ocean.hpp"
+#include "mirinae/vulkan/renpass/ocean/ocean.hpp"
 
 #include <entt/entity/registry.hpp>
 #include <sung/basic/aabb.hpp>
@@ -10,11 +10,11 @@
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
+#include "mirinae/vulkan/base/render/mem_cinfo.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
-#include "render/cmdbuf.hpp"
-#include "render/mem_cinfo.hpp"
-#include "renderpass/builder.hpp"
-#include "renderpass/ocean/common.hpp"
+#include "common.hpp"
 
 
 namespace {

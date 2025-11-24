@@ -5,8 +5,7 @@
 #include <entt/fwd.hpp>
 
 #include "mirinae/cpnt/ocean.hpp"
-
-#include "render/vkdevice.hpp"
+#include "mirinae/vulkan/base/render/vkdevice.hpp"
 
 
 #define GET_OCEAN_ENTT(ctxt)                        \
