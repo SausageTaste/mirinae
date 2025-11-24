@@ -1,6 +1,6 @@
-#include "renderpass/envmap/rp.hpp"
+#include "rp.hpp"
 
-#include "renderpass/builder.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
 
 namespace {
@@ -8,9 +8,7 @@ namespace {
     VkDescriptorSetLayout create_desclayout_main(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        mirinae::DescLayoutBuilder builder{ "envdiffuse:main" };
-        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // envmap
-        return desclayouts.add(builder, device.logi_device());
+        return desclayouts.get("envdiffuse:main").layout();
     }
 
     VkRenderPass create_renderpass(VkFormat color, VkDevice logi_device) {
@@ -37,8 +35,8 @@ namespace {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/env_diffuse_vert.spv")
-            .add_frag(":asset/spv/env_diffuse_frag.spv");
+            .add_vert(":asset/spv/env_specular_vert.spv")
+            .add_frag(":asset/spv/env_specular_frag.spv");
 
         builder.color_blend_state().add(false, 1);
 
@@ -66,7 +64,8 @@ namespace {
             layout_ = mirinae::PipelineLayoutBuilder{}
                           .desc(create_desclayout_main(desclayouts, device))
                           .add_vertex_flag()
-                          .pc<mirinae::U_EnvdiffusePushConst>()
+                          .add_frag_flag()
+                          .pc<mirinae::U_EnvSpecularPushConst>()
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
@@ -101,7 +100,7 @@ namespace {
 
 namespace mirinae {
 
-    std::unique_ptr<IRenPass> create_rp_diffuse(
+    std::unique_ptr<IRenPass> create_rp_specular(
         DesclayoutManager& desclayouts, VulkanDevice& device
     ) {
         return std::make_unique<::RPBundle>(desclayouts, device);

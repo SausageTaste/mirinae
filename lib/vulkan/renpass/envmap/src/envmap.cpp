@@ -1,4 +1,4 @@
-#include "renderpass/envmap/envmap.hpp"
+#include "mirinae/vulkan/renpass/envmap/envmap.hpp"
 
 #include <set>
 
@@ -8,12 +8,12 @@
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
 #include "mirinae/lightweight/task.hpp"
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
+#include "mirinae/vulkan/base/render/draw_set.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
-#include "render/cmdbuf.hpp"
-#include "render/draw_set.hpp"
-#include "renderpass/builder.hpp"
-#include "renderpass/envmap/cubemap.hpp"
-#include "renderpass/envmap/rp.hpp"
+#include "cubemap.hpp"
+#include "rp.hpp"
 
 
 namespace {

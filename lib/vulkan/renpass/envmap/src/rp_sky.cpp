@@ -1,21 +1,16 @@
-#include "renderpass/envmap/rp.hpp"
+#include "rp.hpp"
 
-#include "renderpass/builder.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
 
-// env_base
-namespace { namespace env_base {
+namespace {
 
-    VkDescriptorSetLayout create_desclayout_model(
+    VkDescriptorSetLayout create_desclayout_main(
         mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
     ) {
-        return desclayouts.get("gbuf:model").layout();
-    }
-
-    VkDescriptorSetLayout create_desclayout_actor(
-        mirinae::DesclayoutManager& desclayouts, mirinae::VulkanDevice& device
-    ) {
-        return desclayouts.get("gbuf:actor").layout();
+        mirinae::DescLayoutBuilder builder{ "env_sky:main" };
+        builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // Equirectangular
+        return desclayouts.add(builder, device.logi_device());
     }
 
     VkRenderPass create_renderpass(
@@ -26,13 +21,12 @@ namespace { namespace env_base {
         builder.attach_desc()
             .add(depth)
             .ini_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-            .fin_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-            .op_pair_clear_store();
+            .fin_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
         builder.attach_desc()
             .add(color)
-            .ini_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .ini_layout(VK_IMAGE_LAYOUT_UNDEFINED)
             .fin_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-            .op_pair_load_store();
+            .op_pair_clear_store();
 
         builder.color_attach_ref().add_color_attach(1);
 
@@ -51,16 +45,8 @@ namespace { namespace env_base {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/env_base_vert.spv")
-            .add_frag(":asset/spv/env_base_frag.spv");
-
-        builder.vertex_input_state().set_static();
-
-        builder.rasterization_state().cull_mode(VK_CULL_MODE_FRONT_BIT);
-
-        builder.depth_stencil_state()
-            .depth_test_enable(true)
-            .depth_write_enable(true);
+            .add_vert(":asset/spv/env_sky_vert.spv")
+            .add_frag(":asset/spv/env_sky_frag.spv");
 
         builder.color_blend_state().add(false, 1);
 
@@ -90,10 +76,9 @@ namespace { namespace env_base {
                 formats_.at(0), formats_.at(1), device.logi_device()
             );
             layout_ = mirinae::PipelineLayoutBuilder{}
-                          .desc(create_desclayout_model(desclayouts, device))
-                          .desc(create_desclayout_actor(desclayouts, device))
+                          .desc(create_desclayout_main(desclayouts, device))
                           .add_vertex_flag()
-                          .pc<mirinae::U_EnvmapPushConst>()
+                          .pc<mirinae::U_EnvSkyPushConst>()
                           .build(device);
             pipeline_ = create_pipeline(renderpass_, layout_, device);
         }
@@ -123,15 +108,15 @@ namespace { namespace env_base {
         std::array<VkClearValue, 2> clear_values_;
     };
 
-}}  // namespace ::env_base
+}  // namespace
 
 
 namespace mirinae {
 
-    std::unique_ptr<IRenPass> create_rp_base(
+    std::unique_ptr<IRenPass> create_rp_sky(
         DesclayoutManager& desclayouts, VulkanDevice& device
     ) {
-        return std::make_unique<env_base::RPBundle>(desclayouts, device);
+        return std::make_unique<::RPBundle>(desclayouts, device);
     }
 
 }  // namespace mirinae

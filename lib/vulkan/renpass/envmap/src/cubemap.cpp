@@ -1,9 +1,9 @@
-#include "renderpass/envmap/cubemap.hpp"
+#include "cubemap.hpp"
 
 #include <entt/entity/entity.hpp>
 
-#include "render/cmdbuf.hpp"
-#include "render/mem_cinfo.hpp"
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
+#include "mirinae/vulkan/base/render/mem_cinfo.hpp"
 
 
 // ColorCubeMap

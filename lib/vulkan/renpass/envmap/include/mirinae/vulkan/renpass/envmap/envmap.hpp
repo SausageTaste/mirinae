@@ -1,8 +1,7 @@
 #pragma once
 
 #include "mirinae/cosmos.hpp"
-
-#include "renderpass/common.hpp"
+#include "mirinae/vulkan/base/renderpass/common.hpp"
 
 
 namespace mirinae::rp {

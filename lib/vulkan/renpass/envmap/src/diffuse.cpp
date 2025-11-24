@@ -1,10 +1,10 @@
-#include "renderpass/envmap/envmap.hpp"
+#include "mirinae/vulkan/renpass/envmap/envmap.hpp"
 
 #include "mirinae/lightweight/task.hpp"
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
+#include "mirinae/vulkan/base/renderpass/builder.hpp"
 
-#include "render/cmdbuf.hpp"
-#include "renderpass/builder.hpp"
-#include "renderpass/envmap/cubemap.hpp"
+#include "cubemap.hpp"
 
 
 // Tasks
@@ -60,6 +60,8 @@ namespace {
             const mirinae::EnvmapBundle::Item& env_item,
             const mirinae::IRenPass& rp
         ) {
+            namespace cpnt = mirinae::cpnt;
+
             mirinae::RenderPassBeginInfo rp_info{};
             rp_info.rp(rp.render_pass())
                 .clear_value_count(rp.clear_value_count())
@@ -72,52 +74,45 @@ namespace {
             mirinae::DescSetBindInfo descset_info{ rp.pipe_layout() };
 
             auto& cube_map = env_item.cube_map_;
-            auto& specular = cube_map.specular();
+            auto& diffuse = cube_map.diffuse();
 
-            for (auto& mip : specular.mips()) {
-                const mirinae::Rect2D scissor{ mip.extent2d() };
-                const mirinae::Viewport viewport{ scissor.extent2d() };
-                rp_info.wh(scissor.extent2d());
+            const mirinae::Viewport viewport{ diffuse.extent2d() };
+            const mirinae::Rect2D scissor{ diffuse.extent2d() };
+            rp_info.wh(diffuse.extent2d());
 
-                for (int i = 0; i < 6; ++i) {
-                    auto& face = mip.faces_[i];
+            for (int i = 0; i < 6; ++i) {
+                rp_info.fbuf(diffuse.face_fbuf(i)).record_begin(cmdbuf);
 
-                    rp_info.fbuf(face.fbuf_.get()).record_begin(cmdbuf);
+                vkCmdBindPipeline(
+                    cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
+                );
 
-                    vkCmdBindPipeline(
-                        cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, rp.pipeline()
-                    );
+                viewport.record_single(cmdbuf);
+                scissor.record_scissor(cmdbuf);
 
-                    viewport.record_single(cmdbuf);
-                    scissor.record_scissor(cmdbuf);
+                descset_info.set(cube_map.desc_set()).record(cmdbuf);
 
-                    descset_info.set(cube_map.desc_set()).record(cmdbuf);
+                mirinae::U_EnvdiffusePushConst push_const;
+                push_const.proj_view_ = proj_mat * mirinae::CUBE_VIEW_MATS[i];
 
-                    mirinae::U_EnvSpecularPushConst push_const;
-                    push_const.proj_view_ = proj_mat *
-                                            mirinae::CUBE_VIEW_MATS[i];
-                    push_const.roughness_ = mip.roughness_;
+                mirinae::PushConstInfo{}
+                    .layout(rp.pipe_layout())
+                    .add_stage_vert()
+                    .record(cmdbuf, push_const);
 
-                    mirinae::PushConstInfo{}
-                        .layout(rp.pipe_layout())
-                        .add_stage_vert()
-                        .add_stage_frag()
-                        .record(cmdbuf, push_const);
-
-                    vkCmdDraw(cmdbuf, 36, 1, 0, 0);
-                    vkCmdEndRenderPass(cmdbuf);
-                }
+                vkCmdDraw(cmdbuf, 36, 1, 0, 0);
+                vkCmdEndRenderPass(cmdbuf);
             }
 
             mirinae::ImageMemoryBarrier barrier;
-            barrier.image(specular.cube_img())
+            barrier.image(diffuse.cube_img())
                 .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .set_src_access(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
                 .set_dst_access(VK_ACCESS_SHADER_READ_BIT)
                 .mip_base(0)
-                .mip_count(specular.mip_levels())
+                .mip_count(1)
                 .layer_base(0)
                 .layer_count(6);
             barrier.record_single(
@@ -128,7 +123,7 @@ namespace {
         }
 
         const mirinae::DebugLabel DEBUG_LABEL{
-            "Envmap Specular", 0.5, 0.78, 0.52
+            "Envmap Diffuse", 0.5, 0.78, 0.52
         };
 
         mirinae::FenceTask fence_;
@@ -157,7 +152,7 @@ namespace {
             record_tasks_.init(rp, envmaps, cmd_pool, device);
         }
 
-        std::string_view name() const override { return "env specular"; }
+        std::string_view name() const override { return "env diffuse"; }
 
         void prepare(const mirinae::RpCtxt& ctxt) override {
             record_tasks_.prepare(ctxt);
@@ -194,7 +189,14 @@ namespace {
                 clear_values_.at(0).color = { 0, 0, 0, 1 };
             }
 
-            auto& desclay = rp_res_.desclays_.get("env diffuse:main");
+            // Desc layout
+            {
+                mirinae::DescLayoutBuilder builder{ name_s() + ":main" };
+                builder.add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);  // envmap
+                rp_res_.desclays_.add(builder, device_.logi_device());
+            }
+
+            auto& desclay = rp_res_.desclays_.get(name_s() + ":main");
 
             // Render pass
             {
@@ -220,8 +222,7 @@ namespace {
                 mirinae::PipelineLayoutBuilder{}
                     .desc(desclay.layout())
                     .add_vertex_flag()
-                    .add_frag_flag()
-                    .pc<mirinae::U_EnvSpecularPushConst>()
+                    .pc<mirinae::U_EnvdiffusePushConst>()
                     .build(pipe_layout_, device_);
             }
 
@@ -230,8 +231,8 @@ namespace {
                 mirinae::PipelineBuilder builder{ device_ };
 
                 builder.shader_stages()
-                    .add_vert(":asset/spv/env_specular_vert.spv")
-                    .add_frag(":asset/spv/env_specular_frag.spv");
+                    .add_vert(":asset/spv/env_diffuse_vert.spv")
+                    .add_frag(":asset/spv/env_diffuse_frag.spv");
 
                 builder.color_blend_state().add(false, 1);
 
@@ -245,7 +246,7 @@ namespace {
 
         ~RpBase() override { this->destroy_render_pass_elements(device_); }
 
-        std::string_view name() const override { return "env specular"; }
+        std::string_view name() const override { return "env diffuse"; }
 
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<::RpTask>();
@@ -268,7 +269,7 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<IRpBase> create_rp_env_specular(RpCreateBundle& cbundle) {
+    std::unique_ptr<IRpBase> create_rp_env_diffuse(RpCreateBundle& cbundle) {
         return std::make_unique<RpBase>(cbundle);
     }
 
