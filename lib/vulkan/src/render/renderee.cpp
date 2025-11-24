@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "render/renderee.hpp"
 
 #include <numeric>
@@ -7,6 +5,8 @@
 
 #include <daltools/dmd/parser.h>
 #include <sung/basic/stringtool.hpp>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 #include "render/cmdbuf.hpp"
 #include "render/mem_cinfo.hpp"

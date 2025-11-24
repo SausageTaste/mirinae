@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "mirinae/vulkan/renderer.hpp"
 
 #include <SDL3/SDL_scancode.h>
@@ -13,6 +11,7 @@
 #include "mirinae/cpnt/camera.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/math/mamath.hpp"
 

@@ -1,9 +1,8 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/common.hpp"
 
 #include <set>
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
 
 #include "render/mem_cinfo.hpp"

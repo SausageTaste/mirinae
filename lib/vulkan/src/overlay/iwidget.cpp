@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "overlay/iwidget.hpp"
 
 

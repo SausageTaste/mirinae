@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "render/cmdbuf.hpp"
 #include "render/mem_cinfo.hpp"
 #include "render/vkcomposition.hpp"

@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "render/vkdevice.hpp"
 
 #include <algorithm>
@@ -12,6 +10,7 @@
 #include <imgui_impl_vulkan.h>
 #include <sung/basic/stringtool.hpp>
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/konsts.hpp"
 
 #include "mirinae/vulkan/platform_func.hpp"

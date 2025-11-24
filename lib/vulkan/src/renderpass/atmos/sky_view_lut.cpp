@@ -5,6 +5,7 @@
 #include "mirinae/cosmos.hpp"
 #include "mirinae/cpnt/light.hpp"
 #include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
 
 #include "render/cmdbuf.hpp"

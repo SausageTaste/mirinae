@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/gbuf/gbuf.hpp"
 
 #include "mirinae/cosmos.hpp"

@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/shadow/shadow.hpp"
 
 #include <entt/entity/registry.hpp>
@@ -9,6 +7,7 @@
 #include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/cpnt/terrain.hpp"
 #include "mirinae/cpnt/transform.hpp"
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/task.hpp"
 
 #include "render/cmdbuf.hpp"

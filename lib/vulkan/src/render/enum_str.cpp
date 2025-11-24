@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "render/enum_str.hpp"
 
 

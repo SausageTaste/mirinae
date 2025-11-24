@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "render/texture.hpp"
 
 #include <ktxvulkan.h>
@@ -7,6 +5,8 @@
 #include <daltools/img/backend/stb.hpp>
 #include <sung/basic/stringtool.hpp>
 #include <sung/basic/time.hpp>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 #include "render/cmdbuf.hpp"
 #include "render/enum_str.hpp"

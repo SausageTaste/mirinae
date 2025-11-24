@@ -1,8 +1,8 @@
-#include "vulkan_pch.h"
-
 #include "render/meshdata.hpp"
 
 #include <daltools/dmd/parser.h>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 // VerticesStaticPair

@@ -1,10 +1,9 @@
-#include "vulkan_pch.h"
-
 #include "overlay/overlay.hpp"
 
 #include <SDL3/SDL_scancode.h>
 #include <string_view>
 
+#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lua/script.hpp"
 
 #include "overlay/text.hpp"

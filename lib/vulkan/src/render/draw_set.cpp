@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "render/draw_set.hpp"
 
 #include <entt/entity/registry.hpp>

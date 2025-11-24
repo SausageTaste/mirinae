@@ -1,8 +1,8 @@
-#include "vulkan_pch.h"
-
 #include "render/vkmajorplayers.hpp"
 
 #include <array>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 
 // Semaphore

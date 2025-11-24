@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "render/mem_alloc.hpp"
 
 #include <array>

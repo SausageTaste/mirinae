@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/ocean/common.hpp"
 
 #include <entt/entity/registry.hpp>

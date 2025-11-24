@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/envmap/cubemap.hpp"
 
 #include <entt/entity/entity.hpp>

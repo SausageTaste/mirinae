@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "overlay/text.hpp"
 
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -7,6 +5,8 @@
 #include <stb_truetype.h>
 
 #include <sstream>
+
+#include "mirinae/lightweight/include_spdlog.hpp"
 
 #include "render/cmdbuf.hpp"
 

@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/shadow/bundles.hpp"
 
 #include <entt/entity/entity.hpp>

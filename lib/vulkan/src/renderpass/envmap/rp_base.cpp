@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/envmap/rp.hpp"
 
 #include "renderpass/builder.hpp"

@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/envmap/envmap.hpp"
 
 #include "mirinae/lightweight/task.hpp"

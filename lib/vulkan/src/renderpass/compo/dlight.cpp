@@ -1,5 +1,3 @@
-#include "vulkan_pch.h"
-
 #include "renderpass/compo.hpp"
 
 #include <entt/entity/registry.hpp>
