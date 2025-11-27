@@ -515,28 +515,16 @@ namespace { namespace task {
                 return;
             }
 
-            ren_ctxt.proj_mat_ = cam->proj_.make_proj_mat(
-                swapchain.width(), swapchain.height()
+            ren_ctxt.main_cam_.update(
+                *cam,
+                scene.reg_->try_get<cpnt::Transform>(e_cam),
+                swapchain.width(),
+                swapchain.height()
             );
-
-            if (auto tform = scene.reg_->try_get<cpnt::Transform>(e_cam)) {
-                ren_ctxt.view_mat_ = tform->make_view_mat();
-                ren_ctxt.view_pos_ = tform->pos_;
-                ren_ctxt.main_cam_.update(
-                    *cam, *tform, swapchain.width(), swapchain.height()
-                );
-            } else {
-                ren_ctxt.view_mat_ = glm::dmat4(1);
-                ren_ctxt.view_pos_ = glm::dvec3(0);
-            }
 
             ren_ctxt.f_index_ = framesync.get_frame_index();
             ren_ctxt.i_index_ = i_idx.value();
             ren_ctxt.dt_ = scene.clock().dt();
-
-            ren_ctxt.view_frustum_.update(
-                ren_ctxt.proj_mat_, ren_ctxt.view_mat_
-            );
         }
 
         static std::optional<mirinae::ShainImageIndex> try_acquire_image(

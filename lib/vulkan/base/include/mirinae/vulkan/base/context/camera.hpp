@@ -25,7 +25,7 @@ namespace mirinae {
     public:
         void update(
             const cpnt::StandardCamera& cam,
-            const TransformQuat<double>& tform,
+            const TransformQuat<double>* tform,
             const uint32_t width,
             const uint32_t height
         );
@@ -57,7 +57,7 @@ namespace mirinae {
     public:
         void update(
             const cpnt::StandardCamera& cam,
-            const TransformQuat<double>& tform,
+            const TransformQuat<double>* tform,
             const uint32_t width,
             const uint32_t height
         );

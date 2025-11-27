@@ -331,9 +331,6 @@ namespace mirinae {
 
     struct RpContext : public RpCtxt {
         DebugRender debug_ren_;
-        glm::dmat4 proj_mat_;
-        glm::dmat4 view_mat_;
-        glm::dvec3 view_pos_;
         VkCommandBuffer cmdbuf_;
     };
 

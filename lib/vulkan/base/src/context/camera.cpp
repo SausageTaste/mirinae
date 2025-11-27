@@ -58,18 +58,23 @@ namespace mirinae {
 
     void CamGeometry::update(
         const cpnt::StandardCamera& cam,
-        const TransformQuat<double>& tform,
+        const TransformQuat<double>* tform,
         const uint32_t width,
         const uint32_t height
     ) {
+        if (tform) {
+            view_mat_ = tform->make_view_mat();
+            view_inv_ = glm::inverse(view_mat_);
+            view_pos_ = tform->pos_;
+        } else {
+            view_mat_ = glm::dmat4(1);
+            view_inv_ = glm::dmat4(1);
+            view_pos_ = glm::dvec3(0);
+        }
+
         proj_mat_ = cam.proj_.make_proj_mat(width, height);
-        view_mat_ = tform.make_view_mat();
-        view_pos_ = tform.pos_;
-        fov_ = cam.proj_.fov_;
-
         proj_inv_ = glm::inverse(proj_mat_);
-        view_inv_ = glm::inverse(view_mat_);
-
+        fov_ = cam.proj_.fov_;
         view_frustum_.update(proj_mat_, view_mat_);
     }
 
@@ -81,7 +86,7 @@ namespace mirinae {
 
     void CamCache::update(
         const cpnt::StandardCamera& cam,
-        const TransformQuat<double>& tform,
+        const TransformQuat<double>* tform,
         const uint32_t width,
         const uint32_t height
     ) {
