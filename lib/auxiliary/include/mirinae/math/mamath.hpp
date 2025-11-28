@@ -42,6 +42,28 @@ namespace mirinae {
         return m;
     }
 
+    template <typename T>
+    glm::tvec2<T> calc_negated_ndc_pos(
+        const glm::tvec3<T>& p, const glm::tmat4x4<T>& pvm
+    ) {
+        auto p_clip = pvm * glm::tvec4<T>{ p, 1 };
+        const auto w_rcp = 1 / std::abs(p_clip.w);
+        return glm::tvec2<T>(p_clip.x * w_rcp, p_clip.y * w_rcp);
+    }
+
+    template <typename T>
+    glm::tvec2<T> calc_screen_pos(
+        T x_ndc, T y_ndc, T fbuf_width, T fbuf_height
+    ) {
+        constexpr T ONE = 1.0;
+        constexpr T HALF = 0.5;
+
+        return glm::tvec2<T>(
+            (HALF + x_ndc * HALF) * fbuf_width,
+            (HALF - y_ndc * HALF) * fbuf_height
+        );
+    }
+
 
     template <typename T>
     class TransformQuat {

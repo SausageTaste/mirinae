@@ -562,29 +562,28 @@ namespace {
                 std::tan(fov * 0.5) * std::abs(height_ - cam_pos.y) * 2, 10
             );
 
-            constexpr std::array<glm::dvec3, 4> base_patch_points = {
-                glm::dvec3(-0.5, 0, -0.5),
-                glm::dvec3(-0.5, 0, 0.5),
-                glm::dvec3(0.5, 0, 0.5),
-                glm::dvec3(0.5, 0, -0.5),
-            };
-
             double dist_depth = -init_size;
-            for (int i = -1; i < 10; ++i) {
-                const double edge_size = init_size * (2 << std::max(i, 0));
+            for (int i = -1; i < 100; ++i) {
+                const double edge_size = init_size *
+                                         std::pow<double>(2, std::max(i, 0));
+                if (edge_size < 0) {
+                    SPDLOG_WARN("edge_size {} < 0 at {}", edge_size, i);
+                    continue;
+                }
+
                 const auto half_edge = edge_size * 0.5;
                 const glm::dvec3 edge_size_vec(
                     edge_size * 1.01, 1, edge_size * 1.01
                 );
                 const auto patch_scale = glm::scale(I, edge_size_vec);
 
-                for (int j = 0; j < 4; ++j) {
+                for (int j = 0; j < 100; ++j) {
                     const auto side_offset = j / 2 + 1;
                     const auto sign = (j % 2 == 0) ? -1 : 1;
                     const glm::dvec3 offset{
                         dist_depth + half_edge,
                         0,
-                        half_edge * side_offset * sign,
+                        edge_size * (side_offset - 0.5) * sign,
                     };
                     const auto patch_mat = cam_tform *
                                            glm::translate(I, offset) *
@@ -594,9 +593,24 @@ namespace {
 
                     std::array<glm::dvec2, 4> ndc_points;
                     for (size_t k = 0; k < 4; ++k) {
-                        auto ndc4 = pvmp * glm::dvec4(base_patch_points[k], 1);
-                        ndc4 /= ndc4.w;
-                        ndc_points[k] = glm::dvec2(ndc4);
+                        ndc_points[k] = mirinae::calc_negated_ndc_pos(
+                            BASE_PATCH_POINTS[k], pvmp
+                        );
+                    }
+
+                    if (i > 1) {
+                        sung::Aabb1DLazyInit<float> width_range, height_range;
+                        for (auto& p : ndc_points) {
+                            const auto screen_p = mirinae::calc_screen_pos(
+                                p.x, p.y, fbuf_size_.x, fbuf_size_.y
+                            );
+                            width_range.set_or_expand(screen_p.x);
+                            height_range.set_or_expand(screen_p.y);
+                        }
+
+                        if (height_range.len() < 1) {
+                            return;
+                        }
                     }
 
                     if (this->is_axis_separating(glm::dvec2(1, 0), ndc_points))
@@ -677,6 +691,13 @@ namespace {
 
             return !screen_aabb.is_intersecting_op(points_aabb);
         }
+
+        constexpr static std::array<glm::dvec3, 4> BASE_PATCH_POINTS = {
+            glm::dvec3{ -0.5, 0, -0.5 },
+            glm::dvec3{ -0.5, 0, 0.5 },
+            glm::dvec3{ 0.5, 0, 0.5 },
+            glm::dvec3{ 0.5, 0, -0.5 },
+        };
 
         const mirinae::RpCtxt& ctxt_;
         glm::dvec2 fbuf_size_;
