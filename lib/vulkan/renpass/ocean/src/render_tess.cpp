@@ -659,17 +659,21 @@ namespace {
             );
         }
 
+        template <typename T>
         static bool is_axis_separating(
-            const glm::dvec2& axis, const std::array<glm::dvec2, 4>& points
+            const glm::tvec2<T>& axis,
+            const std::array<glm::tvec2<T>, 4>& points
         ) {
-            sung::Aabb1DLazyInit<double> screen_aabb;
-            screen_aabb.set_or_expand(glm::dot(axis, glm::dvec2(-1, -1)));
-            screen_aabb.set_or_expand(glm::dot(axis, glm::dvec2(-1, 1)));
-            screen_aabb.set_or_expand(glm::dot(axis, glm::dvec2(1, -1)));
-            screen_aabb.set_or_expand(glm::dot(axis, glm::dvec2(1, 1)));
+            sung::Aabb1DLazyInit<T> screen_aabb;
+            screen_aabb.set_or_expand(glm::dot(axis, glm::tvec2<T>(-1, -1)));
+            screen_aabb.set_or_expand(glm::dot(axis, glm::tvec2<T>(-1, 1)));
+            screen_aabb.set_or_expand(glm::dot(axis, glm::tvec2<T>(1, -1)));
+            screen_aabb.set_or_expand(glm::dot(axis, glm::tvec2<T>(1, 1)));
 
-            sung::Aabb1DLazyInit<double> points_aabb;
-            for (auto& p : points) points_aabb.set_or_expand(glm::dot(p, axis));
+            sung::Aabb1DLazyInit<T> points_aabb;
+            for (auto& p : points) {
+                points_aabb.set_or_expand(glm::dot(p, axis));
+            }
 
             return !screen_aabb.is_intersecting_op(points_aabb);
         }
