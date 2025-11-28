@@ -254,12 +254,12 @@ namespace mirinae {
 
     public:
         struct Triangle {
-            std::array<glm::vec4, 4> vertices_;
+            std::array<glm::vec4, 3> vertices_;
             glm::vec4 color_{ 1, 0, 0, 0.5f };
         };
 
         struct TriangleWorld {
-            std::array<glm::vec3, 4> vertices_;
+            std::array<glm::vec3, 3> vertices_;
             glm::vec4 color_{ 1, 0, 0, 0.5f };
         };
 
@@ -271,6 +271,19 @@ namespace mirinae {
             const glm::vec4& color
         ) override {
             auto& t = tri_world_.emplace_back();
+            t.vertices_[0] = p0;
+            t.vertices_[1] = p1;
+            t.vertices_[2] = p2;
+            t.color_ = color;
+        }
+
+        void tri(
+            const glm::vec4& p0,
+            const glm::vec4& p1,
+            const glm::vec4& p2,
+            const glm::vec4& color
+        ) override {
+            auto& t = tri_.emplace_back();
             t.vertices_[0] = p0;
             t.vertices_[1] = p1;
             t.vertices_[2] = p2;

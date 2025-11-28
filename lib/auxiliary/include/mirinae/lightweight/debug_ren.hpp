@@ -25,10 +25,19 @@ namespace mirinae {
     public:
         virtual ~IDebugRen() = default;
 
+        // World space coordinates
         virtual void tri(
             const glm::vec3& p0,
             const glm::vec3& p1,
             const glm::vec3& p2,
+            const glm::vec4& color
+        ) = 0;
+
+        // Clip space coordinates
+        virtual void tri(
+            const glm::vec4& p0,
+            const glm::vec4& p1,
+            const glm::vec4& p2,
             const glm::vec4& color
         ) = 0;
 
