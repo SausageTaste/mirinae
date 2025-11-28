@@ -980,16 +980,14 @@ namespace {
         , public mirinae::RenPassBundle<2> {
 
     public:
-        RpStatesOceanTess(
-            mirinae::CosmosSimulator& cosmos,
-            mirinae::RpResources& rp_res,
-            mirinae::VulkanDevice& device
-        )
-            : device_(device), cosmos_(cosmos), rp_res_(rp_res) {
+        RpStatesOceanTess(mirinae::RpCreateBundle& bundle)
+            : device_(bundle.device_)
+            , cosmos_(bundle.cosmos_)
+            , rp_res_(bundle.rp_res_) {
             // Sky texture
             {
-                auto& reg = cosmos.reg();
-                auto& tex = *rp_res.tex_man_;
+                auto& reg = cosmos_.reg();
+                auto& tex = *rp_res_.tex_man_;
                 for (auto e : reg.view<mirinae::cpnt::AtmosphereSimple>()) {
                     auto& atmos = reg.get<mirinae::cpnt::AtmosphereSimple>(e);
                     if (tex.block_for_tex(atmos.sky_tex_path_, false)) {
@@ -1023,7 +1021,7 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_finalize:displacement_c{}_f{}", j, i
                     );
-                    fd.disp_map_[j] = rp_res.ren_img_.get_img_reader(
+                    fd.disp_map_[j] = rp_res_.ren_img_.get_img_reader(
                         img_name, name_s()
                     );
                     MIRINAE_ASSERT(nullptr != fd.disp_map_[j]);
@@ -1033,7 +1031,7 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_finalize:derivatives_c{}_f{}", j, i
                     );
-                    fd.deri_map_[j] = rp_res.ren_img_.get_img_reader(
+                    fd.deri_map_[j] = rp_res_.ren_img_.get_img_reader(
                         img_name, name_s()
                     );
                     MIRINAE_ASSERT(nullptr != fd.deri_map_[j]);
@@ -1043,7 +1041,7 @@ namespace {
                     const auto img_name = fmt::format(
                         "ocean_finalize:turbulence_c{}", j
                     );
-                    auto img = rp_res.ren_img_.get_img_reader(
+                    auto img = rp_res_.ren_img_.get_img_reader(
                         img_name, name_s()
                     );
                     for (auto& fd : frame_data_) {
@@ -1059,7 +1057,7 @@ namespace {
                 buf_cinfo.preset_ubuf(sizeof(U_OceanTessParams));
 
                 auto& fd = frame_data_[i];
-                fd.ubuf_.init(buf_cinfo, device.mem_alloc());
+                fd.ubuf_.init(buf_cinfo, device_.mem_alloc());
             }
 
             // Descriptor layout
@@ -1115,7 +1113,7 @@ namespace {
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
                 builder  // DLight shadow maps
                     .add_img(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-                rp_res.desclays_.add(builder, device.logi_device());
+                rp_res_.desclays_.add(builder, device_.logi_device());
             }
 
             // Desciptor Sets
@@ -1124,14 +1122,14 @@ namespace {
 
                 desc_pool_.init(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    rp_res.desclays_.get(name_s() + ":main").size_info(),
-                    device.logi_device()
+                    rp_res_.desclays_.get(name_s() + ":main").size_info(),
+                    device_.logi_device()
                 );
 
                 auto desc_sets = desc_pool_.alloc(
                     mirinae::MAX_FRAMES_IN_FLIGHT,
-                    rp_res.desclays_.get(name_s() + ":main").layout(),
-                    device.logi_device()
+                    rp_res_.desclays_.get(name_s() + ":main").layout(),
+                    device_.logi_device()
                 );
 
                 mirinae::DescWriter writer;
@@ -1147,99 +1145,98 @@ namespace {
                     // Height maps
                     writer.add_img_info()
                         .set_img_view(fd.disp_map_[0]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
                         .set_img_view(fd.disp_map_[1]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
                         .set_img_view(fd.disp_map_[2]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 1);
                     // Normal maps
                     writer.add_img_info()
                         .set_img_view(fd.deri_map_[0]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
                         .set_img_view(fd.deri_map_[1]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
                         .set_img_view(fd.deri_map_[2]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 2);
                     // Turbulance maps
                     writer.add_img_info()
                         .set_img_view(fd.turb_map_[0]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
                         .set_img_view(fd.turb_map_[1]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_img_info()
                         .set_img_view(fd.turb_map_[2]->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_GENERAL);
                     writer.add_sampled_img_write(fd.desc_set_, 3);
                     // Transmission LUT
                     writer.add_img_info()
                         .set_img_view(fd.trans_lut_->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 4);
                     // Sky View LUT
                     writer.add_img_info()
                         .set_img_view(fd.sky_view_lut_->view_.get())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 5);
                     // Cam Scat Vol
                     writer.add_img_info()
                         .set_img_view(fd.cam_scat_vol_->view_.get())
-                        .set_sampler(device.samplers().get_cubemap())
+                        .set_sampler(device_.samplers().get_cubemap())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 6);
                     // Sky Texture
                     writer.add_img_info()
                         .set_img_view(sky_tex_->image_view())
-                        .set_sampler(device.samplers().get_linear())
+                        .set_sampler(device_.samplers().get_linear())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 7);
                     // DLight shadow maps
                     writer.add_img_info()
                         .set_img_view(dlights.at(0).view_whole(f_idx))
-                        .set_sampler(device.samplers().get_shadow())
+                        .set_sampler(device_.samplers().get_shadow())
                         .set_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                     writer.add_sampled_img_write(fd.desc_set_, 8);
                 }
-                writer.apply_all(device.logi_device());
+                writer.apply_all(device_.logi_device());
             }
 
             // Pipeline layout
             {
                 mirinae::PipelineLayoutBuilder{}
-                    .desc(rp_res.desclays_.get(name_s() + ":main").layout())
+                    .desc(rp_res_.desclays_.get(name_s() + ":main").layout())
                     .add_vertex_flag()
                     .add_tesc_flag()
                     .add_tese_flag()
                     .add_frag_flag()
                     .pc<U_OceanTessPushConst>(0)
-                    .build(pipe_layout_, device);
+                    .build(pipe_layout_, device_);
             }
 
             // Render pass
-            this->recreate_render_pass(render_pass_, device);
-
+            this->recreate_render_pass(render_pass_, device_);
             // Pipeline
-            this->recreate_pipeline(pipeline_, device);
+            this->recreate_pipeline(pipeline_, device_);
 
             // Framebuffers
-            this->recreate_fbufs(frame_data_, device);
+            this->recreate_fbufs(frame_data_, device_);
 
             // Misc
             {
@@ -1385,12 +1382,8 @@ namespace {
 
 namespace mirinae::rp {
 
-    std::unique_ptr<mirinae::IRpBase> create_rp_ocean_tess(
-        RpCreateBundle& bundle
-    ) {
-        return std::make_unique<RpStatesOceanTess>(
-            bundle.cosmos_, bundle.rp_res_, bundle.device_
-        );
+    std::unique_ptr<IRpBase> create_rp_ocean_tess(RpCreateBundle& bundle) {
+        return std::make_unique<RpStatesOceanTess>(bundle);
     }
 
 }  // namespace mirinae::rp
