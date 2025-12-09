@@ -551,7 +551,7 @@ namespace {
     namespace fs = std::filesystem;
 
 
-    std::optional<ktx_texture_transcode_fmt_e> determine_transcode_format(
+    std::optional<ktx_transcode_fmt_e> determine_transcode_format(
         dal::KtxImage& src, const VkPhysicalDeviceFeatures& df
     ) {
         auto ktx2 = src.ktx2();
