@@ -163,8 +163,8 @@ namespace { namespace overlay {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/overlay_vert.spv")
-            .add_frag(":asset/spv/overlay_frag.spv");
+            .add_vert(":asset/spv/misc_overlay_vert.spv")
+            .add_frag(":asset/spv/misc_overlay_frag.spv");
 
         builder.color_blend_state().add(true);
 
