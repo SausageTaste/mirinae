@@ -4,7 +4,7 @@ module lighting;
 static const float PI = 3.14159265358979323846;
 
 
-float distribution_ggx(const float3 N, const float3 H, const float roughness) {
+public float distribution_ggx(const float3 N, const float3 H, const float roughness) {
     const float a = roughness * roughness;
     const float a2 = a * a;
     const float NdotH = max(dot(N, H), 0.0);

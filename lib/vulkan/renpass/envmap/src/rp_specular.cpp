@@ -35,8 +35,8 @@ namespace {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/env_specular_vert.spv")
-            .add_frag(":asset/spv/env_specular_frag.spv");
+            .add_vert(":asset/spv/env_build_specular_vert.spv")
+            .add_frag(":asset/spv/env_build_specular_frag.spv");
 
         builder.color_blend_state().add(false, 1);
 
