@@ -45,8 +45,8 @@ namespace {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/env_sky_vert.spv")
-            .add_frag(":asset/spv/env_sky_frag.spv");
+            .add_vert(":asset/spv/env_sky_texture_vert.spv")
+            .add_frag(":asset/spv/env_sky_texture_frag.spv");
 
         builder.color_blend_state().add(false, 1);
 
