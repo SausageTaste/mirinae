@@ -37,8 +37,8 @@ namespace {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/env_diffuse_vert.spv")
-            .add_frag(":asset/spv/env_diffuse_frag.spv");
+            .add_vert(":asset/spv/env_build_diffuse_vert.spv")
+            .add_frag(":asset/spv/env_build_diffuse_frag.spv");
 
         builder.color_blend_state().add(false, 1);
 
