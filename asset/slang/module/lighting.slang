@@ -50,7 +50,7 @@ float geometry_schlick_ggx_ibl(const float NdotV, const float roughness) {
 }
 
 
-float geometry_smith_ibl(const float3 N, const float3 V, const float3 L, const float roughness) {
+public float geometry_smith_ibl(const float3 N, const float3 V, const float3 L, const float roughness) {
     const float NdotV = max(dot(N, V), 0.0);
     const float NdotL = max(dot(N, L), 0.0);
     const float ggx2 = geometry_schlick_ggx_ibl(NdotV, roughness);
