@@ -51,8 +51,8 @@ namespace { namespace env_base {
         mirinae::PipelineBuilder builder{ device };
 
         builder.shader_stages()
-            .add_vert(":asset/spv/env_base_vert.spv")
-            .add_frag(":asset/spv/env_base_frag.spv");
+            .add_vert(":asset/spv/env_build_base_vert.spv")
+            .add_frag(":asset/spv/env_build_base_frag.spv");
 
         builder.vertex_input_state().set_static();
 
