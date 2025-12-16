@@ -3,6 +3,8 @@
 #include <vector>
 
 #include <daltools/scene/struct.h>
+#include <daltools/filesys/res_mgr.hpp>
+#include <sung/basic/threading.hpp>
 
 #include "mirinae/cpnt/ren_model.hpp"
 #include "mirinae/lightweight/skin_anim.hpp"
