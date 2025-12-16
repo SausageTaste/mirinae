@@ -10,7 +10,7 @@ import utils
 START_TIME = time.time()
 ROOT_DIR = utils.find_root_dir()
 SLANG_DIR = os.path.join(ROOT_DIR, "asset", "slang")
-IMPORT_DIRECTIVE = "import"
+IMPORT_DIRECTIVE = "import "
 RELEASE_MODE = True
 SKIP_UP_TO_DATE = True
 
@@ -69,7 +69,7 @@ def __is_slang_up_to_date(slang_file_path, output_path):
                 imported_path = line[idx + len(IMPORT_DIRECTIVE):].strip().strip(";").strip('"').strip("<>").strip()
                 imported_full_path = os.path.join(os.path.dirname(slang_file_path), imported_path) + ".slang"
                 imported_full_path = os.path.normpath(imported_full_path)
-                assert os.path.isfile(imported_full_path)
+                assert os.path.isfile(imported_full_path), f"Imported slang file not found: {imported_full_path} (from {slang_file_path})"
 
                 if os.path.getmtime(imported_full_path) > out_mtime:
                     return False
