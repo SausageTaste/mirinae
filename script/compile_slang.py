@@ -8,8 +8,9 @@ import utils
 
 
 START_TIME = time.time()
-ROOT_DIR = utils.find_root_dir()
-SLANG_DIR = os.path.join(ROOT_DIR, "asset", "slang")
+ROOT_DIR = os.path.join(os.path.dirname(__file__), "..")
+ASSET_DIR = os.path.join(ROOT_DIR, "asset")
+SLANG_DIR = os.path.join(ASSET_DIR, "slang")
 IMPORT_DIRECTIVE = "import "
 RELEASE_MODE = True
 SKIP_UP_TO_DATE = True
@@ -51,7 +52,7 @@ def __make_output_prefix(file_path: str, root_dir: str):
         rel_loc += "_"
 
     output_filename_ext = rel_loc + file_name
-    return os.path.join(ROOT_DIR, "asset", "spv", output_filename_ext)
+    return os.path.join(ASSET_DIR, "spv", output_filename_ext)
 
 
 def __is_slang_up_to_date(slang_file_path, output_path):
