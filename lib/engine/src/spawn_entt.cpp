@@ -243,7 +243,7 @@ namespace mirinae {
 
             auto& atm = reg.emplace<mirinae::cpnt::AtmosphereSimple>(entt);
             atm.fog_color_ = { 0.556, 0.707, 0.846 };
-            atm.sky_tex_path_ = ":asset/textures/empty_sky.hdr";
+            atm.sky_tex_path_ = ":asset/texture/empty_sky.hdr";
             atm.mie_anisotropy_ = 0.8;
         }
 

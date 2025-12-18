@@ -74,7 +74,7 @@ namespace {
         ) {
             albedo_map_ = this->request_tex(
                 replace_filename(res_id, src_mat.albedo_map_).value_or(""),
-                ":asset/textures/missing_texture.ktx",
+                ":asset/texture/missing_texture.ktx",
                 true,
                 tex_man
             );
@@ -83,7 +83,7 @@ namespace {
 
             normal_map_ = this->request_tex(
                 replace_filename(res_id, src_mat.normal_map_).value_or(""),
-                ":asset/textures/null_normal_map.ktx",
+                ":asset/texture/null_normal_map.ktx",
                 false,
                 tex_man
             );
@@ -92,7 +92,7 @@ namespace {
 
             orm_map_ = this->request_tex(
                 replace_filename(res_id, src_mat.roughness_map_).value_or(""),
-                ":asset/textures/white.ktx",
+                ":asset/texture/white.ktx",
                 false,
                 tex_man
             );

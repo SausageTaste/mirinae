@@ -716,7 +716,7 @@ namespace {
             // Missing tex
             {
                 ::ImageLoadTask task(
-                    ":asset/textures/missing_texture.ktx",
+                    ":asset/texture/missing_texture.ktx",
                     device.filesys(),
                     device.features()
                 );
