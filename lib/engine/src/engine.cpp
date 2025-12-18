@@ -439,7 +439,7 @@ namespace {
             /*
             {
                 const auto contents = ecinfo_.filesys_->read_file(
-                    ":asset/script/startup.lua"
+                    ":asset/lua/startup.lua"
                 );
                 if (contents) {
                     const std::string str{ contents->begin(), contents->end() };
