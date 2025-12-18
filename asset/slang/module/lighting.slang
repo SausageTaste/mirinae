@@ -164,7 +164,7 @@ public float3 ibl(
 }
 
 
-float phase_mie(const float cos_theta, const float anisotropy) {
+public float phase_mie(const float cos_theta, const float anisotropy) {
     const float aa = anisotropy * anisotropy;
     const float numer = 3.0 * (1.0 - aa) * (1.0 + cos_theta * cos_theta);
     const float denom = 8.0 * PI * (2.0 + aa) * (1.0 + aa - 2.0 * anisotropy * cos_theta);

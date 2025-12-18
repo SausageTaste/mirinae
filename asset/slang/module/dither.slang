@@ -47,7 +47,7 @@ public float dither4x4(float2 position, float brightness) {
 }
 
 
-float get_dither_value(float2 position) {
+public float get_dither_value(float2 position) {
     const float dither_pattern[16] = float[](
         0.0,
         0.5,
