@@ -136,8 +136,8 @@ namespace mirinae {
             s.outer_angle_.set_deg(25);
 
             auto& t = reg.emplace<mirinae::cpnt::Transform>(e);
-            t.set_pos(469, 1875, -80);
-            t.set_rotation(0.997859, -0.065403, 0, 0);
+            t.set_pos(740, 1555, 1490);
+            t.set_rotation(0.529179, 0, 0.848510, 0);
         }
 
         // VPLight

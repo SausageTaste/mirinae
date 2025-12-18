@@ -43,6 +43,7 @@ float3 make_shadow_texco(const float3 frag_pos_v) {
     return float3(sample_coord, proj_coords.z);
 }
 
+
 [shader("vertex")]
 VSOutput vert_main(int vtxid: SV_VertexID) {
     VSOutput output;
