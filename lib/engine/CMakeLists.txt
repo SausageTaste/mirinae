@@ -1,28 +1,49 @@
-set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(target_name mirinae_engine)
+set(public_header_dir ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(private_header_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(private_source_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-set(src_files
-    ${src_dir}/engine.cpp
-    ${src_dir}/imgui_widget.cpp
-    ${src_dir}/spawn_entt.cpp
+set(public_header_files
+    ${public_header_dir}/mirinae/engine.hpp
+)
+
+set(private_header_files
+    ${private_header_dir}/imgui_widget.hpp
+    ${private_header_dir}/spawn_entt.hpp
+)
+
+set(private_source_files
+    ${private_source_dir}/engine.cpp
+    ${private_source_dir}/imgui_widget.cpp
+    ${private_source_dir}/spawn_entt.cpp
 )
 
 
-add_library(mirinae_engine STATIC ${src_files})
-add_library(mirinae::engine ALIAS mirinae_engine)
-target_include_directories(mirinae_engine PUBLIC
+add_library(${target_name} STATIC)
+add_library(mirinae::engine ALIAS ${target_name})
+set_target_properties(${target_name} PROPERTIES FOLDER "mirinae/engine")
+
+target_sources(${target_name}
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        FILE_SET HEADERS
+        BASE_DIRS
+            ${public_header_dir}
+        FILES
+            ${public_header_files}
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${MINIAUDIO_INCLUDE_DIRS}
-)
-target_link_libraries(mirinae_engine PUBLIC
-    mirinae::vulkan_renderer
-)
-set_target_properties(mirinae_engine PROPERTIES
-    FOLDER "mirinae/engine"
+        ${private_header_files}
+        ${private_source_files}
 )
 
-if (WIN32)
-    target_compile_definitions(mirinae_engine PRIVATE VK_USE_PLATFORM_WIN32_KHR)
-endif (WIN32)
+target_include_directories(${target_name}
+    PUBLIC
+        ${public_header_dir}
+    PRIVATE
+        ${MINIAUDIO_INCLUDE_DIRS}
+        ${private_header_dir}
+)
+
+target_link_libraries(${target_name}
+    PUBLIC
+        mirinae::vulkan_renderer
+)

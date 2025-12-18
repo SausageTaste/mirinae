@@ -1,19 +1,14 @@
 set(target_name mirinae_vulkan_renpass_transp)
-set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(public_header_dir ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(private_header_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(private_source_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-file(GLOB_RECURSE source_files CONFIGURE_DEPENDS
-    "${src_dir}/*.cpp"
+set(public_header_files
+    ${public_header_dir}/mirinae/vulkan/renpass/transp/transp.hpp
 )
 
-file(GLOB_RECURSE private_headers CONFIGURE_DEPENDS
-    "${src_dir}/*.h"
-    "${src_dir}/*.hpp"
-)
-
-file(GLOB_RECURSE public_headers CONFIGURE_DEPENDS
-    "${include_dir}/*.h"
-    "${include_dir}/*.hpp"
+set(private_source_files
+    ${private_source_dir}/static.cpp
 )
 
 
@@ -23,23 +18,23 @@ set_target_properties(${target_name} PROPERTIES FOLDER "mirinae/engine/vulkan/re
 
 target_sources(${target_name}
     PUBLIC
-        ${public_headers}
+        FILE_SET HEADERS
+        BASE_DIRS
+            ${public_header_dir}
+        FILES
+            ${public_header_files}
     PRIVATE
-        ${private_headers}
-        ${source_files}
+        ${private_header_files}
+        ${private_source_files}
 )
 
 target_include_directories(${target_name}
     PUBLIC
-        "${include_dir}"
+        ${public_header_dir}
     PRIVATE
-        "${src_dir}"
+        ${private_header_dir}
 )
 
 target_link_libraries(${target_name} PUBLIC
     mirinae::vulkan_base
 )
-
-if (WIN32)
-    target_compile_definitions(${target_name} PRIVATE VK_USE_PLATFORM_WIN32_KHR)
-endif (WIN32)
