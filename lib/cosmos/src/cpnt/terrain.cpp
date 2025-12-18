@@ -1,7 +1,7 @@
 #include "mirinae/cpnt/terrain.hpp"
 
 #include <imgui.h>
-#include <daltools/filesys/path.hpp>
+#include <dal/auxiliary/path.hpp>
 
 
 namespace mirinae::cpnt {

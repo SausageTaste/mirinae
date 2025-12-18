@@ -1,9 +1,9 @@
 #include "mirinae/vulkan/renderer.hpp"
 
 #include <SDL3/SDL_scancode.h>
-#include <daltools/common/util.h>
 #include <imgui_impl_vulkan.h>
-#include <daltools/filesys/path.hpp>
+#include <dal/auxiliary/path.hpp>
+#include <dal/auxiliary/util.hpp>
 #include <entt/entity/registry.hpp>
 #include <sung/basic/time.hpp>
 

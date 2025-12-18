@@ -1,8 +1,8 @@
 #include "mirinae/vulkan/base/render/texture.hpp"
 
 #include <ktxvulkan.h>
-#include <daltools/img/backend/ktx.hpp>
-#include <daltools/img/backend/stb.hpp>
+#include <dal/parser/img/backend/ktx.hpp>
+#include <dal/parser/img/backend/stb.hpp>
 #include <sung/basic/stringtool.hpp>
 #include <sung/basic/time.hpp>
 

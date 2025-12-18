@@ -1,6 +1,6 @@
 #include "mirinae/scene/scene.hpp"
 
-#include <daltools/filesys/path.hpp>
+#include <dal/auxiliary/path.hpp>
 #include <entt/entity/registry.hpp>
 #include <sung/basic/aabb.hpp>
 

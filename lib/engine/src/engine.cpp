@@ -6,8 +6,8 @@
 #include <SDL3/SDL_scancode.h>
 #include <miniaudio.h>
 #include <spdlog/sinks/base_sink.h>
-#include <daltools/common/glm_tool.hpp>
-#include <daltools/common/task_sys.hpp>
+#include <dal/auxiliary/glm_tool.hpp>
+#include <dal/parser/common/task_sys.hpp>
 #include <sung/basic/threading.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"

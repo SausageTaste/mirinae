@@ -1,7 +1,7 @@
 #include "mirinae/cpnt/ren_model.hpp"
 
 #include <imgui.h>
-#include <daltools/filesys/path.hpp>
+#include <dal/auxiliary/path.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 
