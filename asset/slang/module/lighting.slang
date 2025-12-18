@@ -65,7 +65,7 @@ float3 fresnel_schlick(const float cosTheta, const float3 F0) {
 }
 
 
-float3 fresnel_schlick_rughness(float cosTheta, float3 F0, float roughness) {
+public float3 fresnel_schlick_rughness(float cosTheta, float3 F0, float roughness) {
     return (
         F0 + (max(float3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0)
     );
