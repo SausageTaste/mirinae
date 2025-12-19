@@ -21,7 +21,7 @@ target_include_directories(mirinae_aux PUBLIC
 )
 target_link_libraries(mirinae_aux PUBLIC
     ${LUA_LIBRARIES}
-    dalbaragi::dalbaragi_parser
+    dalbaragi::dalbaragi_tools
     uni-algo::uni-algo
 )
 set_target_properties(mirinae_aux PROPERTIES

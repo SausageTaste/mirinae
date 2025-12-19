@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include <dal/parser/filesys/res_mgr.hpp>
-#include <dal/parser/scene/struct.hpp>
+#include <dal/filesys/res_mgr.hpp>
+#include <dal/scene/struct.hpp>
 #include <sung/basic/threading.hpp>
 
 #include "mirinae/cpnt/ren_model.hpp"

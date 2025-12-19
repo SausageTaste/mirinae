@@ -3,7 +3,7 @@
 #include <memory>
 #include <variant>
 
-#include <dal/parser/scene/struct.hpp>
+#include <dal/scene/struct.hpp>
 #include <sung/basic/time.hpp>
 
 

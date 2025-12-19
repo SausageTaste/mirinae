@@ -1,6 +1,6 @@
 #include "mirinae/vulkan/base/render/meshdata.hpp"
 
-#include <dal/parser/dmd/parser.hpp>
+#include <dal/dmd/parser.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"
 

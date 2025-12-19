@@ -3,7 +3,7 @@
 #include <numeric>
 #include <set>
 
-#include <dal/parser/dmd/parser.hpp>
+#include <dal/dmd/parser.hpp>
 #include <sung/basic/stringtool.hpp>
 
 #include "mirinae/lightweight/include_spdlog.hpp"

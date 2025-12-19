@@ -4,7 +4,7 @@
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
-#include <dal/parser/img/img2d.hpp>
+#include <dal/img/img2d.hpp>
 
 
 #define VK_CHECK(x)                \

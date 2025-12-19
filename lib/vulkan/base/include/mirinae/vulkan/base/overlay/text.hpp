@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stb_truetype.h>
-#include <dal/parser/img/img2d.hpp>
+#include <dal/img/img2d.hpp>
 
 #include "mirinae/lightweight/text_data.hpp"
 #include "mirinae/platform/osio.hpp"

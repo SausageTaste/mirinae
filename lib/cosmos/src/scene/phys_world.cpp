@@ -6,7 +6,7 @@
 // #define MIRINAE_JOLT_DEBUG_RENDERER
 
 #include <Jolt/Jolt.h>
-#include <dal/parser/img/img2d.hpp>
+#include <dal/img/img2d.hpp>
 #include <entt/entity/registry.hpp>
 
 #include <Jolt/Core/Factory.h>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <dal/parser/filesys/res_mgr.hpp>
-#include <dal/parser/img/img.hpp>
+#include <dal/filesys/res_mgr.hpp>
+#include <dal/img/img.hpp>
 #include <sung/basic/expected.hpp>
 #include <sung/basic/threading.hpp>
 
