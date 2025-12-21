@@ -446,7 +446,7 @@ namespace mirinae {
     }
 
     const VkPhysicalDeviceFeatures& VulkanDevice::features() const {
-        return pimpl_->logi_device_.features();
+        return pimpl_->logi_device_.features().features;
     }
 
     void VulkanDevice::wait_idle() { pimpl_->logi_device_.wait_idle(); }

@@ -20,6 +20,15 @@ namespace {
 
 namespace {
 
+    void clear_features(VkPhysicalDeviceVulkan11Features& dst) {
+        dst = {};
+        dst.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    }
+
+    void select_features(VkPhysicalDeviceVulkan11Features& dst) {
+        dst.shaderDrawParameters = VK_TRUE;
+    }
+
     void select_features(
         VkPhysicalDeviceFeatures& dst, const VkPhysicalDeviceFeatures& src
     ) {
@@ -61,8 +70,13 @@ namespace mirinae {
             queueCreateInfo.pQueuePriorities = &queue_priority;
         }
 
-        features_ = {};
-        ::select_features(features_, phys_dev.features());
+        // Features for Vulkan 1.1
+        ::clear_features(feat11_);
+        ::select_features(feat11_);
+
+        features_ = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+        ::select_features(features_.features, phys_dev.features());
+        features_.pNext = &feat11_;
 
         const auto char_extension = make_char_vec(ext);
 
@@ -72,7 +86,7 @@ namespace mirinae {
         createInfo.queueCreateInfoCount = queueCreateInfos.size();
         createInfo.ppEnabledExtensionNames = char_extension.data();
         createInfo.enabledExtensionCount = char_extension.size();
-        createInfo.pEnabledFeatures = &features_;
+        createInfo.pNext = &features_;
 
         VK_CHECK(
             vkCreateDevice(phys_dev.get(), &createInfo, nullptr, &device_)
