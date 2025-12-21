@@ -263,7 +263,7 @@ namespace {
                 barrier.set_src_access(0)
                     .set_dst_access(VK_ACCESS_TRANSFER_WRITE_BIT)
                     .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .new_layout(VK_IMAGE_LAYOUT_GENERAL)
+                    .new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
                     .layer_count(1)
                     .mip_count(1);
