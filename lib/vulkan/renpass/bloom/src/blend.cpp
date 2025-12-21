@@ -43,17 +43,19 @@ namespace {
         DrawTasks() { fence_.succeed(this); }
 
         void init(
-            const entt::registry& reg,
-            const mirinae::IRenPass& rp,
             const ::FrameDataArr& frame_data,
+            const entt::registry& reg,
+            const mirinae::FbufImageBundle& gbufs,
+            const mirinae::IRenPass& rp,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
-            reg_ = &reg;
-            rp_ = &rp;
-            frame_data_ = &frame_data;
             cmd_pool_ = &cmd_pool;
             device_ = &device;
+            frame_data_ = &frame_data;
+            gbufs_ = &gbufs;
+            reg_ = &reg;
+            rp_ = &rp;
         }
 
         void prepare(const mirinae::RpCtxt& ctxt) { ctxt_ = &ctxt; }
@@ -75,7 +77,7 @@ namespace {
             auto& fd = frame_data_->at(ctxt_->f_index_.get());
 
             mirinae::begin_cmdbuf(cmdbuf_, DEBUG_LABEL);
-            this->record(cmdbuf_, fd, *reg_, *rp_);
+            this->record(cmdbuf_, fd, *reg_, *gbufs_, *rp_, *ctxt_);
             mirinae::end_cmdbuf(cmdbuf_, DEBUG_LABEL);
         }
 
@@ -83,8 +85,25 @@ namespace {
             const VkCommandBuffer cmdbuf,
             const ::FrameData& fd,
             const entt::registry& reg,
-            const mirinae::IRenPass& rp
+            const mirinae::FbufImageBundle& gbufs,
+            const mirinae::IRenPass& rp,
+            const mirinae::RpCtxt& ctxt
         ) {
+            mirinae::ImageMemoryBarrier{}
+                .image(gbufs.compo(ctxt.f_index_).image())
+                .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .old_lay(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .new_lay(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .set_src_acc(VK_ACCESS_SHADER_READ_BIT)
+                .set_dst_acc(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                .add_dst_acc(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT)
+                .set_signle_mip_layer()
+                .record_single(
+                    cmdbuf,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                );
+
             mirinae::ImageMemoryBarrier{}
                 .image(fd.upsamples_->img_.image())
                 .set_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
@@ -144,6 +163,7 @@ namespace {
 
         const ::FrameDataArr* frame_data_ = nullptr;
         const entt::registry* reg_ = nullptr;
+        const mirinae::FbufImageBundle* gbufs_ = nullptr;
         const mirinae::IRenPass* rp_ = nullptr;
         const mirinae::RpCtxt* ctxt_ = nullptr;
         mirinae::RpCommandPool* cmd_pool_ = nullptr;
@@ -157,13 +177,14 @@ namespace {
         RpTask() {}
 
         void init(
-            const entt::registry& reg,
-            const mirinae::IRenPass& rp,
             const ::FrameDataArr& frame_data,
+            const entt::registry& reg,
+            const mirinae::FbufImageBundle& gbufs,
+            const mirinae::IRenPass& rp,
             mirinae::RpCommandPool& cmd_pool,
             mirinae::VulkanDevice& device
         ) {
-            record_tasks_.init(reg, rp, frame_data, cmd_pool, device);
+            record_tasks_.init(frame_data, reg, gbufs, rp, cmd_pool, device);
         }
 
         std::string_view name() const override { return "bloom blend"; }
@@ -306,7 +327,12 @@ namespace {
         std::unique_ptr<mirinae::IRpTask> create_task() override {
             auto out = std::make_unique<::RpTask>();
             out->init(
-                cosmos_.reg(), *this, frame_data_, rp_res_.cmd_pool_, device_
+                frame_data_,
+                cosmos_.reg(),
+                rp_res_.gbuf_,
+                *this,
+                rp_res_.cmd_pool_,
+                device_
             );
             return out;
         }
