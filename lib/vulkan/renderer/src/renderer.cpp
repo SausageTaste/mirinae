@@ -1185,6 +1185,13 @@ namespace {
                 if (!ImGui_ImplVulkan_CreateFontsTexture())
                     MIRINAE_ABORT("Failed to create ImGui fonts texture");
             }
+
+            // GPu side init
+            {
+                const auto cmdbuf = cmd_pool_.begin_single_time(device_);
+                rp_res_.envmaps_->record_gpu_init(cmdbuf);
+                cmd_pool_.end_single_time(cmdbuf, device_);
+            }
         }
 
         ~RendererVulkan() {

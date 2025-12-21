@@ -274,6 +274,24 @@ namespace mirinae {
         img_.destroy(device.mem_alloc());
     }
 
+    void ColorDepthCubeMap::record_gpu_init(VkCommandBuffer cmdbuf) {
+        mirinae::ImageMemoryBarrier{}
+            .image(depth_map_->image())
+            .set_src_access(0)
+            .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+            .add_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+            .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .new_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+            .layer_count(1)
+            .mip_count(1)
+            .record_single(
+                cmdbuf,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+            );
+    }
+
     uint32_t ColorDepthCubeMap::width() const { return img_.width(); }
 
     uint32_t ColorDepthCubeMap::height() const { return img_.height(); }
@@ -335,6 +353,10 @@ namespace mirinae {
         base_.destroy(device);
         diffuse_.destroy(device);
         specular_.destroy(device);
+    }
+
+    void CubeMap::record_gpu_init(VkCommandBuffer cmdbuf) {
+        base_.record_gpu_init(cmdbuf);
     }
 
 }  // namespace mirinae
@@ -443,6 +465,12 @@ namespace mirinae {
     }
 
     EnvmapBundle::~EnvmapBundle() { this->destroy(); }
+
+    void EnvmapBundle::record_gpu_init(VkCommandBuffer cmdbuf) {
+        for (auto& item : items_) {
+            item.cube_map_.record_gpu_init(cmdbuf);
+        }
+    }
 
     uint32_t EnvmapBundle::count() const {
         return static_cast<uint32_t>(items_.size());

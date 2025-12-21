@@ -157,6 +157,7 @@ namespace mirinae {
 
     struct IEnvmapBundle {
         virtual ~IEnvmapBundle() = default;
+        virtual void record_gpu_init(VkCommandBuffer cmdbuf) = 0;
         virtual uint32_t count() const = 0;
         virtual glm::dvec3 pos_at(uint32_t index) const = 0;
         virtual VkImageView diffuse_at(uint32_t index) const = 0;

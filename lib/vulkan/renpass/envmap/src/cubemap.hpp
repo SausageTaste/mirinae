@@ -114,6 +114,8 @@ namespace mirinae {
         );
         void destroy(VulkanDevice& device);
 
+        void record_gpu_init(VkCommandBuffer cmdbuf);
+
         uint32_t width() const;
         uint32_t height() const;
         VkExtent2D extent2d() const;
@@ -147,6 +149,8 @@ namespace mirinae {
             VulkanDevice& device
         );
         void destroy(VulkanDevice& device);
+
+        void record_gpu_init(VkCommandBuffer cmdbuf);
 
         const ColorDepthCubeMap& base() const { return base_; }
         const ColorCubeMap& diffuse() const { return diffuse_; }
@@ -203,6 +207,8 @@ namespace mirinae {
 
         EnvmapBundle(IEnvmapRpBundle& rp_pkg, VulkanDevice& device);
         ~EnvmapBundle() override;
+
+        void record_gpu_init(VkCommandBuffer cmdbuf) override;
 
         uint32_t count() const override;
         glm::dvec3 pos_at(uint32_t index) const override;
