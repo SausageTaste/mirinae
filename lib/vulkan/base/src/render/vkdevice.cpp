@@ -15,7 +15,7 @@
 #include "mirinae/vulkan/base/render/enum_str.hpp"
 #include "mirinae/vulkan/base/render/vkcheck.hpp"
 #include "mirinae/vulkan/base/render/vkmajorplayers.hpp"
-#include "render/vkdevice/phys_device.hpp"
+#include "render/vkdevice/logi_device.hpp"
 #include "render/vkdevice/vk_instance.hpp"
 
 
@@ -30,21 +30,6 @@ namespace {
         if (err != VK_SUCCESS) {
             SPDLOG_ERROR("ImGui result is error: {}", static_cast<int>(err));
         }
-    }
-
-    void select_features(
-        VkPhysicalDeviceFeatures& dst, const VkPhysicalDeviceFeatures& src
-    ) {
-        // Required
-        dst.tessellationShader = src.tessellationShader;
-        // Optional
-        dst.depthClamp = src.depthClamp;
-        dst.fillModeNonSolid = src.fillModeNonSolid;
-        dst.samplerAnisotropy = src.samplerAnisotropy;
-        // KTX
-        dst.textureCompressionASTC_LDR = src.textureCompressionASTC_LDR;
-        dst.textureCompressionBC = src.textureCompressionBC;
-        dst.textureCompressionETC2 = src.textureCompressionETC2;
     }
 
 }  // namespace
@@ -135,90 +120,6 @@ namespace {
     };
 
 
-    class LogiDevice {
-
-    public:
-        ~LogiDevice() { this->destroy(); }
-
-        void init(
-            mirinae::PhysDevice& phys_dev, const std::vector<std::string>& ext
-        ) {
-            std::set<uint32_t> unique_queue_families{
-                phys_dev.graphics_family_index().value(),
-                phys_dev.present_family_index().value(),
-            };
-
-            float queue_priority = 1;
-            std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-            for (auto queue_fam : unique_queue_families) {
-                auto& queueCreateInfo = queueCreateInfos.emplace_back();
-                queueCreateInfo.sType =
-                    VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                queueCreateInfo.queueFamilyIndex = queue_fam;
-                queueCreateInfo.queueCount = 1;
-                queueCreateInfo.pQueuePriorities = &queue_priority;
-            }
-
-            features_ = {};
-            ::select_features(features_, phys_dev.features());
-
-            const auto char_extension = mirinae::make_char_vec(ext);
-
-            VkDeviceCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-            createInfo.pQueueCreateInfos = queueCreateInfos.data();
-            createInfo.queueCreateInfoCount = queueCreateInfos.size();
-            createInfo.ppEnabledExtensionNames = char_extension.data();
-            createInfo.enabledExtensionCount = char_extension.size();
-            createInfo.pEnabledFeatures = &features_;
-
-            VK_CHECK(
-                vkCreateDevice(phys_dev.get(), &createInfo, nullptr, &device_)
-            );
-
-            vkGetDeviceQueue(
-                device_,
-                phys_dev.graphics_family_index().value(),
-                0,
-                &graphics_queue_
-            );
-            vkGetDeviceQueue(
-                device_,
-                phys_dev.present_family_index().value(),
-                0,
-                &present_queue_
-            );
-        }
-
-        void destroy() {
-            if (nullptr != device_) {
-                vkDeviceWaitIdle(device_);
-                vkDestroyDevice(device_, nullptr);
-                device_ = nullptr;
-            }
-
-            graphics_queue_ = nullptr;
-        }
-
-        void wait_idle() {
-            if (nullptr != device_) {
-                vkDeviceWaitIdle(device_);
-            }
-        }
-
-        VkDevice get() { return device_; }
-        VkQueue graphics_queue() { return graphics_queue_; }
-        VkQueue present_queue() { return present_queue_; }
-        const VkPhysicalDeviceFeatures& features() const { return features_; }
-
-    private:
-        VkDevice device_ = nullptr;
-        VkQueue graphics_queue_ = nullptr;
-        VkQueue present_queue_ = nullptr;
-        VkPhysicalDeviceFeatures features_;
-    };
-
-
     class ImageFormats : public mirinae::IImageFormats {
 
     public:
@@ -258,33 +159,6 @@ namespace {
 // Samplers
 namespace {
 
-    class SamplerRaii {
-
-    public:
-        SamplerRaii(::LogiDevice& logi_d) : logi_d_(logi_d) {}
-
-        ~SamplerRaii() { this->reset(); }
-
-        void reset(VkSampler sampler = VK_NULL_HANDLE) {
-            this->destroy();
-            handle_ = sampler;
-        }
-
-        void destroy() {
-            if (VK_NULL_HANDLE != handle_) {
-                vkDestroySampler(logi_d_.get(), handle_, nullptr);
-                handle_ = VK_NULL_HANDLE;
-            }
-        }
-
-        VkSampler get() const { return handle_; }
-
-    private:
-        ::LogiDevice& logi_d_;
-        VkSampler handle_ = VK_NULL_HANDLE;
-    };
-
-
     class SamplerBuilder {
 
     public:
@@ -307,7 +181,9 @@ namespace {
             cinfo_.maxLod = VK_LOD_CLAMP_NONE;
         }
 
-        VkSampler build(const mirinae::PhysDevice& pd, ::LogiDevice& ld) {
+        VkSampler build(
+            const mirinae::PhysDevice& pd, mirinae::LogiDevice& ld
+        ) {
             cinfo_.anisotropyEnable = pd.features().samplerAnisotropy;
             cinfo_.maxAnisotropy = pd.max_sampler_anisotropy();
 
@@ -385,7 +261,7 @@ namespace {
     class SamplerManager : public mirinae::ISamplerManager {
 
     public:
-        void init(const mirinae::PhysDevice& pd, ::LogiDevice& ld) {
+        void init(const mirinae::PhysDevice& pd, mirinae::LogiDevice& ld) {
             {
                 ::SamplerBuilder sampler_builder;
                 data_.push_back(sampler_builder.build(pd, ld));
@@ -437,7 +313,7 @@ namespace {
             }
         }
 
-        void destroy(::LogiDevice& ld) {
+        void destroy(mirinae::LogiDevice& ld) {
             for (auto& sampler : data_) {
                 if (VK_NULL_HANDLE != sampler) {
                     vkDestroySampler(ld.get(), sampler, nullptr);
@@ -540,7 +416,7 @@ namespace mirinae {
 
         mirinae::VulkanInstance instance_;
         mirinae::PhysDevice phys_device_;
-        ::LogiDevice logi_device_;
+        mirinae::LogiDevice logi_device_;
         ::SamplerManager samplers_;
         ::ImageFormats img_formats_;
         EngineCreateInfo create_info_;
