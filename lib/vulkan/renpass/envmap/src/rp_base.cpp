@@ -54,7 +54,13 @@ namespace { namespace env_base {
             .add_vert(":asset/spv/env_build_base_vert.spv")
             .add_frag(":asset/spv/env_build_base_frag.spv");
 
-        builder.vertex_input_state().set_static();
+        builder.vertex_input_state()
+            .clear_bindings()
+            .clear_attribs()
+            .add_binding<mirinae::VertexStatic>()
+            .add_attrib_vec3(offsetof(mirinae::VertexStatic, pos_))
+            .add_attrib_vec3(offsetof(mirinae::VertexStatic, normal_))
+            .add_attrib_vec2(offsetof(mirinae::VertexStatic, texcoord_));
 
         builder.rasterization_state().cull_mode(VK_CULL_MODE_FRONT_BIT);
 
