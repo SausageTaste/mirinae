@@ -1,8 +1,8 @@
-#include "render/device/vk_instance.hpp"
+#include "render/vkdevice/vk_instance.hpp"
 
 #include "mirinae/lightweight/konsts.hpp"
 #include "mirinae/vulkan/base/render/vkcheck.hpp"
-#include "render/device/phys_device.hpp"
+#include "render/vkdevice/phys_device.hpp"
 
 
 namespace {

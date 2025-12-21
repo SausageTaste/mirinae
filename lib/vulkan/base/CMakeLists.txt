@@ -34,8 +34,8 @@ set(public_header_files
 )
 
 set(private_header_files
-    ${private_header_dir}/render/device/phys_device.hpp
-    ${private_header_dir}/render/device/vk_instance.hpp
+    ${private_header_dir}/render/vkdevice/phys_device.hpp
+    ${private_header_dir}/render/vkdevice/vk_instance.hpp
 )
 
 set(private_source_files
@@ -44,8 +44,6 @@ set(private_source_files
     ${private_source_dir}/overlay/overlay.cpp
     ${private_source_dir}/overlay/text.cpp
     ${private_source_dir}/render/cmdbuf.cpp
-    ${private_source_dir}/render/device/phys_device.cpp
-    ${private_source_dir}/render/device/vk_instance.cpp
     ${private_source_dir}/render/draw_set.cpp
     ${private_source_dir}/render/enum_str.cpp
     ${private_source_dir}/render/mem_alloc.cpp
@@ -59,6 +57,8 @@ set(private_source_files
     ${private_source_dir}/render/vkcomposition.cpp
     ${private_source_dir}/render/vkdebug.cpp
     ${private_source_dir}/render/vkdevice.cpp
+    ${private_source_dir}/render/vkdevice/phys_device.cpp
+    ${private_source_dir}/render/vkdevice/vk_instance.cpp
     ${private_source_dir}/render/vkmajorplayers.cpp
     ${private_source_dir}/renderee/atmos.cpp
     ${private_source_dir}/renderee/ren_actor_skinned.cpp
