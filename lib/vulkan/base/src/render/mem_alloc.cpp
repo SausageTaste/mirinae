@@ -3,7 +3,7 @@
 #include <array>
 #include <cmath>
 
-#include "mirinae/lightweight/include_spdlog.hpp"
+#include "mirinae/vulkan/base/render/vkcheck.hpp"
 
 #define VMA_LEAK_LOG_FORMAT(format, ...)             \
     do {                                             \

@@ -9,11 +9,11 @@
 #include <imgui_impl_vulkan.h>
 #include <sung/basic/stringtool.hpp>
 
-#include "mirinae/lightweight/include_spdlog.hpp"
 #include "mirinae/lightweight/konsts.hpp"
 #include "mirinae/vulkan/base/platform_func.hpp"
 #include "mirinae/vulkan/base/render/cmdbuf.hpp"
 #include "mirinae/vulkan/base/render/enum_str.hpp"
+#include "mirinae/vulkan/base/render/vkcheck.hpp"
 #include "mirinae/vulkan/base/render/vkmajorplayers.hpp"
 #include "render/device/phys_device.hpp"
 

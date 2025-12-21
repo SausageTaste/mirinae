@@ -21,6 +21,7 @@ set(public_header_files
     ${public_header_dir}/mirinae/vulkan/base/render/renderpass.hpp
     ${public_header_dir}/mirinae/vulkan/base/render/texture.hpp
     ${public_header_dir}/mirinae/vulkan/base/render/uniform.hpp
+    ${public_header_dir}/mirinae/vulkan/base/render/vkcheck.hpp
     ${public_header_dir}/mirinae/vulkan/base/render/vkcomposition.hpp
     ${public_header_dir}/mirinae/vulkan/base/render/vkdebug.hpp
     ${public_header_dir}/mirinae/vulkan/base/render/vkdevice.hpp

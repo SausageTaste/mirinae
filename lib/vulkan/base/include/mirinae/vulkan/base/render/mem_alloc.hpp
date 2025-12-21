@@ -7,12 +7,6 @@
 #include <dal/img/img2d.hpp>
 
 
-#define VK_CHECK(x)                \
-    do {                           \
-        const VkResult res = x;    \
-        assert(VK_SUCCESS == res); \
-    } while (0)
-
 #define MIRINAE_DEFINE_OPAQUE_HANDLE(name) \
     class name##_T;                        \
     using name = name##_T*;
