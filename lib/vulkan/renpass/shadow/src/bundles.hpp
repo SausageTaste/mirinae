@@ -32,6 +32,8 @@ namespace mirinae {
         void init_fbufs(const VkRenderPass render_pass, VulkanDevice& device);
         void destroy(VulkanDevice& device);
 
+        void record_gpu_init(VkCommandBuffer cmdbuf) const;
+
         VkImage img(FrameIndex f_idx) const override;
         VkImageView view_whole(FrameIndex f_idx) const override;
         VkImageView view_layer(FrameIndex f_idx, uint32_t layer) const override;

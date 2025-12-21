@@ -2,6 +2,7 @@
 
 #include <entt/entity/entity.hpp>
 
+#include "mirinae/vulkan/base/render/cmdbuf.hpp"
 #include "mirinae/vulkan/base/render/mem_cinfo.hpp"
 #include "mirinae/vulkan/base/render/texture.hpp"
 
@@ -154,6 +155,27 @@ namespace mirinae {
         }
         images_.clear();
         entt_ = entt::null;
+    }
+
+    void DlightShadowMap::record_gpu_init(VkCommandBuffer cmdbuf) const {
+        mirinae::ImageMemoryBarrier barrier;
+        barrier.set_src_access(0)
+            .set_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+            .add_dst_acc(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+            .old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .new_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
+            .layer_count(1)
+            .mip_count(1);
+
+        for (auto& img : images_) {
+            barrier.image(img.img());
+            barrier.record_single(
+                cmdbuf,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+            );
+        }
     }
 
     VkImage DlightShadowMap::img(FrameIndex f_idx) const {
