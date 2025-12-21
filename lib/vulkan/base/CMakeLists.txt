@@ -32,12 +32,17 @@ set(public_header_files
     ${public_header_dir}/mirinae/vulkan/base/renderpass/common.hpp
 )
 
+set(private_header_files
+    ${private_header_dir}/render/device/phys_device.hpp
+)
+
 set(private_source_files
     ${private_source_dir}/context/camera.cpp
     ${private_source_dir}/overlay/iwidget.cpp
     ${private_source_dir}/overlay/overlay.cpp
     ${private_source_dir}/overlay/text.cpp
     ${private_source_dir}/render/cmdbuf.cpp
+    ${private_source_dir}/render/device/phys_device.cpp
     ${private_source_dir}/render/draw_set.cpp
     ${private_source_dir}/render/enum_str.cpp
     ${private_source_dir}/render/mem_alloc.cpp
