@@ -131,6 +131,12 @@ namespace mirinae {
         images_.resize(frames_in_flight);
         for (auto& x : images_) {
             x.init_img(w, h, device);
+
+            mirinae::DebugAnnoName{}
+                .set_handle(x.img())
+                .set_type(VK_OBJECT_TYPE_IMAGE)
+                .set_name("Dlight shadow map image")
+                .apply(device.logi_device());
         }
     }
 
@@ -256,6 +262,14 @@ namespace mirinae {
         slights_.emplace_back().tex_ = create_tex_depth(512, 512, device);
         slights_.emplace_back().tex_ = create_tex_depth(512, 512, device);
         slights_.emplace_back().tex_ = create_tex_depth(512, 512, device);
+
+        for (auto& slight : slights_) {
+            mirinae::DebugAnnoName{}
+                .set_handle(slight.tex_->image())
+                .set_type(VK_OBJECT_TYPE_IMAGE)
+                .set_name("Slight shadow map image")
+                .apply(device.logi_device());
+        }
     }
 
     ShadowMapBundle::~ShadowMapBundle() {

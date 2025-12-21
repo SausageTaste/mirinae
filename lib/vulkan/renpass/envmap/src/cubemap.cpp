@@ -25,6 +25,12 @@ namespace mirinae {
             .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
         img_.init(cinfo.get(), device.mem_alloc());
 
+        mirinae::DebugAnnoName{}
+            .set_handle(img_.image())
+            .set_type(VK_OBJECT_TYPE_IMAGE)
+            .set_name("Cube map color image")
+            .apply(device.logi_device());
+
         ImageViewBuilder iv_builder;
         iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
             .format(img_.format())
@@ -121,6 +127,12 @@ namespace mirinae {
             cinfo.set_mip_levels(MAX_MIP_LEVELS);
         img_.init(cinfo.get(), device.mem_alloc());
 
+        mirinae::DebugAnnoName{}
+            .set_handle(img_.image())
+            .set_type(VK_OBJECT_TYPE_IMAGE)
+            .set_name("Cube map color mips image")
+            .apply(device.logi_device());
+
         ImageViewBuilder iv_builder;
         iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
             .format(img_.format())
@@ -203,6 +215,12 @@ namespace mirinae {
             .add_flag(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
         img_.init(cinfo.get(), device.mem_alloc());
 
+        mirinae::DebugAnnoName{}
+            .set_handle(img_.image())
+            .set_type(VK_OBJECT_TYPE_IMAGE)
+            .set_name("Cube map color image")
+            .apply(device.logi_device());
+
         mirinae::ImageViewBuilder iv_builder;
         iv_builder.view_type(VK_IMAGE_VIEW_TYPE_CUBE)
             .format(img_.format())
@@ -226,6 +244,12 @@ namespace mirinae {
         depth_map_ = mirinae::create_tex_depth(
             img_.width(), img_.height(), device
         );
+
+        mirinae::DebugAnnoName{}
+            .set_handle(depth_map_->image())
+            .set_type(VK_OBJECT_TYPE_IMAGE)
+            .set_name("Cube map depth image")
+            .apply(device.logi_device());
 
         for (uint32_t i = 0; i < 6; i++) {
             mirinae::FbufCinfo fbuf_cinfo;
