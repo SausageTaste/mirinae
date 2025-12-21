@@ -227,10 +227,10 @@ DSOutput tese_main(
         );
 
         let len_scales = u_params.len_scales_lod_scale_;
-        float3 displacement = u_disp_map[0].Sample(texco / len_scales[0]).xyz * lod_c0;
+        float3 displacement = u_disp_map[0].SampleLevel(texco / len_scales[0], 0).xyz * lod_c0;
         const float largeWavesBias = displacement.y;
-        displacement += u_disp_map[1].Sample(texco / len_scales[1]).xyz * lod_c1;
-        displacement += u_disp_map[2].Sample(texco / len_scales[2]).xyz * lod_c2;
+        displacement += u_disp_map[1].SampleLevel(texco / len_scales[1], 0).xyz * lod_c1;
+        displacement += u_disp_map[2].SampleLevel(texco / len_scales[2], 0).xyz * lod_c2;
         p += displacement;
 
         output.lod_scales_ = float4(
