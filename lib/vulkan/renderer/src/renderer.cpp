@@ -23,10 +23,7 @@
 #include "mirinae/vulkan/base/renderpass/builder.hpp"
 
 #include "renderpasses.hpp"
-#include "task/init_model.hpp"
-#include "task/ren_passes.hpp"
-#include "task/update_dlight.hpp"
-#include "task/update_ren_ctxt.hpp"
+#include "task/render_stage.hpp"
 
 
 namespace {
@@ -344,57 +341,6 @@ namespace {
 }  // namespace
 
 
-// Tasks
-namespace { namespace task {
-
-    class RenderStage : public mirinae::StageTask {
-
-    public:
-        RenderStage() : mirinae::StageTask("vulan renderer") {
-            init_static_ = mirinae::create_init_static_model_task();
-            init_skinned_ = mirinae::create_init_skinned_model_task();
-
-            update_ren_ctxt_.succeed(this);
-            init_static_->succeed(&update_ren_ctxt_);
-            init_skinned_->succeed(&update_ren_ctxt_);
-            update_dlight_.succeed(&update_ren_ctxt_);
-            update_atmos_epic_.succeed(&update_ren_ctxt_);
-            render_passes_.succeed(
-                init_static_.get(),
-                init_skinned_.get(),
-                &update_dlight_,
-                &update_atmos_epic_
-            );
-            fence_.succeed(&render_passes_);
-        }
-
-    private:
-        enki::ITaskSet* get_fence() override { return &fence_; }
-
-        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            update_ren_ctxt_.prepare();
-            init_static_->prepare();
-            init_skinned_->prepare();
-            update_dlight_.prepare();
-            update_atmos_epic_.prepare();
-            render_passes_.prepare();
-        }
-
-    public:
-        mirinae::UpdateRenContext update_ren_ctxt_;
-        std::unique_ptr<mirinae::IInitModelTask> init_static_;
-        std::unique_ptr<mirinae::IInitModelTask> init_skinned_;
-        mirinae::UpdateDlight update_dlight_;
-        mirinae::TaskAtmosEpic update_atmos_epic_;
-        mirinae::RenderPassesTask render_passes_;
-
-    private:
-        mirinae::FenceTask fence_;
-    };
-
-}}  // namespace ::task
-
-
 // Engine
 namespace {
 
@@ -596,34 +542,13 @@ namespace {
         }
 
         void register_tasks(mirinae::TaskGraph& tasks) override {
-            auto stage = tasks.emplace_back<::task::RenderStage>();
-
-            stage->update_ren_ctxt_.init(
-                cosmos_->scene(),
+            auto stage = tasks.emplace_back<mirinae::RenderStage>();
+            stage->init(
+                cmdbufs_,
+                *cosmos_,
                 flag_ship_,
                 framesync_,
-                ren_ctxt,
-                swapchain_,
-                device_
-            );
-
-            stage->init_static_->init(
-                cosmos_->scene(), device_, *model_man_, ren_ctxt, rp_res_
-            );
-
-            stage->init_skinned_->init(
-                cosmos_->scene(), device_, *model_man_, ren_ctxt, rp_res_
-            );
-
-            stage->update_dlight_.init(*cosmos_, swapchain_);
-
-            stage->update_atmos_epic_.init(
-                mirinae::MAX_FRAMES_IN_FLIGHT, cosmos_->reg(), ren_ctxt, device_
-            );
-
-            stage->render_passes_.init(
-                cmdbufs_,
-                flag_ship_,
+                *model_man_,
                 ren_ctxt,
                 rp_res_,
                 [this]() {
@@ -635,6 +560,7 @@ namespace {
                     }
                 },
                 render_passes_,
+                swapchain_,
                 device_
             );
         }
