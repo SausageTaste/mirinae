@@ -24,6 +24,7 @@
 
 #include "renderpasses.hpp"
 #include "task/init_model.hpp"
+#include "task/ren_passes.hpp"
 #include "task/update_dlight.hpp"
 #include "task/update_ren_ctxt.hpp"
 
@@ -63,41 +64,6 @@ namespace {
     private:
         mirinae::key::EventAnalyzer keys_;
         mirinae::VulkanDevice& device_;
-    };
-
-
-    class CmdBufList {
-
-    private:
-        using FIdx = mirinae::FrameIndex;
-
-    public:
-        CmdBufList() { frame_data_.resize(mirinae::MAX_FRAMES_IN_FLIGHT); }
-
-        void clear(FIdx f_idx) { frame_data_.at(f_idx.get()).cmdbufs_.clear(); }
-
-        void add(VkCommandBuffer cmdbuf, FIdx f_idx) {
-            frame_data_.at(f_idx.get()).cmdbufs_.push_back(cmdbuf);
-        }
-
-        const VkCommandBuffer* data(FIdx f_idx) const {
-            return frame_data_.at(f_idx.get()).cmdbufs_.data();
-        }
-
-        size_t size(FIdx f_idx) const {
-            return frame_data_.at(f_idx.get()).cmdbufs_.size();
-        }
-
-        std::vector<VkCommandBuffer>& vector(FIdx f_idx) {
-            return frame_data_.at(f_idx.get()).cmdbufs_;
-        }
-
-    private:
-        struct FrameData {
-            std::vector<VkCommandBuffer> cmdbufs_;
-        };
-
-        std::vector<FrameData> frame_data_;
     };
 
 }  // namespace
@@ -381,84 +347,6 @@ namespace {
 // Tasks
 namespace { namespace task {
 
-    class RenderPasses : public mirinae::DependingTask {
-
-    public:
-        RenderPasses() {}
-
-        void init(
-            mirinae::FlagShip& flag_ship,
-            ::CmdBufList& cmdbuf_list,
-            std::vector<std::unique_ptr<mirinae::IRpBase>>& passes,
-            mirinae::RpResources& rp_res,
-            mirinae::RpCtxt& rp_ctxt,
-            mirinae::VulkanDevice& device,
-            std::function<bool()> resize_func
-        ) {
-            resize_func_ = resize_func;
-            flag_ship_ = &flag_ship;
-            cmdbuf_list_ = &cmdbuf_list;
-            rp_res_ = &rp_res;
-            rp_ctxt_ = &rp_ctxt;
-            device_ = &device;
-
-            for (auto& rp : passes) {
-                if (auto task = rp->create_task()) {
-                    passes_.push_back(std::move(task));
-                }
-            }
-        }
-
-        void prepare() {}
-
-    private:
-        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            if (flag_ship_->need_resize()) {
-                if (resize_func_) {
-                    resize_func_();
-                    flag_ship_->set_need_resize(false);
-                }
-            }
-
-            if (flag_ship_->dont_render()) {
-                return;
-            }
-
-            rp_res_->cmd_pool_.reset_pool(rp_ctxt_->f_index_, *device_);
-            cmdbuf_list_->clear(rp_ctxt_->f_index_);
-
-            for (auto& rp : passes_) rp->prepare(*rp_ctxt_);
-            for (auto& rp : passes_) this->try_run(rp->update_task());
-            for (auto& rp : passes_) this->try_wait(rp->update_fence());
-            for (auto& rp : passes_) this->try_run(rp->record_task());
-            for (auto& rp : passes_) this->try_wait(rp->record_fence());
-            for (auto& rp : passes_)
-                rp->collect_cmdbuf(cmdbuf_list_->vector(rp_ctxt_->f_index_));
-        }
-
-        static void try_run(enki::ITaskSet* task) {
-            if (task) {
-                dal::tasker().AddTaskSetToPipe(task);
-            }
-        }
-
-        static void try_wait(enki::ITaskSet* task) {
-            if (task) {
-                dal::tasker().WaitforTask(task);
-            }
-        }
-
-        mirinae::FlagShip* flag_ship_ = nullptr;
-        ::CmdBufList* cmdbuf_list_ = nullptr;
-        mirinae::RpResources* rp_res_ = nullptr;
-        mirinae::RpCtxt* rp_ctxt_ = nullptr;
-        mirinae::VulkanDevice* device_ = nullptr;
-        std::function<bool()> resize_func_;
-
-        std::vector<std::unique_ptr<mirinae::IRpTask>> passes_;
-    };
-
-
     class RenderStage : public mirinae::StageTask {
 
     public:
@@ -498,7 +386,7 @@ namespace { namespace task {
         std::unique_ptr<mirinae::IInitModelTask> init_skinned_;
         mirinae::UpdateDlight update_dlight_;
         mirinae::TaskAtmosEpic update_atmos_epic_;
-        RenderPasses render_passes_;
+        mirinae::RenderPassesTask render_passes_;
 
     private:
         mirinae::FenceTask fence_;
@@ -734,12 +622,10 @@ namespace {
             );
 
             stage->render_passes_.init(
-                flag_ship_,
                 cmdbufs_,
-                render_passes_,
-                rp_res_,
+                flag_ship_,
                 ren_ctxt,
-                device_,
+                rp_res_,
                 [this]() {
                     if (this->resize_swapchain()) {
                         overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
@@ -747,7 +633,9 @@ namespace {
                     } else {
                         return false;
                     }
-                }
+                },
+                render_passes_,
+                device_
             );
         }
 
@@ -979,7 +867,7 @@ namespace {
         mirinae::InputProcesserMgr input_mgrs_;
 
         // Command buffers
-        ::CmdBufList cmdbufs_;
+        mirinae::CmdBufList cmdbufs_;
         mirinae::CommandPool cmd_pool_;
         std::vector<VkCommandBuffer> basic_cmdbufs_;
 
