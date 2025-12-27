@@ -24,6 +24,7 @@
 
 #include "renderpasses.hpp"
 #include "task/init_model.hpp"
+#include "task/update_dlight.hpp"
 #include "task/update_ren_ctxt.hpp"
 
 
@@ -380,70 +381,6 @@ namespace {
 // Tasks
 namespace { namespace task {
 
-    class UpdateDlight : public mirinae::DependingTask {
-
-    public:
-        void init(
-            mirinae::CosmosSimulator& cosmos, mirinae::Swapchain& swhain
-        ) {
-            cosmos_ = &cosmos;
-            swhain_ = &swhain;
-        }
-
-        void prepare() {
-            this->set_size(cosmos_->reg().view<mirinae::cpnt::DLight>().size());
-        }
-
-    private:
-        void ExecuteRange(enki::TaskSetPartition range, uint32_t tid) override {
-            namespace cpnt = mirinae::cpnt;
-
-            auto& reg = cosmos_->reg();
-
-            const auto e_cam = cosmos_->scene().main_camera_;
-            auto cam = reg.try_get<cpnt::StandardCamera>(e_cam);
-            auto cam_view = reg.try_get<cpnt::Transform>(e_cam);
-
-            if (cam == nullptr || cam_view == nullptr) {
-                SPDLOG_WARN("Not a camera: {}", static_cast<uint32_t>(e_cam));
-                return;
-            }
-
-            const auto view_inv = glm::inverse(cam_view->make_view_mat());
-
-            auto view = reg.view<cpnt::DLight>();
-            auto begin = view.begin() + range.start;
-            auto end = view.begin() + range.end;
-            for (auto it = begin; it != end; ++it) {
-                const auto e = *it;
-                auto& light = reg.get<cpnt::DLight>(e);
-
-                auto tfrom = reg.try_get<cpnt::Transform>(e);
-                if (!tfrom) {
-                    SPDLOG_WARN(
-                        "DLight without transform: {}",
-                        static_cast<uint32_t>(e_cam)
-                    );
-                    continue;
-                }
-
-                tfrom->pos_ = cam_view->pos_;
-                light.cascades_.update(
-                    swhain_->calc_ratio(),
-                    light.max_shadow_distance_,
-                    view_inv,
-                    cam->proj_,
-                    light,
-                    *tfrom
-                );
-            }
-        }
-
-        mirinae::CosmosSimulator* cosmos_ = nullptr;
-        mirinae::Swapchain* swhain_;
-    };
-
-
     class RenderPasses : public mirinae::DependingTask {
 
     public:
@@ -559,7 +496,7 @@ namespace { namespace task {
         mirinae::UpdateRenContext update_ren_ctxt_;
         std::unique_ptr<mirinae::IInitModelTask> init_static_;
         std::unique_ptr<mirinae::IInitModelTask> init_skinned_;
-        UpdateDlight update_dlight_;
+        mirinae::UpdateDlight update_dlight_;
         mirinae::TaskAtmosEpic update_atmos_epic_;
         RenderPasses render_passes_;
 
