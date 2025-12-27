@@ -542,26 +542,29 @@ namespace {
         }
 
         void register_tasks(mirinae::TaskGraph& tasks) override {
-            auto stage = tasks.emplace_back<mirinae::RenderStage>();
-            stage->init(
-                cmdbufs_,
-                *cosmos_,
-                flag_ship_,
-                framesync_,
-                *model_man_,
-                ren_ctxt,
-                rp_res_,
-                [this]() {
-                    if (this->resize_swapchain()) {
-                        overlay_man_.on_fbuf_resize(fbuf_width_, fbuf_height_);
-                        return true;
-                    } else {
-                        return false;
-                    }
-                },
-                render_passes_,
-                swapchain_,
-                device_
+            tasks.push_back(
+                mirinae::create_render_stage(
+                    cmdbufs_,
+                    *cosmos_,
+                    flag_ship_,
+                    framesync_,
+                    *model_man_,
+                    ren_ctxt,
+                    rp_res_,
+                    [this]() {
+                        if (this->resize_swapchain()) {
+                            overlay_man_.on_fbuf_resize(
+                                fbuf_width_, fbuf_height_
+                            );
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    },
+                    render_passes_,
+                    swapchain_,
+                    device_
+                )
             );
         }
 

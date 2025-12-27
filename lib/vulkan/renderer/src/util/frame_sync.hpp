@@ -29,4 +29,7 @@ namespace mirinae {
         FrameIndex cur_frame_{ 0 };
     };
 
+
+    bool is_fbuf_too_small(uint32_t width, uint32_t height);
+
 }  // namespace mirinae

@@ -52,6 +52,14 @@ namespace mirinae {
     class TaskGraph {
 
     public:
+        template <typename T>
+        T* push_back(std::unique_ptr<T>&& stage_task) {
+            auto& item = stages_.emplace_back();
+            auto ptr = stage_task.get();
+            item.task_ = std::move(stage_task);
+            return ptr;
+        }
+
         template <typename T, typename... TArgs>
         T* emplace_back(TArgs&&... args) {
             static_assert(

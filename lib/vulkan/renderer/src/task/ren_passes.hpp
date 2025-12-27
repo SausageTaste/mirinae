@@ -2,31 +2,11 @@
 
 #include "mirinae/lightweight/task.hpp"
 #include "mirinae/vulkan/base/renderpass/common.hpp"
+#include "util/cmdbuf_list.hpp"
 #include "util/flags.hpp"
 
 
 namespace mirinae {
-
-    class CmdBufList {
-
-    public:
-        CmdBufList();
-
-        void clear(FrameIndex f_idx);
-        void add(VkCommandBuffer cmdbuf, FrameIndex f_idx);
-
-        const VkCommandBuffer* data(FrameIndex f_idx) const;
-        size_t size(FrameIndex f_idx) const;
-        std::vector<VkCommandBuffer>& vector(FrameIndex f_idx);
-
-    private:
-        struct FrameData {
-            std::vector<VkCommandBuffer> cmdbufs_;
-        };
-
-        std::vector<FrameData> frame_data_;
-    };
-
 
     class RenderPassesTask : public DependingTask {
 

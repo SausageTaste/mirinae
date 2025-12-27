@@ -14,6 +14,7 @@ set(private_header_files
     ${private_header_dir}/task/render_stage.hpp
     ${private_header_dir}/task/update_dlight.hpp
     ${private_header_dir}/task/update_ren_ctxt.hpp
+    ${private_header_dir}/util/cmdbuf_list.hpp
     ${private_header_dir}/util/flags.hpp
     ${private_header_dir}/util/frame_sync.hpp
     ${private_header_dir}/vulkan_pch.h
@@ -27,6 +28,7 @@ set(private_source_files
     ${private_source_dir}/task/render_stage.cpp
     ${private_source_dir}/task/update_dlight.cpp
     ${private_source_dir}/task/update_ren_ctxt.cpp
+    ${private_source_dir}/util/cmdbuf_list.cpp
     ${private_source_dir}/util/frame_sync.cpp
 )
 

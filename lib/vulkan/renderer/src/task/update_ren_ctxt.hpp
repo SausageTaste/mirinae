@@ -9,9 +9,6 @@
 
 namespace mirinae {
 
-    bool is_fbuf_too_small(uint32_t width, uint32_t height);
-
-
     class UpdateRenContext : public DependingTask {
 
     public:

@@ -37,3 +37,18 @@ namespace mirinae {
     }
 
 }  // namespace mirinae
+
+
+// Free functions
+namespace mirinae {
+
+    bool is_fbuf_too_small(uint32_t width, uint32_t height) {
+        if (width < 5)
+            return true;
+        if (height < 5)
+            return true;
+        else
+            return false;
+    }
+
+}  // namespace mirinae
