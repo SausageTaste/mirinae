@@ -10,6 +10,9 @@ set(public_header_files
 set(private_header_files
     ${private_header_dir}/renderpasses.hpp
     ${private_header_dir}/task/init_model.hpp
+    ${private_header_dir}/task/update_ren_ctxt.hpp
+    ${private_header_dir}/util/flags.hpp
+    ${private_header_dir}/util/frame_sync.hpp
     ${private_header_dir}/vulkan_pch.h
 )
 
@@ -17,6 +20,8 @@ set(private_source_files
     ${private_source_dir}/renderer.cpp
     ${private_source_dir}/renderpasses.cpp
     ${private_source_dir}/task/init_model.cpp
+    ${private_source_dir}/task/update_ren_ctxt.cpp
+    ${private_source_dir}/util/frame_sync.cpp
 )
 
 
