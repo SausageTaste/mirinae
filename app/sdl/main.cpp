@@ -45,6 +45,19 @@ namespace {
         MIRINAE_ABORT("Failed to get user profile path");
 #elif defined(SUNG_OS_LINUX)
         return ::get_home_path() / "Documents" / app_name;
+#elif defined(SUNG_OS_MACOS)
+        if (auto pPath = getenv("HOME")) {
+            auto path = std::filesystem::path(pPath) / "Documents" / app_name;
+
+            if (!std::filesystem::is_directory(path)) {
+                if (!std::filesystem::create_directories(path)) {
+                    MIRINAE_ABORT("Failed to create directory");
+                }
+            }
+
+            return path;
+        }
+        MIRINAE_ABORT("Failed to get home path");
 #endif
     }
 
