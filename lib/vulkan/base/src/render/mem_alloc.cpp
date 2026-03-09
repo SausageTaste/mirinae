@@ -99,6 +99,9 @@ namespace mirinae {
     void Buffer::init(
         const BufferCinfoBundle& cinfo, VulkanMemoryAllocator allocator
     ) {
+        if (cinfo.buf_info_.size == 0)
+            SPDLOG_WARN("Buffer size cannot be zero");
+
         this->destroy();
         allocator_ = allocator;
 
