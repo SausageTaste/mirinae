@@ -165,6 +165,13 @@ namespace mirinae {
     VkInstance InstanceFactory::create() {
         cinfo_.pApplicationInfo = &app_info;
 
+        if (portability_enumeration_enabled_) {
+            ext_layers_.extensions_.push_back(
+                VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
+            );
+            cinfo_.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+        }
+
         const auto ext_name_ptrs = make_char_vec(ext_layers_.extensions_);
         cinfo_.enabledExtensionCount = ext_name_ptrs.size();
         cinfo_.ppEnabledExtensionNames = ext_name_ptrs.data();

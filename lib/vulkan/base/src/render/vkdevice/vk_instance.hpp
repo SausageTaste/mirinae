@@ -29,7 +29,11 @@ namespace mirinae {
     public:
         InstanceFactory();
         VkInstance create();
+
         void enable_validation_layer() { validation_layer_enabled_ = true; }
+        void enable_portability_enumeration() {
+            portability_enumeration_enabled_ = true;
+        }
 
         VulkanExtensionsLayers ext_layers_;
 
@@ -40,6 +44,7 @@ namespace mirinae {
         VkValidationFeaturesEXT validation_features_{};
         VkValidationFeatureEnableEXT enable_validation_features_[1];
         bool validation_layer_enabled_ = false;
+        bool portability_enumeration_enabled_ = false;
     };
 
 

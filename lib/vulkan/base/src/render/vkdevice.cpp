@@ -355,6 +355,10 @@ namespace mirinae {
                 create_info.instance_extensions_.end()
             );
 
+#if defined(__APPLE__)
+            instance_factory.enable_portability_enumeration();
+#endif
+
             SPDLOG_DEBUG(
                 "Vulkan instance extensions: {}",
                 fmt::join(instance_factory.ext_layers_.extensions_, ", ")
