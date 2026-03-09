@@ -166,6 +166,12 @@ namespace mirinae {
             .new_entry(2, "Max work group invocations")
             .set_value(limits.maxComputeWorkGroupInvocations);
 
+        report.add(0, "Tessellation shader")
+            .new_entry(2, "Supported")
+            .set_value(features_.get().tessellationShader ? "Yes" : "No")
+            .new_entry(2, "Max patch vertices")
+            .set_value(limits.maxTessellationPatchSize);
+
         report.add(0, "Limits")
             .new_entry(2, "Image 2D dimension")
             .set_value(limits.maxImageDimension2D)
