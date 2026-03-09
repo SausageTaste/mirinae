@@ -25,6 +25,15 @@ namespace mirinae {
         void set_size(uint32_t size);
         void set_size(uint64_t size);
 
+        template <typename T>
+        void set_size(T size) {
+            if constexpr (sizeof(T) > sizeof(uint32_t)) {
+                this->set_size(static_cast<uint64_t>(size));
+            } else {
+                this->set_size(static_cast<uint32_t>(size));
+            }
+        }
+
     private:
         std::vector<enki::Dependency> deps_;
     };
