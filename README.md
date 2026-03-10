@@ -23,10 +23,10 @@ If you want to read through source codes, here are some good starting points.
 
 # How to build
 
-This app is mainly targeting Windows, but it's also frequently tested on Ubuntu and Android.
-For those interested in Android version, there is separate [Android Studio project](https://github.com/SausageTaste/Mirinae-Android) that contains this repo as a submodule.
+I'm actively testing it on Windows and macOS.
 
-Here, I'm only describing how to build on Windows. The process won't be too different for Ubuntu.
+There is a separate [Android Studio project](https://github.com/SausageTaste/Mirinae-Android) that contains this repo as a submodule.
+Note that I'll stop working on Android version because I'd rather want to concentrate on cutting-edge rendering techniques instead of fixing mobile limitations.
 
 ## Build with CMake
 
@@ -35,16 +35,22 @@ You need following softwares:
 * [Git](https://git-scm.com/install/windows)
 * [CMake](https://cmake.org/download/#latest)
 * C++ build tools
-    * On Windows you must use VC++ because of vcpkg, such as [Visual Studio 2026 Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026)
+    * [Visual Studio 2026 Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026)
 * [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home)
-    * For Vulkan headers and `slangc` shader compiler
+    * For Vulkan headers, and `slangc` shader compiler
+    * On macOS, MoltenVK is bundled in it
 * [Python](https://www.python.org/downloads/)
-    * There is a Python scripts that compiles Slang shader sources into SPR-V
+    * There is a Python scripts that compiles Slang shader sources to SPIR-V
 * [vcpkg](https://github.com/microsoft/vcpkg)
-    * With the environment variable `VCPKG_ROOT` set
+    * With the environment variable `VCPKG_ROOT`
+    * On Windows, execute following commands on CMD
         ```bash
         git clone https://github.com/microsoft/vcpkg.git
         setx VCPKG_ROOT "%CD%\vcpkg"
+        ```
+    * On macOS add following line in `.zprofile`
+        ```bash
+        export VCPKG_ROOT="path/to/vcpkg"
         ```
     * Don't forget to run `bootstrap-vcpkg` as well
 
