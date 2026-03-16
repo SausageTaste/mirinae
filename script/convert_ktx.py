@@ -1,38 +1,62 @@
-import os
 import multiprocessing as mp
+import subprocess
+import os
+import pathlib
 
 import utils
 
-ROOT_DIR = utils.find_root_dir()
-DOCS_DIR = os.path.expanduser("~/Documents")
+ROOT_DIR = pathlib.Path(utils.find_root_dir())
+DOCS_DIR = pathlib.Path(os.path.expanduser("~/Documents"))
 
 
-def __do_once(src_path: str) -> str:
-    src_path = src_path
+def __do_once(src_path: str, srgb: bool = True, flip_y: bool = False) -> str:
     dst_path = os.path.splitext(src_path)[0] + ".ktx"
 
     commands = [
         "ktx",
         "create",
-        "--format R8G8B8_SRGB",
-        "--encode uastc",
-        "--assign-oetf srgb",
+        "--encode", "uastc",
         "--generate-mipmap",
-        f'"{src_path}"',
-        f'"{dst_path}"',
     ]
-    cmd = " ".join(commands)
-    os.system(cmd)
+
+    if srgb:
+        commands.append("--assign-tf")
+        commands.append("srgb")
+        commands.append("--convert-tf")
+        commands.append("srgb")
+        commands.append("--format")
+        commands.append("R8G8B8_SRGB")
+    else:
+        commands.append("--assign-tf")
+        commands.append("linear")
+        commands.append("--convert-tf")
+        commands.append("linear")
+        commands.append("--format")
+        commands.append("R8G8B8_UNORM")
+
+    if flip_y:
+        commands.append("--convert-texcoord-origin")
+        commands.append("bottom-left")
+
+    commands.append(src_path)
+    commands.append(dst_path)
+
+    result = subprocess.run(commands)
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to convert {src_path} to KTX: {result.stderr}")
+
     return dst_path
 
 
 def main():
+    img_dir = pathlib.Path(r"C:\Users\user\Documents\GitHub\KorSimGL\asset\image")
     work_list = [
-        os.path.join(ROOT_DIR, r"asset\textures\missing_texture.png"),
-        os.path.join(DOCS_DIR, r"Mirinapp\ThinMatrix\Character Texture.png"),
+       img_dir / "half_transparent_red.png",
+       img_dir / "earth_albedo.jpg",
+       img_dir / "8k_stars_milky_way.jpg",
     ]
 
-    with mp.Pool(mp.cpu_count()) as pool:
+    with mp.Pool() as pool:
         for dst_path in pool.imap_unordered(__do_once, work_list):
             print(f"Converted: {dst_path}")
 
