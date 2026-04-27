@@ -43,6 +43,10 @@ namespace {
 
 
 int main() {
+#ifdef SUNG_OS_WINDOWS
     MIRINAE_WIN_TRY { return ::start(); }
     MIRINAE_WIN_CATCH { std::abort(); }
+#else
+    return ::start();
+#endif
 }
