@@ -325,7 +325,7 @@ namespace {
         }
 
         void fill_imgui_info(ImGui_ImplVulkan_InitInfo& info) {
-            info.RenderPass = render_pass_;
+            info.PipelineInfoMain.RenderPass = render_pass_;
             info.DescriptorPool = desc_pool_.get();
         }
 
@@ -489,9 +489,6 @@ namespace {
 
                 if (!ImGui_ImplVulkan_Init(&init_info))
                     MIRINAE_ABORT("Failed to initialize ImGui Vulkan backend");
-
-                if (!ImGui_ImplVulkan_CreateFontsTexture())
-                    MIRINAE_ABORT("Failed to create ImGui fonts texture");
             }
 
             // GPu side init
